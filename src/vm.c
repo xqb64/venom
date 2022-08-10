@@ -103,7 +103,6 @@ do { \
                 break;
             }
             case OP_NULL: printf("OP_NULL"); break;
-            case OP_EXIT: printf("OP_EXIT"); break;
         }
         printf("\n");
 #endif
@@ -362,7 +361,6 @@ do { \
                 push(vm, (Object){ .type = OBJ_NULL });
                 break;
             }
-            case OP_EXIT: return;
             default: break;
         }
 #ifdef venom_debug
