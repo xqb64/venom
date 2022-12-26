@@ -367,11 +367,14 @@ do { \
                 uint8_t struct_name = READ_UINT8();
                 uint8_t property_count = READ_UINT8();
 
-                Struct s = { .name = chunk->sp[struct_name], .properties = malloc(sizeof(struct Table)) };
+                Struct s = { 
+                    .name = chunk->sp[struct_name],
+                    .properties = malloc(sizeof(struct Table)),
+                    .propertycount = property_count,
+                };
 
                 for (int i = 0; i < property_count; i++) {
                     uint8_t property_name = READ_UINT8();
-                    printf("inserting: %s", chunk->sp[property_name]);
                     table_insert(s.properties, chunk->sp[property_name], (Object){ .type = OBJ_NULL });
                 }
 
@@ -388,21 +391,49 @@ do { \
             }
             case OP_STRUCT_INIT: {
                 uint8_t structname = READ_UINT8();
-                uint8_t propertycount = READ_UINT8();
 
-                for (int i = 0; i < propertycount; i++) {
-                    uint8_t propertyname = READ_UINT8();
-                    uint8_t propertyvalue = READ_UINT8();
-
-                    Object *s = table_get(&vm->globals, chunk->sp[structname]);
-                    table_insert(
-                        s->as.struct_.properties,
-                        chunk->sp[propertyname],
-                        (Object){ 
-                            .as.dval = chunk->cp[propertyvalue],
-                        }
-                    );               
+                Object *obj = table_get(&vm->globals, chunk->sp[structname]);
+                if (obj == NULL) {
+                    char msg[512];
+                    snprintf(
+                        msg, sizeof(msg),
+                        "Struct '%s' is not defined",
+                        chunk->sp[structname]
+                    );
+                    runtime_error(msg);
+                    return;
                 }
+
+                uint8_t propertycount = READ_UINT8();
+                if (propertycount != obj->as.struct_.propertycount) {
+                    char msg[512];
+                    snprintf(
+                        msg, sizeof(msg),
+                        "Incorrect property count for struct '%s'",
+                        obj->as.struct_.name
+                    );
+                    runtime_error(msg);
+                    return;
+                }
+
+                for (size_t i = 0; i < propertycount; i++) {
+                    uint8_t propertyname_index = READ_UINT8();
+                    switch (*++ip) {
+                        case OP_CONST: {
+                            uint8_t index = READ_UINT8();
+                            table_insert(obj->as.struct_.properties, chunk->sp[propertyname_index], (Object){ .type = OBJ_NUMBER, .as.dval = chunk->cp[index] });
+                            break;
+                        }
+                        case OP_STR: {
+                            uint8_t index = READ_UINT8();
+                            table_insert(obj->as.struct_.properties, chunk->sp[propertyname_index], (Object){ .type = OBJ_STRING, .as.str = chunk->sp[index] });
+                            break;
+                        }
+                        default: break;
+                    }
+                }
+
+                push(vm, *obj);
 
                 break;
             }

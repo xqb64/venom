@@ -1,6 +1,15 @@
 #include <stdio.h>
 #include "object.h"
 
+void print_table(Table *table) {
+    for (size_t i = 0; i < sizeof(table->data) / sizeof(table->data[0]); i++) {
+        if (table->data[i] != NULL) {
+            printf("%s: ", table->data[i]->key);
+            print_object(table->data[i]->obj);
+        }
+    }
+}
+
 void print_object(Object *object) {
     if IS_BOOL(object) {
         printf("%s", object->as.bval ? "true" : "false");
@@ -18,9 +27,7 @@ void print_object(Object *object) {
     } else if IS_STRUCT(object) {
         printf("%s", object->as.struct_.name);
         printf("{ ");
-        for (size_t i = 0; i < 1024; i++) {
-            print_object(object->as.struct_.properties->data[i]->obj);
-        }
+        print_table(object->as.struct_.properties);
         printf(" }");
     }
 }

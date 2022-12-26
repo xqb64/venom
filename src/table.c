@@ -42,7 +42,7 @@ static void list_free(Bucket *head) {
 
 static Object *list_find(Bucket *head, const char *item) {
     while (head != NULL) {
-        if (strcmp(head->key, item) == 0) return &head->obj;
+        if (strcmp(head->key, item) == 0) return head->obj;
         head = head->next;
     }
     return NULL;

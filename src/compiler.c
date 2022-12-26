@@ -278,7 +278,8 @@ static void compile_expression(Compiler *compiler, BytecodeChunk *chunk, Express
             break;
         }
         case EXP_STRUCT_INIT: {
-            compile_expression(compiler, chunk, exp.as.expr_struct_init->property);
+            uint8_t property_name_index = add_string(chunk, exp.as.expr_struct_init->property.as.expr_variable->name);
+            emit_byte(chunk, property_name_index);
             compile_expression(compiler, chunk, exp.as.expr_struct_init->value);
             break;
         }
@@ -444,21 +445,27 @@ void disassemble(BytecodeChunk *chunk) {
             case OP_STRUCT: {
                 uint8_t struct_name = *++ip;
                 uint8_t property_count = *++ip;
-                for (int i = 0; i < property_count; i++) {
-                    *++ip;
-                }
                 printf("%d: ", i);
-                printf("OP_STRUCT\n"); 
+                printf("OP_STRUCT { type: '%s', propery_count: %d, properties: [", chunk->sp[struct_name], property_count);
+                for (int i = 0; i < property_count; i++) {
+                    uint8_t property_name_index = *++ip;
+                    printf("'%s', ", chunk->sp[property_name_index]);
+                }
+                printf("] }\n");
+                i += 2 + property_count; 
                 break;
             }
             case OP_STRUCT_INIT: {
                 uint8_t struct_name = *++ip;
                 uint8_t property_count = *++ip;
-                for (int i = 0; i < property_count; i++) {
-                    ip += 2;
-                }
                 printf("%d: ", i);
-                printf("OP_STRUCT_INIT\n"); 
+                printf("OP_STRUCT_INIT { type: '%s', propery_count: %d, properties: [", chunk->sp[struct_name], property_count);
+                for (int i = 0; i < property_count; i++) {
+                    uint8_t property_name_index = *++ip;
+                    printf("'%s', ", chunk->sp[property_name_index]);
+                }
+                printf("] }\n");
+                i += 2 + property_count; 
                 break;
             }
             case OP_NULL: {

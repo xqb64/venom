@@ -28,6 +28,7 @@ typedef struct {
 typedef struct {
     char *name;
     Table *properties;
+    int propertycount;
 } Struct;
 
 typedef struct Object {
