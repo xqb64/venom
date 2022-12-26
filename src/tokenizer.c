@@ -137,6 +137,7 @@ void print_token(Token token) {
         case TOKEN_ELSE: printf("TOKEN_ELSE"); break;
         case TOKEN_WHILE: printf("TOKEN_WHILE"); break;
         case TOKEN_FN: printf("TOKEN_FN"); break;
+        case TOKEN_STRUCT: printf("TOKEN_STRUCT"); break;
         case TOKEN_RETURN: printf("TOKEN_RETURN"); break;
         case TOKEN_EOF: printf("TOKEN_EOF"); break;
         case TOKEN_ERROR: printf("TOKEN_ERROR"); break;
@@ -164,6 +165,7 @@ Token get_token(Tokenizer *tokenizer) {
         case ')': return make_token(tokenizer, TOKEN_RIGHT_PAREN, 1);
         case '{': return make_token(tokenizer, TOKEN_LEFT_BRACE, 1);
         case '}': return make_token(tokenizer, TOKEN_RIGHT_BRACE, 1);
+        case ':': return make_token(tokenizer, TOKEN_COLON, 1);
         case ';': return make_token(tokenizer, TOKEN_SEMICOLON, 1);
         case ',': return make_token(tokenizer, TOKEN_COMMA, 1);
         case '%': return make_token(tokenizer, TOKEN_MOD, 1);
@@ -246,6 +248,12 @@ Token get_token(Tokenizer *tokenizer) {
         case 'r': {
             if (lookahead(tokenizer, 5, "eturn")) {
                 return make_token(tokenizer, TOKEN_RETURN, 6);
+            }
+            return identifier(tokenizer);
+        }
+        case 's': {
+            if (lookahead(tokenizer, 5, "truct")) {
+                return make_token(tokenizer, TOKEN_STRUCT, 6);
             }
             return identifier(tokenizer);
         }

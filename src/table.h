@@ -3,9 +3,11 @@
 
 #include "object.h"
 
+typedef struct Object Object;
+
 typedef struct Bucket {
     char *key;
-    Object obj;
+    struct Object *obj;
     struct Bucket *next;
 } Bucket;
 

@@ -94,6 +94,8 @@ do { \
             case OP_STR: printf("OP_STR"); break;
             case OP_SET_GLOBAL: printf("OP_SET_GLOBAL"); break;
             case OP_GET_GLOBAL: printf("OP_GET_GLOBAL"); break;
+            case OP_STRUCT: printf("OP_STRUCT"); break;
+            case OP_STRUCT_INIT: printf("OP_STRUCT_INIT"); break;
             case OP_DEEP_SET: {
                 printf("OP_DEEP_SET: %d", ip[1]);
                 break;
@@ -359,6 +361,49 @@ do { \
             }
             case OP_NULL: {
                 push(vm, (Object){ .type = OBJ_NULL });
+                break;
+            }
+            case OP_STRUCT: {
+                uint8_t struct_name = READ_UINT8();
+                uint8_t property_count = READ_UINT8();
+
+                Struct s = { .name = chunk->sp[struct_name], .properties = malloc(sizeof(struct Table)) };
+
+                for (int i = 0; i < property_count; i++) {
+                    uint8_t property_name = READ_UINT8();
+                    printf("inserting: %s", chunk->sp[property_name]);
+                    table_insert(s.properties, chunk->sp[property_name], (Object){ .type = OBJ_NULL });
+                }
+
+                table_insert(
+                    &vm->globals,
+                    chunk->sp[struct_name],
+                    (Object){ 
+                        .type = OBJ_STRUCT,
+                        .as.struct_ = s
+                     }
+                );
+
+                break;
+            }
+            case OP_STRUCT_INIT: {
+                uint8_t structname = READ_UINT8();
+                uint8_t propertycount = READ_UINT8();
+
+                for (int i = 0; i < propertycount; i++) {
+                    uint8_t propertyname = READ_UINT8();
+                    uint8_t propertyvalue = READ_UINT8();
+
+                    Object *s = table_get(&vm->globals, chunk->sp[structname]);
+                    table_insert(
+                        s->as.struct_.properties,
+                        chunk->sp[propertyname],
+                        (Object){ 
+                            .as.dval = chunk->cp[propertyvalue],
+                        }
+                    );               
+                }
+
                 break;
             }
             default: break;

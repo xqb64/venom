@@ -3,12 +3,14 @@
 
 #define venom_debug
 
-typedef enum {
+typedef enum
+{
     TOKEN_PRINT,
     TOKEN_LET,
     TOKEN_IDENTIFIER,
     TOKEN_NUMBER,
     TOKEN_STRING,
+    TOKEN_STRUCT,
     TOKEN_LEFT_PAREN,
     TOKEN_RIGHT_PAREN,
     TOKEN_LEFT_BRACE,
@@ -21,6 +23,7 @@ typedef enum {
     TOKEN_MOD,
     TOKEN_DOT,
     TOKEN_COMMA,
+    TOKEN_COLON,
     TOKEN_SEMICOLON,
     TOKEN_BANG,
     TOKEN_GREATER,
@@ -46,13 +49,15 @@ typedef enum {
     TOKEN_ERROR,
 } TokenType;
 
-typedef struct {
+typedef struct
+{
     TokenType type;
     char *start;
     int length;
 } Token;
 
-typedef struct {
+typedef struct
+{
     char *current;
     int line;
 } Tokenizer;

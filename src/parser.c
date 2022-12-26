@@ -68,6 +68,13 @@ void free_stmt(Statement stmt) {
             dynarray_free(&stmt.as.stmt_fn.stmts);
             break;
         }
+        case STMT_STRUCT: {
+            free(stmt.as.stmt_struct.name);
+            for (size_t i = 0; i < stmt.as.stmt_struct.properties.count; i++) {
+                free(stmt.as.stmt_struct.properties.data[i]);
+            }
+            dynarray_free(&stmt.as.stmt_struct.properties);
+        }
         default: break;
     }
 }
@@ -409,12 +416,62 @@ static Statement_DynArray block(Parser *parser, Tokenizer *tokenizer) {
     return stmts;
 }
 
+static Expression struct_initializer(Parser *parser, Tokenizer *tokenizer) {
+    char *name = own_string_n(parser->previous.start, parser->previous.length);
+    printf("name is: %s", name);
+    consume(
+        parser, tokenizer,
+        TOKEN_LEFT_BRACE,
+        "Expected '{' after struct name."
+    );
+    Expression_DynArray initializers = {0};
+    do {
+        Expression property = expression(parser, tokenizer);
+        consume(
+            parser, tokenizer,
+            TOKEN_COLON,
+            "Expected ':' after property name."
+        );
+        Expression value = primary(parser, tokenizer);
+
+        StructInitializerExpression *structinitexp = malloc(sizeof(StructInitializerExpression));
+        structinitexp->property = property;
+        structinitexp->value = value;
+
+        Expression e = {
+            .kind = EXP_STRUCT_INIT,
+            .as.expr_struct_init = structinitexp,
+        };
+
+        dynarray_insert(
+            &initializers,
+            e
+        );
+    } while (match(parser, tokenizer, 1, TOKEN_COMMA));
+    consume(
+        parser, tokenizer,
+        TOKEN_RIGHT_BRACE,
+        "Expected '}' after struct initialization."
+    );
+    Expression e = {
+        .kind = EXP_STRUCT,
+        .as.expr_struct = malloc(sizeof(StructExpression))
+    };
+    
+    e.as.expr_struct->initializers = initializers;
+    e.as.expr_struct->name = name;
+    return e;
+}
+
 static Expression primary(Parser *parser, Tokenizer *tokenizer) {
     if (match(parser, tokenizer, 1, TOKEN_NUMBER)) {
         return number(parser);
     } else if (match(parser, tokenizer, 1, TOKEN_STRING)) {
         return string(parser);
     } else if (match(parser, tokenizer, 1, TOKEN_IDENTIFIER)) {
+        if (check(parser, TOKEN_LEFT_BRACE)) {
+            return struct_initializer(parser, tokenizer);
+        } 
         return variable(parser);
     } else if (match(parser, tokenizer, 1, TOKEN_LEFT_PAREN)) {
         return grouping(parser, tokenizer);
@@ -460,6 +517,19 @@ static void print_expression(Expression e) {
         }
         case EXP_STRING: {
             printf("%s", e.as.expr_string->str);
+            break;
+        }
+        case EXP_STRUCT: {
+            printf("%s", e.as.expr_struct->name);
+            for (size_t i = 0; i < e.as.expr_struct->initializers.count; i++) {
+                print_expression(e.as.expr_struct->initializers.data[i]);
+            }
+            break;
+        }
+        case EXP_STRUCT_INIT: {
+            // print_expression(e.as.expr_struct_init->property);
+            // printf(": ");
+            // print_expression(e.as.expr_struct_init->value);
             break;
         }
         default: assert(0);
@@ -628,6 +698,44 @@ static Statement return_statement(Parser *parser, Tokenizer *tokenizer) {
     return (Statement){ .kind = STMT_RETURN, .as.stmt_return = stmt };
 }
 
+static Statement struct_statement(Parser *parser, Tokenizer *tokenizer) {
+    Token name = consume(
+        parser, tokenizer,
+        TOKEN_IDENTIFIER,
+        "Expected identifier after 'struct'."
+    ); 
+    consume(
+        parser, tokenizer,
+        TOKEN_LEFT_BRACE,
+        "Expected '{' after 'struct'."
+    );
+    String_DynArray properties = {0};
+    do {
+        Token property = consume(
+            parser, tokenizer,
+            TOKEN_IDENTIFIER,
+            "Expected property name."
+        );
+        consume(
+            parser, tokenizer,
+            TOKEN_SEMICOLON,
+            "Expected semicolon after property."
+        );
+        dynarray_insert(
+            &properties,
+            own_string_n(property.start, property.length)
+        );
+    } while (!match(parser, tokenizer, 1, TOKEN_RIGHT_BRACE));
+    StructStatement stmt = {
+        .name = own_string_n(name.start, name.length),
+        .properties = properties,
+    };
+    return (Statement){
+        .kind = STMT_STRUCT,
+        .as.stmt_struct = stmt,
+    };
+}
+
 static Statement statement(Parser *parser, Tokenizer *tokenizer) {
     if (match(parser, tokenizer, 1, TOKEN_PRINT)) {
         return print_statement(parser, tokenizer);
@@ -644,6 +752,8 @@ static Statement statement(Parser *parser, Tokenizer *tokenizer) {
         return function_statement(parser, tokenizer);
     } else if (match(parser, tokenizer, 1, TOKEN_RETURN)) {
         return return_statement(parser, tokenizer);
+    } else if (match(parser, tokenizer, 1, TOKEN_STRUCT)) {
+        return struct_statement(parser, tokenizer);
     } else {
         return expression_statement(parser, tokenizer);
     }

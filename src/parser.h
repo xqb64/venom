@@ -15,6 +15,8 @@ typedef enum {
     EXP_CALL,
     EXP_ASSIGN,
     EXP_LOGICAL,
+    EXP_STRUCT,
+    EXP_STRUCT_INIT,
 } ExpressionKind;
 
 typedef struct LiteralExpression LiteralExpression;
@@ -25,6 +27,8 @@ typedef struct BinaryExpression BinaryExpression;
 typedef struct CallExpression CallExpression;
 typedef struct AssignExpression AssignExpression;
 typedef struct LogicalExpression LogicalExpression;
+typedef struct StructExpression StructExpression;
+typedef struct StructInitializerExpression StructInitializerExpression;
 typedef struct Expression Expression;
 
 typedef DynArray(Expression) Expression_DynArray;
@@ -40,6 +44,8 @@ typedef struct Expression {
         CallExpression *expr_call;
         AssignExpression *expr_assign;
         LogicalExpression *expr_logical;
+        StructExpression *expr_struct;
+        StructInitializerExpression *expr_struct_init;
     } as;
 } Expression;
 
@@ -82,6 +88,18 @@ typedef struct LogicalExpression {
     char *operator;
 } LogicalExpression;
 
+typedef DynArray(StructInitializerExpression) StructInitializerExpressionDynArray;
+
+typedef struct StructExpression {
+    char *name;
+    Expression_DynArray initializers;
+} StructExpression;
+
+typedef struct StructInitializerExpression {
+    Expression property;
+    Expression value;
+} StructInitializerExpression;
+
 typedef enum {
     STMT_LET,
     STMT_EXPR,
@@ -91,6 +109,7 @@ typedef enum {
     STMT_WHILE,
     STMT_FN,
     STMT_RETURN,
+    STMT_STRUCT,
 } StatementKind;
 
 typedef struct Statement Statement;
@@ -135,6 +154,11 @@ typedef struct {
     Expression returnval;
 } ReturnStatement;
 
+typedef struct {
+    char *name;
+    String_DynArray properties;
+} StructStatement;
+
 typedef struct Statement {
     StatementKind kind;
     union {
@@ -146,6 +170,7 @@ typedef struct Statement {
         IfStatement stmt_if;
         WhileStatement stmt_while;
         ReturnStatement stmt_return;
+        StructStatement stmt_struct;
     } as;
 } Statement;
 

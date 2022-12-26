@@ -267,6 +267,21 @@ static void compile_expression(Compiler *compiler, BytecodeChunk *chunk, Express
             }
             break;
         }
+        case EXP_STRUCT: {
+            emit_byte(chunk, OP_STRUCT_INIT);
+            char *name_index = add_string(chunk, exp.as.expr_struct->name);
+            emit_byte(chunk, name_index);
+            emit_byte(chunk, exp.as.expr_struct->initializers.count);
+            for (size_t i = 0; i < exp.as.expr_struct->initializers.count; i++) {
+                compile_expression(compiler, chunk, exp.as.expr_struct->initializers.data[i]);
+            }
+            break;
+        }
+        case EXP_STRUCT_INIT: {
+            compile_expression(compiler, chunk, exp.as.expr_struct_init->property);
+            compile_expression(compiler, chunk, exp.as.expr_struct_init->value);
+            break;
+        }
         default: assert(0);
     }
 }
@@ -426,6 +441,26 @@ void disassemble(BytecodeChunk *chunk) {
                 printf("OP_PRINT\n"); 
                 break;
             }
+            case OP_STRUCT: {
+                uint8_t struct_name = *++ip;
+                uint8_t property_count = *++ip;
+                for (int i = 0; i < property_count; i++) {
+                    *++ip;
+                }
+                printf("%d: ", i);
+                printf("OP_STRUCT\n"); 
+                break;
+            }
+            case OP_STRUCT_INIT: {
+                uint8_t struct_name = *++ip;
+                uint8_t property_count = *++ip;
+                for (int i = 0; i < property_count; i++) {
+                    ip += 2;
+                }
+                printf("%d: ", i);
+                printf("OP_STRUCT_INIT\n"); 
+                break;
+            }
             case OP_NULL: {
                 printf("%d: ", i);
                 printf("OP_NULL\n");
@@ -572,6 +607,17 @@ void compile(Compiler *compiler, BytecodeChunk *chunk, Statement stmt, bool scop
             /* Finally, patch the jump. */
             patch_jump(chunk, jump);
 
+            break;
+        }
+        case STMT_STRUCT: {
+            emit_byte(chunk, OP_STRUCT);
+            uint8_t name_index = add_string(chunk, stmt.as.stmt_struct.name);
+            emit_byte(chunk, name_index);
+            emit_byte(chunk, stmt.as.stmt_struct.properties.count);
+            for (size_t i = 0; i < stmt.as.stmt_struct.properties.count; i++) {
+                uint8_t property_name_index = add_string(chunk, stmt.as.stmt_struct.properties.data[i]);
+                emit_byte(chunk, property_name_index);
+            }
             break;
         }
         case STMT_RETURN: {

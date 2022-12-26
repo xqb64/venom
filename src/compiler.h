@@ -6,8 +6,6 @@
 #include <stdint.h>
 #include "dynarray.h"
 #include "parser.h"
-#include "object.h"
-#include "table.h"
 
 typedef enum {
     OP_PRINT,
@@ -24,6 +22,8 @@ typedef enum {
     OP_JMP,
     OP_JZ,
     OP_FUNC,
+    OP_STRUCT,
+    OP_STRUCT_INIT,
     OP_INVOKE,
     OP_RET,
     OP_CONST,

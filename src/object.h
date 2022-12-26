@@ -4,23 +4,31 @@
 #include <stdbool.h>
 #include <stdint.h>
 #include "dynarray.h"
+#include "table.h"
+
+typedef struct Table Table;
 
 typedef enum {
     OBJ_NUMBER,
     OBJ_BOOLEAN,
     OBJ_FUNCTION,
+    OBJ_STRUCT,
+    OBJ_PROPERTY,
     OBJ_POINTER,
     OBJ_STRING,
     OBJ_NULL,
 } ObjectType;
-
-typedef struct Object Object;
 
 typedef struct {
     char *name;
     uint8_t location;
     size_t paramcount;
 } Function;
+
+typedef struct {
+    char *name;
+    Table *properties;
+} Struct;
 
 typedef struct Object {
     ObjectType type;
@@ -30,6 +38,7 @@ typedef struct Object {
         bool bval;
         Function func;
         uint8_t *ptr;
+        Struct struct_;
     } as;
     char *name;
 } Object;
@@ -43,6 +52,7 @@ typedef DynArray(char *) String_DynArray;
 #define IS_POINTER(object) ((object)->type == OBJ_POINTER)
 #define IS_NULL(object) ((object)->type == OBJ_NULL)
 #define IS_STRING(object) ((object)->type == OBJ_STRING)
+#define IS_STRUCT(object) ((object)->type == OBJ_STRUCT)
 
 #define AS_NUM(thing) ((Object){ .type = OBJ_NUMBER, .as.dval = (thing) })
 #define AS_BOOL(thing) ((Object){ .type = OBJ_BOOLEAN, .as.bval = (thing) })
