@@ -34,7 +34,7 @@ static void list_free(Bucket *head) {
         tmp = head;
         head = head->next;
         free(tmp->key);
-        free(tmp->obj);
+        OBJECT_DECREF(tmp->obj);
         free(tmp);
     }
 }
