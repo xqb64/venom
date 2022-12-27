@@ -13,6 +13,7 @@ typedef enum {
     EXP_UNARY,
     EXP_BINARY,
     EXP_CALL,
+    EXPR_GET,
     EXP_ASSIGN,
     EXP_LOGICAL,
     EXP_STRUCT,
@@ -25,6 +26,7 @@ typedef struct StringExpression StringExpression;
 typedef struct UnaryExpression UnaryExpression;
 typedef struct BinaryExpression BinaryExpression;
 typedef struct CallExpression CallExpression;
+typedef struct GetExpression GetExpression;
 typedef struct AssignExpression AssignExpression;
 typedef struct LogicalExpression LogicalExpression;
 typedef struct StructExpression StructExpression;
@@ -42,6 +44,7 @@ typedef struct Expression {
         UnaryExpression *expr_unary;
         BinaryExpression *expr_binary;
         CallExpression *expr_call;
+        GetExpression *expr_get;
         AssignExpression *expr_assign;
         LogicalExpression *expr_logical;
         StructExpression *expr_struct;
@@ -76,6 +79,11 @@ typedef struct CallExpression {
     VariableExpression *var;
     Expression_DynArray arguments;
 } CallExpression;
+
+typedef struct GetExpression {
+    Expression exp;
+    char *property_name;
+} GetExpression;
 
 typedef struct AssignExpression {
     Expression lhs;

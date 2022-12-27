@@ -122,6 +122,10 @@ do { \
                 printf("OP_DEEP_GET: %d", ip[1]);
                 break;
             }
+            case OP_GETATTR: {
+                printf("OP_GETATTR");
+                break;
+            }
             case OP_NULL: printf("OP_NULL"); break;
         }
         printf("\n");
@@ -218,6 +222,15 @@ do { \
                 Object *obj = vm->stack[fp+index];
                 push(vm, obj);
                 OBJECT_INCREF(obj);
+                break;
+            }
+            case OP_GETATTR: {
+                uint8_t property_name_index = READ_UINT8();
+                Object *obj = pop(vm);
+                Object *property = table_get(obj->as.struct_.properties, chunk->sp[property_name_index]);
+                push(vm, property);
+                OBJECT_DECREF(obj);
+                OBJECT_INCREF(property);
                 break;
             }
             case OP_ADD: BINARY_OP(+, AS_NUM); break;
@@ -415,7 +428,7 @@ do { \
                     ALLOC((Object){ 
                         .type = OBJ_STRUCT_BLUEPRINT,
                         .as.struct_blueprint = sb,
-                        .refcount = 0,
+                        .refcount = 1,
                     })
                 );
 

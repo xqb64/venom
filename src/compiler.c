@@ -228,6 +228,12 @@ static void compile_expression(Compiler *compiler, BytecodeChunk *chunk, Express
             emit_bytes(chunk, 3, OP_INVOKE, funcname_index, exp.as.expr_call->arguments.count);
             break;
         }
+        case EXPR_GET: {
+            compile_expression(compiler, chunk, exp.as.expr_get->exp);
+            uint8_t index = add_string(chunk, exp.as.expr_get->property_name);
+            emit_bytes(chunk, 2, OP_GETATTR, index);
+            break;
+        }
         case EXP_ASSIGN: {
             compile_expression(compiler, chunk, exp.as.expr_assign->rhs);
             int index = resolve_local(compiler, exp.as.expr_assign->lhs.as.expr_variable->name);
@@ -320,7 +326,7 @@ void disassemble(BytecodeChunk *chunk) {
             case OP_DEEP_GET: {
                 uint8_t name_index = *++ip;
                 printf("%d: ", i);
-                printf("OP_DEEP_GET, byte (%d): ('%s')\n", name_index, chunk->sp[name_index]);
+                printf("OP_DEEP_GET { '%s' }\n", chunk->sp[name_index]);
                 i++;
                 break;
             }
@@ -392,23 +398,23 @@ void disassemble(BytecodeChunk *chunk) {
                 int16_t offset = *++ip;
                 offset <<= 8;
                 offset |= *++ip;
-                printf("OP_JMP, byte, byte (offset: '%d')\n", offset);
+                printf("OP_JMP { offset: %d }\n", offset);
                 i += 2;
                 break;
             }
             case OP_FUNC: {
                 printf("%d: ", i);
-                printf("OP_FUNC ");
+                printf("OP_FUNC { ");
                 uint8_t funcname_index = *++ip;
-                printf(", byte (name: '%d' (%s)')", funcname_index, chunk->sp[funcname_index]);
+                printf("name: '%s'", chunk->sp[funcname_index]);
                 uint8_t paramcount = *++ip;
-                printf(", byte (paramcount: '%d')", paramcount);
+                printf(", paramcount: %d, parameters: [ ", paramcount);
                 for (; i < paramcount; i++) {
                     uint8_t paramname_index = *++ip;
-                    printf(", byte (param: '%d' (%s)')", paramname_index, chunk->sp[paramname_index]);
+                    printf(", '%s'", chunk->sp[paramname_index]);
                 }
                 uint8_t location = *++ip;
-                printf(", byte (location: '%d')\n", location);
+                printf(" ], location: %d }\n", location);
                 i += 2 + paramcount;
                 break;
             }
@@ -447,7 +453,7 @@ void disassemble(BytecodeChunk *chunk) {
                 uint8_t property_count = *++ip;
                 printf("%d: ", i);
                 printf("OP_STRUCT { type: '%s', propery_count: %d, properties: [", chunk->sp[struct_name], property_count);
-                for (int i = 0; i < property_count; i++) {
+                for (int j = 0; j < property_count; j++) {
                     uint8_t property_name_index = *++ip;
                     printf("'%s', ", chunk->sp[property_name_index]);
                 }
@@ -460,9 +466,22 @@ void disassemble(BytecodeChunk *chunk) {
                 uint8_t property_count = *++ip;
                 printf("%d: ", i);
                 printf("OP_STRUCT_INIT { type: '%s', propery_count: %d, properties: [", chunk->sp[struct_name], property_count);
-                for (int i = 0; i < property_count; i++) {
+                for (int j = 0; j < property_count; j++) {
                     uint8_t property_name_index = *++ip;
-                    printf("'%s', ", chunk->sp[property_name_index]);
+                    printf("%s: ", chunk->sp[property_name_index]);
+                    switch (*++ip) {
+                        case OP_CONST: {
+                            uint8_t const_index = *++ip;
+                            printf("%f, ", chunk->cp[const_index]);
+                            break;
+                        }
+                        case OP_STR: {
+                            uint8_t str_index = *++ip;
+                            printf("%s, ", chunk->sp[str_index]);
+                            break;
+                        }
+                        default: break;
+                    }
                 }
                 printf("] }\n");
                 i += 2 + property_count; 

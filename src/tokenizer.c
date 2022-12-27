@@ -169,6 +169,7 @@ Token get_token(Tokenizer *tokenizer) {
         case ';': return make_token(tokenizer, TOKEN_SEMICOLON, 1);
         case ',': return make_token(tokenizer, TOKEN_COMMA, 1);
         case '%': return make_token(tokenizer, TOKEN_MOD, 1);
+        case '.': return make_token(tokenizer, TOKEN_DOT, 1);
         case '"': return string(tokenizer);
         case '>': {
             if (lookahead(tokenizer, 1, "=")) {

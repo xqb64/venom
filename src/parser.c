@@ -143,6 +143,12 @@ void free_expression(Expression e) {
             free(e.as.expr_struct_init);
             break;
         }
+        case EXPR_GET: {
+            free_expression(e.as.expr_get->exp);
+            free(e.as.expr_get->property_name);
+            free(e.as.expr_get);
+            break;
+        }
     }
 }
 
@@ -267,6 +273,17 @@ static Expression call(Parser *parser, Tokenizer *tokenizer) {
     for (;;) {
         if (match(parser, tokenizer, 1, TOKEN_LEFT_PAREN)) {
             expr = finish_call(parser, tokenizer, expr);
+        } else if (match(parser, tokenizer, 1, TOKEN_DOT)) {
+            Token property_name = consume(parser, tokenizer, TOKEN_IDENTIFIER, "Expected property name after '.'");
+
+            GetExpression *get_expr = malloc(sizeof(GetExpression));
+            get_expr->exp = expr;
+            get_expr->property_name = own_string_n(property_name.start, property_name.length);
+
+            expr = (Expression){
+                .kind = EXPR_GET,
+                .as.expr_get = get_expr,
+            };
         } else {
             break;
         }
@@ -541,6 +558,9 @@ static void print_expression(Expression e) {
             // print_expression(e.as.expr_struct_init->property);
             // printf(": ");
             // print_expression(e.as.expr_struct_init->value);
+            break;
+        }
+        case EXPR_GET: {
             break;
         }
         default: assert(0);
