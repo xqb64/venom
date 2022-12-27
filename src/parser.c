@@ -128,6 +128,21 @@ void free_expression(Expression e) {
             free(e.as.expr_call);
             break;
         }
+        case EXP_STRUCT: {
+            free(e.as.expr_struct->name);
+            for (size_t i = 0; i < e.as.expr_struct->initializers.count; i++) {
+                free_expression(e.as.expr_struct->initializers.data[i]);
+            }
+            dynarray_free(&e.as.expr_struct->initializers);
+            free(e.as.expr_struct);
+            break;
+        }
+        case EXP_STRUCT_INIT: {
+            free_expression(e.as.expr_struct_init->property);
+            free_expression(e.as.expr_struct_init->value);
+            free(e.as.expr_struct_init);
+            break;
+        }
     }
 }
 
@@ -418,7 +433,6 @@ static Statement_DynArray block(Parser *parser, Tokenizer *tokenizer) {
 
 static Expression struct_initializer(Parser *parser, Tokenizer *tokenizer) {
     char *name = own_string_n(parser->previous.start, parser->previous.length);
-    printf("name is: %s", name);
     consume(
         parser, tokenizer,
         TOKEN_LEFT_BRACE,
@@ -443,10 +457,7 @@ static Expression struct_initializer(Parser *parser, Tokenizer *tokenizer) {
             .as.expr_struct_init = structinitexp,
         };
 
-        dynarray_insert(
-            &initializers,
-            e
-        );
+        dynarray_insert(&initializers, e);
     } while (match(parser, tokenizer, 1, TOKEN_COMMA));
     consume(
         parser, tokenizer,

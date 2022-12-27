@@ -5,13 +5,12 @@
 #include "table.h"
 #include "util.h"
 
-static void list_insert(Bucket **head, char *key, Object item) {
+static void list_insert(Bucket **head, char *key, Object *item) {
     /* Create a new node. */
     Bucket *new_node = malloc(sizeof(Bucket));
-    new_node->obj = malloc(sizeof(Object));
-    
+
     new_node->key = key;
-    *new_node->obj = item;
+    new_node->obj = item;
     new_node->next = NULL;
 
     /* Handle the edge case when the list is empty. */
@@ -34,8 +33,8 @@ static void list_free(Bucket *head) {
     while (head != NULL) {
         tmp = head;
         head = head->next;
-        free(tmp->obj);
         free(tmp->key);
+        free(tmp->obj);
         free(tmp);
     }
 }
@@ -58,7 +57,7 @@ static uint32_t hash(const char *key, int length) {
     return hash;
 }
 
-void table_insert(Table *table, const char *key, Object obj) {
+void table_insert(Table *table, const char *key, Object *obj) {
     char *k = own_string(key);
     int index = hash(k, strlen(k)) % 1024;
     if (list_find(table->data[index], k) == NULL) {
@@ -68,7 +67,7 @@ void table_insert(Table *table, const char *key, Object obj) {
         Bucket *head = table->data[index];
         while (head != NULL) {
             if (strcmp(head->key, k) == 0) {
-                *table->data[index]->obj = obj;
+                table->data[index]->obj = obj;
             }
             head = head->next;
         }

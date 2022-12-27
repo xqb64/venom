@@ -14,18 +14,19 @@ void init_vm(VM *vm) {
 
 void free_vm(VM* vm) {
     /* Free the globals table and its strings. */
-    table_free(&vm->globals); 
+    table_free(&vm->globals);
+    table_free(&vm->struct_blueprints); 
 }
 
 static void runtime_error(const char *message) {
     fprintf(stderr, "runtime error: %s.\n", message);
 }
 
-static void push(VM *vm, Object obj) {
+static void push(VM *vm, Object *obj) {
     vm->stack[vm->tos++] = obj;
 }
 
-static Object pop(VM *vm) {
+static Object *pop(VM *vm) {
     return vm->stack[--vm->tos];
 }
 
@@ -33,9 +34,13 @@ void run(VM *vm, BytecodeChunk *chunk) {
 #define BINARY_OP(op, wrapper) \
 do { \
     /* Operands are already on the stack. */ \
-    Object b = pop(vm); \
-    Object a = pop(vm); \
-    push(vm, wrapper(NUM_VAL(a) op NUM_VAL(b))); \
+    Object *b = pop(vm); \
+    Object *a = pop(vm); \
+    Object *obj = ALLOC(wrapper(NUM_VAL(a) op NUM_VAL(b))); \ 
+    push(vm, obj); \
+    OBJECT_INCREF(obj); \
+    OBJECT_DECREF(b); \
+    OBJECT_DECREF(a); \
 } while (0)
 
 #define READ_UINT8() (*++ip)
@@ -55,7 +60,7 @@ do { \
 do { \
     printf("stack: ["); \
     for (size_t i = 0; i < vm->tos; i++) { \
-        print_object(&vm->stack[i]); \
+        print_object(vm->stack[i]); \
         printf(", "); \
     } \
     printf("]\n"); \
@@ -111,12 +116,13 @@ do { \
 
         switch (*ip) {  /* instruction pointer */
             case OP_PRINT: {
-                Object object = pop(vm);
+                Object *object = pop(vm);
 #ifdef venom_debug
                 printf("dbg print :: ");
 #endif
-                print_object(&object);
+                print_object(object);
                 printf("\n");
+                OBJECT_DECREF(object);
                 break;
             }
             case OP_GET_GLOBAL: {
@@ -142,7 +148,8 @@ do { \
                     runtime_error(msg);
                     return;
                 }
-                push(vm, *obj);
+                push(vm, obj);
+                OBJECT_INCREF(obj);
                 break;
             }
             case OP_SET_GLOBAL: {
@@ -154,8 +161,9 @@ do { \
                  * refers to. We pop these two and add the variable
                  * to the globals table. */
                 uint8_t name_index = READ_UINT8();
-                Object constant = pop(vm);
+                Object *constant = pop(vm);
                 table_insert(&vm->globals, chunk->sp[name_index], constant);
+                OBJECT_DECREF(constant);
                 break;
             }
             case OP_CONST: {
@@ -168,7 +176,9 @@ do { \
                  * after the opcode, and push the constant on
                  * the stack. */
                 uint8_t index = READ_UINT8();
-                push(vm, AS_NUM(chunk->cp[index]));
+                Object *obj = ALLOC(AS_NUM(chunk->cp[index]));
+                push(vm, obj);
+                OBJECT_INCREF(obj);
                 break;
             }
             case OP_STR: {
@@ -181,20 +191,25 @@ do { \
                  * after the opcode, and push the constant on
                  * the stack. */
                 uint8_t index = READ_UINT8();
-                push(vm, AS_STR(chunk->sp[index]));
+                Object *obj = ALLOC(AS_STR(chunk->sp[index]));
+                push(vm, obj);
+                OBJECT_INCREF(obj);
                 break;
             }
             case OP_DEEP_SET: {
                 uint8_t index = READ_UINT8();
-                Object obj = pop(vm);
+                Object *obj = pop(vm);
                 int fp = vm->fp_stack[vm->fp_count-1];
                 vm->stack[fp+index] = obj;
+                OBJECT_DECREF(obj);
                 break;
             }
             case OP_DEEP_GET: {
                 uint8_t index = READ_UINT8();
                 int fp = vm->fp_stack[vm->fp_count-1];
-                push(vm, vm->stack[fp+index]);
+                Object *obj = vm->stack[fp+index];
+                push(vm, obj);
+                OBJECT_INCREF(obj);
                 break;
             }
             case OP_ADD: BINARY_OP(+, AS_NUM); break;
@@ -202,9 +217,12 @@ do { \
             case OP_MUL: BINARY_OP(*, AS_NUM); break;
             case OP_DIV: BINARY_OP(/, AS_NUM); break;
             case OP_MOD: {
-                Object b = pop(vm);
-                Object a = pop(vm);
-                push(vm, AS_NUM(fmod(NUM_VAL(a), NUM_VAL(b))));
+                Object *b = pop(vm);
+                Object *a = pop(vm);
+                Object *obj = ALLOC(AS_NUM(fmod(NUM_VAL(a), NUM_VAL(b))));
+                push(vm, obj);
+                OBJECT_DECREF(b);
+                OBJECT_DECREF(a);
                 break;
             }
             case OP_GT: BINARY_OP(>, AS_BOOL); break;
@@ -213,9 +231,11 @@ do { \
             case OP_JZ: {
                 /* Jump if zero. */
                 int16_t offset = READ_INT16();
-                if (!BOOL_VAL(pop(vm))) {
+                Object *obj = pop(vm);
+                if (!BOOL_VAL(obj)) {
                     ip += offset;
                 }
+                OBJECT_DECREF(obj);
                 break;
             }
             case OP_JMP: {
@@ -224,13 +244,16 @@ do { \
                 break;
             }
             case OP_NEGATE: {
-                Object obj = pop(vm);
-                push(vm, AS_NUM(-NUM_VAL(obj)));
+                Object *original = pop(vm);
+                Object *negated = ALLOC(AS_NUM(-NUM_VAL(original)));
+                push(vm, negated);
+                OBJECT_DECREF(original);
                 break;
             }
             case OP_NOT: {
-                Object obj = pop(vm);
-                push(vm, AS_BOOL(BOOL_VAL(obj) ^ 1));
+                Object *obj = pop(vm);
+                push(vm, ALLOC(AS_BOOL(BOOL_VAL(obj) ^ 1)));
+                OBJECT_DECREF(obj);
                 break;
             }
             case OP_FUNC: {
@@ -258,10 +281,11 @@ do { \
                 Object funcobj = {
                     .type = OBJ_FUNCTION,
                     .as.func = func,
+                    .refcount = 1,
                 };
 
                 /* ...and insert it into the 'vm->globals' table. */
-                table_insert(&vm->globals, funcname, funcobj);
+                table_insert(&vm->globals, funcname, ALLOC(funcobj));
 
                 break;
             }
@@ -301,13 +325,15 @@ do { \
                 /* Since we need the arguments after the instruction pointer,
                  * pop them into a temporary array so we can push them back
                  * after we place the instruction pointer on the stack. */
-                Object arguments[256];
+                Object *arguments[256];
                 for (int i = 0; i < argcount; i++) {
                     arguments[i] = pop(vm);
                 }
                 
                 /* Then, we push the return address on the stack. */
-                push(vm, AS_POINTER(ip));
+                Object *ip_obj = ALLOC(AS_POINTER(ip));
+                push(vm, ip_obj);
+                OBJECT_INCREF(ip_obj);
 
                 /* After that, we push the current frame pointer
                  * on the frame pointer stack. */
@@ -329,7 +355,7 @@ do { \
                  * value is located on the stack. Beneath it are
                  * the function arguments, followed by the return
                  * address. */
-                Object returnvalue = pop(vm);
+                Object *returnvalue = pop(vm);
 
                 /* We pop the last frame pointer off the frame pointer stack. */
                 int fp = vm->fp_stack[--vm->fp_count];
@@ -338,53 +364,59 @@ do { \
                  * and the frame pointer we popped in the previous step. */
                 int to_pop = vm->tos - fp;
                 for (int i = 0; i < to_pop; i++) {
-                    pop(vm);
+                    Object *obj = pop(vm);
+                    OBJECT_DECREF(obj);
                 }
 
                 /* After the arguments comes the return address which we'll
                  * use to modify the instruction pointer ip and return to the
                  * caller. */
-                Object returnaddr = pop(vm);
+                Object *returnaddr = pop(vm);
 
                 /* Then, we push the return value back on the stack.  */
-                push(vm, returnvalue);
-
+                if (!IS_NULL(returnvalue)) {
+                    push(vm, returnvalue);
+                } else {
+                    OBJECT_DECREF(returnvalue);
+                }
 
                 /* Finally, we modify the instruction pointer. */
-                ip = returnaddr.as.ptr;
+                ip = returnaddr->as.ptr;
+
+                OBJECT_DECREF(returnaddr);
 
                 break;
             }
             case OP_TRUE: {
-                push(vm, AS_BOOL(true));
+                push(vm, ALLOC(AS_BOOL(true)));
                 break;
             }
             case OP_NULL: {
-                push(vm, (Object){ .type = OBJ_NULL });
+                push(vm, ALLOC((Object){ .type = OBJ_NULL, .refcount = 1 }));
                 break;
             }
             case OP_STRUCT: {
                 uint8_t struct_name = READ_UINT8();
                 uint8_t property_count = READ_UINT8();
 
-                Struct s = { 
+                StructBlueprint sb = { 
                     .name = chunk->sp[struct_name],
-                    .properties = malloc(sizeof(struct Table)),
                     .propertycount = property_count,
                 };
 
                 for (int i = 0; i < property_count; i++) {
                     uint8_t property_name = READ_UINT8();
-                    table_insert(s.properties, chunk->sp[property_name], (Object){ .type = OBJ_NULL });
+                    sb.properties[i] = chunk->sp[property_name];
                 }
 
                 table_insert(
-                    &vm->globals,
+                    &vm->struct_blueprints,
                     chunk->sp[struct_name],
-                    (Object){ 
-                        .type = OBJ_STRUCT,
-                        .as.struct_ = s
-                     }
+                    ALLOC((Object){ 
+                        .type = OBJ_STRUCT_BLUEPRINT,
+                        .as.struct_blueprint = sb,
+                        .refcount = 0,
+                    })
                 );
 
                 break;
@@ -392,7 +424,7 @@ do { \
             case OP_STRUCT_INIT: {
                 uint8_t structname = READ_UINT8();
 
-                Object *obj = table_get(&vm->globals, chunk->sp[structname]);
+                Object *obj = table_get(&vm->struct_blueprints, chunk->sp[structname]);
                 if (obj == NULL) {
                     char msg[512];
                     snprintf(
@@ -405,35 +437,49 @@ do { \
                 }
 
                 uint8_t propertycount = READ_UINT8();
-                if (propertycount != obj->as.struct_.propertycount) {
+                if (propertycount != obj->as.struct_blueprint.propertycount) {
                     char msg[512];
                     snprintf(
                         msg, sizeof(msg),
                         "Incorrect property count for struct '%s'",
-                        obj->as.struct_.name
+                        obj->as.struct_blueprint.name
                     );
                     runtime_error(msg);
                     return;
                 }
+
+                Struct s = {
+                    .name = obj->as.struct_blueprint.name,
+                    .propertycount = obj->as.struct_blueprint.propertycount,
+                    .properties = malloc(sizeof(Table)),
+                };
+
+                memset(s.properties, 0, sizeof(Table));
 
                 for (size_t i = 0; i < propertycount; i++) {
                     uint8_t propertyname_index = READ_UINT8();
                     switch (*++ip) {
                         case OP_CONST: {
                             uint8_t index = READ_UINT8();
-                            table_insert(obj->as.struct_.properties, chunk->sp[propertyname_index], (Object){ .type = OBJ_NUMBER, .as.dval = chunk->cp[index] });
+                            table_insert(s.properties, chunk->sp[propertyname_index], ALLOC((Object){ .type = OBJ_NUMBER, .as.dval = chunk->cp[index], .refcount = 1 }));
                             break;
                         }
                         case OP_STR: {
                             uint8_t index = READ_UINT8();
-                            table_insert(obj->as.struct_.properties, chunk->sp[propertyname_index], (Object){ .type = OBJ_STRING, .as.str = chunk->sp[index] });
+                            table_insert(s.properties, chunk->sp[propertyname_index], ALLOC((Object){ .type = OBJ_STRING, .as.str = chunk->sp[index], .refcount = 1 }));
                             break;
                         }
                         default: break;
                     }
                 }
 
-                push(vm, *obj);
+                Object structobj = {
+                    .type = OBJ_STRUCT,
+                    .as.struct_ = s,
+                    .refcount = 1,
+                };
+
+                push(vm, ALLOC(structobj));
 
                 break;
             }

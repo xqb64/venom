@@ -1,4 +1,5 @@
 #include <stdio.h>
+#include <stdlib.h>
 #include "object.h"
 
 void print_table(Table *table) {
@@ -11,6 +12,7 @@ void print_table(Table *table) {
 }
 
 void print_object(Object *object) {
+    printf("{ ");
     if IS_BOOL(object) {
         printf("%s", object->as.bval ? "true" : "false");
     } else if IS_NUM(object) {
@@ -30,4 +32,20 @@ void print_object(Object *object) {
         print_table(object->as.struct_.properties);
         printf(" }");
     }
+    printf(", refcount: %d", object->refcount);
+    printf(" }");
+}
+
+inline Object *ALLOC(Object object) {
+    Object *obj = malloc(sizeof(Object));
+    *obj = object;
+    return obj;
+}
+
+inline void DEALLOC(Object *object) {
+    if (IS_STRUCT(object)) {
+        table_free(object->as.struct_.properties);
+        free(object->as.struct_.properties);
+    }
+    free(object);
 }
