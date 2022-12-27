@@ -461,7 +461,26 @@ do { \
                     switch (*++ip) {
                         case OP_CONST: {
                             uint8_t index = READ_UINT8();
-                            table_insert(s.properties, chunk->sp[propertyname_index], ALLOC((Object){ .type = OBJ_NUMBER, .as.dval = chunk->cp[index], .refcount = 1 }));
+                            char *property_name = chunk->sp[propertyname_index];
+                            bool is_defined = false;
+                            for (size_t j = 0; j < propertycount; j++) {
+                                if (strcmp(property_name, obj->as.struct_blueprint.properties[j]) == 0) {
+                                    table_insert(s.properties, property_name, ALLOC((Object){ .type = OBJ_NUMBER, .as.dval = chunk->cp[index], .refcount = 1 }));
+                                    is_defined = true;
+                                    break;
+                                }
+                            }
+                            if (!is_defined) {
+                                char msg[512];
+                                snprintf(
+                                    msg, sizeof(msg),
+                                    "Incorrect property name '%s' for struct '%s'",
+                                    property_name,
+                                    obj->as.struct_blueprint.name
+                                );
+                                runtime_error(msg);
+                                return;
+                            }
                             break;
                         }
                         case OP_STR: {
