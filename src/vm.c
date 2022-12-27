@@ -172,7 +172,6 @@ do { \
                 uint8_t name_index = READ_UINT8();
                 Object *constant = pop(vm);
                 table_insert(&vm->globals, chunk->sp[name_index], constant);
-                OBJECT_DECREF(constant);
                 break;
             }
             case OP_CONST: {
