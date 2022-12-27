@@ -21,6 +21,6 @@ typedef struct BytecodeChunk BytecodeChunk;
 
 void init_vm(VM *vm);
 void free_vm(VM *vm);
-void run(VM *vm, BytecodeChunk *chunk);
+int run(VM *vm, BytecodeChunk *chunk);
 
 #endif

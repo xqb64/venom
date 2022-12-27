@@ -18,10 +18,6 @@ void free_vm(VM* vm) {
     table_free(&vm->struct_blueprints); 
 }
 
-static void runtime_error(const char *message) {
-    fprintf(stderr, "runtime error: %s.\n", message);
-}
-
 static void push(VM *vm, Object *obj) {
     vm->stack[vm->tos++] = obj;
 }
@@ -30,7 +26,7 @@ static Object *pop(VM *vm) {
     return vm->stack[--vm->tos];
 }
 
-void run(VM *vm, BytecodeChunk *chunk) {
+int run(VM *vm, BytecodeChunk *chunk) {
 #define BINARY_OP(op, wrapper) \
 do { \
     /* Operands are already on the stack. */ \
@@ -65,6 +61,23 @@ do { \
     } \
     printf("]\n"); \
 } while(0)
+
+#define RUNTIME_ERROR(...) \
+do { \
+    char *msg = NULL; \
+    int msg_len = snprintf( \
+        msg, 0, \
+        __VA_ARGS__ \
+    ); \
+    msg = malloc(msg_len+1); \
+    snprintf( \
+        msg, msg_len+1, \
+        __VA_ARGS__ \
+    ); \
+    fprintf(stderr, "runtime error: %s.\n", msg); \
+    free(msg); \
+    return 1; \
+} while (0)
 
 #ifdef venom_debug
     disassemble(chunk);
@@ -139,14 +152,10 @@ do { \
                 uint8_t name_index = READ_UINT8();
                 Object *obj = table_get(&vm->globals, chunk->sp[name_index]);
                 if (obj == NULL) {
-                    char msg[512];
-                    snprintf(
-                        msg, sizeof(msg),
+                    RUNTIME_ERROR(
                         "Variable '%s' is not defined",
                         chunk->sp[name_index]
                     );
-                    runtime_error(msg);
-                    return;
                 }
                 push(vm, obj);
                 OBJECT_INCREF(obj);
@@ -298,28 +307,20 @@ do { \
                 Object *funcobj = table_get(&vm->globals, chunk->sp[funcname]);
                 if (funcobj == NULL) {
                     /* Runtime error if the function is not defined. */
-                    char msg[512];
-                    snprintf(
-                        msg, sizeof(msg),
+                    RUNTIME_ERROR(
                         "Variable '%s' is not defined",
                         chunk->sp[funcname]
                     );
-                    runtime_error(msg);
-                    return;
                 }
 
                 /* If the number of arguments the function was called with 
                  + does not match the number of parameters the function was
                  * declared to accept, raise a runtime error. */
                 if (argcount != funcobj->as.func.paramcount) {
-                    char msg[512];
-                    snprintf(
-                        msg, sizeof(msg),
+                    RUNTIME_ERROR(
                         "Function '%s' requires '%d' arguments.",
                         chunk->sp[funcname], argcount
                     );
-                    runtime_error(msg);
-                    return;
                 }
 
                 /* Since we need the arguments after the instruction pointer,
@@ -426,26 +427,18 @@ do { \
 
                 Object *obj = table_get(&vm->struct_blueprints, chunk->sp[structname]);
                 if (obj == NULL) {
-                    char msg[512];
-                    snprintf(
-                        msg, sizeof(msg),
+                    RUNTIME_ERROR(
                         "Struct '%s' is not defined",
                         chunk->sp[structname]
                     );
-                    runtime_error(msg);
-                    return;
                 }
 
                 uint8_t propertycount = READ_UINT8();
                 if (propertycount != obj->as.struct_blueprint.propertycount) {
-                    char msg[512];
-                    snprintf(
-                        msg, sizeof(msg),
+                    RUNTIME_ERROR(
                         "Incorrect property count for struct '%s'",
                         obj->as.struct_blueprint.name
                     );
-                    runtime_error(msg);
-                    return;
                 }
 
                 Struct s = {
@@ -471,15 +464,11 @@ do { \
                                 }
                             }
                             if (!is_defined) {
-                                char msg[512];
-                                snprintf(
-                                    msg, sizeof(msg),
+                                RUNTIME_ERROR(
                                     "Incorrect property name '%s' for struct '%s'",
                                     property_name,
                                     obj->as.struct_blueprint.name
                                 );
-                                runtime_error(msg);
-                                return;
                             }
                             break;
                         }
@@ -508,7 +497,11 @@ do { \
         PRINT_STACK();
 #endif
     }
+
+    return 0;
+
 #undef BINARY_OP
 #undef READ_UINT8
 #undef READ_INT16
+#undef RUNTIME_ERROR
 }
