@@ -9,7 +9,7 @@
 #include "table.h"
 
 typedef struct {
-    Object *stack[STACK_MAX];
+    Object stack[STACK_MAX];
     size_t tos; /* top of stack */
     Table globals;
     Table struct_blueprints;

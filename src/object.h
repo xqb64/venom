@@ -16,6 +16,7 @@ typedef enum {
     OBJ_STRUCT_BLUEPRINT,
     OBJ_PROPERTY,
     OBJ_POINTER,
+    OBJ_HEAP,
     OBJ_STRING,
     OBJ_NULL,
 } ObjectType;
@@ -38,6 +39,8 @@ typedef struct {
     int propertycount;
 } StructBlueprint;
 
+typedef struct HeapObject HeapObject;
+
 typedef struct Object {
     ObjectType type;
     union {
@@ -48,10 +51,15 @@ typedef struct Object {
         uint8_t *ptr;
         Struct struct_;
         StructBlueprint struct_blueprint;
+        HeapObject *heapobj;
     } as;
     char *name;
-    int refcount;
 } Object;
+
+typedef struct HeapObject {
+    Object *obj;
+    int refcount;
+} HeapObject;
 
 typedef DynArray(Object) Object_DynArray;
 typedef DynArray(char *) String_DynArray;
@@ -63,25 +71,35 @@ typedef DynArray(char *) String_DynArray;
 #define IS_NULL(object) ((object)->type == OBJ_NULL)
 #define IS_STRING(object) ((object)->type == OBJ_STRING)
 #define IS_STRUCT(object) ((object)->type == OBJ_STRUCT)
+#define IS_HEAP(object) ((object)->type == OBJ_HEAP)
 
 Object *ALLOC(Object object);
 void DEALLOC(Object *object);
 
-#define OBJECT_INCREF(object) (object)->refcount++
-#define OBJECT_DECREF(object) do{  \
-    if (--(object)->refcount == 0) { \
-        DEALLOC((object)); \
+#define OBJECT_INCREF(object) \
+do { \
+    if ((object).type == OBJ_HEAP) { \
+        (object).as.heapobj->refcount++; \
+    } \
+} while (0)
+
+#define OBJECT_DECREF(object) \
+do { \
+    if ((object).type == OBJ_HEAP) { \
+        if (--(object).as.heapobj->refcount == 0) { \
+            DEALLOC((object).as.heapobj->obj); \
+        } \
     } \
 } while(0)
 
-#define AS_NUM(thing) ((Object){ .type = OBJ_NUMBER, .as.dval = (thing), .refcount = 0 })
-#define AS_BOOL(thing) ((Object){ .type = OBJ_BOOLEAN, .as.bval = (thing), .refcount = 0 })
-#define AS_FUNC(thing) ((Object){ .type = OBJ_FUNCTION, .as.func = (thing), .refcount = 0 })
-#define AS_POINTER(thing) ((Object){ .type = OBJ_POINTER, .as.ptr = (thing), .refcount = 0 })
-#define AS_STR(thing) ((Object){ .type = OBJ_STRING, .as.str = (thing), .refcount = 0 })
+#define AS_NUM(thing) ((Object){ .type = OBJ_NUMBER, .as.dval = (thing) })
+#define AS_BOOL(thing) ((Object){ .type = OBJ_BOOLEAN, .as.bval = (thing) })
+#define AS_FUNC(thing) ((Object){ .type = OBJ_FUNCTION, .as.func = (thing) })
+#define AS_POINTER(thing) ((Object){ .type = OBJ_POINTER, .as.ptr = (thing) })
+#define AS_STR(thing) ((Object){ .type = OBJ_STRING, .as.str = (thing) })
 
-#define NUM_VAL(object) ((object)->as.dval)
-#define BOOL_VAL(object) ((object)->as.bval)
+#define NUM_VAL(object) ((object).as.dval)
+#define BOOL_VAL(object) ((object).as.bval)
 
 void print_object(Object *object);
 

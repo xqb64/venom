@@ -33,7 +33,6 @@ void print_object(Object *object) {
         print_table(object->as.struct_.properties);
         printf(" }");
     }
-    printf(", refcount: %d", object->refcount);
     printf(" }");
 }
 

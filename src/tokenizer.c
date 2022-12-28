@@ -4,7 +4,7 @@
 #include <stdlib.h>
 #include "tokenizer.h"
 
-#define venom_debug
+// #define venom_debug
 
 void init_tokenizer(Tokenizer *tokenizer, char *source) {
     tokenizer->current = source;

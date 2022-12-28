@@ -8,7 +8,7 @@
 #include "vm.h"
 #include "util.h"
 
-#define venom_debug
+// #define venom_debug
 
 void init_compiler(Compiler *compiler) {
     memset(compiler, 0, sizeof(Compiler));
