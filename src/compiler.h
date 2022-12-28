@@ -35,6 +35,7 @@ typedef enum {
     OP_DEEP_SET,
     OP_DEEP_GET,
     OP_GETATTR,
+    OP_SETATTR,
 } Opcode;
 
 typedef DynArray(uint8_t) Uint8DynArray;

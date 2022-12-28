@@ -236,12 +236,21 @@ static void compile_expression(Compiler *compiler, BytecodeChunk *chunk, Express
         }
         case EXP_ASSIGN: {
             compile_expression(compiler, chunk, exp.as.expr_assign->rhs);
-            int index = resolve_local(compiler, exp.as.expr_assign->lhs.as.expr_variable->name);
-            if (index != -1) {
-                emit_bytes(chunk, 2, OP_DEEP_SET, index);
+            if (exp.as.expr_assign->lhs.kind == EXP_VARIABLE) {
+                int index = resolve_local(compiler, exp.as.expr_assign->lhs.as.expr_variable->name);
+                if (index != -1) {
+                    emit_bytes(chunk, 2, OP_DEEP_SET, index);
+                } else {
+                    uint8_t name_index = add_string(chunk, exp.as.expr_assign->lhs.as.expr_variable->name);
+                    emit_bytes(chunk, 2, OP_SET_GLOBAL, name_index);
+                }
+            } else if (exp.as.expr_assign->lhs.kind == EXPR_GET) {
+                compile_expression(compiler, chunk, exp.as.expr_assign->lhs.as.expr_get->exp);
+                uint8_t index = add_string(chunk, exp.as.expr_assign->lhs.as.expr_get->property_name);
+                emit_bytes(chunk, 2, OP_SETATTR, index);
             } else {
-                uint8_t name_index = add_string(chunk, exp.as.expr_assign->lhs.as.expr_variable->name);
-                emit_bytes(chunk, 2, OP_SET_GLOBAL, name_index);
+                printf("Compiler error.\n");
+                return;
             }
             break;
         }
@@ -478,6 +487,11 @@ void disassemble(BytecodeChunk *chunk) {
                         case OP_STR: {
                             uint8_t str_index = *++ip;
                             printf("%s, ", chunk->sp[str_index]);
+                            break;
+                        }
+                        case OP_DEEP_GET: {
+                            uint8_t index = *++ip;
+                            printf("%s, ", chunk->sp[index]);
                             break;
                         }
                         default: break;

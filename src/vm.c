@@ -233,6 +233,13 @@ do { \
                 OBJECT_INCREF(property);
                 break;
             }
+            case OP_SETATTR: {
+                uint8_t property_name_index = READ_UINT8();
+                Object *propety = pop(vm);
+                Object *value = pop(vm);
+                table_insert(propety->as.struct_.properties, chunk->sp[property_name_index], value);
+                break;
+            }
             case OP_ADD: BINARY_OP(+, AS_NUM); break;
             case OP_SUB: BINARY_OP(-, AS_NUM); break;
             case OP_MUL: BINARY_OP(*, AS_NUM); break;
@@ -487,6 +494,14 @@ do { \
                         case OP_STR: {
                             uint8_t index = READ_UINT8();
                             table_insert(s.properties, chunk->sp[propertyname_index], ALLOC((Object){ .type = OBJ_STRING, .as.str = chunk->sp[index], .refcount = 1 }));
+                            break;
+                        }
+                        case OP_DEEP_GET: {
+                            uint8_t index = READ_UINT8();
+                            int fp = vm->fp_stack[vm->fp_count-1];
+                            Object *obj = vm->stack[fp+index];
+                            table_insert(s.properties, chunk->sp[propertyname_index], obj);
+                            OBJECT_INCREF(obj);
                             break;
                         }
                         default: break;

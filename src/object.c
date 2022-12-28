@@ -5,8 +5,9 @@
 void print_table(Table *table) {
     for (size_t i = 0; i < sizeof(table->data) / sizeof(table->data[0]); i++) {
         if (table->data[i] != NULL) {
-            printf("%s: ", table->data[i]->key);
+            printf(" %s: ", table->data[i]->key);
             print_object(table->data[i]->obj);
+            printf(", ");
         }
     }
 }
@@ -28,7 +29,7 @@ void print_object(Object *object) {
         printf("%s", object->as.str);
     } else if IS_STRUCT(object) {
         printf("%s", object->as.struct_.name);
-        printf("{ ");
+        printf(" {");
         print_table(object->as.struct_.properties);
         printf(" }");
     }
