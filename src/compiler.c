@@ -335,7 +335,7 @@ void disassemble(BytecodeChunk *chunk) {
             case OP_DEEP_GET: {
                 uint8_t name_index = *++ip;
                 printf("%d: ", i);
-                printf("OP_DEEP_GET { '%s' }\n", chunk->sp[name_index]);
+                printf("OP_DEEP_GET { index: '%d' }\n", name_index);
                 i++;
                 break;
             }
@@ -429,11 +429,10 @@ void disassemble(BytecodeChunk *chunk) {
             }
             case OP_INVOKE: {
                 uint8_t funcname_index = *++ip;
-                char *funcname = chunk->sp[funcname_index];
                 printf("%d: ", i);
-                printf("OP_INVOKE, byte (funcname_index: '%d' ('%s')\n", funcname_index, funcname);
+                printf("OP_INVOKE { func: '%s', ", chunk->sp[funcname_index]);
                 uint8_t argcount = *++ip;
-                printf(", byte (paramcount: '%d')", argcount);
+                printf(", argcount: '%d' }\n", argcount);
                 i += 2;
                 break;
             }
@@ -491,6 +490,11 @@ void disassemble(BytecodeChunk *chunk) {
                         }
                         case OP_DEEP_GET: {
                             uint8_t index = *++ip;
+                            printf("%d, ", index);
+                            break;
+                        }
+                        case OP_GET_GLOBAL: {
+                            uint8_t index = *++ip;
                             printf("%s, ", chunk->sp[index]);
                             break;
                         }
@@ -504,6 +508,18 @@ void disassemble(BytecodeChunk *chunk) {
             case OP_NULL: {
                 printf("%d: ", i);
                 printf("OP_NULL\n");
+                break;
+            }
+            case OP_GETATTR: {
+                uint8_t property_name_index = *++ip;
+                printf("%d: ", i);
+                printf("OP_GETATTR { '%s' }\n", chunk->sp[property_name_index]);
+                break;
+            }
+            case OP_SETATTR: {
+                uint8_t property_name_index = *++ip;
+                printf("%d: ", i);
+                printf("OP_SETATTR { '%s' }\n", chunk->sp[property_name_index]);
                 break;
             }
             default: printf("Unknown instruction: %d.\n", *ip); break;

@@ -126,6 +126,10 @@ do { \
                 printf("OP_GETATTR");
                 break;
             }
+            case OP_SETATTR: {
+                printf("OP_SETATTR");
+                break;
+            }
             case OP_NULL: printf("OP_NULL"); break;
         }
         printf("\n");
@@ -500,6 +504,19 @@ do { \
                             uint8_t index = READ_UINT8();
                             int fp = vm->fp_stack[vm->fp_count-1];
                             Object *obj = vm->stack[fp+index];
+                            table_insert(s.properties, chunk->sp[propertyname_index], obj);
+                            OBJECT_INCREF(obj);
+                            break;
+                        }
+                        case OP_GET_GLOBAL: {
+                            uint8_t name_index = READ_UINT8();
+                            Object *obj = table_get(&vm->globals, chunk->sp[name_index]);
+                            if (obj == NULL) {
+                                RUNTIME_ERROR(
+                                    "Variable '%s' is not defined",
+                                    chunk->sp[name_index]
+                                );
+                            }
                             table_insert(s.properties, chunk->sp[propertyname_index], obj);
                             OBJECT_INCREF(obj);
                             break;
