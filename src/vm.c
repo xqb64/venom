@@ -32,7 +32,7 @@ do { \
     /* Operands are already on the stack. */ \
     Object *b = pop(vm); \
     Object *a = pop(vm); \
-    Object *obj = ALLOC(wrapper(NUM_VAL(a) op NUM_VAL(b))); \ 
+    Object *obj = ALLOC(wrapper(NUM_VAL(a) op NUM_VAL(b))); \
     push(vm, obj); \
     OBJECT_INCREF(obj); \
     OBJECT_DECREF(b); \
@@ -448,8 +448,8 @@ do { \
             case OP_STRUCT_INIT: {
                 uint8_t structname = READ_UINT8();
 
-                Object *obj = table_get(&vm->struct_blueprints, chunk->sp[structname]);
-                if (obj == NULL) {
+                Object *blueprint = table_get(&vm->struct_blueprints, chunk->sp[structname]);
+                if (blueprint == NULL) {
                     RUNTIME_ERROR(
                         "Struct '%s' is not defined",
                         chunk->sp[structname]
@@ -457,16 +457,16 @@ do { \
                 }
 
                 uint8_t propertycount = READ_UINT8();
-                if (propertycount != obj->as.struct_blueprint.propertycount) {
+                if (propertycount != blueprint->as.struct_blueprint.propertycount) {
                     RUNTIME_ERROR(
                         "Incorrect property count for struct '%s'",
-                        obj->as.struct_blueprint.name
+                        blueprint->as.struct_blueprint.name
                     );
                 }
 
                 Struct s = {
-                    .name = obj->as.struct_blueprint.name,
-                    .propertycount = obj->as.struct_blueprint.propertycount,
+                    .name = blueprint->as.struct_blueprint.name,
+                    .propertycount = blueprint->as.struct_blueprint.propertycount,
                     .properties = malloc(sizeof(Table)),
                 };
 
@@ -480,7 +480,7 @@ do { \
                             char *property_name = chunk->sp[propertyname_index];
                             bool is_defined = false;
                             for (size_t j = 0; j < propertycount; j++) {
-                                if (strcmp(property_name, obj->as.struct_blueprint.properties[j]) == 0) {
+                                if (strcmp(property_name, blueprint->as.struct_blueprint.properties[j]) == 0) {
                                     table_insert(s.properties, property_name, ALLOC((Object){ .type = OBJ_NUMBER, .as.dval = chunk->cp[index], .refcount = 1 }));
                                     is_defined = true;
                                     break;
@@ -490,7 +490,7 @@ do { \
                                 RUNTIME_ERROR(
                                     "Incorrect property name '%s' for struct '%s'",
                                     property_name,
-                                    obj->as.struct_blueprint.name
+                                    blueprint->as.struct_blueprint.name
                                 );
                             }
                             break;

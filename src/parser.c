@@ -189,7 +189,10 @@ static bool match(Parser *parser, Tokenizer *tokenizer, int size, ...) {
 
 static Token consume(Parser *parser, Tokenizer *tokenizer, TokenType type, char *message) {
     if (check(parser, type)) return advance(parser, tokenizer);
-    else parse_error(parser, message);
+    else {
+        parse_error(parser, message);
+        assert(0);
+    };
 }
 
 static Expression number(Parser *parser) {
@@ -509,6 +512,8 @@ static Expression primary(Parser *parser, Tokenizer *tokenizer) {
         return special_literal("false");
     } else if (match(parser, tokenizer, 1, TOKEN_NULL)) {
         return special_literal("null");
+    } else {
+        assert(0);
     }
 }
 

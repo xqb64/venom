@@ -283,10 +283,8 @@ static void compile_expression(Compiler *compiler, BytecodeChunk *chunk, Express
             break;
         }
         case EXP_STRUCT: {
-            emit_byte(chunk, OP_STRUCT_INIT);
-            char *name_index = add_string(chunk, exp.as.expr_struct->name);
-            emit_byte(chunk, name_index);
-            emit_byte(chunk, exp.as.expr_struct->initializers.count);
+            uint8_t name_index = add_string(chunk, exp.as.expr_struct->name);
+            emit_bytes(chunk, 3, OP_STRUCT_INIT, name_index, exp.as.expr_struct->initializers.count);
             for (size_t i = 0; i < exp.as.expr_struct->initializers.count; i++) {
                 compile_expression(compiler, chunk, exp.as.expr_struct->initializers.data[i]);
             }
