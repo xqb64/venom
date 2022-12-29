@@ -4,9 +4,10 @@
 #include <stdbool.h>
 #include <stdint.h>
 #include "dynarray.h"
-#include "table.h"
 
 typedef struct Table Table;
+
+typedef DynArray(char *) String_DynArray;
 
 typedef enum {
     OBJ_NUMBER,
@@ -35,7 +36,7 @@ typedef struct {
 
 typedef struct {
     char *name;
-    char *properties[256];
+    String_DynArray properties;
     int propertycount;
 } StructBlueprint;
 
@@ -44,6 +45,7 @@ typedef struct HeapObject HeapObject;
 typedef struct Object {
     ObjectType type;
     union {
+        char *prop;
         char *str;
         double dval;
         bool bval;
@@ -56,13 +58,12 @@ typedef struct Object {
     char *name;
 } Object;
 
+typedef DynArray(Object) Object_DynArray;
+
 typedef struct HeapObject {
     Object *obj;
     int refcount;
 } HeapObject;
-
-typedef DynArray(Object) Object_DynArray;
-typedef DynArray(char *) String_DynArray;
 
 #define IS_BOOL(object) ((object)->type == OBJ_BOOLEAN)
 #define IS_NUM(object) ((object)->type == OBJ_NUMBER)
@@ -71,7 +72,9 @@ typedef DynArray(char *) String_DynArray;
 #define IS_NULL(object) ((object)->type == OBJ_NULL)
 #define IS_STRING(object) ((object)->type == OBJ_STRING)
 #define IS_STRUCT(object) ((object)->type == OBJ_STRUCT)
+#define IS_STRUCT_BLUEPRINT(object) ((object)->type == OBJ_STRUCT_BLUEPRINT)
 #define IS_HEAP(object) ((object)->type == OBJ_HEAP)
+#define IS_PROP(object) ((object)->type == OBJ_PROPERTY)
 
 Object *ALLOC(Object object);
 void DEALLOC(Object *object);
@@ -88,6 +91,7 @@ do { \
     if ((object).type == OBJ_HEAP) { \
         if (--(object).as.heapobj->refcount == 0) { \
             DEALLOC((object).as.heapobj->obj); \
+            free((object).as.heapobj); \
         } \
     } \
 } while(0)

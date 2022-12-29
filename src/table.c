@@ -5,7 +5,7 @@
 #include "table.h"
 #include "util.h"
 
-static void list_insert(Bucket **head, char *key, Object *item) {
+static void list_insert(Bucket **head, char *key, Object item) {
     /* Create a new node. */
     Bucket *new_node = malloc(sizeof(Bucket));
 
@@ -34,8 +34,11 @@ static void list_free(Bucket *head) {
         tmp = head;
         head = head->next;
         free(tmp->key);
-        if (IS_HEAP(tmp->obj)) {
-            OBJECT_DECREF(*tmp->obj);
+        if (IS_HEAP(&tmp->obj)) {
+            OBJECT_DECREF(tmp->obj);
+        }
+        if (IS_STRUCT_BLUEPRINT(&tmp->obj)) {
+            dynarray_free(&tmp->obj.as.struct_blueprint.properties);
         }
         free(tmp);
     }
@@ -43,7 +46,7 @@ static void list_free(Bucket *head) {
 
 static Object *list_find(Bucket *head, const char *item) {
     while (head != NULL) {
-        if (strcmp(head->key, item) == 0) return head->obj;
+        if (strcmp(head->key, item) == 0) return &head->obj;
         head = head->next;
     }
     return NULL;
@@ -59,7 +62,7 @@ static uint32_t hash(const char *key, int length) {
     return hash;
 }
 
-void table_insert(Table *table, const char *key, Object *obj) {
+void table_insert(Table *table, const char *key, Object obj) {
     char *k = own_string(key);
     int index = hash(k, strlen(k)) % 1024;
     if (list_find(table->data[index], k) == NULL) {

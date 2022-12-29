@@ -6,7 +6,7 @@
 #include "vm.h"
 #include "object.h"
 
-// #define venom_debug
+#define venom_debug
 
 void init_vm(VM *vm) {
     memset(vm, 0, sizeof(VM));
@@ -18,11 +18,11 @@ void free_vm(VM* vm) {
     table_free(&vm->struct_blueprints); 
 }
 
-static void push(VM *vm, Object obj) {
+static inline void push(VM *vm, Object obj) {
     vm->stack[vm->tos++] = obj;
 }
 
-static Object pop(VM *vm) {
+static inline Object pop(VM *vm) {
     return vm->stack[--vm->tos];
 }
 
@@ -34,9 +34,6 @@ do { \
     Object a = pop(vm); \
     Object obj = wrapper(NUM_VAL(a) op NUM_VAL(b)); \
     push(vm, obj); \
-    OBJECT_INCREF(obj); \
-    OBJECT_DECREF(b); \
-    OBJECT_DECREF(a); \
 } while (0)
 
 #define READ_UINT8() (*++ip)
@@ -114,6 +111,7 @@ do { \
             case OP_GET_GLOBAL: printf("OP_GET_GLOBAL"); break;
             case OP_STRUCT: printf("OP_STRUCT"); break;
             case OP_STRUCT_INIT: printf("OP_STRUCT_INIT"); break;
+            case OP_STRUCT_INIT_FINALIZE: printf("OP_STRUCT_INIT_FINALIZE"); break;
             case OP_DEEP_SET: {
                 printf("OP_DEEP_SET: %d", ip[1]);
                 break;
@@ -158,16 +156,15 @@ do { \
                  * on the stack. If we can't find the variable,
                  * we bail out. */
                 uint8_t name_index = READ_UINT8();
-                Object *obj_ptr = table_get(&vm->globals, chunk->sp[name_index]);
-                if (obj_ptr == NULL) {
+                Object *obj = table_get(&vm->globals, chunk->sp[name_index]);
+                if (obj == NULL) {
                     RUNTIME_ERROR(
                         "Variable '%s' is not defined",
                         chunk->sp[name_index]
                     );
                 }
-                Object obj = *obj_ptr;
-                push(vm, obj);
-                OBJECT_INCREF(obj);
+                push(vm, *obj);
+                OBJECT_INCREF(*obj);
                 break;
             }
             case OP_SET_GLOBAL: {
@@ -180,7 +177,7 @@ do { \
                  * to the globals table. */
                 uint8_t name_index = READ_UINT8();
                 Object constant = pop(vm);
-                table_insert(&vm->globals, chunk->sp[name_index], ALLOC(constant));
+                table_insert(&vm->globals, chunk->sp[name_index], constant);
                 break;
             }
             case OP_CONST: {
@@ -195,7 +192,6 @@ do { \
                 uint8_t index = READ_UINT8();
                 Object obj = AS_NUM(chunk->cp[index]);
                 push(vm, obj);
-                OBJECT_INCREF(obj);
                 break;
             }
             case OP_STR: {
@@ -210,7 +206,6 @@ do { \
                 uint8_t index = READ_UINT8();
                 Object obj = AS_STR(chunk->sp[index]);
                 push(vm, obj);
-                OBJECT_INCREF(obj);
                 break;
             }
             case OP_DEEP_SET: {
@@ -232,18 +227,17 @@ do { \
             case OP_GETATTR: {
                 uint8_t property_name_index = READ_UINT8();
                 Object obj = pop(vm);
-                Object *property_ptr = table_get(obj.as.struct_.properties, chunk->sp[property_name_index]);
-                Object property = *property_ptr;
-                push(vm, property);
+                Object *property = table_get(obj.as.heapobj->obj->as.struct_.properties, chunk->sp[property_name_index]);
+                push(vm, *property);
                 OBJECT_DECREF(obj);
-                OBJECT_INCREF(property);
+                OBJECT_INCREF(*property);
                 break;
             }
             case OP_SETATTR: {
                 uint8_t property_name_index = READ_UINT8();
                 Object propety = pop(vm);
                 Object value = pop(vm);
-                table_insert(propety.as.struct_.properties, chunk->sp[property_name_index], ALLOC(value));
+                table_insert(propety.as.heapobj->obj->as.struct_.properties, chunk->sp[property_name_index], value);
                 break;
             }
             case OP_ADD: BINARY_OP(+, AS_NUM); break;
@@ -255,8 +249,6 @@ do { \
                 Object a = pop(vm);
                 Object obj = AS_NUM(fmod(NUM_VAL(a), NUM_VAL(b)));
                 push(vm, obj);
-                OBJECT_DECREF(b);
-                OBJECT_DECREF(a);
                 break;
             }
             case OP_GT: BINARY_OP(>, AS_BOOL); break;
@@ -269,7 +261,6 @@ do { \
                 if (!BOOL_VAL(obj)) {
                     ip += offset;
                 }
-                OBJECT_DECREF(obj);
                 break;
             }
             case OP_JMP: {
@@ -281,13 +272,11 @@ do { \
                 Object original = pop(vm);
                 Object negated = AS_NUM(-NUM_VAL(original));
                 push(vm, negated);
-                OBJECT_DECREF(original);
                 break;
             }
             case OP_NOT: {
                 Object obj = pop(vm);
                 push(vm, AS_BOOL(BOOL_VAL(obj) ^ 1));
-                OBJECT_DECREF(obj);
                 break;
             }
             case OP_FUNC: {
@@ -318,7 +307,7 @@ do { \
                 };
 
                 /* ...and insert it into the 'vm->globals' table. */
-                table_insert(&vm->globals, funcname, ALLOC(funcobj));
+                table_insert(&vm->globals, funcname, funcobj);
 
                 break;
             }
@@ -358,7 +347,6 @@ do { \
                 /* Then, we push the return address on the stack. */
                 Object ip_obj = AS_POINTER(ip);
                 push(vm, ip_obj);
-                OBJECT_INCREF(ip_obj);
 
                 /* After that, we push the current frame pointer
                  * on the frame pointer stack. */
@@ -408,8 +396,6 @@ do { \
                 /* Finally, we modify the instruction pointer. */
                 ip = returnaddr.as.ptr;
 
-                OBJECT_DECREF(returnaddr);
-
                 break;
             }
             case OP_TRUE: {
@@ -431,16 +417,16 @@ do { \
 
                 for (int i = 0; i < property_count; i++) {
                     uint8_t property_name = READ_UINT8();
-                    sb.properties[i] = chunk->sp[property_name];
+                    dynarray_insert(&sb.properties, chunk->sp[property_name]);
                 }
 
                 table_insert(
                     &vm->struct_blueprints,
                     chunk->sp[struct_name],
-                    ALLOC((Object){ 
+                    (Object){ 
                         .type = OBJ_STRUCT_BLUEPRINT,
                         .as.struct_blueprint = sb,
-                    })
+                    }
                 );
 
                 break;
@@ -474,56 +460,7 @@ do { \
 
                 for (size_t i = 0; i < propertycount; i++) {
                     uint8_t propertyname_index = READ_UINT8();
-                    switch (*++ip) {
-                        case OP_CONST: {
-                            uint8_t index = READ_UINT8();
-                            char *property_name = chunk->sp[propertyname_index];
-                            bool is_defined = false;
-                            for (size_t j = 0; j < propertycount; j++) {
-                                if (strcmp(property_name, blueprint->as.struct_blueprint.properties[j]) == 0) {
-                                    table_insert(s.properties, property_name, ALLOC((Object){ .type = OBJ_NUMBER, .as.dval = chunk->cp[index] }));
-                                    is_defined = true;
-                                    break;
-                                }
-                            }
-                            if (!is_defined) {
-                                RUNTIME_ERROR(
-                                    "Incorrect property name '%s' for struct '%s'",
-                                    property_name,
-                                    blueprint->as.struct_blueprint.name
-                                );
-                            }
-                            break;
-                        }
-                        case OP_STR: {
-                            uint8_t index = READ_UINT8();
-                            table_insert(s.properties, chunk->sp[propertyname_index], ALLOC((Object){ .type = OBJ_STRING, .as.str = chunk->sp[index] }));
-                            break;
-                        }
-                        case OP_DEEP_GET: {
-                            uint8_t index = READ_UINT8();
-                            int fp = vm->fp_stack[vm->fp_count-1];
-                            Object obj = vm->stack[fp+index];
-                            table_insert(s.properties, chunk->sp[propertyname_index], ALLOC(obj));
-                            OBJECT_INCREF(obj);
-                            break;
-                        }
-                        case OP_GET_GLOBAL: {
-                            uint8_t name_index = READ_UINT8();
-                            Object *obj_ptr = table_get(&vm->globals, chunk->sp[name_index]);
-                            if (obj_ptr == NULL) {
-                                RUNTIME_ERROR(
-                                    "Variable '%s' is not defined",
-                                    chunk->sp[name_index]
-                                );
-                            }
-                            Object obj = *obj_ptr;
-                            table_insert(s.properties, chunk->sp[propertyname_index], obj_ptr);
-                            OBJECT_INCREF(obj);
-                            break;
-                        }
-                        default: break;
-                    }
+                    push(vm, (Object){ .type = OBJ_PROPERTY, .as.prop = chunk->sp[propertyname_index] });
                 }
 
                 Object structobj = {
@@ -536,6 +473,29 @@ do { \
                 heapobj->obj = ALLOC(structobj);
 
                 push(vm, (Object){ .type = OBJ_HEAP, .as.heapobj = heapobj });
+
+                break;
+            }
+            case OP_STRUCT_INIT_FINALIZE: {
+                uint8_t propertycount = READ_UINT8();
+
+                Object property_values[256];                
+                for (size_t i = 0; i < propertycount; i++) {
+                    property_values[i] = pop(vm);
+                }
+
+                Object structobj = pop(vm);
+
+                Object property_names[256];
+                for (size_t i = 0; i < propertycount; i++) {
+                    property_names[i] = pop(vm);
+                }
+
+                for (size_t i = 0; i < propertycount; i++) {
+                    table_insert(structobj.as.heapobj->obj->as.struct_.properties, property_names[i].as.prop, property_values[i]);
+                }
+
+                push(vm, structobj);
 
                 break;
             }
