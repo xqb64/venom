@@ -9,8 +9,6 @@
 #include "tokenizer.h"
 #include "util.h"
 
-#define venom_debug
-
 void free_stmt(Statement stmt) {
     switch (stmt.kind) {
         case STMT_PRINT: {

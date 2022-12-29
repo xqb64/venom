@@ -6,6 +6,7 @@
 #include "dynarray.h"
 
 typedef struct Table Table;
+typedef struct HeapObject HeapObject;
 
 typedef DynArray(char *) String_DynArray;
 
@@ -13,12 +14,12 @@ typedef enum {
     OBJ_NUMBER,
     OBJ_BOOLEAN,
     OBJ_FUNCTION,
-    OBJ_STRUCT,
-    OBJ_STRUCT_BLUEPRINT,
-    OBJ_PROPERTY,
     OBJ_POINTER,
     OBJ_HEAP,
     OBJ_STRING,
+    OBJ_STRUCT,
+    OBJ_STRUCT_BLUEPRINT,
+    OBJ_PROPERTY,
     OBJ_NULL,
 } ObjectType;
 
@@ -40,8 +41,6 @@ typedef struct {
     int propertycount;
 } StructBlueprint;
 
-typedef struct HeapObject HeapObject;
-
 typedef struct Object {
     ObjectType type;
     union {
@@ -55,10 +54,7 @@ typedef struct Object {
         StructBlueprint struct_blueprint;
         HeapObject *heapobj;
     } as;
-    char *name;
 } Object;
-
-typedef DynArray(Object) Object_DynArray;
 
 typedef struct HeapObject {
     Object *obj;
@@ -101,9 +97,18 @@ do { \
 #define AS_FUNC(thing) ((Object){ .type = OBJ_FUNCTION, .as.func = (thing) })
 #define AS_POINTER(thing) ((Object){ .type = OBJ_POINTER, .as.ptr = (thing) })
 #define AS_STR(thing) ((Object){ .type = OBJ_STRING, .as.str = (thing) })
+#define AS_NULL() ((Object){ .type = OBJ_NULL })
+#define AS_HEAP(thing) ((Object){ .type = OBJ_HEAP, .as.heapobj = (thing) })
+#define AS_PROP(thing) ((Object){ .type = OBJ_PROPERTY, .as.prop = (thing) })
+#define AS_STRUCT(thing) ((Object){ .type = OBJ_STRUCT, .as.struct_ = (thing) })
+#define AS_STRUCT_BLUEPRINT(thing) ((Object){ .type = OBJ_STRUCT_BLUEPRINT, .as.struct_blueprint = (thing) })
 
 #define NUM_VAL(object) ((object).as.dval)
 #define BOOL_VAL(object) ((object).as.bval)
+#define STRUCT_VAL(object) ((object).as.heapobj->obj->as.struct_)
+#define FUNC_VAL(object) ((object).as.func)
+#define PROP_VAL(object) ((object).as.prop)
+#define STRUCT_BLUEPRINT_VAL(object) ((object).as.struct_blueprint)
 
 void print_object(Object *object);
 

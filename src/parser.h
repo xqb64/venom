@@ -108,6 +108,18 @@ typedef struct StructInitializerExpression {
     Expression value;
 } StructInitializerExpression;
 
+#define TO_EXPR_LITERAL(exp) ((exp).as.expr_literal)
+#define TO_EXPR_STRING(exp) ((exp).as.expr_string)
+#define TO_EXPR_VARIABLE(exp) ((exp).as.expr_variable)
+#define TO_EXPR_UNARY(exp) ((exp).as.expr_unary)
+#define TO_EXPR_BINARY(exp) ((exp).as.expr_binary)
+#define TO_EXPR_CALL(exp) ((exp).as.expr_call)
+#define TO_EXPR_GET(exp) ((exp).as.expr_get)
+#define TO_EXPR_ASSIGN(exp) ((exp).as.expr_assign)
+#define TO_EXPR_LOGICAL(exp) ((exp).as.expr_logical)
+#define TO_EXPR_STRUCT(exp) ((exp).as.expr_struct)
+#define TO_EXPR_STRUCT_INIT(exp) ((exp).as.expr_struct_init)
+
 typedef enum {
     STMT_LET,
     STMT_EXPR,
@@ -181,6 +193,16 @@ typedef struct Statement {
         StructStatement stmt_struct;
     } as;
 } Statement;
+
+#define TO_STMT_PRINT(stmt) ((stmt).as.stmt_print)
+#define TO_STMT_LET(stmt) ((stmt).as.stmt_let)
+#define TO_STMT_EXPR(stmt) ((stmt).as.stmt_expr)
+#define TO_STMT_BLOCK(stmt) ((stmt).as.stmt_block)
+#define TO_STMT_FN(stmt) ((stmt).as.stmt_fn)
+#define TO_STMT_IF(stmt) ((stmt).as.stmt_if)
+#define TO_STMT_WHILE(stmt) ((stmt).as.stmt_while)
+#define TO_STMT_RETURN(stmt) ((stmt).as.stmt_return)
+#define TO_STMT_STRUCT(stmt) ((stmt).as.stmt_struct)
 
 typedef struct {
     Token current;

@@ -8,8 +8,6 @@
 #include "vm.h"
 #include "util.h"
 
-#define venom_debug
-
 void init_compiler(Compiler *compiler) {
     memset(compiler, 0, sizeof(Compiler));
 }
@@ -156,29 +154,29 @@ static int resolve_local(Compiler *compiler, char *name) {
 static void compile_expression(Compiler *compiler, BytecodeChunk *chunk, Expression exp) {
     switch (exp.kind) {
         case EXP_LITERAL: {
-            if (exp.as.expr_literal->specval == NULL) {
-                uint8_t const_index = add_constant(chunk, exp.as.expr_literal->dval);
+            if (TO_EXPR_LITERAL(exp)->specval == NULL) {
+                uint8_t const_index = add_constant(chunk, TO_EXPR_LITERAL(exp)->dval);
                 emit_bytes(chunk, 2, OP_CONST, const_index);
             } else {
-                if (strcmp(exp.as.expr_literal->specval, "true") == 0) {
+                if (strcmp(TO_EXPR_LITERAL(exp)->specval, "true") == 0) {
                     emit_byte(chunk, OP_TRUE);
-                } else if (strcmp(exp.as.expr_literal->specval, "false") == 0) {
+                } else if (strcmp(TO_EXPR_LITERAL(exp)->specval, "false") == 0) {
                     emit_bytes(chunk, 2, OP_TRUE, OP_NOT);
-                } else if (strcmp(exp.as.expr_literal->specval, "null") == 0) {
+                } else if (strcmp(TO_EXPR_LITERAL(exp)->specval, "null") == 0) {
                     emit_byte(chunk, OP_NULL);
                 }
             }
             break;
         }
         case EXP_STRING: {
-            uint8_t const_index = add_string(chunk, exp.as.expr_string->str);
+            uint8_t const_index = add_string(chunk, TO_EXPR_STRING(exp)->str);
             emit_bytes(chunk, 2, OP_STR, const_index);
             break;
         }
         case EXP_VARIABLE: {
-            int index = resolve_local(compiler, exp.as.expr_variable->name);
+            int index = resolve_local(compiler, TO_EXPR_VARIABLE(exp)->name);
             if (index == -1) {
-                uint8_t name_index = add_string(chunk, exp.as.expr_variable->name);
+                uint8_t name_index = add_string(chunk, TO_EXPR_VARIABLE(exp)->name);
                 emit_bytes(chunk, 2, OP_GET_GLOBAL, name_index);
             } else {
                 emit_bytes(chunk, 2, OP_DEEP_GET, index);
@@ -186,35 +184,35 @@ static void compile_expression(Compiler *compiler, BytecodeChunk *chunk, Express
             break;
         }
         case EXP_UNARY: {
-            compile_expression(compiler, chunk, *exp.as.expr_unary->exp);
+            compile_expression(compiler, chunk, *TO_EXPR_UNARY(exp)->exp);
             emit_byte(chunk, OP_NEGATE);
             break;
         }
         case EXP_BINARY: {
-            compile_expression(compiler, chunk, exp.as.expr_binary->lhs);
-            compile_expression(compiler, chunk, exp.as.expr_binary->rhs);
+            compile_expression(compiler, chunk, TO_EXPR_BINARY(exp)->lhs);
+            compile_expression(compiler, chunk, TO_EXPR_BINARY(exp)->rhs);
 
-            if (strcmp(exp.as.expr_binary->operator, "+") == 0) {
+            if (strcmp(TO_EXPR_BINARY(exp)->operator, "+") == 0) {
                 emit_byte(chunk, OP_ADD);
-            } else if (strcmp(exp.as.expr_binary->operator, "-") == 0) {
+            } else if (strcmp(TO_EXPR_BINARY(exp)->operator, "-") == 0) {
                 emit_byte(chunk, OP_SUB);                
-            } else if (strcmp(exp.as.expr_binary->operator, "*") == 0) {
+            } else if (strcmp(TO_EXPR_BINARY(exp)->operator, "*") == 0) {
                 emit_byte(chunk, OP_MUL);
-            } else if (strcmp(exp.as.expr_binary->operator, "/") == 0) {
+            } else if (strcmp(TO_EXPR_BINARY(exp)->operator, "/") == 0) {
                 emit_byte(chunk, OP_DIV);
-            } else if (strcmp(exp.as.expr_binary->operator, "%%") == 0) {
+            } else if (strcmp(TO_EXPR_BINARY(exp)->operator, "%%") == 0) {
                 emit_byte(chunk, OP_MOD);
-            } else if (strcmp(exp.as.expr_binary->operator, ">") == 0) {
+            } else if (strcmp(TO_EXPR_BINARY(exp)->operator, ">") == 0) {
                 emit_byte(chunk, OP_GT);
-            } else if (strcmp(exp.as.expr_binary->operator, "<") == 0) {
+            } else if (strcmp(TO_EXPR_BINARY(exp)->operator, "<") == 0) {
                 emit_byte(chunk, OP_LT);
-            } else if (strcmp(exp.as.expr_binary->operator, ">=") == 0) {
+            } else if (strcmp(TO_EXPR_BINARY(exp)->operator, ">=") == 0) {
                 emit_bytes(chunk, 2, OP_LT, OP_NOT);
-            } else if (strcmp(exp.as.expr_binary->operator, "<=") == 0) {
+            } else if (strcmp(TO_EXPR_BINARY(exp)->operator, "<=") == 0) {
                 emit_bytes(chunk, 2, OP_GT, OP_NOT);
-            } else if (strcmp(exp.as.expr_binary->operator, "==") == 0) {
+            } else if (strcmp(TO_EXPR_BINARY(exp)->operator, "==") == 0) {
                 emit_byte(chunk, OP_EQ);
-            } else if (strcmp(exp.as.expr_binary->operator, "!=") == 0) {
+            } else if (strcmp(TO_EXPR_BINARY(exp)->operator, "!=") == 0) {
                 emit_bytes(chunk, 2, OP_EQ, OP_NOT);
             }
 
@@ -222,31 +220,31 @@ static void compile_expression(Compiler *compiler, BytecodeChunk *chunk, Express
         }
         case EXP_CALL: {
             for (size_t i = 0; i < exp.as.expr_call->arguments.count; i++) {
-                compile_expression(compiler, chunk, exp.as.expr_call->arguments.data[i]);
+                compile_expression(compiler, chunk, TO_EXPR_CALL(exp)->arguments.data[i]);
             }
-            uint8_t funcname_index = add_string(chunk, exp.as.expr_call->var->name);
-            emit_bytes(chunk, 3, OP_INVOKE, funcname_index, exp.as.expr_call->arguments.count);
+            uint8_t funcname_index = add_string(chunk, TO_EXPR_CALL(exp)->var->name);
+            emit_bytes(chunk, 3, OP_INVOKE, funcname_index, TO_EXPR_CALL(exp)->arguments.count);
             break;
         }
         case EXPR_GET: {
-            compile_expression(compiler, chunk, exp.as.expr_get->exp);
-            uint8_t index = add_string(chunk, exp.as.expr_get->property_name);
+            compile_expression(compiler, chunk, TO_EXPR_GET(exp)->exp);
+            uint8_t index = add_string(chunk, TO_EXPR_GET(exp)->property_name);
             emit_bytes(chunk, 2, OP_GETATTR, index);
             break;
         }
         case EXP_ASSIGN: {
-            compile_expression(compiler, chunk, exp.as.expr_assign->rhs);
-            if (exp.as.expr_assign->lhs.kind == EXP_VARIABLE) {
-                int index = resolve_local(compiler, exp.as.expr_assign->lhs.as.expr_variable->name);
+            compile_expression(compiler, chunk, TO_EXPR_ASSIGN(exp)->rhs);
+            if (TO_EXPR_ASSIGN(exp)->lhs.kind == EXP_VARIABLE) {
+                int index = resolve_local(compiler, TO_EXPR_VARIABLE(TO_EXPR_ASSIGN(exp)->lhs)->name);
                 if (index != -1) {
                     emit_bytes(chunk, 2, OP_DEEP_SET, index);
                 } else {
-                    uint8_t name_index = add_string(chunk, exp.as.expr_assign->lhs.as.expr_variable->name);
+                    uint8_t name_index = add_string(chunk, TO_EXPR_VARIABLE(TO_EXPR_ASSIGN(exp)->lhs)->name);
                     emit_bytes(chunk, 2, OP_SET_GLOBAL, name_index);
                 }
-            } else if (exp.as.expr_assign->lhs.kind == EXPR_GET) {
-                compile_expression(compiler, chunk, exp.as.expr_assign->lhs.as.expr_get->exp);
-                uint8_t index = add_string(chunk, exp.as.expr_assign->lhs.as.expr_get->property_name);
+            } else if (TO_EXPR_ASSIGN(exp)->lhs.kind == EXPR_GET) {
+                compile_expression(compiler, chunk, TO_EXPR_GET(TO_EXPR_ASSIGN(exp)->lhs)->exp);
+                uint8_t index = add_string(chunk, TO_EXPR_GET(TO_EXPR_ASSIGN(exp)->lhs)->property_name);
                 emit_bytes(chunk, 2, OP_SETATTR, index);
             } else {
                 printf("Compiler error.\n");
@@ -256,7 +254,7 @@ static void compile_expression(Compiler *compiler, BytecodeChunk *chunk, Express
         }
         case EXP_LOGICAL: {
             /* We first compile the left-hand side of the expression. */
-            compile_expression(compiler, chunk, exp.as.expr_logical->lhs);
+            compile_expression(compiler, chunk, TO_EXPR_LOGICAL(exp)->lhs);
             if (strcmp(exp.as.expr_logical->operator, "&&") == 0) {
                 /* For logical AND, we emit a conditional jump which we'll use
                  * to jump over the right-hand side operand if the left operand
@@ -264,9 +262,9 @@ static void compile_expression(Compiler *compiler, BytecodeChunk *chunk, Express
                  * the left operand on the stack as the result of evaluating this
                  * expression. */
                 int end_jump = emit_jump(chunk, OP_JZ);
-                compile_expression(compiler, chunk, exp.as.expr_logical->rhs);
+                compile_expression(compiler, chunk, TO_EXPR_LOGICAL(exp)->rhs);
                 patch_jump(chunk, end_jump);
-            } else if (strcmp(exp.as.expr_logical->operator, "||") == 0) {
+            } else if (strcmp(TO_EXPR_LOGICAL(exp)->operator, "||") == 0) {
                 /* For logical OR, we need to short-circuit when the left-hand side
                  * is truthy. Thus, we have two jumps: the first one is conditional
                  * jump that we use to jump over the code for the right-hand side. 
@@ -277,24 +275,24 @@ static void compile_expression(Compiler *compiler, BytecodeChunk *chunk, Express
                 int else_jump = emit_jump(chunk, OP_JZ);
                 int end_jump = emit_jump(chunk, OP_JMP);
                 patch_jump(chunk, else_jump);
-                compile_expression(compiler, chunk, exp.as.expr_logical->rhs);
+                compile_expression(compiler, chunk, TO_EXPR_LOGICAL(exp)->rhs);
                 patch_jump(chunk, end_jump);
             }
             break;
         }
         case EXP_STRUCT: {
-            uint8_t name_index = add_string(chunk, exp.as.expr_struct->name);
-            emit_bytes(chunk, 3, OP_STRUCT_INIT, name_index, exp.as.expr_struct->initializers.count);
-            for (size_t i = 0; i < exp.as.expr_struct->initializers.count; i++) {
-                compile_expression(compiler, chunk, exp.as.expr_struct->initializers.data[i]);
+            uint8_t name_index = add_string(chunk, TO_EXPR_STRUCT(exp)->name);
+            emit_bytes(chunk, 3, OP_STRUCT_INIT, name_index, TO_EXPR_STRUCT(exp)->initializers.count);
+            for (size_t i = 0; i < TO_EXPR_STRUCT(exp)->initializers.count; i++) {
+                compile_expression(compiler, chunk, TO_EXPR_STRUCT(exp)->initializers.data[i]);
             }
-            emit_bytes(chunk, 2, OP_STRUCT_INIT_FINALIZE, exp.as.expr_struct->initializers.count);
+            emit_bytes(chunk, 2, OP_STRUCT_INIT_FINALIZE, TO_EXPR_STRUCT(exp)->initializers.count);
             break;
         }
         case EXP_STRUCT_INIT: {
-            uint8_t property_name_index = add_string(chunk, exp.as.expr_struct_init->property.as.expr_variable->name);
+            uint8_t property_name_index = add_string(chunk, TO_EXPR_VARIABLE(TO_EXPR_STRUCT_INIT(exp)->property)->name);
             emit_bytes(chunk, 2, OP_PROP, property_name_index);
-            compile_expression(compiler, chunk, exp.as.expr_struct_init->value);
+            compile_expression(compiler, chunk, TO_EXPR_STRUCT_INIT(exp)->value);
             break;
         }
         default: assert(0);
@@ -514,13 +512,13 @@ void disassemble(BytecodeChunk *chunk) {
 void compile(Compiler *compiler, BytecodeChunk *chunk, Statement stmt, bool scoped) {
     switch (stmt.kind) {
         case STMT_PRINT: {
-            compile_expression(compiler, chunk, stmt.as.stmt_print.exp);
+            compile_expression(compiler, chunk, TO_STMT_PRINT(stmt).exp);
             emit_byte(chunk, OP_PRINT);        
             break;
         }
         case STMT_LET: {
-            compile_expression(compiler, chunk, stmt.as.stmt_let.initializer);
-            uint8_t name_index = add_string(chunk, stmt.as.stmt_let.name);
+            compile_expression(compiler, chunk, TO_STMT_LET(stmt).initializer);
+            uint8_t name_index = add_string(chunk, TO_STMT_LET(stmt).name);
             if (!scoped) {
                 emit_bytes(chunk, 2, OP_SET_GLOBAL, name_index);
             } else {
@@ -529,12 +527,12 @@ void compile(Compiler *compiler, BytecodeChunk *chunk, Statement stmt, bool scop
             break;
         }
         case STMT_EXPR: {
-            compile_expression(compiler, chunk, stmt.as.stmt_expr.exp);
+            compile_expression(compiler, chunk, TO_STMT_EXPR(stmt).exp);
             break;
         }
         case STMT_BLOCK: {
-            for (size_t i = 0; i < stmt.as.stmt_block.stmts.count; i++) {
-                compile(compiler, chunk, stmt.as.stmt_block.stmts.data[i], scoped);
+            for (size_t i = 0; i < TO_STMT_BLOCK(stmt).stmts.count; i++) {
+                compile(compiler, chunk, TO_STMT_BLOCK(stmt).stmts.data[i], scoped);
             }
             break;
         }
@@ -543,7 +541,7 @@ void compile(Compiler *compiler, BytecodeChunk *chunk, Statement stmt, bool scop
             .* expects something like OP_EQ to have already been executed
              * and a boolean placed on the stack by the time it encounters
              * an instruction like OP_JZ. */
-            compile_expression(compiler, chunk, stmt.as.stmt_if.condition);
+            compile_expression(compiler, chunk, TO_STMT_IF(stmt).condition);
  
             /* Then, we emit an OP_JZ which jumps to the else clause if the
              * condition is falsey. Because we do not know the size of the
@@ -554,15 +552,15 @@ void compile(Compiler *compiler, BytecodeChunk *chunk, Statement stmt, bool scop
              * size of the 'then' branch is known. */ 
             int then_jump = emit_jump(chunk, OP_JZ);
             
-            compile(compiler, chunk, *stmt.as.stmt_if.then_branch, scoped);
+            compile(compiler, chunk, *TO_STMT_IF(stmt).then_branch, scoped);
 
             int else_jump = emit_jump(chunk, OP_JMP);
 
             /* Then, we patch the 'then' jump. */
             patch_jump(chunk, then_jump);
 
-            if (stmt.as.stmt_if.else_branch != NULL) {
-                compile(compiler, chunk, *stmt.as.stmt_if.else_branch, scoped);
+            if (TO_STMT_IF(stmt).else_branch != NULL) {
+                compile(compiler, chunk, *TO_STMT_IF(stmt).else_branch, scoped);
             }
 
             /* Finally, we patch the 'else' jump. If the 'else' branch
@@ -581,7 +579,7 @@ void compile(Compiler *compiler, BytecodeChunk *chunk, Statement stmt, bool scop
             .* expects something like OP_EQ to have already been executed
              * and a boolean placed on the stack by the time it encounters
              * an instruction like OP_JZ. */
-            compile_expression(compiler, chunk, stmt.as.stmt_while.condition);
+            compile_expression(compiler, chunk, TO_STMT_WHILE(stmt).condition);
             
             /* Then, we emit an OP_JZ which jumps to the else clause if the
              * condition is falsey. Because we do not know the size of the
@@ -593,7 +591,7 @@ void compile(Compiler *compiler, BytecodeChunk *chunk, Statement stmt, bool scop
             int exit_jump = emit_jump(chunk, OP_JZ);
             
             /* Then, we compile the body of the loop. */
-            compile(compiler, chunk, *stmt.as.stmt_while.body, scoped);
+            compile(compiler, chunk, *TO_STMT_WHILE(stmt).body, scoped);
 
             /* Then, we emit OP_JMP with a negative offset. */
             emit_loop(chunk, loop_start);
@@ -609,15 +607,15 @@ void compile(Compiler *compiler, BytecodeChunk *chunk, Statement stmt, bool scop
             emit_byte(chunk, OP_FUNC);
 
             /* Emit function name. */
-            uint8_t name_index = add_string(chunk, stmt.as.stmt_fn.name);
+            uint8_t name_index = add_string(chunk, TO_STMT_FN(stmt).name);
             emit_byte(chunk, name_index);
 
             /* Emit parameter count. */
-            emit_byte(chunk, (uint8_t)stmt.as.stmt_fn.parameters.count);
+            emit_byte(chunk, (uint8_t)TO_STMT_FN(stmt).parameters.count);
 
             /* Add parameter names to compiler->locals. */
-            for (size_t i = 0; i < stmt.as.stmt_fn.parameters.count; i++) {
-                uint8_t parameter_index = add_string(chunk, stmt.as.stmt_fn.parameters.data[i]);
+            for (size_t i = 0; i < TO_STMT_FN(stmt).parameters.count; i++) {
+                uint8_t parameter_index = add_string(chunk, TO_STMT_FN(stmt).parameters.data[i]);
                 compiler->locals[compiler->locals_count++] = chunk->sp[parameter_index];
             }
            
@@ -630,11 +628,11 @@ void compile(Compiler *compiler, BytecodeChunk *chunk, Statement stmt, bool scop
 
             /* Compile the function body and check if it is void. */
             bool is_void = true;
-            for (size_t i = 0; i < stmt.as.stmt_fn.stmts.count; i++) {
-                if (stmt.as.stmt_fn.stmts.data[i].kind == STMT_RETURN) {
+            for (size_t i = 0; i < TO_STMT_FN(stmt).stmts.count; i++) {
+                if (TO_STMT_FN(stmt).stmts.data[i].kind == STMT_RETURN) {
                     is_void = false;
                 }
-                compile(compiler, chunk, stmt.as.stmt_fn.stmts.data[i], true);
+                compile(compiler, chunk, TO_STMT_FN(stmt).stmts.data[i], true);
             }
 
             /* If the function does not have a return statement,
@@ -650,18 +648,18 @@ void compile(Compiler *compiler, BytecodeChunk *chunk, Statement stmt, bool scop
         }
         case STMT_STRUCT: {
             emit_byte(chunk, OP_STRUCT);
-            uint8_t name_index = add_string(chunk, stmt.as.stmt_struct.name);
+            uint8_t name_index = add_string(chunk, TO_STMT_STRUCT(stmt).name);
             emit_byte(chunk, name_index);
-            emit_byte(chunk, stmt.as.stmt_struct.properties.count);
-            for (size_t i = 0; i < stmt.as.stmt_struct.properties.count; i++) {
-                uint8_t property_name_index = add_string(chunk, stmt.as.stmt_struct.properties.data[i]);
+            emit_byte(chunk, TO_STMT_STRUCT(stmt).properties.count);
+            for (size_t i = 0; i < TO_STMT_STRUCT(stmt).properties.count; i++) {
+                uint8_t property_name_index = add_string(chunk, TO_STMT_STRUCT(stmt).properties.data[i]);
                 emit_byte(chunk, property_name_index);
             }
             break;
         }
         case STMT_RETURN: {
             /* Compile the return value and emit OP_RET. */
-            compile_expression(compiler, chunk, stmt.as.stmt_return.returnval);
+            compile_expression(compiler, chunk, TO_STMT_RETURN(stmt).returnval);
             emit_byte(chunk, OP_RET);
             break;
         }

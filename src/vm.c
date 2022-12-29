@@ -6,8 +6,6 @@
 #include "vm.h"
 #include "object.h"
 
-#define venom_debug
-
 void init_vm(VM *vm) {
     memset(vm, 0, sizeof(VM));
 }
@@ -216,7 +214,7 @@ do { \
             case OP_GETATTR: {
                 uint8_t property_name_index = READ_UINT8();
                 Object obj = pop(vm);
-                Object *property = table_get(obj.as.heapobj->obj->as.struct_.properties, chunk->sp[property_name_index]);
+                Object *property = table_get(STRUCT_VAL(obj).properties, chunk->sp[property_name_index]);
                 push(vm, *property);
                 OBJECT_DECREF(obj);
                 OBJECT_INCREF(*property);
@@ -226,7 +224,7 @@ do { \
                 uint8_t property_name_index = READ_UINT8();
                 Object propety = pop(vm);
                 Object value = pop(vm);
-                table_insert(propety.as.heapobj->obj->as.struct_.properties, chunk->sp[property_name_index], value);
+                table_insert(STRUCT_VAL(propety).properties, chunk->sp[property_name_index], value);
                 break;
             }
             case OP_ADD: BINARY_OP(+, AS_NUM); break;
@@ -290,10 +288,7 @@ do { \
                     .paramcount = paramcount,
                 };
  
-                Object funcobj = {
-                    .type = OBJ_FUNCTION,
-                    .as.func = func,
-                };
+                Object funcobj = AS_FUNC(func);
 
                 /* ...and insert it into the 'vm->globals' table. */
                 table_insert(&vm->globals, funcname, funcobj);
@@ -348,7 +343,7 @@ do { \
                                 
                 /* We modify ip so that it points to one instruction
                  * just before the code we're invoking. */
-                ip = &chunk->code.data[funcobj->as.func.location-1];
+                ip = &chunk->code.data[FUNC_VAL(*funcobj).location-1];
 
                 break;
             }
@@ -376,11 +371,8 @@ do { \
                 Object returnaddr = pop(vm);
 
                 /* Then, we push the return value back on the stack.  */
-                if (!IS_NULL(&returnvalue)) {
-                    push(vm, returnvalue);
-                } else {
-                    OBJECT_DECREF(returnvalue);
-                }
+                push(vm, returnvalue);
+                OBJECT_DECREF(returnvalue);
 
                 /* Finally, we modify the instruction pointer. */
                 ip = returnaddr.as.ptr;
@@ -392,7 +384,7 @@ do { \
                 break;
             }
             case OP_NULL: {
-                push(vm, (Object){ .type = OBJ_NULL });
+                push(vm, AS_NULL());
                 break;
             }
             case OP_STRUCT: {
@@ -412,10 +404,7 @@ do { \
                 table_insert(
                     &vm->struct_blueprints,
                     chunk->sp[struct_name],
-                    (Object){ 
-                        .type = OBJ_STRUCT_BLUEPRINT,
-                        .as.struct_blueprint = sb,
-                    }
+                    AS_STRUCT_BLUEPRINT(sb)
                 );
 
                 break;
@@ -435,28 +424,25 @@ do { \
                 if (propertycount != blueprint->as.struct_blueprint.propertycount) {
                     RUNTIME_ERROR(
                         "Incorrect property count for struct '%s'",
-                        blueprint->as.struct_blueprint.name
+                        STRUCT_BLUEPRINT_VAL(*blueprint).name
                     );
                 }
 
                 Struct s = {
-                    .name = blueprint->as.struct_blueprint.name,
-                    .propertycount = blueprint->as.struct_blueprint.propertycount,
+                    .name = STRUCT_BLUEPRINT_VAL(*blueprint).name,
+                    .propertycount = STRUCT_BLUEPRINT_VAL(*blueprint).propertycount,
                     .properties = malloc(sizeof(Table)),
                 };
 
                 memset(s.properties, 0, sizeof(Table));
 
-                Object structobj = {
-                    .type = OBJ_STRUCT,
-                    .as.struct_ = s,
-                };
+                Object structobj = AS_STRUCT(s);
 
                 HeapObject *heapobj = malloc(sizeof(HeapObject));
                 heapobj->refcount = 1;
                 heapobj->obj = ALLOC(structobj);
 
-                push(vm, (Object){ .type = OBJ_HEAP, .as.heapobj = heapobj });
+                push(vm, AS_HEAP(heapobj));
 
                 break;
             }
@@ -473,7 +459,7 @@ do { \
                 Object structobj = pop(vm);
 
                 for (size_t i = 0; i < propertycount; i++) {
-                    table_insert(structobj.as.heapobj->obj->as.struct_.properties, property_names[i].as.prop, property_values[i]);
+                    table_insert(STRUCT_VAL(structobj).properties, PROP_VAL(property_names[i]), property_values[i]);
                 }
 
                 push(vm, structobj);
@@ -482,7 +468,7 @@ do { \
             }
             case OP_PROP: {
                 uint8_t propertyname_index = READ_UINT8();
-                push(vm, (Object){ .type = OBJ_PROPERTY, .as.prop = chunk->sp[propertyname_index] });
+                push(vm, AS_PROP(chunk->sp[propertyname_index]));
                 break;
             }
             default: break;
