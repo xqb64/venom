@@ -30,7 +30,7 @@ do { \
     /* Operands are already on the stack. */ \
     Object b = pop(vm); \
     Object a = pop(vm); \
-    Object obj = wrapper(NUM_VAL(a) op NUM_VAL(b)); \
+    Object obj = wrapper(TO_DOUBLE(a) op TO_DOUBLE(b)); \
     push(vm, obj); \
 } while (0)
 
@@ -177,7 +177,7 @@ do { \
                  * after the opcode, and push the constant on
                  * the stack. */
                 uint8_t index = READ_UINT8();
-                Object obj = AS_NUM(chunk->cp[index]);
+                Object obj = AS_DOUBLE(chunk->cp[index]);
                 push(vm, obj);
                 break;
             }
@@ -214,7 +214,7 @@ do { \
             case OP_GETATTR: {
                 uint8_t property_name_index = READ_UINT8();
                 Object obj = pop(vm);
-                Object *property = table_get(STRUCT_VAL(obj).properties, chunk->sp[property_name_index]);
+                Object *property = table_get(TO_STRUCT(obj).properties, chunk->sp[property_name_index]);
                 push(vm, *property);
                 OBJECT_DECREF(obj);
                 OBJECT_INCREF(*property);
@@ -224,17 +224,17 @@ do { \
                 uint8_t property_name_index = READ_UINT8();
                 Object propety = pop(vm);
                 Object value = pop(vm);
-                table_insert(STRUCT_VAL(propety).properties, chunk->sp[property_name_index], value);
+                table_insert(TO_STRUCT(propety).properties, chunk->sp[property_name_index], value);
                 break;
             }
-            case OP_ADD: BINARY_OP(+, AS_NUM); break;
-            case OP_SUB: BINARY_OP(-, AS_NUM); break;
-            case OP_MUL: BINARY_OP(*, AS_NUM); break;
-            case OP_DIV: BINARY_OP(/, AS_NUM); break;
+            case OP_ADD: BINARY_OP(+, AS_DOUBLE); break;
+            case OP_SUB: BINARY_OP(-, AS_DOUBLE); break;
+            case OP_MUL: BINARY_OP(*, AS_DOUBLE); break;
+            case OP_DIV: BINARY_OP(/, AS_DOUBLE); break;
             case OP_MOD: {
                 Object b = pop(vm);
                 Object a = pop(vm);
-                Object obj = AS_NUM(fmod(NUM_VAL(a), NUM_VAL(b)));
+                Object obj = AS_DOUBLE(fmod(TO_DOUBLE(a), TO_DOUBLE(b)));
                 push(vm, obj);
                 break;
             }
@@ -245,7 +245,7 @@ do { \
                 /* Jump if zero. */
                 int16_t offset = READ_INT16();
                 Object obj = pop(vm);
-                if (!BOOL_VAL(obj)) {
+                if (!TO_BOOL(obj)) {
                     ip += offset;
                 }
                 break;
@@ -257,13 +257,13 @@ do { \
             }
             case OP_NEGATE: {
                 Object original = pop(vm);
-                Object negated = AS_NUM(-NUM_VAL(original));
+                Object negated = AS_DOUBLE(-TO_DOUBLE(original));
                 push(vm, negated);
                 break;
             }
             case OP_NOT: {
                 Object obj = pop(vm);
-                push(vm, AS_BOOL(BOOL_VAL(obj) ^ 1));
+                push(vm, AS_BOOL(TO_BOOL(obj) ^ 1));
                 break;
             }
             case OP_FUNC: {
@@ -343,7 +343,7 @@ do { \
                                 
                 /* We modify ip so that it points to one instruction
                  * just before the code we're invoking. */
-                ip = &chunk->code.data[FUNC_VAL(*funcobj).location-1];
+                ip = &chunk->code.data[TO_FUNC(*funcobj).location-1];
 
                 break;
             }
@@ -424,13 +424,13 @@ do { \
                 if (propertycount != blueprint->as.struct_blueprint.propertycount) {
                     RUNTIME_ERROR(
                         "Incorrect property count for struct '%s'",
-                        STRUCT_BLUEPRINT_VAL(*blueprint).name
+                        TO_STRUCT_BLUEPRINT(*blueprint).name
                     );
                 }
 
                 Struct s = {
-                    .name = STRUCT_BLUEPRINT_VAL(*blueprint).name,
-                    .propertycount = STRUCT_BLUEPRINT_VAL(*blueprint).propertycount,
+                    .name = TO_STRUCT_BLUEPRINT(*blueprint).name,
+                    .propertycount = TO_STRUCT_BLUEPRINT(*blueprint).propertycount,
                     .properties = malloc(sizeof(Table)),
                 };
 
@@ -459,7 +459,7 @@ do { \
                 Object structobj = pop(vm);
 
                 for (size_t i = 0; i < propertycount; i++) {
-                    table_insert(STRUCT_VAL(structobj).properties, PROP_VAL(property_names[i]), property_values[i]);
+                    table_insert(TO_STRUCT(structobj).properties, TO_PROP(property_names[i]), property_values[i]);
                 }
 
                 push(vm, structobj);

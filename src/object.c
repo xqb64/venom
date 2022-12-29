@@ -16,25 +16,25 @@ void print_table(Table *table) {
 void print_object(Object *object) {
     printf("{ ");
     if IS_BOOL(object) {
-        printf("%s", object->as.bval ? "true" : "false");
+        printf("%s", TO_BOOL(*object) ? "true" : "false");
     } else if IS_NUM(object) {
-        printf("%.2f", object->as.dval);
+        printf("%.2f", TO_DOUBLE(*object));
     } else if IS_FUNC(object) {
-        printf("<fn %s", object->as.func.name);    
-        printf(" @ %d>", object->as.func.location);   
+        printf("<fn %s", TO_FUNC(*object).name);
+        printf(" @ %d>", TO_FUNC(*object).location);
     } else if IS_POINTER(object) {
-        printf("PTR ('%d')", *object->as.ptr);
+        printf("PTR ('%p')", TO_PTR(*object));
     } else if IS_NULL(object) {
         printf("null");
     } else if IS_STRING(object) {
-        printf("%s", object->as.str);
+        printf("%s", TO_STR(*object));
     } else if IS_PROP(object) {
-        printf("prop: %s", object->as.prop);
+        printf("prop: %s", TO_PROP(*object));
     } else if IS_HEAP(object) {
-        if (IS_STRUCT(object->as.heapobj->obj)) {
-            printf("%s", object->as.heapobj->obj->as.struct_.name);
+        if (IS_STRUCT(TO_HEAP(*object)->obj)) {
+            printf("%s", TO_STRUCT(*object).name);
             printf(" {");
-            print_table(object->as.heapobj->obj->as.struct_.properties);
+            print_table(TO_STRUCT(*object).properties);
             printf(" }");
         }
     }

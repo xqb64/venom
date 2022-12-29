@@ -92,7 +92,7 @@ do { \
     } \
 } while(0)
 
-#define AS_NUM(thing) ((Object){ .type = OBJ_NUMBER, .as.dval = (thing) })
+#define AS_DOUBLE(thing) ((Object){ .type = OBJ_NUMBER, .as.dval = (thing) })
 #define AS_BOOL(thing) ((Object){ .type = OBJ_BOOLEAN, .as.bval = (thing) })
 #define AS_FUNC(thing) ((Object){ .type = OBJ_FUNCTION, .as.func = (thing) })
 #define AS_POINTER(thing) ((Object){ .type = OBJ_POINTER, .as.ptr = (thing) })
@@ -103,12 +103,15 @@ do { \
 #define AS_STRUCT(thing) ((Object){ .type = OBJ_STRUCT, .as.struct_ = (thing) })
 #define AS_STRUCT_BLUEPRINT(thing) ((Object){ .type = OBJ_STRUCT_BLUEPRINT, .as.struct_blueprint = (thing) })
 
-#define NUM_VAL(object) ((object).as.dval)
-#define BOOL_VAL(object) ((object).as.bval)
-#define STRUCT_VAL(object) ((object).as.heapobj->obj->as.struct_)
-#define FUNC_VAL(object) ((object).as.func)
-#define PROP_VAL(object) ((object).as.prop)
-#define STRUCT_BLUEPRINT_VAL(object) ((object).as.struct_blueprint)
+#define TO_DOUBLE(object) ((object).as.dval)
+#define TO_BOOL(object) ((object).as.bval)
+#define TO_STRUCT(object) ((object).as.heapobj->obj->as.struct_)
+#define TO_FUNC(object) ((object).as.func)
+#define TO_HEAP(object) ((object).as.heapobj)
+#define TO_PROP(object) ((object).as.prop)
+#define TO_STRUCT_BLUEPRINT(object) ((object).as.struct_blueprint)
+#define TO_PTR(object) ((object).as.ptr)
+#define TO_STR(object) ((object).as.str)
 
 void print_object(Object *object);
 
