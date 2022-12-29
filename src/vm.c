@@ -458,11 +458,6 @@ do { \
 
                 memset(s.properties, 0, sizeof(Table));
 
-                for (size_t i = 0; i < propertycount; i++) {
-                    uint8_t propertyname_index = READ_UINT8();
-                    push(vm, (Object){ .type = OBJ_PROPERTY, .as.prop = chunk->sp[propertyname_index] });
-                }
-
                 Object structobj = {
                     .type = OBJ_STRUCT,
                     .as.struct_ = s,
@@ -479,17 +474,14 @@ do { \
             case OP_STRUCT_INIT_FINALIZE: {
                 uint8_t propertycount = READ_UINT8();
 
+                Object property_names[256];
                 Object property_values[256];                
                 for (size_t i = 0; i < propertycount; i++) {
                     property_values[i] = pop(vm);
+                    property_names[i] = pop(vm);
                 }
 
                 Object structobj = pop(vm);
-
-                Object property_names[256];
-                for (size_t i = 0; i < propertycount; i++) {
-                    property_names[i] = pop(vm);
-                }
 
                 for (size_t i = 0; i < propertycount; i++) {
                     table_insert(structobj.as.heapobj->obj->as.struct_.properties, property_names[i].as.prop, property_values[i]);
@@ -497,6 +489,11 @@ do { \
 
                 push(vm, structobj);
 
+                break;
+            }
+            case OP_PROP: {
+                uint8_t propertyname_index = READ_UINT8();
+                push(vm, (Object){ .type = OBJ_PROPERTY, .as.prop = chunk->sp[propertyname_index] });
                 break;
             }
             default: break;

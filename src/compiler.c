@@ -285,12 +285,6 @@ static void compile_expression(Compiler *compiler, BytecodeChunk *chunk, Express
         case EXP_STRUCT: {
             uint8_t name_index = add_string(chunk, exp.as.expr_struct->name);
             emit_bytes(chunk, 3, OP_STRUCT_INIT, name_index, exp.as.expr_struct->initializers.count);
-
-            for (size_t i = 0; i < exp.as.expr_struct->initializers.count; i++) {
-                uint8_t property_name_index = add_string(chunk, exp.as.expr_struct->initializers.data[i].as.expr_struct_init->property.as.expr_variable->name);
-                emit_byte(chunk, property_name_index);
-            }
-
             for (size_t i = 0; i < exp.as.expr_struct->initializers.count; i++) {
                 compile_expression(compiler, chunk, exp.as.expr_struct->initializers.data[i]);
             }
@@ -298,6 +292,8 @@ static void compile_expression(Compiler *compiler, BytecodeChunk *chunk, Express
             break;
         }
         case EXP_STRUCT_INIT: {
+            uint8_t property_name_index = add_string(chunk, exp.as.expr_struct_init->property.as.expr_variable->name);
+            emit_bytes(chunk, 2, OP_PROP, property_name_index);
             compile_expression(compiler, chunk, exp.as.expr_struct_init->value);
             break;
         }
