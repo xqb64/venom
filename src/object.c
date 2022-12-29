@@ -29,7 +29,7 @@ void print_object(Object *object) {
     } else if IS_STRING(object) {
         printf("%s", object->as.str);
     } else if IS_PROP(object) {
-        printf("%s", object->as.prop);
+        printf("prop: %s", object->as.prop);
     } else if IS_HEAP(object) {
         if (IS_STRUCT(object->as.heapobj->obj)) {
             printf("%s", object->as.heapobj->obj->as.struct_.name);

@@ -112,22 +112,11 @@ do { \
             case OP_STRUCT: printf("OP_STRUCT"); break;
             case OP_STRUCT_INIT: printf("OP_STRUCT_INIT"); break;
             case OP_STRUCT_INIT_FINALIZE: printf("OP_STRUCT_INIT_FINALIZE"); break;
-            case OP_DEEP_SET: {
-                printf("OP_DEEP_SET: %d", ip[1]);
-                break;
-            }
-            case OP_DEEP_GET: {
-                printf("OP_DEEP_GET: %d", ip[1]);
-                break;
-            }
-            case OP_GETATTR: {
-                printf("OP_GETATTR");
-                break;
-            }
-            case OP_SETATTR: {
-                printf("OP_SETATTR");
-                break;
-            }
+            case OP_DEEP_SET: printf("OP_DEEP_SET: %d", ip[1]); break; 
+            case OP_DEEP_GET: printf("OP_DEEP_GET: %d", ip[1]); break;
+            case OP_GETATTR: printf("OP_GETATTR"); break;
+            case OP_SETATTR: printf("OP_SETATTR"); break;
+            case OP_PROP: printf("OP_PROP"); break;
             case OP_NULL: printf("OP_NULL"); break;
         }
         printf("\n");

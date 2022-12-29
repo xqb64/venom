@@ -472,36 +472,20 @@ void disassemble(BytecodeChunk *chunk) {
                 uint8_t struct_name = *++ip;
                 uint8_t property_count = *++ip;
                 printf("%d: ", i);
-                printf("OP_STRUCT_INIT { type: '%s', propery_count: %d, properties: [", chunk->sp[struct_name], property_count);
-                for (int j = 0; j < property_count; j++) {
-                    uint8_t property_name_index = *++ip;
-                    printf("%s: ", chunk->sp[property_name_index]);
-                    switch (*++ip) {
-                        case OP_CONST: {
-                            uint8_t const_index = *++ip;
-                            printf("%f, ", chunk->cp[const_index]);
-                            break;
-                        }
-                        case OP_STR: {
-                            uint8_t str_index = *++ip;
-                            printf("%s, ", chunk->sp[str_index]);
-                            break;
-                        }
-                        case OP_DEEP_GET: {
-                            uint8_t index = *++ip;
-                            printf("%d, ", index);
-                            break;
-                        }
-                        case OP_GET_GLOBAL: {
-                            uint8_t index = *++ip;
-                            printf("%s, ", chunk->sp[index]);
-                            break;
-                        }
-                        default: break;
-                    }
-                }
-                printf("] }\n");
-                i += 2 + property_count; 
+                printf("OP_STRUCT_INIT { type: '%s', propery_count: %d }\n", chunk->sp[struct_name], property_count);
+                i += 2; 
+                break;
+            }
+            case OP_STRUCT_INIT_FINALIZE: {
+                uint8_t property_count = *++ip;
+                printf("%d: ", i);
+                printf("OP_STRUCT_INIT_FINALIZE { propery_count: %d }\n", property_count);
+                break;
+            }
+            case OP_PROP: {
+                uint8_t propertyname_index = *++ip;
+                printf("%d: ", i);
+                printf("OP_PROP { prop: %s }\n", chunk->sp[propertyname_index]);
                 break;
             }
             case OP_NULL: {
