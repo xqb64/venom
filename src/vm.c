@@ -59,18 +59,9 @@ do { \
 
 #define RUNTIME_ERROR(...) \
 do { \
-    char *msg = NULL; \
-    int msg_len = snprintf( \
-        msg, 0, \
-        __VA_ARGS__ \
-    ); \
-    msg = malloc(msg_len+1); \
-    snprintf( \
-        msg, msg_len+1, \
-        __VA_ARGS__ \
-    ); \
-    fprintf(stderr, "runtime error: %s.\n", msg); \
-    free(msg); \
+    fprintf(stderr, "runtime error: "); \
+    fprintf(stderr, __VA_ARGS__); \
+    fprintf(stderr, "\n"); \
     return 1; \
 } while (0)
 
