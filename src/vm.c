@@ -206,6 +206,13 @@ do { \
                 uint8_t property_name_index = READ_UINT8();
                 Object obj = pop(vm);
                 Object *property = table_get(TO_STRUCT(obj).properties, chunk->sp[property_name_index]);
+                if (property == NULL) {
+                    RUNTIME_ERROR(
+                        "Property '%s' is not defined on object '%s'",
+                        chunk->sp[property_name_index],
+                        TO_STRUCT(obj).name
+                    );
+                }
                 push(vm, *property);
                 OBJECT_DECREF(obj);
                 OBJECT_INCREF(*property);
