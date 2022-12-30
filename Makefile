@@ -1,5 +1,5 @@
 CC = gcc
-CFLAGS = -g -Wshadow -Wall -Wextra -O3
+CFLAGS = -g -Wshadow -Wall -Wextra -O3 -D venom_debug
 LDLIBS = -lm
 
 venom:

@@ -16,5 +16,6 @@ typedef struct Table {
 void table_free(const Table *table);
 void table_insert(Table *table, const char *key, Object obj);
 Object *table_get(const Table *table, const char *key);
+void table_print(Table *table);
 
 #endif

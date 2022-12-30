@@ -51,7 +51,7 @@ do { \
 do { \
     printf("stack: ["); \
     for (size_t i = 0; i < vm->tos; i++) { \
-        print_object(&vm->stack[i]); \
+        PRINT_OBJECT(vm->stack[i]); \
         printf(", "); \
     } \
     printf("]\n"); \
@@ -117,7 +117,7 @@ do { \
 #ifdef venom_debug
                 printf("dbg print :: ");
 #endif
-                print_object(&object);
+                PRINT_OBJECT(object);
                 printf("\n");
                 OBJECT_DECREF(object);
                 break;

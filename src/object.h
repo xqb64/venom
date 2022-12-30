@@ -8,6 +8,8 @@
 typedef struct Table Table;
 typedef struct HeapObject HeapObject;
 
+void table_print(Table *table);
+
 typedef DynArray(char *) String_DynArray;
 
 typedef enum {
@@ -61,16 +63,16 @@ typedef struct HeapObject {
     int refcount;
 } HeapObject;
 
-#define IS_BOOL(object) ((object)->type == OBJ_BOOLEAN)
-#define IS_NUM(object) ((object)->type == OBJ_NUMBER)
-#define IS_FUNC(object) ((object)->type == OBJ_FUNCTION)
-#define IS_POINTER(object) ((object)->type == OBJ_POINTER)
-#define IS_NULL(object) ((object)->type == OBJ_NULL)
-#define IS_STRING(object) ((object)->type == OBJ_STRING)
+#define IS_BOOL(object) ((object).type == OBJ_BOOLEAN)
+#define IS_NUM(object) ((object).type == OBJ_NUMBER)
+#define IS_FUNC(object) ((object).type == OBJ_FUNCTION)
+#define IS_POINTER(object) ((object).type == OBJ_POINTER)
+#define IS_NULL(object) ((object).type == OBJ_NULL)
+#define IS_STRING(object) ((object).type == OBJ_STRING)
 #define IS_STRUCT(object) ((object)->type == OBJ_STRUCT)
-#define IS_STRUCT_BLUEPRINT(object) ((object)->type == OBJ_STRUCT_BLUEPRINT)
-#define IS_HEAP(object) ((object)->type == OBJ_HEAP)
-#define IS_PROP(object) ((object)->type == OBJ_PROPERTY)
+#define IS_STRUCT_BLUEPRINT(object) ((object).type == OBJ_STRUCT_BLUEPRINT)
+#define IS_HEAP(object) ((object).type == OBJ_HEAP)
+#define IS_PROP(object) ((object).type == OBJ_PROPERTY)
 
 Object *ALLOC(Object object);
 void DEALLOC(Object *object);
@@ -113,6 +115,33 @@ do { \
 #define TO_PTR(object) ((object).as.ptr)
 #define TO_STR(object) ((object).as.str)
 
-void print_object(Object *object);
+#define PRINT_OBJECT(object) \
+do { \
+    printf("{ "); \
+    if IS_BOOL(object) { \
+        printf("%s", TO_BOOL(object) ? "true" : "false"); \
+    } else if IS_NUM(object) { \
+        printf("%.2f", TO_DOUBLE(object)); \
+    } else if IS_FUNC(object) { \
+        printf("<fn %s", TO_FUNC(object).name); \
+        printf(" @ %d>", TO_FUNC(object).location); \
+    } else if IS_POINTER(object) { \
+        printf("PTR ('%p')", TO_PTR(object)); \
+    } else if IS_NULL(object) { \
+        printf("null"); \
+    } else if IS_STRING(object) { \
+        printf("%s", TO_STR(object)); \
+    } else if IS_PROP(object) { \
+        printf("prop: %s", TO_PROP(object)); \
+    } else if IS_HEAP(object) { \
+        if (IS_STRUCT(TO_HEAP(object)->obj)) { \
+            printf("%s", TO_STRUCT(object).name); \
+            printf(" {"); \
+            table_print(TO_STRUCT(object).properties); \
+            printf(" }"); \
+        } \
+    } \
+    printf(" }"); \
+} while (0)
 
 #endif

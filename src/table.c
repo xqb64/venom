@@ -34,10 +34,10 @@ static void list_free(Bucket *head) {
         tmp = head;
         head = head->next;
         free(tmp->key);
-        if (IS_HEAP(&tmp->obj)) {
+        if (IS_HEAP(tmp->obj)) {
             OBJECT_DECREF(tmp->obj);
         }
-        if (IS_STRUCT_BLUEPRINT(&tmp->obj)) {
+        if (IS_STRUCT_BLUEPRINT(tmp->obj)) {
             dynarray_free(&tmp->obj.as.struct_blueprint.properties);
         }
         free(tmp);
@@ -89,6 +89,16 @@ void table_free(const Table *table) {
     for (size_t i = 0; i < sizeof(table->data) / sizeof(table->data[0]); i++) {
         if (table->data[i] != NULL) {
             list_free(table->data[i]);
+        }
+    }
+}
+
+void table_print(Table *table) {
+    for (size_t i = 0; i < sizeof(table->data) / sizeof(table->data[0]); i++) {
+        if (table->data[i] != NULL) {
+            printf(" %s: ", table->data[i]->key);
+            PRINT_OBJECT(table->data[i]->obj);
+            printf(", ");
         }
     }
 }
