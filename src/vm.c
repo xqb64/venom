@@ -437,75 +437,47 @@ static inline void handle_op_prop(VM *vm, BytecodeChunk *chunk, uint8_t **ip) {
     push(vm, AS_PROP(chunk->sp[propertyname_index]));
 }
 
-typedef void (*Handler)(VM *vm, BytecodeChunk *chunk, uint8_t **ip);
+typedef void (*HandlerFn)(VM *vm, BytecodeChunk *chunk, uint8_t **ip);
+typedef struct {
+    HandlerFn fn;
+    char *opcode;
+} Handler;
 
 Handler dispatcher[] = {
-    [OP_PRINT] = handle_op_print,
-    [OP_CONST] = handle_op_const,
-    [OP_GET_GLOBAL] = handle_op_get_global,
-    [OP_SET_GLOBAL] = handle_op_set_global,
-    [OP_STR] = handle_op_str,
-    [OP_DEEP_GET] = handle_op_deep_get,
-    [OP_DEEP_SET] = handle_op_deep_set,
-    [OP_GETATTR] = handle_op_getattr,
-    [OP_SETATTR] = handle_op_setattr,
-    [OP_ADD] = handle_op_add,
-    [OP_SUB] = handle_op_sub,
-    [OP_MUL] = handle_op_mul,
-    [OP_DIV] = handle_op_div,
-    [OP_MOD] = handle_op_mod,
-    [OP_GT] = handle_op_gt,
-    [OP_LT] = handle_op_lt,
-    [OP_EQ] = handle_op_eq,
-    [OP_JZ] = handle_op_jz,
-    [OP_JMP] = handle_op_jmp,
-    [OP_NEGATE] = handle_op_negate,
-    [OP_NOT] = handle_op_not,
-    [OP_FUNC] = handle_op_func,
-    [OP_INVOKE] = handle_op_invoke,
-    [OP_RET] = handle_op_ret,
-    [OP_TRUE] = handle_op_true,
-    [OP_NULL] = handle_op_null,
-    [OP_STRUCT] = handle_op_struct,
-    [OP_STRUCT_INIT] = handle_op_struct_init,
-    [OP_STRUCT_INIT_FINALIZE] = handle_op_struct_init_finalize,
-    [OP_PROP] = handle_op_prop,
+    [OP_PRINT] = { .fn = handle_op_print, .opcode = "OP_PRINT" },
+    [OP_CONST] = { .fn = handle_op_const, .opcode = "OP_CONST" },
+    [OP_GET_GLOBAL] = { .fn = handle_op_get_global, .opcode = "OP_GET_GLOBAL" },
+    [OP_SET_GLOBAL] = { .fn = handle_op_set_global, .opcode = "OP_SET_GLOBAL" },
+    [OP_STR] = { .fn = handle_op_str, .opcode = "OP_STR" },
+    [OP_DEEP_GET] = { .fn = handle_op_deep_get, .opcode = "OP_DEEP_GET" },
+    [OP_DEEP_SET] = { .fn = handle_op_deep_set, .opcode = "OP_DEEP_SET" },
+    [OP_GETATTR] = { .fn = handle_op_getattr, .opcode = "OP_GETATTR" },
+    [OP_SETATTR] = { .fn = handle_op_setattr, .opcode = "OP_SETATTR" },
+    [OP_ADD] = { .fn = handle_op_add, .opcode = "OP_ADD" },
+    [OP_SUB] = { .fn = handle_op_sub, .opcode = "OP_SUB" },
+    [OP_MUL] = { .fn = handle_op_mul, .opcode = "OP_MUL" },
+    [OP_DIV] = { .fn = handle_op_div, .opcode = "OP_DIV" },
+    [OP_MOD] = { .fn = handle_op_mod, .opcode = "OP_MOD" },
+    [OP_GT] = { .fn = handle_op_gt, .opcode = "OP_GT" },
+    [OP_LT] = { .fn = handle_op_lt, .opcode = "OP_LT" },
+    [OP_EQ] = { .fn = handle_op_eq, .opcode = "OP_EQ" },
+    [OP_JZ] = { .fn = handle_op_jz, .opcode = "OP_JZ" },
+    [OP_JMP] = { .fn = handle_op_jmp, .opcode = "OP_JMP" },
+    [OP_NEGATE] = { .fn = handle_op_negate, .opcode = "OP_NEGATE" },
+    [OP_NOT] = { .fn = handle_op_not, .opcode = "OP_NOT" },
+    [OP_FUNC] = { .fn = handle_op_func, .opcode = "OP_FUNC" },
+    [OP_INVOKE] = { .fn = handle_op_invoke, .opcode = "OP_INVOKE" },
+    [OP_RET] = { .fn = handle_op_ret, .opcode = "OP_RET" },
+    [OP_TRUE] = { .fn = handle_op_true, .opcode = "OP_TRUE" },
+    [OP_NULL] = { .fn = handle_op_null, .opcode = "OP_NULL" },
+    [OP_STRUCT] = { .fn = handle_op_struct, .opcode = "OP_STRUCT" },
+    [OP_STRUCT_INIT] = { .fn = handle_op_struct_init, .opcode = "OP_STRUCT_INIT" },
+    [OP_STRUCT_INIT_FINALIZE] = { .fn = handle_op_struct_init_finalize, .opcode = "OP_STRUCT_INIT_FINALIZE" },
+    [OP_PROP] = { .fn = handle_op_prop, .opcode = "OP_PROP" },
 };
 
 void print_current_instruction(uint8_t *ip) {
-    printf("current instruction: ");
-    switch (*ip) {
-        case OP_PRINT: printf("OP_PRINT"); break;
-        case OP_ADD: printf("OP_ADD"); break;
-        case OP_SUB: printf("OP_SUB"); break;
-        case OP_MUL: printf("OP_MUL"); break;
-        case OP_DIV: printf("OP_DIV"); break;
-        case OP_MOD: printf("OP_MOD"); break;
-        case OP_EQ: printf("OP_EQ"); break;
-        case OP_GT: printf("OP_GT"); break;
-        case OP_LT: printf("OP_LT"); break;
-        case OP_NOT: printf("OP_NOT"); break;
-        case OP_NEGATE: printf("OP_NEGATE"); break;
-        case OP_JMP: printf("OP_JMP"); break;
-        case OP_JZ: printf("OP_JZ"); break;
-        case OP_FUNC: printf("OP_FUNC"); break;
-        case OP_INVOKE: printf("OP_INVOKE"); break;
-        case OP_RET: printf("OP_RET"); break;
-        case OP_CONST: printf("OP_CONST"); break;
-        case OP_STR: printf("OP_STR"); break;
-        case OP_SET_GLOBAL: printf("OP_SET_GLOBAL"); break;
-        case OP_GET_GLOBAL: printf("OP_GET_GLOBAL"); break;
-        case OP_STRUCT: printf("OP_STRUCT"); break;
-        case OP_STRUCT_INIT: printf("OP_STRUCT_INIT"); break;
-        case OP_STRUCT_INIT_FINALIZE: printf("OP_STRUCT_INIT_FINALIZE"); break;
-        case OP_DEEP_SET: printf("OP_DEEP_SET: %d", ip[1]); break; 
-        case OP_DEEP_GET: printf("OP_DEEP_GET: %d", ip[1]); break;
-        case OP_GETATTR: printf("OP_GETATTR"); break;
-        case OP_SETATTR: printf("OP_SETATTR"); break;
-        case OP_PROP: printf("OP_PROP"); break;
-        case OP_NULL: printf("OP_NULL"); break;
-    }
-    printf("\n");
+    printf("current instruction: %s\n", dispatcher[*ip].opcode);
 }
 
 int run(VM *vm, BytecodeChunk *chunk) {
@@ -521,7 +493,7 @@ int run(VM *vm, BytecodeChunk *chunk) {
 #ifdef venom_debug
         print_current_instruction(ip);
 #endif
-        dispatcher[*ip](vm, chunk, &ip);
+        dispatcher[*ip].fn(vm, chunk, &ip);
 
 #ifdef venom_debug
         PRINT_STACK();
