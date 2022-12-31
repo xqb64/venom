@@ -74,8 +74,13 @@ typedef struct HeapObject {
 #define IS_HEAP(object) ((object).type == OBJ_HEAP)
 #define IS_PROP(object) ((object).type == OBJ_PROPERTY)
 
-Object *ALLOC(Object object);
-void DEALLOC(Object *object);
+#define DEALLOC_OBJ(object) \
+do { \
+    if (IS_STRUCT((object))) { \
+        table_free((object)->as.struct_.properties); \
+        free((object)->as.struct_.properties); \
+    } \
+} while(0)
 
 #define OBJECT_INCREF(object) \
 do { \
@@ -88,7 +93,8 @@ do { \
 do { \
     if ((object).type == OBJ_HEAP) { \
         if (--(object).as.heapobj->refcount == 0) { \
-            DEALLOC((object).as.heapobj->obj); \
+            DEALLOC_OBJ((object).as.heapobj->obj); \
+            free((object).as.heapobj->obj); \
             free((object).as.heapobj); \
         } \
     } \

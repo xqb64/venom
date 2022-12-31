@@ -5,6 +5,7 @@
 #include "compiler.h"
 #include "vm.h"
 #include "object.h"
+#include "util.h"
 
 void init_vm(VM *vm) {
     memset(vm, 0, sizeof(VM));

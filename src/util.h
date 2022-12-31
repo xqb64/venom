@@ -7,4 +7,6 @@
 char *own_string(const char *string);
 char *own_string_n(const char *string, int n);
 
+#define ALLOC(obj) (memcpy(malloc(sizeof((obj))), &(obj), sizeof((obj))))
+
 #endif
