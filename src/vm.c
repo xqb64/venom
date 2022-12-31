@@ -473,42 +473,39 @@ Handler dispatcher[] = {
 };
 
 void print_current_instruction(uint8_t *ip) {
-    #ifdef venom_debug
-        printf("current instruction: ");
-        switch (*ip) {
-            case OP_PRINT: printf("OP_PRINT"); break;
-            case OP_ADD: printf("OP_ADD"); break;
-            case OP_SUB: printf("OP_SUB"); break;
-            case OP_MUL: printf("OP_MUL"); break;
-            case OP_DIV: printf("OP_DIV"); break;
-            case OP_MOD: printf("OP_MOD"); break;
-            case OP_EQ: printf("OP_EQ"); break;
-            case OP_GT: printf("OP_GT"); break;
-            case OP_LT: printf("OP_LT"); break;
-            case OP_NOT: printf("OP_NOT"); break;
-            case OP_NEGATE: printf("OP_NEGATE"); break;
-            case OP_JMP: printf("OP_JMP"); break;
-            case OP_JZ: printf("OP_JZ"); break;
-            case OP_FUNC: printf("OP_FUNC"); break;
-            case OP_INVOKE: printf("OP_INVOKE"); break;
-            case OP_RET: printf("OP_RET"); break;
-            case OP_CONST: printf("OP_CONST"); break;
-            case OP_STR: printf("OP_STR"); break;
-            case OP_SET_GLOBAL: printf("OP_SET_GLOBAL"); break;
-            case OP_GET_GLOBAL: printf("OP_GET_GLOBAL"); break;
-            case OP_STRUCT: printf("OP_STRUCT"); break;
-            case OP_STRUCT_INIT: printf("OP_STRUCT_INIT"); break;
-            case OP_STRUCT_INIT_FINALIZE: printf("OP_STRUCT_INIT_FINALIZE"); break;
-            case OP_DEEP_SET: printf("OP_DEEP_SET: %d", ip[1]); break; 
-            case OP_DEEP_GET: printf("OP_DEEP_GET: %d", ip[1]); break;
-            case OP_GETATTR: printf("OP_GETATTR"); break;
-            case OP_SETATTR: printf("OP_SETATTR"); break;
-            case OP_PROP: printf("OP_PROP"); break;
-            case OP_NULL: printf("OP_NULL"); break;
-        }
-        printf("\n");
-#endif
-
+    printf("current instruction: ");
+    switch (*ip) {
+        case OP_PRINT: printf("OP_PRINT"); break;
+        case OP_ADD: printf("OP_ADD"); break;
+        case OP_SUB: printf("OP_SUB"); break;
+        case OP_MUL: printf("OP_MUL"); break;
+        case OP_DIV: printf("OP_DIV"); break;
+        case OP_MOD: printf("OP_MOD"); break;
+        case OP_EQ: printf("OP_EQ"); break;
+        case OP_GT: printf("OP_GT"); break;
+        case OP_LT: printf("OP_LT"); break;
+        case OP_NOT: printf("OP_NOT"); break;
+        case OP_NEGATE: printf("OP_NEGATE"); break;
+        case OP_JMP: printf("OP_JMP"); break;
+        case OP_JZ: printf("OP_JZ"); break;
+        case OP_FUNC: printf("OP_FUNC"); break;
+        case OP_INVOKE: printf("OP_INVOKE"); break;
+        case OP_RET: printf("OP_RET"); break;
+        case OP_CONST: printf("OP_CONST"); break;
+        case OP_STR: printf("OP_STR"); break;
+        case OP_SET_GLOBAL: printf("OP_SET_GLOBAL"); break;
+        case OP_GET_GLOBAL: printf("OP_GET_GLOBAL"); break;
+        case OP_STRUCT: printf("OP_STRUCT"); break;
+        case OP_STRUCT_INIT: printf("OP_STRUCT_INIT"); break;
+        case OP_STRUCT_INIT_FINALIZE: printf("OP_STRUCT_INIT_FINALIZE"); break;
+        case OP_DEEP_SET: printf("OP_DEEP_SET: %d", ip[1]); break; 
+        case OP_DEEP_GET: printf("OP_DEEP_GET: %d", ip[1]); break;
+        case OP_GETATTR: printf("OP_GETATTR"); break;
+        case OP_SETATTR: printf("OP_SETATTR"); break;
+        case OP_PROP: printf("OP_PROP"); break;
+        case OP_NULL: printf("OP_NULL"); break;
+    }
+    printf("\n");
 }
 
 int run(VM *vm, BytecodeChunk *chunk) {
