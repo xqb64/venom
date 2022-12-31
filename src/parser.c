@@ -491,7 +491,7 @@ static Expression primary(Parser *parser, Tokenizer *tokenizer) {
         assert(0);
     }
 }
-#define venom_debug
+
 #ifdef venom_debug
 static void print_expression(Expression e) {
     printf("(");

@@ -59,7 +59,7 @@ typedef struct Object {
 } Object;
 
 typedef struct HeapObject {
-    Object *obj;
+    Object obj;
     int refcount;
 } HeapObject;
 
@@ -69,7 +69,7 @@ typedef struct HeapObject {
 #define IS_POINTER(object) ((object).type == OBJ_POINTER)
 #define IS_NULL(object) ((object).type == OBJ_NULL)
 #define IS_STRING(object) ((object).type == OBJ_STRING)
-#define IS_STRUCT(object) ((object)->type == OBJ_STRUCT)
+#define IS_STRUCT(object) ((object).type == OBJ_STRUCT)
 #define IS_STRUCT_BLUEPRINT(object) ((object).type == OBJ_STRUCT_BLUEPRINT)
 #define IS_HEAP(object) ((object).type == OBJ_HEAP)
 #define IS_PROP(object) ((object).type == OBJ_PROPERTY)
@@ -77,8 +77,8 @@ typedef struct HeapObject {
 #define DEALLOC_OBJ(object) \
 do { \
     if (IS_STRUCT((object))) { \
-        table_free((object)->as.struct_.properties); \
-        free((object)->as.struct_.properties); \
+        table_free((object).as.struct_.properties); \
+        free((object).as.struct_.properties); \
     } \
 } while(0)
 
@@ -94,7 +94,6 @@ do { \
     if ((object).type == OBJ_HEAP) { \
         if (--(object).as.heapobj->refcount == 0) { \
             DEALLOC_OBJ((object).as.heapobj->obj); \
-            free((object).as.heapobj->obj); \
             free((object).as.heapobj); \
         } \
     } \
@@ -113,7 +112,7 @@ do { \
 
 #define TO_DOUBLE(object) ((object).as.dval)
 #define TO_BOOL(object) ((object).as.bval)
-#define TO_STRUCT(object) ((object).as.heapobj->obj->as.struct_)
+#define TO_STRUCT(object) ((object).as.heapobj->obj.as.struct_)
 #define TO_FUNC(object) ((object).as.func)
 #define TO_HEAP(object) ((object).as.heapobj)
 #define TO_PROP(object) ((object).as.prop)

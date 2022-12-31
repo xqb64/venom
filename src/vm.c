@@ -437,11 +437,12 @@ do { \
 
                 Object structobj = AS_STRUCT(s);
 
-                HeapObject *heapobj = malloc(sizeof(HeapObject));
-                heapobj->refcount = 1;
-                heapobj->obj = ALLOC(structobj);
+                HeapObject heapobj = {
+                    .refcount = 1,
+                    .obj = structobj,
+                };
 
-                push(vm, AS_HEAP(heapobj));
+                push(vm, AS_HEAP(ALLOC(heapobj)));
 
                 break;
             }
