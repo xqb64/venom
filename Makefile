@@ -2,6 +2,7 @@ SRC := $(wildcard src/*.c)
 
 CFLAGS += -g
 CFLAGS += -Wshadow -Wall -Wextra
+CFLAGS += -Wno-unused-parameter
 CFLAGS += -O3
 LDLIBS = -lm
 
