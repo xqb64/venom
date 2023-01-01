@@ -12,66 +12,66 @@
 void free_stmt(Statement stmt) {
     switch (stmt.kind) {
         case STMT_PRINT: {
-            free_expression(stmt.as.stmt_print.exp);
+            free_expression(TO_STMT_PRINT(stmt).exp);
             break;
         }
         case STMT_LET: {
-            free_expression(stmt.as.stmt_let.initializer);
+            free_expression(TO_STMT_LET(stmt).initializer);
             free(stmt.as.stmt_let.name);
             break;
         }
         case STMT_BLOCK: {
-            for (size_t i = 0; i < stmt.as.stmt_block.stmts.count; i++) {
-                free_stmt(stmt.as.stmt_block.stmts.data[i]);
+            for (size_t i = 0; i < TO_STMT_BLOCK(stmt).stmts.count; i++) {
+                free_stmt(TO_STMT_BLOCK(stmt).stmts.data[i]);
             }
-            dynarray_free(&stmt.as.stmt_block.stmts);
+            dynarray_free(&TO_STMT_BLOCK(stmt).stmts);
             break;
         }
         case STMT_IF: {
-            free_expression(stmt.as.stmt_if.condition);
+            free_expression(TO_STMT_IF(stmt).condition);
 
-            free_stmt(*stmt.as.stmt_if.then_branch);
-            free(stmt.as.stmt_if.then_branch);
+            free_stmt(*TO_STMT_IF(stmt).then_branch);
+            free(TO_STMT_IF(stmt).then_branch);
 
-            if (stmt.as.stmt_if.else_branch != NULL) {
-                free_stmt(*stmt.as.stmt_if.else_branch);
-                free(stmt.as.stmt_if.else_branch);
+            if (TO_STMT_IF(stmt).else_branch != NULL) {
+                free_stmt(*TO_STMT_IF(stmt).else_branch);
+                free(TO_STMT_IF(stmt).else_branch);
             }
 
             break;
         }
         case STMT_WHILE: {
-            free_expression(stmt.as.stmt_while.condition);
-            free_stmt(*stmt.as.stmt_while.body);
-            free(stmt.as.stmt_while.body);
+            free_expression(TO_STMT_WHILE(stmt).condition);
+            free_stmt(*TO_STMT_WHILE(stmt).body);
+            free(TO_STMT_WHILE(stmt).body);
             break;
         }
         case STMT_RETURN: {
-            free_expression(stmt.as.stmt_return.returnval);
+            free_expression(TO_STMT_RETURN(stmt).returnval);
             break;
         }
         case STMT_EXPR: {
-            free_expression(stmt.as.stmt_expr.exp);
+            free_expression(TO_STMT_EXPR(stmt).exp);
             break;
         }
         case STMT_FN: {
-            free(stmt.as.stmt_fn.name);
-            for (size_t i = 0; i < stmt.as.stmt_fn.parameters.count; i++) {
-                free(stmt.as.stmt_fn.parameters.data[i]);
+            free(TO_STMT_FN(stmt).name);
+            for (size_t i = 0; i < TO_STMT_FN(stmt).parameters.count; i++) {
+                free(TO_STMT_FN(stmt).parameters.data[i]);
             }
-            dynarray_free(&stmt.as.stmt_fn.parameters);
-            for (size_t i = 0; i < stmt.as.stmt_fn.stmts.count; i++) {
-                free_stmt(stmt.as.stmt_fn.stmts.data[i]);
+            dynarray_free(&TO_STMT_FN(stmt).parameters);
+            for (size_t i = 0; i < TO_STMT_FN(stmt).stmts.count; i++) {
+                free_stmt(TO_STMT_FN(stmt).stmts.data[i]);
             }
-            dynarray_free(&stmt.as.stmt_fn.stmts);
+            dynarray_free(&TO_STMT_FN(stmt).stmts);
             break;
         }
         case STMT_STRUCT: {
-            free(stmt.as.stmt_struct.name);
-            for (size_t i = 0; i < stmt.as.stmt_struct.properties.count; i++) {
-                free(stmt.as.stmt_struct.properties.data[i]);
+            free(TO_STMT_STRUCT(stmt).name);
+            for (size_t i = 0; i < TO_STMT_STRUCT(stmt).properties.count; i++) {
+                free(TO_STMT_STRUCT(stmt).properties.data[i]);
             }
-            dynarray_free(&stmt.as.stmt_struct.properties);
+            dynarray_free(&TO_STMT_STRUCT(stmt).properties);
         }
         default: break;
     }
@@ -83,66 +83,66 @@ void free_expression(Expression e) {
             break;
         }
         case EXP_VARIABLE: {
-            free(e.as.expr_variable.name);
+            free(TO_EXPR_VARIABLE(e).name);
             break;
         }
         case EXP_STRING: {
-            free(e.as.expr_string.str);
+            free(TO_EXPR_STRING(e).str);
             break;
         }
         case EXP_UNARY: {
-            free_expression(*e.as.expr_unary.exp);
-            free(e.as.expr_unary.exp);
+            free_expression(*TO_EXPR_UNARY(e).exp);
+            free(TO_EXPR_UNARY(e).exp);
             break;
         }
         case EXP_BINARY: {
-            free_expression(*e.as.expr_binary.lhs);
-            free_expression(*e.as.expr_binary.rhs);
-            free(e.as.expr_binary.lhs);
-            free(e.as.expr_binary.rhs);
+            free_expression(*TO_EXPR_BINARY(e).lhs);
+            free_expression(*TO_EXPR_BINARY(e).rhs);
+            free(TO_EXPR_BINARY(e).lhs);
+            free(TO_EXPR_BINARY(e).rhs);
             break;
         }
         case EXP_ASSIGN: {
-            free_expression(*e.as.expr_assign.lhs);
-            free_expression(*e.as.expr_assign.rhs);
-            free(e.as.expr_assign.lhs);
-            free(e.as.expr_assign.rhs);
+            free_expression(*TO_EXPR_ASSIGN(e).lhs);
+            free_expression(*TO_EXPR_ASSIGN(e).rhs);
+            free(TO_EXPR_ASSIGN(e).lhs);
+            free(TO_EXPR_ASSIGN(e).rhs);
             break;
         }
         case EXP_LOGICAL: {
-            free_expression(*e.as.expr_logical.lhs);
-            free_expression(*e.as.expr_logical.rhs);
-            free(e.as.expr_logical.lhs);
-            free(e.as.expr_logical.rhs);
+            free_expression(*TO_EXPR_LOGICAL(e).lhs);
+            free_expression(*TO_EXPR_LOGICAL(e).rhs);
+            free(TO_EXPR_LOGICAL(e).lhs);
+            free(TO_EXPR_LOGICAL(e).rhs);
             break;
         }
         case EXP_CALL: {
-            free(e.as.expr_call.var.name);
-            for (size_t i = 0; i < e.as.expr_call.arguments.count; i++) {
-                free_expression(e.as.expr_call.arguments.data[i]);
+            free(TO_EXPR_CALL(e).var.name);
+            for (size_t i = 0; i < TO_EXPR_CALL(e).arguments.count; i++) {
+                free_expression(TO_EXPR_CALL(e).arguments.data[i]);
             }
-            dynarray_free(&e.as.expr_call.arguments);
+            dynarray_free(&TO_EXPR_CALL(e).arguments);
             break;
         }
         case EXP_STRUCT: {
-            free(e.as.expr_struct.name);
-            for (size_t i = 0; i < e.as.expr_struct.initializers.count; i++) {
-                free_expression(e.as.expr_struct.initializers.data[i]);
+            free(TO_EXPR_STRUCT(e).name);
+            for (size_t i = 0; i < TO_EXPR_STRUCT(e).initializers.count; i++) {
+                free_expression(TO_EXPR_STRUCT(e).initializers.data[i]);
             }
-            dynarray_free(&e.as.expr_struct.initializers);
+            dynarray_free(&TO_EXPR_STRUCT(e).initializers);
             break;
         }
         case EXP_STRUCT_INIT: {
-            free_expression(*e.as.expr_struct_init.property);
-            free_expression(*e.as.expr_struct_init.value);
-            free(e.as.expr_struct_init.value);
-            free(e.as.expr_struct_init.property);
+            free_expression(*TO_EXPR_STRUCT_INIT(e).property);
+            free_expression(*TO_EXPR_STRUCT_INIT(e).value);
+            free(TO_EXPR_STRUCT_INIT(e).value);
+            free(TO_EXPR_STRUCT_INIT(e).property);
             break;
         }
         case EXPR_GET: {
-            free_expression(*e.as.expr_get.exp);
-            free(e.as.expr_get.property_name);
-            free(e.as.expr_get.exp);
+            free_expression(*TO_EXPR_GET(e).exp);
+            free(TO_EXPR_GET(e).property_name);
+            free(TO_EXPR_GET(e).exp);
             break;
         }
     }
@@ -192,7 +192,7 @@ static Token consume(Parser *parser, Tokenizer *tokenizer, TokenType type, char 
 }
 
 static Expression number(Parser *parser) {
-    LiteralExpression e = (LiteralExpression){
+    LiteralExpression e = {
         .dval = strtod(parser->previous.start, NULL),
         .specval = NULL,
     };
@@ -200,7 +200,7 @@ static Expression number(Parser *parser) {
 }
 
 static Expression string(Parser *parser) {
-    StringExpression e = (StringExpression){
+    StringExpression e = {
         .str = own_string_n(
             parser->previous.start,
             parser->previous.length - 1
@@ -210,7 +210,7 @@ static Expression string(Parser *parser) {
 }
 
 static Expression variable(Parser *parser) {
-    VariableExpression e = (VariableExpression){
+    VariableExpression e = {
         .name = own_string_n(
             parser->previous.start,
             parser->previous.length
@@ -220,9 +220,7 @@ static Expression variable(Parser *parser) {
 }
 
 static Expression special_literal(char *specval) {
-    LiteralExpression e = (LiteralExpression){
-        .specval = specval,
-    };
+    LiteralExpression e = { .specval = specval };
     return AS_EXPR_LITERAL(e);
 }
 
@@ -259,9 +257,9 @@ static Expression finish_call(Parser *parser, Tokenizer *tokenizer, Expression e
         TOKEN_RIGHT_PAREN,
         "Expected ')' after expression."
     );
-    CallExpression e = (CallExpression){
+    CallExpression e = {
         .arguments = arguments,
-        .var = exp.as.expr_variable,
+        .var = TO_EXPR_VARIABLE(exp),
     };
     return AS_EXPR_CALL(e);
 }
@@ -274,7 +272,7 @@ static Expression call(Parser *parser, Tokenizer *tokenizer) {
         } else if (match(parser, tokenizer, 1, TOKEN_DOT)) {
             Token property_name = consume(parser, tokenizer, TOKEN_IDENTIFIER, "Expected property name after '.'");
 
-            GetExpression get_expr = (GetExpression){
+            GetExpression get_expr = {
                 .exp = ALLOC(expr),
                 .property_name = own_string_n(
                     property_name.start,
@@ -292,9 +290,8 @@ static Expression call(Parser *parser, Tokenizer *tokenizer) {
 
 static Expression unary(Parser *parser, Tokenizer *tokenizer) {
     if (match(parser, tokenizer, 1, TOKEN_MINUS)) {
-        Expression *right = malloc(sizeof(Expression));
-        *right = unary(parser, tokenizer);
-        UnaryExpression e = (UnaryExpression){ .exp = right };
+        Expression right = unary(parser, tokenizer);
+        UnaryExpression e = { .exp = ALLOC(right) };
         return AS_EXPR_UNARY(e);
     }
     return call(parser, tokenizer);
@@ -305,7 +302,7 @@ static Expression factor(Parser *parser, Tokenizer *tokenizer) {
     while (match(parser, tokenizer, 3, TOKEN_STAR, TOKEN_SLASH, TOKEN_MOD)) {
         char *op = operator(parser->previous);
         Expression right = unary(parser, tokenizer);
-        BinaryExpression binexp = (BinaryExpression){
+        BinaryExpression binexp = {
             .lhs = ALLOC(expr),
             .rhs = ALLOC(right),
             .operator = op,
@@ -320,7 +317,7 @@ static Expression term(Parser *parser, Tokenizer *tokenizer) {
     while (match(parser, tokenizer, 2, TOKEN_PLUS, TOKEN_MINUS)) {
         char *op = operator(parser->previous);
         Expression right = factor(parser, tokenizer);
-        BinaryExpression binexp = (BinaryExpression){
+        BinaryExpression binexp = {
             .lhs = ALLOC(expr),
             .rhs = ALLOC(right),
             .operator = op,
@@ -338,7 +335,7 @@ static Expression comparison(Parser *parser, Tokenizer *tokenizer) {
     )) {
         char *op = operator(parser->previous);
         Expression right = term(parser, tokenizer);
-        BinaryExpression binexp = (BinaryExpression){
+        BinaryExpression binexp = {
             .lhs = ALLOC(expr),
             .rhs = ALLOC(right),
             .operator = op,
@@ -353,7 +350,7 @@ static Expression equality(Parser *parser, Tokenizer *tokenizer) {
     while (match(parser, tokenizer, 2, TOKEN_DOUBLE_EQUAL, TOKEN_BANG_EQUAL)) {
         char *op = operator(parser->previous);
         Expression right = comparison(parser, tokenizer);
-        BinaryExpression binexp = (BinaryExpression){
+        BinaryExpression binexp = {
             .lhs = ALLOC(expr),
             .rhs = ALLOC(right),
             .operator = op,
@@ -368,7 +365,7 @@ static Expression and_(Parser *parser, Tokenizer *tokenizer) {
     if (match(parser, tokenizer, 1, TOKEN_DOUBLE_AMPERSAND)) {
         char *op = own_string_n(parser->previous.start, parser->previous.length);
         Expression right = equality(parser, tokenizer);
-        LogicalExpression logexp = (LogicalExpression){
+        LogicalExpression logexp = {
             .lhs = ALLOC(expr),
             .rhs = ALLOC(right),
             .operator = op,
@@ -383,7 +380,7 @@ static Expression or_(Parser *parser, Tokenizer *tokenizer) {
     if (match(parser, tokenizer, 1, TOKEN_DOUBLE_PIPE)) {
         char *op = own_string_n(parser->previous.start, parser->previous.length);
         Expression right = and_(parser, tokenizer);
-        LogicalExpression logexp = (LogicalExpression){
+        LogicalExpression logexp = {
             .lhs = ALLOC(expr),
             .rhs = ALLOC(right),
             .operator = op,
@@ -397,7 +394,7 @@ static Expression assignment(Parser *parser, Tokenizer *tokenizer) {
     Expression expr = or_(parser, tokenizer);
     if (match(parser, tokenizer, 1, TOKEN_EQUAL)) {
         Expression right = assignment(parser, tokenizer);
-        AssignExpression assignexp = (AssignExpression){
+        AssignExpression assignexp = {
             .lhs = ALLOC(expr),
             .rhs = ALLOC(right),
         };
@@ -449,12 +446,10 @@ static Expression struct_initializer(Parser *parser, Tokenizer *tokenizer) {
             "Expected ':' after property name."
         );
         Expression value = primary(parser, tokenizer);
-
-        StructInitializerExpression structinitexp = (StructInitializerExpression){
+        StructInitializerExpression structinitexp = {
             .property = ALLOC(property),
             .value = ALLOC(value),
         };
-
         dynarray_insert(&initializers, AS_EXPR_STRUCT_INIT(structinitexp));
     } while (match(parser, tokenizer, 1, TOKEN_COMMA));
     consume(
@@ -462,7 +457,7 @@ static Expression struct_initializer(Parser *parser, Tokenizer *tokenizer) {
         TOKEN_RIGHT_BRACE,
         "Expected '}' after struct initialization."
     );
-    StructExpression structexp = (StructExpression){
+    StructExpression structexp = {
         .initializers = initializers,
         .name = name,
     };
