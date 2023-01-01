@@ -1,12 +1,21 @@
-CC = gcc
+SRC := $(wildcard src/*.c)
+
 CFLAGS += -g
 CFLAGS += -Wshadow -Wall -Wextra
 CFLAGS += -O3
 LDLIBS = -lm
 
-ifdef $(debug)
+ifeq ($(debug), 1)
 	CFLAGS += -Dvenom_debug
 endif
 
-venom:
-	$(CC) $(CFLAGS) $(wildcard ./src/*.c) $(LDLIBS)
+obj/%.o: src/%.c $(wildcard src/*.h)
+	mkdir -vp obj && $(CC) -c $(CFLAGS) $< -o $@
+
+all: venom
+
+venom: $(SRC:src/%.c=obj/%.o)
+	$(CC) $(CFLAGS) $^ -o $@ $(LDLIBS)
+
+clean:
+	rm -rvf obj venom
