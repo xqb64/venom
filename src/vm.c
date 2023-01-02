@@ -1,3 +1,4 @@
+#include <assert.h>
 #include <stdlib.h>
 #include <stdio.h>
 #include <string.h>
@@ -62,9 +63,10 @@ do { \
     fprintf(stderr, "runtime error: "); \
     fprintf(stderr, __VA_ARGS__); \
     fprintf(stderr, "\n"); \
+    return 1; \
 } while (0)
 
-static inline void handle_op_print(VM *vm, BytecodeChunk *chunk, uint8_t **ip) {
+static inline int handle_op_print(VM *vm, BytecodeChunk *chunk, uint8_t **ip) {
     Object object = pop(vm);
 #ifdef venom_debug
     printf("dbg print :: ");
@@ -72,9 +74,10 @@ static inline void handle_op_print(VM *vm, BytecodeChunk *chunk, uint8_t **ip) {
     PRINT_OBJECT(object);
     printf("\n");
     OBJECT_DECREF(object);
+    return 0;
 }
 
-static inline void handle_op_const(VM *vm, BytecodeChunk *chunk, uint8_t **ip) {
+static inline int handle_op_const(VM *vm, BytecodeChunk *chunk, uint8_t **ip) {
     /* At this point, ip points to OP_CONST.
     * Since this is a 2-byte instruction with an
     * immediate operand (the index of the double
@@ -86,9 +89,10 @@ static inline void handle_op_const(VM *vm, BytecodeChunk *chunk, uint8_t **ip) {
     uint8_t index = READ_UINT8();
     Object obj = AS_DOUBLE(chunk->cp[index]);
     push(vm, obj);
+    return 0;
 }
 
-static inline void handle_op_get_global(VM *vm, BytecodeChunk *chunk, uint8_t **ip) {
+static inline int handle_op_get_global(VM *vm, BytecodeChunk *chunk, uint8_t **ip) {
     /* At this point, ip points to OP_GET_GLOBAL.
     * Since this is a 2-byte instruction with an
     * immediate operand (the index of the name of
@@ -109,9 +113,10 @@ static inline void handle_op_get_global(VM *vm, BytecodeChunk *chunk, uint8_t **
     }
     push(vm, *obj);
     OBJECT_INCREF(*obj);
+    return 0;
 }
 
-static inline void handle_op_set_global(VM *vm, BytecodeChunk *chunk, uint8_t **ip) {
+static inline int handle_op_set_global(VM *vm, BytecodeChunk *chunk, uint8_t **ip) {
     /* At this point, ip points to OP_SET_GLOBAL.
     * This is a single-byte instruction that expects
     * two things to already be on the stack: the index
@@ -122,9 +127,10 @@ static inline void handle_op_set_global(VM *vm, BytecodeChunk *chunk, uint8_t **
     uint8_t name_index = READ_UINT8();
     Object constant = pop(vm);
     table_insert(&vm->globals, chunk->sp[name_index], constant);
+    return 0;
 }
 
-static inline void handle_op_str(VM *vm, BytecodeChunk *chunk, uint8_t **ip) {
+static inline int handle_op_str(VM *vm, BytecodeChunk *chunk, uint8_t **ip) {
     /* At this point, ip points to OP_CONST.
     * Since this is a 2-byte instruction with an
     * immediate operand (the index of the double
@@ -136,25 +142,28 @@ static inline void handle_op_str(VM *vm, BytecodeChunk *chunk, uint8_t **ip) {
     uint8_t index = READ_UINT8();
     Object obj = AS_STR(chunk->sp[index]);
     push(vm, obj);
+    return 0;
 }
 
-static inline void handle_op_deep_set(VM *vm, BytecodeChunk *chunk, uint8_t **ip) {
+static inline int handle_op_deep_set(VM *vm, BytecodeChunk *chunk, uint8_t **ip) {
     uint8_t index = READ_UINT8();
     Object obj = pop(vm);
     int fp = vm->fp_stack[vm->fp_count-1];
     vm->stack[fp+index] = obj;
     OBJECT_DECREF(obj);
+    return 0;
 }
 
-static inline void handle_op_deep_get(VM *vm, BytecodeChunk *chunk, uint8_t **ip) {
+static inline int handle_op_deep_get(VM *vm, BytecodeChunk *chunk, uint8_t **ip) {
     uint8_t index = READ_UINT8();
     int fp = vm->fp_stack[vm->fp_count-1];
     Object obj = vm->stack[fp+index];
     push(vm, obj);
     OBJECT_INCREF(obj);
+    return 0;
 }
 
-static inline void handle_op_getattr(VM *vm, BytecodeChunk *chunk, uint8_t **ip) {
+static inline int handle_op_getattr(VM *vm, BytecodeChunk *chunk, uint8_t **ip) {
     uint8_t property_name_index = READ_UINT8();
     Object obj = pop(vm);
     Object *property = table_get(TO_STRUCT(obj).properties, chunk->sp[property_name_index]);
@@ -168,76 +177,139 @@ static inline void handle_op_getattr(VM *vm, BytecodeChunk *chunk, uint8_t **ip)
     push(vm, *property);
     OBJECT_DECREF(obj);
     OBJECT_INCREF(*property);
+    return 0;
 }
 
-static inline void handle_op_setattr(VM *vm, BytecodeChunk *chunk, uint8_t **ip) {
+static inline int handle_op_setattr(VM *vm, BytecodeChunk *chunk, uint8_t **ip) {
     uint8_t property_name_index = READ_UINT8();
     Object propety = pop(vm);
     Object value = pop(vm);
     table_insert(TO_STRUCT(propety).properties, chunk->sp[property_name_index], value);
+    return 0;
 }
 
-static inline void handle_op_add(VM *vm, BytecodeChunk *chunk, uint8_t **ip) {
+static inline int handle_op_add(VM *vm, BytecodeChunk *chunk, uint8_t **ip) {
     BINARY_OP(+, AS_DOUBLE);
+    return 0;
 }
 
-static inline void handle_op_sub(VM *vm, BytecodeChunk *chunk, uint8_t **ip) {
+static inline int handle_op_sub(VM *vm, BytecodeChunk *chunk, uint8_t **ip) {
     BINARY_OP(-, AS_DOUBLE);
+    return 0;
 }
 
-static inline void handle_op_mul(VM *vm, BytecodeChunk *chunk, uint8_t **ip) {
+static inline int handle_op_mul(VM *vm, BytecodeChunk *chunk, uint8_t **ip) {
     BINARY_OP(*, AS_DOUBLE);
+    return 0;
 }
 
-static inline void handle_op_div(VM *vm, BytecodeChunk *chunk, uint8_t **ip) {
+static inline int handle_op_div(VM *vm, BytecodeChunk *chunk, uint8_t **ip) {
     BINARY_OP(/, AS_DOUBLE);
+    return 0;
 }
 
-static inline void handle_op_mod(VM *vm, BytecodeChunk *chunk, uint8_t **ip) {
+static inline int handle_op_mod(VM *vm, BytecodeChunk *chunk, uint8_t **ip) {
     Object b = pop(vm);
     Object a = pop(vm);
     Object obj = AS_DOUBLE(fmod(TO_DOUBLE(a), TO_DOUBLE(b)));
     push(vm, obj);
+    return 0;
 }
 
-static inline void handle_op_gt(VM *vm, BytecodeChunk *chunk, uint8_t **ip) {
+static inline bool check_equality(VM *vm, Object *a, Object *b) {
+    if (a->type != b->type) {
+        return false;
+    }
+    if (IS_NUM(*a) && IS_NUM(*b)) {
+        return TO_DOUBLE(*a) == TO_DOUBLE(*b);
+    } else if (IS_STRING(*a) && IS_STRING(*b)) {
+        return strcmp(TO_STR(*a), TO_STR(*b)) == 0;
+    } else if (IS_BOOL(*a) && IS_BOOL(*b)) {
+        return TO_BOOL(*a) == TO_BOOL(*b);      
+    } else if (IS_HEAP(*a) && IS_HEAP(*b)) {
+        Object *blueprint = table_get(&vm->struct_blueprints, TO_STRUCT(*a).name);
+        for (size_t i = 0; i < TO_STRUCT_BLUEPRINT(*blueprint).properties.count; i++) {
+            char *prop = TO_STRUCT_BLUEPRINT(*blueprint).properties.data[i];
+            if (!check_equality(
+                vm,
+                table_get(TO_STRUCT(*a).properties, prop),
+                table_get(TO_STRUCT(*b).properties, prop)
+            )) {
+                return false;
+            }
+        }
+        return true;
+    }
+    assert(0);
+}
+
+static inline int handle_op_gt(VM *vm, BytecodeChunk *chunk, uint8_t **ip) {
     BINARY_OP(>, AS_BOOL);
+    return 0;
 }
 
-static inline void handle_op_lt(VM *vm, BytecodeChunk *chunk, uint8_t **ip) {
+static inline int handle_op_lt(VM *vm, BytecodeChunk *chunk, uint8_t **ip) {
     BINARY_OP(<, AS_BOOL);
+    return 0;
 }
 
-static inline void handle_op_eq(VM *vm, BytecodeChunk *chunk, uint8_t **ip) {
-    BINARY_OP(==, AS_BOOL);
+static inline char *obj_typename(ObjectType type) {
+    switch (type) {
+        case OBJ_NUMBER: return "number";
+        case OBJ_STRING: return "string";
+        case OBJ_BOOLEAN: return "boolean";
+        case OBJ_NULL: return "null";
+        case OBJ_HEAP: return "heap";
+        default: return "not implemented";
+    }
 }
 
-static inline void handle_op_jz(VM *vm, BytecodeChunk *chunk, uint8_t **ip) {
+static inline int handle_op_eq(VM *vm, BytecodeChunk *chunk, uint8_t **ip) {
+    Object b = pop(vm);
+    Object a = pop(vm);
+    OBJECT_DECREF(a);
+    OBJECT_DECREF(b);
+    if (a.type != b.type) {
+        RUNTIME_ERROR(
+            "Comparing objects of different types: '%s' vs '%s'.",
+            obj_typename(a.type),
+            obj_typename(b.type)
+        );
+    }
+    push(vm, AS_BOOL(check_equality(vm, &a, &b)));
+    return 0;
+}
+
+static inline int handle_op_jz(VM *vm, BytecodeChunk *chunk, uint8_t **ip) {
     /* Jump if zero. */
     int16_t offset = READ_INT16();
     Object obj = pop(vm);
     if (!TO_BOOL(obj)) {
         *ip += offset;
     }
+    return 0;
 }
 
-static inline void handle_op_jmp(VM *vm, BytecodeChunk *chunk, uint8_t **ip) {
+static inline int handle_op_jmp(VM *vm, BytecodeChunk *chunk, uint8_t **ip) {
     int16_t offset = READ_INT16();
     *ip += offset;
+    return 0;
 }
 
-static inline void handle_op_negate(VM *vm, BytecodeChunk *chunk, uint8_t **ip) {
+static inline int handle_op_negate(VM *vm, BytecodeChunk *chunk, uint8_t **ip) {
     Object original = pop(vm);
     Object negated = AS_DOUBLE(-TO_DOUBLE(original));
     push(vm, negated);
+    return 0;
 }
 
-static inline void handle_op_not(VM *vm, BytecodeChunk *chunk, uint8_t **ip) {
+static inline int handle_op_not(VM *vm, BytecodeChunk *chunk, uint8_t **ip) {
     Object obj = pop(vm);
     push(vm, AS_BOOL(TO_BOOL(obj) ^ 1));
+    return 0;
 }
 
-static inline void handle_op_func(VM *vm, BytecodeChunk *chunk, uint8_t **ip) {
+static inline int handle_op_func(VM *vm, BytecodeChunk *chunk, uint8_t **ip) {
     /* At this point, ip points to OP_FUNC. 
      * After the opcode, there is the index
      * of the function's name in the string
@@ -263,9 +335,10 @@ static inline void handle_op_func(VM *vm, BytecodeChunk *chunk, uint8_t **ip) {
 
     /* ...and insert it into the 'vm->globals' table. */
     table_insert(&vm->globals, funcname, funcobj);
+    return 0;
 }
 
-static inline void handle_op_invoke(VM *vm, BytecodeChunk *chunk, uint8_t **ip) {
+static inline int handle_op_invoke(VM *vm, BytecodeChunk *chunk, uint8_t **ip) {
     /* We first read the index of the function name and the argcount. */
     uint8_t funcname = READ_UINT8();
     uint8_t argcount = READ_UINT8();
@@ -314,9 +387,10 @@ static inline void handle_op_invoke(VM *vm, BytecodeChunk *chunk, uint8_t **ip) 
     /* We modify ip so that it points to one instruction
      * just before the code we're invoking. */
     *ip = &chunk->code.data[TO_FUNC(*funcobj).location-1];
+    return 0;
 }
 
-static inline void handle_op_ret(VM *vm, BytecodeChunk *chunk, uint8_t **ip) {
+static inline int handle_op_ret(VM *vm, BytecodeChunk *chunk, uint8_t **ip) {
     /* By the time we encounter OP_RET, the return
      * value is located on the stack. Beneath it are
      * the function arguments, followed by the return
@@ -345,17 +419,20 @@ static inline void handle_op_ret(VM *vm, BytecodeChunk *chunk, uint8_t **ip) {
 
     /* Finally, we modify the instruction pointer. */
     *ip = returnaddr.as.ptr;
+    return 0;
 }
 
-static inline void handle_op_true(VM *vm, BytecodeChunk *chunk, uint8_t **ip) {
+static inline int handle_op_true(VM *vm, BytecodeChunk *chunk, uint8_t **ip) {
     push(vm, AS_BOOL(true));
+    return 0;
 }
 
-static inline void handle_op_null(VM *vm, BytecodeChunk *chunk, uint8_t **ip) {
+static inline int handle_op_null(VM *vm, BytecodeChunk *chunk, uint8_t **ip) {
     push(vm, AS_NULL());
+    return 0;
 }
 
-static inline void handle_op_struct(VM *vm, BytecodeChunk *chunk, uint8_t **ip) {
+static inline int handle_op_struct(VM *vm, BytecodeChunk *chunk, uint8_t **ip) {
     uint8_t struct_name = READ_UINT8();
     uint8_t property_count = READ_UINT8();
 
@@ -374,9 +451,10 @@ static inline void handle_op_struct(VM *vm, BytecodeChunk *chunk, uint8_t **ip) 
         chunk->sp[struct_name],
         AS_STRUCT_BLUEPRINT(sb)
     );
+    return 0;
 }
 
-static inline void handle_op_struct_init(VM *vm, BytecodeChunk *chunk, uint8_t **ip) {
+static inline int handle_op_struct_init(VM *vm, BytecodeChunk *chunk, uint8_t **ip) {
     uint8_t structname = READ_UINT8();
 
     Object *blueprint = table_get(&vm->struct_blueprints, chunk->sp[structname]);
@@ -411,9 +489,10 @@ static inline void handle_op_struct_init(VM *vm, BytecodeChunk *chunk, uint8_t *
     };
 
     push(vm, AS_HEAP(ALLOC(heapobj)));
+    return 0;
 }
 
-static inline void handle_op_struct_init_finalize(VM *vm, BytecodeChunk *chunk, uint8_t **ip) {
+static inline int handle_op_struct_init_finalize(VM *vm, BytecodeChunk *chunk, uint8_t **ip) {
     uint8_t propertycount = READ_UINT8();
 
     Object property_names[256];
@@ -430,14 +509,16 @@ static inline void handle_op_struct_init_finalize(VM *vm, BytecodeChunk *chunk, 
     }
 
     push(vm, structobj);
+    return 0;
 }
 
-static inline void handle_op_prop(VM *vm, BytecodeChunk *chunk, uint8_t **ip) {
+static inline int handle_op_prop(VM *vm, BytecodeChunk *chunk, uint8_t **ip) {
     uint8_t propertyname_index = READ_UINT8();
     push(vm, AS_PROP(chunk->sp[propertyname_index]));
+    return 0;
 }
 
-typedef void (*HandlerFn)(VM *vm, BytecodeChunk *chunk, uint8_t **ip);
+typedef int (*HandlerFn)(VM *vm, BytecodeChunk *chunk, uint8_t **ip);
 typedef struct {
     HandlerFn fn;
     char *opcode;
@@ -493,8 +574,8 @@ int run(VM *vm, BytecodeChunk *chunk) {
 #ifdef venom_debug
         print_current_instruction(ip);
 #endif
-        dispatcher[*ip].fn(vm, chunk, &ip);
-
+        int status = dispatcher[*ip].fn(vm, chunk, &ip);
+        if (status != 0) return status;
 #ifdef venom_debug
         PRINT_STACK();
 #endif
