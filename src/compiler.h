@@ -65,6 +65,6 @@ void init_chunk(BytecodeChunk *chunk);
 void free_chunk(BytecodeChunk *chunk);
 void compile(BytecodeChunk *chunk, Statement stmt, bool scoped);
 void disassemble(BytecodeChunk *chunk);
-void init_compiler(Compiler *compiler);
+void init_compiler(Compiler *compiler, size_t depth);
 
 #endif

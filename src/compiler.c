@@ -10,7 +10,7 @@
 
 Compiler *current_compiler = NULL;
 
-void init_compiler(Compiler *compiler) {
+void init_compiler(Compiler *compiler, size_t depth) {
     memset(compiler, 0, sizeof(Compiler));
     compiler->enclosing = current_compiler;
     if (current_compiler != NULL) {
@@ -24,10 +24,21 @@ void init_compiler(Compiler *compiler) {
         memcpy(compiler->jmp_stack, current_compiler->jmp_stack, sizeof(current_compiler->jmp_stack));
         compiler->jmp_tos = current_compiler->jmp_tos;
     }
+    compiler->depth = depth;
     current_compiler = compiler;
 }
 
 void end_compiler(Compiler *compiler) {
+    if (compiler->enclosing != NULL) {
+        /* Inherit everythig else from the current compiler. */
+        memcpy(compiler->enclosing->backjmp_stack, current_compiler->backjmp_stack, sizeof(current_compiler->backjmp_stack));
+        compiler->enclosing->backjmp_tos = current_compiler->backjmp_tos;
+
+        memcpy(compiler->enclosing->jmp_stack, current_compiler->jmp_stack, sizeof(current_compiler->jmp_stack));
+        compiler->enclosing->jmp_tos = current_compiler->jmp_tos;
+        
+        compiler->enclosing->depth = current_compiler->depth;
+    }
     current_compiler = compiler->enclosing;
 }
 
@@ -197,12 +208,19 @@ static void compile_expression(BytecodeChunk *chunk, Expression exp) {
             break;
         }
         case EXP_VARIABLE: {
-            int index = resolve_local(TO_EXPR_VARIABLE(exp).name);
-            if (index == -1) {
+            if (current_compiler->depth > 0) {
+                printf("DEPTH IS %d\n", current_compiler->depth);
+                int index = resolve_local(TO_EXPR_VARIABLE(exp).name);
+                if (index != -1) {
+                    emit_bytes(chunk, 2, OP_DEEP_GET, index);
+                } else {
+                    printf("Compiler error: Variable '%s' is not defined.", TO_EXPR_VARIABLE(exp).name);
+                    exit(1);
+                }
+            } else {
+                printf("DEPTH IS 0\n");
                 uint8_t name_index = add_string(chunk, TO_EXPR_VARIABLE(exp).name);
                 emit_bytes(chunk, 2, OP_GET_GLOBAL, name_index);
-            } else {
-                emit_bytes(chunk, 2, OP_DEEP_GET, index);
             }
             break;
         }
@@ -271,7 +289,7 @@ static void compile_expression(BytecodeChunk *chunk, Expression exp) {
                 emit_bytes(chunk, 2, OP_SETATTR, index);
             } else {
                 printf("Compiler error.\n");
-                return;
+                exit(1);
             }
             break;
         }
@@ -338,7 +356,7 @@ void print_stmt(Statement stmt) {
 }
 
 void print_block(Statement stmt) {
-    for (int i = 0; i < TO_STMT_BLOCK(&stmt).stmts.count; i++) {
+    for (size_t i = 0; i < TO_STMT_BLOCK(&stmt).stmts.count; i++) {
         print_stmt(TO_STMT_BLOCK(&stmt).stmts.data[i]);
     }
 }
@@ -576,8 +594,7 @@ void compile(BytecodeChunk *chunk, Statement stmt, bool scoped) {
         }
         case STMT_BLOCK: {
             Compiler compiler;
-            init_compiler(&compiler);
-            compiler.depth = TO_STMT_BLOCK(&stmt).depth;
+            init_compiler(&compiler, TO_STMT_BLOCK(&stmt).depth);
             printf("incoming block...\n");
             print_block(stmt);
             printf("depth of this block is: %ld\n", TO_STMT_BLOCK(&stmt).depth);
@@ -593,7 +610,7 @@ void compile(BytecodeChunk *chunk, Statement stmt, bool scoped) {
              * and a boolean placed on the stack by the time it encounters
              * an instruction like OP_JZ. */
             compile_expression(chunk, TO_STMT_IF(stmt).condition);
- 
+
             /* Then, we emit an OP_JZ which jumps to the else clause if the
              * condition is falsey. Because we do not know the size of the
              * bytecode in the 'then' branch ahead of time, we do backpatching:
@@ -654,6 +671,7 @@ void compile(BytecodeChunk *chunk, Statement stmt, bool scoped) {
             emit_loop(chunk, loop_start);
 
             if (current_compiler->jmp_tos > 0) {
+                printf("Patching break jump\n");
                 int break_jump = current_compiler->jmp_stack[--current_compiler->jmp_tos];
                 patch_jump(chunk, break_jump);
             }
