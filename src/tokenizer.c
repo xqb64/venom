@@ -205,6 +205,18 @@ Token get_token(Tokenizer *tokenizer) {
             }
             return make_token(tokenizer, TOKEN_PIPE, 1);
         }
+        case 'b': {
+            if (lookahead(tokenizer, 4, "reak")) {
+                return make_token(tokenizer, TOKEN_BREAK, 5);
+            }
+            return identifier(tokenizer);
+        }
+        case 'c': {
+            if (lookahead(tokenizer, 7, "ontinue")) {
+                return make_token(tokenizer, TOKEN_CONTINUE, 8);
+            }
+            return identifier(tokenizer);
+        }
         case 'e': {
             if (lookahead(tokenizer, 3, "lse")) {
                 return make_token(tokenizer, TOKEN_ELSE, 4);

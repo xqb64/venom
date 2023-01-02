@@ -129,6 +129,8 @@ typedef enum {
     STMT_BLOCK,
     STMT_IF,
     STMT_WHILE,
+    STMT_BREAK,
+    STMT_CONTINUE,
     STMT_FN,
     STMT_RETURN,
     STMT_STRUCT,
@@ -169,7 +171,7 @@ typedef struct {
 
 typedef struct {
     Expression condition;
-    Statement *body;
+    Statement_DynArray body;
 } WhileStatement;
 
 typedef struct {
@@ -181,6 +183,9 @@ typedef struct {
     String_DynArray properties;
 } StructStatement;
 
+typedef struct {} BreakStatement;
+typedef struct {} ContinueStatement;
+
 typedef struct Statement {
     StatementKind kind;
     union {
@@ -191,6 +196,8 @@ typedef struct Statement {
         FunctionStatement stmt_fn;
         IfStatement stmt_if;
         WhileStatement stmt_while;
+        BreakStatement stmt_break;
+        ContinueStatement stmt_continue;
         ReturnStatement stmt_return;
         StructStatement stmt_struct;
     } as;
@@ -213,6 +220,8 @@ typedef struct Statement {
 #define AS_STMT_FN(stmt) ((Statement){ .kind = STMT_FN, .as.stmt_fn = (stmt) })
 #define AS_STMT_IF(stmt) ((Statement){ .kind = STMT_IF, .as.stmt_if = (stmt) })
 #define AS_STMT_WHILE(stmt) ((Statement){ .kind = STMT_WHILE, .as.stmt_while = (stmt) })
+#define AS_STMT_BREAK(stmt) ((Statement){ .kind = STMT_BREAK, .as.stmt_break = (stmt) })
+#define AS_STMT_CONTINUE(stmt) ((Statement){ .kind = STMT_CONTINUE, .as.stmt_continue = (stmt) })
 #define AS_STMT_RETURN(stmt) ((Statement){ .kind = STMT_RETURN, .as.stmt_return = (stmt) })
 #define AS_STMT_STRUCT(stmt) ((Statement){ .kind = STMT_STRUCT, .as.stmt_struct = (stmt) })
 

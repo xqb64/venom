@@ -42,8 +42,10 @@ void free_stmt(Statement stmt) {
         }
         case STMT_WHILE: {
             free_expression(TO_STMT_WHILE(stmt).condition);
-            free_stmt(*TO_STMT_WHILE(stmt).body);
-            free(TO_STMT_WHILE(stmt).body);
+            for (size_t i = 0; i < TO_STMT_WHILE(stmt).body.count; i++) {
+                free_stmt(TO_STMT_WHILE(stmt).body.data[i]);
+            }
+            dynarray_free(&TO_STMT_WHILE(stmt).body);
             break;
         }
         case STMT_RETURN: {
@@ -640,11 +642,15 @@ static Statement while_statement(Parser *parser, Tokenizer *tokenizer) {
         TOKEN_RIGHT_PAREN,
         "Expected ')' after condition."
     );
+    consume(
+        parser, tokenizer,
+        TOKEN_LEFT_BRACE,
+        "Expected '{' after the while condition."
+    );
     WhileStatement stmt = {
         .condition = condition,
-        .body = malloc(sizeof(Statement)),
+        .body = block(parser, tokenizer),
     };
-    *stmt.body = statement(parser, tokenizer);
     return AS_STMT_WHILE(stmt);
  }
 
@@ -704,6 +710,26 @@ static Statement return_statement(Parser *parser, Tokenizer *tokenizer) {
     return AS_STMT_RETURN(stmt);
 }
 
+static Statement break_statement(Parser *parser, Tokenizer *tokenizer) {
+    consume(
+        parser, tokenizer,
+        TOKEN_SEMICOLON,
+        "Expected ';' after break."
+    );
+    BreakStatement stmt;
+    return AS_STMT_BREAK(stmt);
+}
+
+static Statement continue_statement(Parser *parser, Tokenizer *tokenizer) {
+    consume(
+        parser, tokenizer,
+        TOKEN_SEMICOLON,
+        "Expected ';' after continue."
+    );
+    ContinueStatement stmt;
+    return AS_STMT_CONTINUE(stmt);
+}
+
 static Statement struct_statement(Parser *parser, Tokenizer *tokenizer) {
     Token name = consume(
         parser, tokenizer,
@@ -751,6 +777,10 @@ static Statement statement(Parser *parser, Tokenizer *tokenizer) {
         return if_statement(parser, tokenizer);
     } else if (match(parser, tokenizer, 1, TOKEN_WHILE)) {
         return while_statement(parser, tokenizer);
+    } else if (match(parser, tokenizer, 1, TOKEN_BREAK)) {
+        return break_statement(parser, tokenizer);
+    } else if (match(parser, tokenizer, 1, TOKEN_CONTINUE)) {
+        return continue_statement(parser, tokenizer);
     } else if (match(parser, tokenizer, 1, TOKEN_FN)) {
         return function_statement(parser, tokenizer);
     } else if (match(parser, tokenizer, 1, TOKEN_RETURN)) {
