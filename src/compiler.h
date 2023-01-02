@@ -50,18 +50,20 @@ typedef struct BytecodeChunk {
     uint8_t sp_count;
 } BytecodeChunk;
 
-typedef struct {
+typedef struct Compiler {
+    struct Compiler *enclosing;
     char *locals[256];
     int locals_count;
     int jmp_stack[256];
     size_t jmp_tos;
     int backjmp_stack[256];
     size_t backjmp_tos;
+    int depth;
 } Compiler;
 
 void init_chunk(BytecodeChunk *chunk);
 void free_chunk(BytecodeChunk *chunk);
-void compile(Compiler *compiler, BytecodeChunk *chunk, Statement stmt, bool scoped);
+void compile(BytecodeChunk *chunk, Statement stmt, bool scoped);
 void disassemble(BytecodeChunk *chunk);
 void init_compiler(Compiler *compiler);
 

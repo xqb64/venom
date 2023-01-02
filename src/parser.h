@@ -155,11 +155,12 @@ typedef struct {
 
 typedef struct {
     Statement_DynArray stmts;
+    size_t depth;
 } BlockStatement;
 
 typedef struct {
     char *name;
-    Statement_DynArray stmts;
+    Statement *body;
     String_DynArray parameters;
 } FunctionStatement;
 
@@ -171,7 +172,7 @@ typedef struct {
 
 typedef struct {
     Expression condition;
-    Statement_DynArray body;
+    Statement *body;
 } WhileStatement;
 
 typedef struct {
@@ -206,7 +207,7 @@ typedef struct Statement {
 #define TO_STMT_PRINT(stmt) ((stmt).as.stmt_print)
 #define TO_STMT_LET(stmt) ((stmt).as.stmt_let)
 #define TO_STMT_EXPR(stmt) ((stmt).as.stmt_expr)
-#define TO_STMT_BLOCK(stmt) ((stmt).as.stmt_block)
+#define TO_STMT_BLOCK(stmt) ((stmt)->as.stmt_block)
 #define TO_STMT_FN(stmt) ((stmt).as.stmt_fn)
 #define TO_STMT_IF(stmt) ((stmt).as.stmt_if)
 #define TO_STMT_WHILE(stmt) ((stmt).as.stmt_while)
@@ -228,7 +229,7 @@ typedef struct Statement {
 typedef struct {
     Token current;
     Token previous;
-    bool had_error;
+    size_t depth;
 } Parser;
 
 void parse(Parser *parser, Tokenizer *tokenizer, Statement_DynArray *stmts);

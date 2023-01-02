@@ -21,10 +21,10 @@ void free_stmt(Statement stmt) {
             break;
         }
         case STMT_BLOCK: {
-            for (size_t i = 0; i < TO_STMT_BLOCK(stmt).stmts.count; i++) {
-                free_stmt(TO_STMT_BLOCK(stmt).stmts.data[i]);
+            for (size_t i = 0; i < TO_STMT_BLOCK(&stmt).stmts.count; i++) {
+                free_stmt(TO_STMT_BLOCK(&stmt).stmts.data[i]);
             }
-            dynarray_free(&TO_STMT_BLOCK(stmt).stmts);
+            dynarray_free(&TO_STMT_BLOCK(&stmt).stmts);
             break;
         }
         case STMT_IF: {
@@ -42,10 +42,10 @@ void free_stmt(Statement stmt) {
         }
         case STMT_WHILE: {
             free_expression(TO_STMT_WHILE(stmt).condition);
-            for (size_t i = 0; i < TO_STMT_WHILE(stmt).body.count; i++) {
-                free_stmt(TO_STMT_WHILE(stmt).body.data[i]);
+            for (size_t i = 0; i < TO_STMT_BLOCK(TO_STMT_WHILE(stmt).body).stmts.count; i++) {
+                free_stmt(TO_STMT_BLOCK(TO_STMT_WHILE(stmt).body).stmts.data[i]);
             }
-            dynarray_free(&TO_STMT_WHILE(stmt).body);
+            dynarray_free(&TO_STMT_BLOCK(TO_STMT_WHILE(stmt).body).stmts);
             break;
         }
         case STMT_RETURN: {
@@ -62,10 +62,10 @@ void free_stmt(Statement stmt) {
                 free(TO_STMT_FN(stmt).parameters.data[i]);
             }
             dynarray_free(&TO_STMT_FN(stmt).parameters);
-            for (size_t i = 0; i < TO_STMT_FN(stmt).stmts.count; i++) {
-                free_stmt(TO_STMT_FN(stmt).stmts.data[i]);
+            for (size_t i = 0; i < TO_STMT_BLOCK(TO_STMT_FN(stmt).body).stmts.count; i++) {
+                free_stmt(TO_STMT_BLOCK(TO_STMT_FN(stmt).body).stmts.data[i]);
             }
-            dynarray_free(&TO_STMT_FN(stmt).stmts);
+            dynarray_free(&TO_STMT_BLOCK(TO_STMT_FN(stmt).body).stmts);
             break;
         }
         case STMT_STRUCT: {
@@ -151,7 +151,6 @@ void free_expression(Expression e) {
 }
 
 static void parse_error(Parser *parser, char *message) {
-    parser->had_error = true;
     fprintf(stderr, "parse error: %s\n", message);
 }
 
@@ -419,7 +418,8 @@ static Expression grouping(Parser *parser, Tokenizer *tokenizer) {
     return exp;
 }
 
-static Statement_DynArray block(Parser *parser, Tokenizer *tokenizer) {
+static Statement block(Parser *parser, Tokenizer *tokenizer) {
+    parser->depth++;
     Statement_DynArray stmts = {0};
     while (!check(parser, TOKEN_RIGHT_BRACE) && !check(parser, TOKEN_EOF)) {
         dynarray_insert(&stmts, statement(parser, tokenizer));
@@ -429,7 +429,12 @@ static Statement_DynArray block(Parser *parser, Tokenizer *tokenizer) {
         TOKEN_RIGHT_BRACE,
         "Expected '}' at the end of the block."
     );
-    return stmts;
+    BlockStatement body = {
+        .depth = parser->depth,
+        .stmts = stmts,
+    };
+    parser->depth--;
+    return AS_STMT_BLOCK(body);
 }
 
 static Expression struct_initializer(Parser *parser, Tokenizer *tokenizer) {
@@ -647,9 +652,10 @@ static Statement while_statement(Parser *parser, Tokenizer *tokenizer) {
         TOKEN_LEFT_BRACE,
         "Expected '{' after the while condition."
     );
+    Statement body = block(parser, tokenizer);
     WhileStatement stmt = {
         .condition = condition,
-        .body = block(parser, tokenizer),
+        .body = ALLOC(body),
     };
     return AS_STMT_WHILE(stmt);
  }
@@ -689,9 +695,10 @@ static Statement function_statement(Parser *parser, Tokenizer *tokenizer) {
         TOKEN_LEFT_BRACE,
         "Expected '{' after the ')'."
     );
+    Statement body = block(parser, tokenizer);
     FunctionStatement stmt = {
         .name = own_string_n(name.start, name.length),
-        .stmts = block(parser, tokenizer),
+        .body = ALLOC(body),
         .parameters = parameters,
     };
     return AS_STMT_FN(stmt);
@@ -771,8 +778,7 @@ static Statement statement(Parser *parser, Tokenizer *tokenizer) {
     } else if (match(parser, tokenizer, 1, TOKEN_LET)) {
         return let_statement(parser, tokenizer);
     } else if (match(parser, tokenizer, 1, TOKEN_LEFT_BRACE)) {
-        BlockStatement stmt = { .stmts = block(parser, tokenizer) };
-        return AS_STMT_BLOCK(stmt);
+        return block(parser, tokenizer);
     } else if (match(parser, tokenizer, 1, TOKEN_IF)) {
         return if_statement(parser, tokenizer);
     } else if (match(parser, tokenizer, 1, TOKEN_WHILE)) {
@@ -797,7 +803,6 @@ static Statement parse_statement(Parser *parser, Tokenizer *tokenizer) {
 }
 
 void parse(Parser *parser, Tokenizer *tokenizer, Statement_DynArray *stmts) {
-    parser->had_error = false;
     advance(parser, tokenizer);
     while (parser->current.type != TOKEN_EOF) {
         dynarray_insert(stmts, parse_statement(parser, tokenizer));

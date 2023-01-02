@@ -44,12 +44,11 @@ void run_file(char *file) {
     init_tokenizer(&tokenizer, source);
     parse(&parser, &tokenizer, &stmts);
 
-    Compiler compiler;
     BytecodeChunk chunk;
     init_chunk(&chunk);
 
     for (size_t i = 0; i < stmts.count; i++) {
-        compile(&compiler, &chunk, stmts.data[i], false);
+        compile(&chunk, stmts.data[i], false);
         free_stmt(stmts.data[i]);
     }
 

@@ -8,8 +8,27 @@
 #include "vm.h"
 #include "util.h"
 
+Compiler *current_compiler = NULL;
+
 void init_compiler(Compiler *compiler) {
     memset(compiler, 0, sizeof(Compiler));
+    compiler->enclosing = current_compiler;
+    if (current_compiler != NULL) {
+        /* Inherit everythig else from the current compiler. */
+        memcpy(compiler->locals, current_compiler->locals, sizeof(current_compiler->locals));
+        compiler->locals_count = current_compiler->locals_count;
+
+        memcpy(compiler->backjmp_stack, current_compiler->backjmp_stack, sizeof(current_compiler->backjmp_stack));
+        compiler->backjmp_tos = current_compiler->backjmp_tos;
+
+        memcpy(compiler->jmp_stack, current_compiler->jmp_stack, sizeof(current_compiler->jmp_stack));
+        compiler->jmp_tos = current_compiler->jmp_tos;
+    }
+    current_compiler = compiler;
+}
+
+void end_compiler(Compiler *compiler) {
+    current_compiler = compiler->enclosing;
 }
 
 void init_chunk(BytecodeChunk *chunk) {
@@ -142,16 +161,20 @@ static void emit_loop(BytecodeChunk *chunk, int loop_start) {
     emit_byte(chunk, offset & 0xFF);
 }
 
-static int resolve_local(Compiler *compiler, char *name) {
-    for (int i = compiler->locals_count - 1; i >= 0; i--) {
-        if (strcmp(compiler->locals[i], name) == 0) {
-            return i;
+static int resolve_local(char *name) {
+    Compiler *current = current_compiler;
+    while (current != NULL) {
+        for (int i = current->locals_count - 1; i >= 0; i--) {
+            if (strcmp(current->locals[i], name) == 0) {
+                return i;
+            }
         }
+        current = current->enclosing;
     }
     return -1;
 }
 
-static void compile_expression(Compiler *compiler, BytecodeChunk *chunk, Expression exp) {
+static void compile_expression(BytecodeChunk *chunk, Expression exp) {
     switch (exp.kind) {
         case EXP_LITERAL: {
             if (TO_EXPR_LITERAL(exp).specval == NULL) {
@@ -174,7 +197,7 @@ static void compile_expression(Compiler *compiler, BytecodeChunk *chunk, Express
             break;
         }
         case EXP_VARIABLE: {
-            int index = resolve_local(compiler, TO_EXPR_VARIABLE(exp).name);
+            int index = resolve_local(TO_EXPR_VARIABLE(exp).name);
             if (index == -1) {
                 uint8_t name_index = add_string(chunk, TO_EXPR_VARIABLE(exp).name);
                 emit_bytes(chunk, 2, OP_GET_GLOBAL, name_index);
@@ -184,13 +207,13 @@ static void compile_expression(Compiler *compiler, BytecodeChunk *chunk, Express
             break;
         }
         case EXP_UNARY: {
-            compile_expression(compiler, chunk, *TO_EXPR_UNARY(exp).exp);
+            compile_expression(chunk, *TO_EXPR_UNARY(exp).exp);
             emit_byte(chunk, OP_NEGATE);
             break;
         }
         case EXP_BINARY: {
-            compile_expression(compiler, chunk, *TO_EXPR_BINARY(exp).lhs);
-            compile_expression(compiler, chunk, *TO_EXPR_BINARY(exp).rhs);
+            compile_expression(chunk, *TO_EXPR_BINARY(exp).lhs);
+            compile_expression(chunk, *TO_EXPR_BINARY(exp).rhs);
 
             if (strcmp(TO_EXPR_BINARY(exp).operator, "+") == 0) {
                 emit_byte(chunk, OP_ADD);
@@ -220,22 +243,22 @@ static void compile_expression(Compiler *compiler, BytecodeChunk *chunk, Express
         }
         case EXP_CALL: {
             for (size_t i = 0; i < exp.as.expr_call.arguments.count; i++) {
-                compile_expression(compiler, chunk, TO_EXPR_CALL(exp).arguments.data[i]);
+                compile_expression(chunk, TO_EXPR_CALL(exp).arguments.data[i]);
             }
             uint8_t funcname_index = add_string(chunk, TO_EXPR_CALL(exp).var.name);
             emit_bytes(chunk, 3, OP_INVOKE, funcname_index, TO_EXPR_CALL(exp).arguments.count);
             break;
         }
         case EXPR_GET: {
-            compile_expression(compiler, chunk, *TO_EXPR_GET(exp).exp);
+            compile_expression(chunk, *TO_EXPR_GET(exp).exp);
             uint8_t index = add_string(chunk, TO_EXPR_GET(exp).property_name);
             emit_bytes(chunk, 2, OP_GETATTR, index);
             break;
         }
         case EXP_ASSIGN: {
-            compile_expression(compiler, chunk, *TO_EXPR_ASSIGN(exp).rhs);
+            compile_expression(chunk, *TO_EXPR_ASSIGN(exp).rhs);
             if (TO_EXPR_ASSIGN(exp).lhs->kind == EXP_VARIABLE) {
-                int index = resolve_local(compiler, TO_EXPR_VARIABLE(*TO_EXPR_ASSIGN(exp).lhs).name);
+                int index = resolve_local(TO_EXPR_VARIABLE(*TO_EXPR_ASSIGN(exp).lhs).name);
                 if (index != -1) {
                     emit_bytes(chunk, 2, OP_DEEP_SET, index);
                 } else {
@@ -243,7 +266,7 @@ static void compile_expression(Compiler *compiler, BytecodeChunk *chunk, Express
                     emit_bytes(chunk, 2, OP_SET_GLOBAL, name_index);
                 }
             } else if (TO_EXPR_ASSIGN(exp).lhs->kind == EXPR_GET) {
-                compile_expression(compiler, chunk, *TO_EXPR_GET(*TO_EXPR_ASSIGN(exp).lhs).exp);
+                compile_expression(chunk, *TO_EXPR_GET(*TO_EXPR_ASSIGN(exp).lhs).exp);
                 uint8_t index = add_string(chunk, TO_EXPR_GET(*TO_EXPR_ASSIGN(exp).lhs).property_name);
                 emit_bytes(chunk, 2, OP_SETATTR, index);
             } else {
@@ -254,7 +277,7 @@ static void compile_expression(Compiler *compiler, BytecodeChunk *chunk, Express
         }
         case EXP_LOGICAL: {
             /* We first compile the left-hand side of the expression. */
-            compile_expression(compiler, chunk, *TO_EXPR_LOGICAL(exp).lhs);
+            compile_expression(chunk, *TO_EXPR_LOGICAL(exp).lhs);
             if (strcmp(exp.as.expr_logical.operator, "&&") == 0) {
                 /* For logical AND, we emit a conditional jump which we'll use
                  * to jump over the right-hand side operand if the left operand
@@ -262,7 +285,7 @@ static void compile_expression(Compiler *compiler, BytecodeChunk *chunk, Express
                  * the left operand on the stack as the result of evaluating this
                  * expression. */
                 int end_jump = emit_jump(chunk, OP_JZ);
-                compile_expression(compiler, chunk, *TO_EXPR_LOGICAL(exp).rhs);
+                compile_expression(chunk, *TO_EXPR_LOGICAL(exp).rhs);
                 patch_jump(chunk, end_jump);
             } else if (strcmp(TO_EXPR_LOGICAL(exp).operator, "||") == 0) {
                 /* For logical OR, we need to short-circuit when the left-hand side
@@ -275,7 +298,7 @@ static void compile_expression(Compiler *compiler, BytecodeChunk *chunk, Express
                 int else_jump = emit_jump(chunk, OP_JZ);
                 int end_jump = emit_jump(chunk, OP_JMP);
                 patch_jump(chunk, else_jump);
-                compile_expression(compiler, chunk, *TO_EXPR_LOGICAL(exp).rhs);
+                compile_expression(chunk, *TO_EXPR_LOGICAL(exp).rhs);
                 patch_jump(chunk, end_jump);
             }
             break;
@@ -284,7 +307,7 @@ static void compile_expression(Compiler *compiler, BytecodeChunk *chunk, Express
             uint8_t name_index = add_string(chunk, TO_EXPR_STRUCT(exp).name);
             emit_bytes(chunk, 3, OP_STRUCT_INIT, name_index, TO_EXPR_STRUCT(exp).initializers.count);
             for (size_t i = 0; i < TO_EXPR_STRUCT(exp).initializers.count; i++) {
-                compile_expression(compiler, chunk, TO_EXPR_STRUCT(exp).initializers.data[i]);
+                compile_expression(chunk, TO_EXPR_STRUCT(exp).initializers.data[i]);
             }
             emit_bytes(chunk, 2, OP_STRUCT_INIT_FINALIZE, TO_EXPR_STRUCT(exp).initializers.count);
             break;
@@ -292,10 +315,31 @@ static void compile_expression(Compiler *compiler, BytecodeChunk *chunk, Express
         case EXP_STRUCT_INIT: {
             uint8_t property_name_index = add_string(chunk, TO_EXPR_VARIABLE(*TO_EXPR_STRUCT_INIT(exp).property).name);
             emit_bytes(chunk, 2, OP_PROP, property_name_index);
-            compile_expression(compiler, chunk, *TO_EXPR_STRUCT_INIT(exp).value);
+            compile_expression(chunk, *TO_EXPR_STRUCT_INIT(exp).value);
             break;
         }
         default: assert(0);
+    }
+}
+
+void print_stmt(Statement stmt) {
+    switch (stmt.kind) {
+        case STMT_PRINT: printf("print [...]"); break;
+        case STMT_LET: printf("let [...]"); break;
+        case STMT_IF: printf("if [...]"); break;
+        case STMT_WHILE: printf("while [...]"); break;
+        case STMT_RETURN: printf("return [...]"); break;
+        case STMT_STRUCT: printf("struct [...]"); break;
+        case STMT_BREAK: printf("break [...]"); break;
+        case STMT_CONTINUE: printf("continue [...]"); break;
+        default: break;
+    }
+    printf("\n");
+}
+
+void print_block(Statement stmt) {
+    for (int i = 0; i < TO_STMT_BLOCK(&stmt).stmts.count; i++) {
+        print_stmt(TO_STMT_BLOCK(&stmt).stmts.data[i]);
     }
 }
 
@@ -509,31 +553,38 @@ void disassemble(BytecodeChunk *chunk) {
 }
 #endif
 
-void compile(Compiler *compiler, BytecodeChunk *chunk, Statement stmt, bool scoped) {
+void compile(BytecodeChunk *chunk, Statement stmt, bool scoped) {
     switch (stmt.kind) {
         case STMT_PRINT: {
-            compile_expression(compiler, chunk, TO_STMT_PRINT(stmt).exp);
+            compile_expression(chunk, TO_STMT_PRINT(stmt).exp);
             emit_byte(chunk, OP_PRINT);        
             break;
         }
         case STMT_LET: {
-            compile_expression(compiler, chunk, TO_STMT_LET(stmt).initializer);
+            compile_expression(chunk, TO_STMT_LET(stmt).initializer);
             uint8_t name_index = add_string(chunk, TO_STMT_LET(stmt).name);
             if (!scoped) {
                 emit_bytes(chunk, 2, OP_SET_GLOBAL, name_index);
             } else {
-                compiler->locals[compiler->locals_count++] = chunk->sp[name_index];
+                current_compiler->locals[current_compiler->locals_count++] = chunk->sp[name_index];
             }
             break;
         }
         case STMT_EXPR: {
-            compile_expression(compiler, chunk, TO_STMT_EXPR(stmt).exp);
+            compile_expression(chunk, TO_STMT_EXPR(stmt).exp);
             break;
         }
         case STMT_BLOCK: {
-            for (size_t i = 0; i < TO_STMT_BLOCK(stmt).stmts.count; i++) {
-                compile(compiler, chunk, TO_STMT_BLOCK(stmt).stmts.data[i], scoped);
+            Compiler compiler;
+            init_compiler(&compiler);
+            compiler.depth = TO_STMT_BLOCK(&stmt).depth;
+            printf("incoming block...\n");
+            print_block(stmt);
+            printf("depth of this block is: %ld\n", TO_STMT_BLOCK(&stmt).depth);
+            for (size_t i = 0; i < TO_STMT_BLOCK(&stmt).stmts.count; i++) {
+                compile(chunk, TO_STMT_BLOCK(&stmt).stmts.data[i], scoped);
             }
+            end_compiler(&compiler);
             break;
         }
         case STMT_IF: {
@@ -541,7 +592,7 @@ void compile(Compiler *compiler, BytecodeChunk *chunk, Statement stmt, bool scop
             .* expects something like OP_EQ to have already been executed
              * and a boolean placed on the stack by the time it encounters
              * an instruction like OP_JZ. */
-            compile_expression(compiler, chunk, TO_STMT_IF(stmt).condition);
+            compile_expression(chunk, TO_STMT_IF(stmt).condition);
  
             /* Then, we emit an OP_JZ which jumps to the else clause if the
              * condition is falsey. Because we do not know the size of the
@@ -552,7 +603,7 @@ void compile(Compiler *compiler, BytecodeChunk *chunk, Statement stmt, bool scop
              * size of the 'then' branch is known. */ 
             int then_jump = emit_jump(chunk, OP_JZ);
             
-            compile(compiler, chunk, *TO_STMT_IF(stmt).then_branch, scoped);
+            compile(chunk, *TO_STMT_IF(stmt).then_branch, scoped);
 
             int else_jump = emit_jump(chunk, OP_JMP);
 
@@ -560,7 +611,7 @@ void compile(Compiler *compiler, BytecodeChunk *chunk, Statement stmt, bool scop
             patch_jump(chunk, then_jump);
 
             if (TO_STMT_IF(stmt).else_branch != NULL) {
-                compile(compiler, chunk, *TO_STMT_IF(stmt).else_branch, scoped);
+                compile(chunk, *TO_STMT_IF(stmt).else_branch, scoped);
             }
 
             /* Finally, we patch the 'else' jump. If the 'else' branch
@@ -579,7 +630,7 @@ void compile(Compiler *compiler, BytecodeChunk *chunk, Statement stmt, bool scop
             .* expects something like OP_EQ to have already been executed
              * and a boolean placed on the stack by the time it encounters
              * an instruction like OP_JZ. */
-            compile_expression(compiler, chunk, TO_STMT_WHILE(stmt).condition);
+            compile_expression(chunk, TO_STMT_WHILE(stmt).condition);
             
             /* Then, we emit an OP_JZ which jumps to the else clause if the
              * condition is falsey. Because we do not know the size of the
@@ -592,18 +643,18 @@ void compile(Compiler *compiler, BytecodeChunk *chunk, Statement stmt, bool scop
             
             /* Then, we compile the body of the loop. */
 
-            for (size_t i = 0; i < TO_STMT_WHILE(stmt).body.count; i++) {
-                if (TO_STMT_WHILE(stmt).body.data[i].kind == STMT_CONTINUE) {
-                    compiler->backjmp_stack[compiler->backjmp_tos++] = loop_start;
+            for (size_t i = 0; i < TO_STMT_BLOCK(TO_STMT_WHILE(stmt).body).stmts.count; i++) {
+                if (TO_STMT_BLOCK(TO_STMT_WHILE(stmt).body).stmts.data[i].kind == STMT_CONTINUE) {
+                    current_compiler->backjmp_stack[current_compiler->backjmp_tos++] = loop_start;
                 }
-                compile(compiler, chunk, TO_STMT_WHILE(stmt).body.data[i], scoped);
+                compile(chunk, TO_STMT_BLOCK(TO_STMT_WHILE(stmt).body).stmts.data[i], scoped);
             }
 
             /* Then, we emit OP_JMP with a negative offset. */
             emit_loop(chunk, loop_start);
 
-            if (compiler->jmp_tos > 0) {
-                int break_jump = compiler->jmp_stack[--compiler->jmp_tos];
+            if (current_compiler->jmp_tos > 0) {
+                int break_jump = current_compiler->jmp_stack[--current_compiler->jmp_tos];
                 patch_jump(chunk, break_jump);
             }
         
@@ -613,8 +664,6 @@ void compile(Compiler *compiler, BytecodeChunk *chunk, Statement stmt, bool scop
             break;
         }
         case STMT_FN: {
-            init_compiler(compiler);
-
             emit_byte(chunk, OP_FUNC);
 
             /* Emit function name. */
@@ -627,7 +676,7 @@ void compile(Compiler *compiler, BytecodeChunk *chunk, Statement stmt, bool scop
             /* Add parameter names to compiler->locals. */
             for (size_t i = 0; i < TO_STMT_FN(stmt).parameters.count; i++) {
                 uint8_t parameter_index = add_string(chunk, TO_STMT_FN(stmt).parameters.data[i]);
-                compiler->locals[compiler->locals_count++] = chunk->sp[parameter_index];
+                current_compiler->locals[current_compiler->locals_count++] = chunk->sp[parameter_index];
             }
            
             /* Emit the location of the start of the function. */
@@ -639,12 +688,13 @@ void compile(Compiler *compiler, BytecodeChunk *chunk, Statement stmt, bool scop
 
             /* Compile the function body and check if it is void. */
             bool is_void = true;
-            for (size_t i = 0; i < TO_STMT_FN(stmt).stmts.count; i++) {
-                if (TO_STMT_FN(stmt).stmts.data[i].kind == STMT_RETURN) {
+            for (size_t i = 0; i < TO_STMT_BLOCK(TO_STMT_FN(stmt).body).stmts.count; i++) {
+                if (TO_STMT_BLOCK(TO_STMT_FN(stmt).body).stmts.data[i].kind == STMT_RETURN) {
                     is_void = false;
                 }
-                compile(compiler, chunk, TO_STMT_FN(stmt).stmts.data[i], true);
             }
+
+            compile(chunk, *TO_STMT_FN(stmt).body, true);
 
             /* If the function does not have a return statement,
              * emit OP_NULL because we have to return something. */
@@ -670,17 +720,18 @@ void compile(Compiler *compiler, BytecodeChunk *chunk, Statement stmt, bool scop
         }
         case STMT_RETURN: {
             /* Compile the return value and emit OP_RET. */
-            compile_expression(compiler, chunk, TO_STMT_RETURN(stmt).returnval);
+            compile_expression(chunk, TO_STMT_RETURN(stmt).returnval);
             emit_byte(chunk, OP_RET);
             break;
         }
         case STMT_BREAK: {
-            compiler->jmp_stack[compiler->jmp_tos++] = emit_jump(chunk, OP_JMP);
+            int break_jump = emit_jump(chunk, OP_JMP);
+            current_compiler->jmp_stack[current_compiler->jmp_tos++] = break_jump;
             break;
         }
         case STMT_CONTINUE: {
-            if (compiler->backjmp_tos > 0) {
-                int loop_start = compiler->backjmp_stack[--compiler->backjmp_tos];
+            if (current_compiler->backjmp_tos > 0) {
+                int loop_start = current_compiler->backjmp_stack[--current_compiler->backjmp_tos];
                 emit_loop(chunk, loop_start);
             }
             break;
