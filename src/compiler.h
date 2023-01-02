@@ -53,6 +53,10 @@ typedef struct BytecodeChunk {
 typedef struct {
     char *locals[256];
     int locals_count;
+    int jmp_stack[256];
+    size_t jmp_tos;
+    int backjmp_stack[256];
+    size_t backjmp_tos;
 } Compiler;
 
 void init_chunk(BytecodeChunk *chunk);

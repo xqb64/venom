@@ -108,30 +108,6 @@ static void patch_jump(BytecodeChunk *chunk, int jump) {
     chunk->code.data[jump+2] = bytes_emitted & 0xFF;
 }
 
-static void patch_jump_backwards(BytecodeChunk *chunk, int jump, int target) {
-    /* In this case, one or both branches have been compiled.
-     *
-     * For example, if we have: [
-     *     OP_CONST, operand,
-     *     OP_CONST, operand,
-     *     OP_EQ, 
-     *     OP_JZ, operand, operand,
-     *     OP_CONST, operand,
-     *     OP_PRINT,
-     * ]             ^-- count
-     *
-     * We first adjust for zero-based indexing by subtracting 1
-     * (such that count points to the last element. Then we take
-     * the index of OP_JZ (5 in this case) and add 2 because we
-     * need to adjust for the operands. The result of subtraction
-     * of these two is the number of emitted bytes after the jump,
-     * and we use that number to build a 16-bit offset that we use
-     * to patch the jump. */
-    int16_t offset = -(jump - target + 3);
-    chunk->code.data[jump+1] = (offset >> 8) & 0xFF;
-    chunk->code.data[jump+2] = offset & 0xFF;
-}
-
 static void emit_loop(BytecodeChunk *chunk, int loop_start) {
     /* In this case, the conditional expression has been compiled.
      *
@@ -533,9 +509,6 @@ void disassemble(BytecodeChunk *chunk) {
 }
 #endif
 
-int break_jump = 0;
-int continue_jump = 0;
-
 void compile(Compiler *compiler, BytecodeChunk *chunk, Statement stmt, bool scoped) {
     switch (stmt.kind) {
         case STMT_PRINT: {
@@ -620,26 +593,26 @@ void compile(Compiler *compiler, BytecodeChunk *chunk, Statement stmt, bool scop
             /* Then, we compile the body of the loop. */
 
             for (size_t i = 0; i < TO_STMT_WHILE(stmt).body.count; i++) {
+                if (TO_STMT_WHILE(stmt).body.data[i].kind == STMT_CONTINUE) {
+                    compiler->backjmp_stack[compiler->backjmp_tos++] = loop_start;
+                }
                 compile(compiler, chunk, TO_STMT_WHILE(stmt).body.data[i], scoped);
             }
 
             /* Then, we emit OP_JMP with a negative offset. */
             emit_loop(chunk, loop_start);
 
+            if (compiler->jmp_tos > 0) {
+                int break_jump = compiler->jmp_stack[--compiler->jmp_tos];
+                patch_jump(chunk, break_jump);
+            }
+        
             /* Finally, we patch the jump. */
             patch_jump(chunk, exit_jump);
 
-            if (break_jump != 0) {
-                patch_jump(chunk, break_jump);
-            }
-
-            if (continue_jump != 0) {
-                patch_jump_backwards(chunk, continue_jump, loop_start);
-            }
-
             break;
         }
-        case STMT_FN: {           
+        case STMT_FN: {
             init_compiler(compiler);
 
             emit_byte(chunk, OP_FUNC);
@@ -702,11 +675,14 @@ void compile(Compiler *compiler, BytecodeChunk *chunk, Statement stmt, bool scop
             break;
         }
         case STMT_BREAK: {
-            break_jump = emit_jump(chunk, OP_JMP);
+            compiler->jmp_stack[compiler->jmp_tos++] = emit_jump(chunk, OP_JMP);
             break;
         }
         case STMT_CONTINUE: {
-            continue_jump = emit_jump(chunk, OP_JMP);
+            if (compiler->backjmp_tos > 0) {
+                int loop_start = compiler->backjmp_stack[--compiler->backjmp_tos];
+                emit_loop(chunk, loop_start);
+            }
             break;
         }
         default: assert(0);
