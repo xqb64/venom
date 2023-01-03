@@ -364,30 +364,19 @@ static inline int handle_op_invoke(VM *vm, BytecodeChunk *chunk, uint8_t **ip) {
         );
     }
 
-    /* Since we need the arguments after the instruction pointer,
-     * pop them into a temporary array so we can push them back
-     * after we place the instruction pointer on the stack. */
-    Object arguments[256];
-    for (int i = 0; i < argcount; i++) {
-        arguments[i] = pop(vm);
-    }
-    
-    /* Then, we push the return address on the stack. */
-    Object ip_obj = AS_POINTER(*ip);
-    push(vm, ip_obj);
-
-    /* After that, we push the current frame pointer
-     * on the frame pointer stack. */
-    vm->fp_stack[vm->fp_count++] = vm->tos;
-
-    /* Push the arguments back on the stack, but in reverse order. */
-    for (int i = argcount-1; i >= 0; i--) {
-        push(vm, arguments[i]);
-    }
+    vm->fp_count++;
                     
     /* We modify ip so that it points to one instruction
      * just before the code we're invoking. */
     *ip = &chunk->code.data[TO_FUNC(*funcobj).location-1];
+    return 0;
+}
+
+static inline int handle_op_ip(VM *vm, BytecodeChunk *chunk, uint8_t **ip) {
+    int16_t offset = READ_INT16();
+    Object ip_obj = AS_POINTER(*(ip)+offset);
+    push(vm, ip_obj);
+    vm->fp_stack[vm->fp_count] = vm->tos;
     return 0;
 }
 
@@ -523,6 +512,7 @@ Handler dispatcher[] = {
     [OP_NULL] = { .fn = handle_op_null, .opcode = "OP_NULL" },
     [OP_STRUCT] = { .fn = handle_op_struct, .opcode = "OP_STRUCT" },
     [OP_STRUCT_INIT] = { .fn = handle_op_struct_init, .opcode = "OP_STRUCT_INIT" },
+    [OP_IP] = { .fn = handle_op_ip, .opcode = "OP_IP" },
 };
 
 void print_current_instruction(uint8_t *ip) {

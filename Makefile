@@ -20,3 +20,19 @@ venom: $(SRC:src/%.c=obj/%.o)
 
 clean:
 	rm -rvf obj venom
+	rm graph.gv graph.png callgrind.out
+
+# profiling stuff
+#
+#	$ sudo apt install valgrind
+#	$ python3 -m pip install gprof2dot
+#	$ make graph.png
+
+callgrind.out: venom
+	valgrind --tool=callgrind --callgrind-out-file=$@ ./$< examples/example02.vnm
+
+graph.gv: callgrind.out
+	gprof2dot $< --format=callgrind --output=$@
+
+graph.png: graph.gv
+	dot -Tpng $< -o $@

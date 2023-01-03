@@ -114,6 +114,17 @@ static int emit_jump(BytecodeChunk *chunk, Opcode jump) {
     return chunk->code.count - 3;
 }
 
+static int emit_ip(BytecodeChunk *chunk) {
+    emit_bytes(chunk, 3, OP_IP, 0xFF, 0xFF);
+    return chunk->code.count - 3;
+}
+
+static void patch_ip(BytecodeChunk *chunk, int ip) {
+    int16_t bytes_emitted = (chunk->code.count - 1) - (ip + 2);
+    chunk->code.data[ip+1] = (bytes_emitted >> 8) & 0xFF;
+    chunk->code.data[ip+2] = bytes_emitted & 0xFF;
+}
+
 static void patch_jump(BytecodeChunk *chunk, int jump) {
     /* In this case, one or both branches have been compiled.
      *
@@ -259,11 +270,13 @@ static void compile_expression(BytecodeChunk *chunk, Expression exp) {
             break;
         }
         case EXP_CALL: {
+            int ip = emit_ip(chunk);
             for (size_t i = 0; i < exp.as.expr_call.arguments.count; i++) {
                 compile_expression(chunk, TO_EXPR_CALL(exp).arguments.data[i]);
             }
             uint8_t funcname_index = add_string(chunk, TO_EXPR_CALL(exp).var.name);
             emit_bytes(chunk, 3, OP_INVOKE, funcname_index, TO_EXPR_CALL(exp).arguments.count);
+            patch_ip(chunk, ip);
             break;
         }
         case EXPR_GET: {
@@ -527,11 +540,20 @@ void disassemble(BytecodeChunk *chunk) {
                 break;
             }
             case OP_STRUCT_INIT: {
+                printf("%d: ", i);
                 uint8_t struct_name = *++ip;
                 uint8_t property_count = *++ip;
                 printf("%d: ", i);
                 printf("OP_STRUCT_INIT { type: '%s', propery_count: %d }\n", chunk->sp[struct_name], property_count);
                 i += 2; 
+                break;
+            }
+            case OP_IP: {
+                int16_t offset = *++ip;
+                offset <<= 8;
+                offset |= *++ip;
+                printf("OP_IP { offset: %d }\n", offset);
+                i += 2;
                 break;
             }
             case OP_NULL: {
