@@ -9,6 +9,11 @@
 #include "tokenizer.h"
 #include "util.h"
 
+void init_parser(Parser *parser) {
+    memset(parser, 0, sizeof(Parser));
+}
+
+
 void free_stmt(Statement stmt) {
     switch (stmt.kind) {
         case STMT_PRINT: {
@@ -66,6 +71,7 @@ void free_stmt(Statement stmt) {
                 free_stmt(TO_STMT_BLOCK(TO_STMT_FN(stmt).body).stmts.data[i]);
             }
             dynarray_free(&TO_STMT_BLOCK(TO_STMT_FN(stmt).body).stmts);
+            free(TO_STMT_FN(stmt).body);
             break;
         }
         case STMT_STRUCT: {

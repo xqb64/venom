@@ -235,5 +235,6 @@ typedef struct {
 void parse(Parser *parser, Tokenizer *tokenizer, Statement_DynArray *stmts);
 void free_expression(Expression e);
 void free_stmt(Statement stmt);
+void init_parser(Parser *parser);
 
 #endif

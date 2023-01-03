@@ -42,6 +42,7 @@ void run_file(char *file) {
     Parser parser;
     Tokenizer tokenizer;
     init_tokenizer(&tokenizer, source);
+    init_parser(&parser);
     parse(&parser, &tokenizer, &stmts);
 
     BytecodeChunk chunk;

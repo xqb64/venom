@@ -182,9 +182,10 @@ static inline int handle_op_getattr(VM *vm, BytecodeChunk *chunk, uint8_t **ip) 
 
 static inline int handle_op_setattr(VM *vm, BytecodeChunk *chunk, uint8_t **ip) {
     uint8_t property_name_index = READ_UINT8();
-    Object propety = pop(vm);
     Object value = pop(vm);
-    table_insert(TO_STRUCT(propety).properties, chunk->sp[property_name_index], value);
+    Object structobj = pop(vm);
+    table_insert(TO_STRUCT(structobj).properties, chunk->sp[property_name_index], value);
+    push(vm, structobj);
     return 0;
 }
 
@@ -492,32 +493,6 @@ static inline int handle_op_struct_init(VM *vm, BytecodeChunk *chunk, uint8_t **
     return 0;
 }
 
-static inline int handle_op_struct_init_finalize(VM *vm, BytecodeChunk *chunk, uint8_t **ip) {
-    uint8_t propertycount = READ_UINT8();
-
-    Object property_names[256];
-    Object property_values[256];                
-    for (size_t i = 0; i < propertycount; i++) {
-        property_values[i] = pop(vm);
-        property_names[i] = pop(vm);
-    }
-
-    Object structobj = pop(vm);
-
-    for (size_t i = 0; i < propertycount; i++) {
-        table_insert(TO_STRUCT(structobj).properties, TO_PROP(property_names[i]), property_values[i]);
-    }
-
-    push(vm, structobj);
-    return 0;
-}
-
-static inline int handle_op_prop(VM *vm, BytecodeChunk *chunk, uint8_t **ip) {
-    uint8_t propertyname_index = READ_UINT8();
-    push(vm, AS_PROP(chunk->sp[propertyname_index]));
-    return 0;
-}
-
 typedef int (*HandlerFn)(VM *vm, BytecodeChunk *chunk, uint8_t **ip);
 typedef struct {
     HandlerFn fn;
@@ -553,8 +528,6 @@ Handler dispatcher[] = {
     [OP_NULL] = { .fn = handle_op_null, .opcode = "OP_NULL" },
     [OP_STRUCT] = { .fn = handle_op_struct, .opcode = "OP_STRUCT" },
     [OP_STRUCT_INIT] = { .fn = handle_op_struct_init, .opcode = "OP_STRUCT_INIT" },
-    [OP_STRUCT_INIT_FINALIZE] = { .fn = handle_op_struct_init_finalize, .opcode = "OP_STRUCT_INIT_FINALIZE" },
-    [OP_PROP] = { .fn = handle_op_prop, .opcode = "OP_PROP" },
 };
 
 void print_current_instruction(uint8_t *ip) {

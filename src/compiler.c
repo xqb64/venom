@@ -209,7 +209,6 @@ static void compile_expression(BytecodeChunk *chunk, Expression exp) {
         }
         case EXP_VARIABLE: {
             if (current_compiler->depth > 0) {
-                printf("DEPTH IS %d\n", current_compiler->depth);
                 int index = resolve_local(TO_EXPR_VARIABLE(exp).name);
                 if (index != -1) {
                     emit_bytes(chunk, 2, OP_DEEP_GET, index);
@@ -327,13 +326,12 @@ static void compile_expression(BytecodeChunk *chunk, Expression exp) {
             for (size_t i = 0; i < TO_EXPR_STRUCT(exp).initializers.count; i++) {
                 compile_expression(chunk, TO_EXPR_STRUCT(exp).initializers.data[i]);
             }
-            emit_bytes(chunk, 2, OP_STRUCT_INIT_FINALIZE, TO_EXPR_STRUCT(exp).initializers.count);
             break;
         }
         case EXP_STRUCT_INIT: {
-            uint8_t property_name_index = add_string(chunk, TO_EXPR_VARIABLE(*TO_EXPR_STRUCT_INIT(exp).property).name);
-            emit_bytes(chunk, 2, OP_PROP, property_name_index);
             compile_expression(chunk, *TO_EXPR_STRUCT_INIT(exp).value);
+            uint8_t property_name_index = add_string(chunk, TO_EXPR_VARIABLE(*TO_EXPR_STRUCT_INIT(exp).property).name);
+            emit_bytes(chunk, 2, OP_SETATTR, property_name_index);
             break;
         }
         default: assert(0);
@@ -536,18 +534,6 @@ void disassemble(BytecodeChunk *chunk) {
                 i += 2; 
                 break;
             }
-            case OP_STRUCT_INIT_FINALIZE: {
-                uint8_t property_count = *++ip;
-                printf("%d: ", i);
-                printf("OP_STRUCT_INIT_FINALIZE { propery_count: %d }\n", property_count);
-                break;
-            }
-            case OP_PROP: {
-                uint8_t propertyname_index = *++ip;
-                printf("%d: ", i);
-                printf("OP_PROP { prop: %s }\n", chunk->sp[propertyname_index]);
-                break;
-            }
             case OP_NULL: {
                 printf("%d: ", i);
                 printf("OP_NULL\n");
@@ -595,9 +581,6 @@ void compile(BytecodeChunk *chunk, Statement stmt, bool scoped) {
         case STMT_BLOCK: {
             Compiler compiler;
             init_compiler(&compiler, TO_STMT_BLOCK(&stmt).depth);
-            printf("incoming block...\n");
-            print_block(stmt);
-            printf("depth of this block is: %ld\n", TO_STMT_BLOCK(&stmt).depth);
             for (size_t i = 0; i < TO_STMT_BLOCK(&stmt).stmts.count; i++) {
                 compile(chunk, TO_STMT_BLOCK(&stmt).stmts.data[i], scoped);
             }
