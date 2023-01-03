@@ -665,6 +665,8 @@ void compile(BytecodeChunk *chunk, Statement stmt, bool scoped) {
             break;
         }
         case STMT_FN: {
+            Compiler compiler;
+            init_compiler(&compiler, 0);
             emit_byte(chunk, OP_FUNC);
 
             /* Emit function name. */
@@ -722,6 +724,10 @@ void compile(BytecodeChunk *chunk, Statement stmt, bool scoped) {
         case STMT_RETURN: {
             /* Compile the return value and emit OP_RET. */
             compile_expression(chunk, TO_STMT_RETURN(stmt).returnval);
+            int deepset_no = current_compiler->locals_count - 1;
+            for (size_t i = 0; i < current_compiler->locals_count; i++) {
+                emit_bytes(chunk, 2, OP_DEEP_SET, (uint8_t)deepset_no--);
+            }
             emit_byte(chunk, OP_RET);
             break;
         }

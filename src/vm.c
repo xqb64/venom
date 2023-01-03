@@ -365,8 +365,8 @@ static inline int handle_op_invoke(VM *vm, BytecodeChunk *chunk, uint8_t **ip) {
     }
 
     /* Since we need the arguments after the instruction pointer,
-        * pop them into a temporary array so we can push them back
-        * after we place the instruction pointer on the stack. */
+     * pop them into a temporary array so we can push them back
+     * after we place the instruction pointer on the stack. */
     Object arguments[256];
     for (int i = 0; i < argcount; i++) {
         arguments[i] = pop(vm);
@@ -403,11 +403,6 @@ static inline int handle_op_ret(VM *vm, BytecodeChunk *chunk, uint8_t **ip) {
 
     /* Then, we clean up everything between the top of the stack
      * and the frame pointer we popped in the previous step. */
-    int to_pop = vm->tos - fp;
-    for (int i = 0; i < to_pop; i++) {
-        Object obj = pop(vm);
-        OBJECT_DECREF(obj);
-    }
 
     /* After the arguments comes the return address which we'll
      * use to modify the instruction pointer ip and return to the
