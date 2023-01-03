@@ -228,7 +228,6 @@ static void compile_expression(BytecodeChunk *chunk, Expression exp) {
                     exit(1);
                 }
             } else {
-                printf("DEPTH IS 0\n");
                 uint8_t name_index = add_string(chunk, TO_EXPR_VARIABLE(exp).name);
                 emit_bytes(chunk, 2, OP_GET_GLOBAL, name_index);
             }
