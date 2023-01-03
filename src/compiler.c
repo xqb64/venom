@@ -219,7 +219,7 @@ static void compile_expression(BytecodeChunk *chunk, Expression exp) {
             break;
         }
         case EXP_VARIABLE: {
-            if (current_compiler->depth > 0) {
+            if (current_compiler && current_compiler->depth > 0) {
                 int index = resolve_local(TO_EXPR_VARIABLE(exp).name);
                 if (index != -1) {
                     emit_bytes(chunk, 2, OP_DEEP_GET, index);
@@ -676,7 +676,6 @@ void compile(BytecodeChunk *chunk, Statement stmt, bool scoped) {
             emit_loop(chunk, loop_start);
 
             if (current_compiler->jmp_tos > 0) {
-                printf("Patching break jump\n");
                 int break_jump = current_compiler->jmp_stack[--current_compiler->jmp_tos];
                 patch_jump(chunk, break_jump);
             }
@@ -688,7 +687,7 @@ void compile(BytecodeChunk *chunk, Statement stmt, bool scoped) {
         }
         case STMT_FN: {
             Compiler compiler;
-            init_compiler(&compiler, 0);
+            init_compiler(&compiler, 1);
             emit_byte(chunk, OP_FUNC);
 
             /* Emit function name. */
@@ -719,16 +718,25 @@ void compile(BytecodeChunk *chunk, Statement stmt, bool scoped) {
                 }
             }
 
-            compile(chunk, *TO_STMT_FN(stmt).body, true);
+            for (size_t i = 0; i < TO_STMT_BLOCK(TO_STMT_FN(stmt).body).stmts.count; i++) {
+                compile(chunk, TO_STMT_BLOCK(TO_STMT_FN(stmt).body).stmts.data[i], true);
+            }
 
             /* If the function does not have a return statement,
              * emit OP_NULL because we have to return something. */
             if (is_void) {
-                emit_bytes(chunk, 2, OP_NULL, OP_RET);
+                emit_byte(chunk, OP_NULL);
+                int deepset_no = current_compiler->locals_count - 1;
+                for (size_t i = 0; i < current_compiler->locals_count; i++) {
+                    emit_bytes(chunk, 2, OP_DEEP_SET, (uint8_t)deepset_no--);
+                }
+                emit_byte(chunk, OP_RET);
             }
 
             /* Finally, patch the jump. */
             patch_jump(chunk, jump);
+
+            end_compiler(&compiler);
 
             break;
         }
