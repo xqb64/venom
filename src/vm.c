@@ -270,13 +270,6 @@ static inline int handle_op_eq(VM *vm, BytecodeChunk *chunk, uint8_t **ip) {
     Object a = pop(vm);
     OBJECT_DECREF(a);
     OBJECT_DECREF(b);
-    if (a.type != b.type) {
-        RUNTIME_ERROR(
-            "Comparing objects of different types: '%s' vs '%s'.",
-            obj_typename(a.type),
-            obj_typename(b.type)
-        );
-    }
     push(vm, AS_BOOL(check_equality(vm, &a, &b)));
     return 0;
 }
