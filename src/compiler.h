@@ -22,7 +22,6 @@ typedef enum {
     OP_NEG,
     OP_JMP,
     OP_JZ,
-    OP_STRUCT,
     OP_STRUCT_INIT,
     OP_RET,
     OP_CONST,
@@ -52,6 +51,7 @@ typedef struct BytecodeChunk {
 typedef struct Compiler {
     struct Compiler *enclosing;
     Table functions;
+    Table structs;
     char *locals[256];
     int locals_count;
     int jmp_stack[256];

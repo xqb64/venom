@@ -38,7 +38,7 @@ static void list_free(Bucket *head) {
             OBJECT_DECREF(tmp->obj);
         }
         if (IS_STRUCT_BLUEPRINT(tmp->obj)) {
-            dynarray_free(&tmp->obj.as.struct_blueprint.properties);
+            dynarray_free(&tmp->obj.as.struct_blueprint->properties);
         }
         free(tmp);
     }

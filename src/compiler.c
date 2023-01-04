@@ -206,6 +206,18 @@ static Object *resolve_func(char *name) {
     return NULL;
 }
 
+static Object *resolve_struct(char *name) {
+    Compiler *current = current_compiler;
+    while (current != NULL) {
+        Object *blueprint = table_get(&current->structs, name);
+        if (blueprint != NULL) {
+            return blueprint;
+        }
+        current = current->enclosing;
+    }
+    return NULL;
+}
+
 static void compile_expression(BytecodeChunk *chunk, Expression exp) {
     switch (exp.kind) {
         case EXP_LITERAL: {
@@ -286,7 +298,7 @@ static void compile_expression(BytecodeChunk *chunk, Expression exp) {
             emit_byte(chunk, OP_INC_FPCOUNT);
             uint8_t funcname_index = add_string(chunk, TO_EXPR_CALL(exp).var.name);
             Object *func = resolve_func(TO_EXPR_CALL(exp).var.name);
-            int16_t jump = -(chunk->code.count - TO_FUNC(*func).location) - 3;
+            int16_t jump = -(chunk->code.count - TO_FUNC(*func)->location) - 3;
             emit_bytes(chunk, 3, OP_JMP, (jump >> 8) & 0xFF, jump & 0xFF);
             patch_ip(chunk, ip);
             break;
@@ -346,7 +358,44 @@ static void compile_expression(BytecodeChunk *chunk, Expression exp) {
             break;
         }
         case EXP_STRUCT: {
-            uint8_t name_index = add_string(chunk, TO_EXPR_STRUCT(exp).name);
+            Object *blueprint = resolve_struct(TO_EXPR_STRUCT(exp).name);
+            if (blueprint == NULL) {
+                printf("Compiler error: struct '%s' is not defined.\n", TO_EXPR_STRUCT(exp).name);
+                exit(1);
+            }
+            if (TO_STRUCT_BLUEPRINT(*blueprint)->propertycount != TO_EXPR_STRUCT(exp).initializers.count) {
+                printf(
+                    "Compiler error: struct '%s' requires %d initializers.\n",
+                    TO_STRUCT_BLUEPRINT(*blueprint)->name,
+                    TO_STRUCT_BLUEPRINT(*blueprint)->propertycount
+                );
+                exit(1);
+            }
+            for (size_t i = 0; i < TO_STRUCT_BLUEPRINT(*blueprint)->propertycount; i++) {
+                char *property = TO_STRUCT_BLUEPRINT(*blueprint)->properties.data[i];
+                bool has_prop = false;
+                for (size_t j = 0; j < TO_EXPR_STRUCT(exp).initializers.count; j++) {
+                    if (strcmp(property, TO_EXPR_VARIABLE(*TO_EXPR_STRUCT_INIT(TO_EXPR_STRUCT(exp).initializers.data[j]).property).name) == 0) {
+                        has_prop = true;
+                        break;
+                    }
+                }
+                if (!has_prop) {
+                    printf(
+                        "Compiler error: struct '%s' requires properties: [",
+                        TO_STRUCT_BLUEPRINT(*blueprint)->name
+                    );
+                    for (size_t k = 0; k < TO_STRUCT_BLUEPRINT(*blueprint)->propertycount; k++) {
+                        printf(
+                            "'%s', ",
+                            TO_STRUCT_BLUEPRINT(*blueprint)->properties.data[k]
+                        );                       
+                    }
+                    printf("]\n");
+                    exit(1);
+                }
+            }
+            uint8_t name_index = add_string(chunk, TO_STRUCT_BLUEPRINT(*blueprint)->name);
             emit_bytes(chunk, 3, OP_STRUCT_INIT, name_index, TO_EXPR_STRUCT(exp).initializers.count);
             for (size_t i = 0; i < TO_EXPR_STRUCT(exp).initializers.count; i++) {
                 compile_expression(chunk, TO_EXPR_STRUCT(exp).initializers.data[i]);
@@ -489,19 +538,6 @@ void disassemble(BytecodeChunk *chunk) {
             case OP_PRINT: {
                 printf("%d: ", i);
                 printf("OP_PRINT\n"); 
-                break;
-            }
-            case OP_STRUCT: {
-                uint8_t struct_name = *++ip;
-                uint8_t property_count = *++ip;
-                printf("%d: ", i);
-                printf("OP_STRUCT { type: '%s', propery_count: %d, properties: [", chunk->sp[struct_name], property_count);
-                for (int j = 0; j < property_count; j++) {
-                    uint8_t property_name_index = *++ip;
-                    printf("'%s', ", chunk->sp[property_name_index]);
-                }
-                printf("] }\n");
-                i += 2 + property_count; 
                 break;
             }
             case OP_STRUCT_INIT: {
@@ -708,14 +744,19 @@ void compile(BytecodeChunk *chunk, Statement stmt, bool scoped) {
             break;
         }
         case STMT_STRUCT: {
-            emit_byte(chunk, OP_STRUCT);
-            uint8_t name_index = add_string(chunk, TO_STMT_STRUCT(stmt).name);
-            emit_byte(chunk, name_index);
-            emit_byte(chunk, TO_STMT_STRUCT(stmt).properties.count);
+            String_DynArray properties = {0};
             for (size_t i = 0; i < TO_STMT_STRUCT(stmt).properties.count; i++) {
-                uint8_t property_name_index = add_string(chunk, TO_STMT_STRUCT(stmt).properties.data[i]);
-                emit_byte(chunk, property_name_index);
+                dynarray_insert(
+                    &properties,
+                    own_string(TO_STMT_STRUCT(stmt).properties.data[i])
+                );
             }
+            StructBlueprint blueprint = {
+                .name = own_string(TO_STMT_STRUCT(stmt).name),
+                .propertycount = TO_STMT_STRUCT(stmt).properties.count,
+                .properties = properties
+            };
+            table_insert(&current_compiler->structs, blueprint.name, AS_STRUCT_BLUEPRINT(blueprint));
             break;
         }
         case STMT_RETURN: {

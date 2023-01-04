@@ -46,14 +46,14 @@ typedef struct {
 typedef struct Object {
     ObjectType type;
     union {
-        char *str;
-        double dval;
-        bool bval;
-        Function func;
-        uint8_t *ptr;
-        Struct struct_;
-        StructBlueprint struct_blueprint;
-        HeapObject *heapobj;
+        char *str; // 8
+        double dval; // 8
+        bool bval; // 1
+        Function *func; // 8+1+8=17
+        uint8_t *ptr; // 8
+        Struct *struct_; // 8+8+8=24
+        StructBlueprint *struct_blueprint; // 8+24+8=40
+        HeapObject *heapobj; // 8
     } as;
 } Object;
 
@@ -76,8 +76,8 @@ typedef struct HeapObject {
 #define DEALLOC_OBJ(object) \
 do { \
     if (IS_STRUCT((object))) { \
-        table_free((object).as.struct_.properties); \
-        free((object).as.struct_.properties); \
+        table_free((object).as.struct_->properties); \
+        free((object).as.struct_->properties); \
     } \
 } while(0)
 
@@ -100,14 +100,14 @@ do { \
 
 #define AS_DOUBLE(thing) ((Object){ .type = OBJ_NUMBER, .as.dval = (thing) })
 #define AS_BOOL(thing) ((Object){ .type = OBJ_BOOLEAN, .as.bval = (thing) })
-#define AS_FUNC(thing) ((Object){ .type = OBJ_FUNCTION, .as.func = (thing) })
+#define AS_FUNC(thing) ((Object){ .type = OBJ_FUNCTION, .as.func = ALLOC(thing) })
 #define AS_POINTER(thing) ((Object){ .type = OBJ_POINTER, .as.ptr = (thing) })
 #define AS_STR(thing) ((Object){ .type = OBJ_STRING, .as.str = (thing) })
 #define AS_NULL() ((Object){ .type = OBJ_NULL })
 #define AS_HEAP(thing) ((Object){ .type = OBJ_HEAP, .as.heapobj = (thing) })
 #define AS_PROP(thing) ((Object){ .type = OBJ_PROPERTY, .as.prop = (thing) })
-#define AS_STRUCT(thing) ((Object){ .type = OBJ_STRUCT, .as.struct_ = (thing) })
-#define AS_STRUCT_BLUEPRINT(thing) ((Object){ .type = OBJ_STRUCT_BLUEPRINT, .as.struct_blueprint = (thing) })
+#define AS_STRUCT(thing) ((Object){ .type = OBJ_STRUCT, .as.struct_ = ALLOC(thing) })
+#define AS_STRUCT_BLUEPRINT(thing) ((Object){ .type = OBJ_STRUCT_BLUEPRINT, .as.struct_blueprint = ALLOC(thing) })
 
 #define TO_DOUBLE(object) ((object).as.dval)
 #define TO_BOOL(object) ((object).as.bval)
@@ -127,8 +127,8 @@ do { \
     } else if IS_NUM(object) { \
         printf("%.2f", TO_DOUBLE(object)); \
     } else if IS_FUNC(object) { \
-        printf("<fn %s", TO_FUNC(object).name); \
-        printf(" @ %d>", TO_FUNC(object).location); \
+        printf("<fn %s", TO_FUNC(object)->name); \
+        printf(" @ %d>", TO_FUNC(object)->location); \
     } else if IS_POINTER(object) { \
         printf("PTR ('%p')", TO_PTR(object)); \
     } else if IS_NULL(object) { \
@@ -137,9 +137,9 @@ do { \
         printf("%s", TO_STR(object)); \
     } else if IS_HEAP(object) { \
         if (IS_STRUCT(TO_HEAP(object)->obj)) { \
-            printf("%s", TO_STRUCT(object).name); \
+            printf("%s", TO_STRUCT(object)->name); \
             printf(" {"); \
-            table_print(TO_STRUCT(object).properties); \
+            table_print(TO_STRUCT(object)->properties); \
             printf(" }"); \
         } \
     } \

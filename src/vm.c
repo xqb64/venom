@@ -166,12 +166,12 @@ static inline int handle_op_deepget(VM *vm, BytecodeChunk *chunk, uint8_t **ip) 
 static inline int handle_op_getattr(VM *vm, BytecodeChunk *chunk, uint8_t **ip) {
     uint8_t property_name_index = READ_UINT8();
     Object obj = pop(vm);
-    Object *property = table_get(TO_STRUCT(obj).properties, chunk->sp[property_name_index]);
+    Object *property = table_get(TO_STRUCT(obj)->properties, chunk->sp[property_name_index]);
     if (property == NULL) {
         RUNTIME_ERROR(
             "Property '%s' is not defined on object '%s'",
             chunk->sp[property_name_index],
-            TO_STRUCT(obj).name
+            TO_STRUCT(obj)->name
         );
     }
     push(vm, *property);
@@ -184,7 +184,7 @@ static inline int handle_op_setattr(VM *vm, BytecodeChunk *chunk, uint8_t **ip) 
     uint8_t property_name_index = READ_UINT8();
     Object value = pop(vm);
     Object structobj = pop(vm);
-    table_insert(TO_STRUCT(structobj).properties, chunk->sp[property_name_index], value);
+    table_insert(TO_STRUCT(structobj)->properties, chunk->sp[property_name_index], value);
     push(vm, structobj);
     return 0;
 }
@@ -228,13 +228,13 @@ static inline bool check_equality(VM *vm, Object *a, Object *b) {
     } else if (IS_BOOL(*a) && IS_BOOL(*b)) {
         return TO_BOOL(*a) == TO_BOOL(*b);      
     } else if (IS_HEAP(*a) && IS_HEAP(*b)) {
-        Object *blueprint = table_get(&vm->struct_blueprints, TO_STRUCT(*a).name);
-        for (size_t i = 0; i < TO_STRUCT_BLUEPRINT(*blueprint).properties.count; i++) {
-            char *prop = TO_STRUCT_BLUEPRINT(*blueprint).properties.data[i];
+        Object *blueprint = table_get(&vm->struct_blueprints, TO_STRUCT(*a)->name);
+        for (size_t i = 0; i < TO_STRUCT_BLUEPRINT(*blueprint)->properties.count; i++) {
+            char *prop = TO_STRUCT_BLUEPRINT(*blueprint)->properties.data[i];
             if (!check_equality(
                 vm,
-                table_get(TO_STRUCT(*a).properties, prop),
-                table_get(TO_STRUCT(*b).properties, prop)
+                table_get(TO_STRUCT(*a)->properties, prop),
+                table_get(TO_STRUCT(*b)->properties, prop)
             )) {
                 return false;
             }
@@ -377,26 +377,11 @@ static inline int handle_op_struct(VM *vm, BytecodeChunk *chunk, uint8_t **ip) {
 
 static inline int handle_op_struct_init(VM *vm, BytecodeChunk *chunk, uint8_t **ip) {
     uint8_t structname = READ_UINT8();
-
-    Object *blueprint = table_get(&vm->struct_blueprints, chunk->sp[structname]);
-    if (blueprint == NULL) {
-        RUNTIME_ERROR(
-            "Struct '%s' is not defined",
-            chunk->sp[structname]
-        );
-    }
-
     uint8_t propertycount = READ_UINT8();
-    if (propertycount != blueprint->as.struct_blueprint.propertycount) {
-        RUNTIME_ERROR(
-            "Incorrect property count for struct '%s'",
-            TO_STRUCT_BLUEPRINT(*blueprint).name
-        );
-    }
 
     Struct s = {
-        .name = TO_STRUCT_BLUEPRINT(*blueprint).name,
-        .propertycount = TO_STRUCT_BLUEPRINT(*blueprint).propertycount,
+        .name = chunk->sp[structname],
+        .propertycount = propertycount,
         .properties = malloc(sizeof(Table)),
     };
 
@@ -444,7 +429,6 @@ Handler dispatcher[] = {
     [OP_RET] = { .fn = handle_op_ret, .opcode = "OP_RET" },
     [OP_TRUE] = { .fn = handle_op_true, .opcode = "OP_TRUE" },
     [OP_NULL] = { .fn = handle_op_null, .opcode = "OP_NULL" },
-    [OP_STRUCT] = { .fn = handle_op_struct, .opcode = "OP_STRUCT" },
     [OP_STRUCT_INIT] = { .fn = handle_op_struct_init, .opcode = "OP_STRUCT_INIT" },
     [OP_IP] = { .fn = handle_op_ip, .opcode = "OP_IP" },
     [OP_INC_FPCOUNT] = { .fn = handle_op_inc_fpcount, .opcode = "OP_INC_FPCOUNT" },
