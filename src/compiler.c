@@ -218,198 +218,231 @@ static Object *resolve_struct(char *name) {
     return NULL;
 }
 
-static void compile_expression(BytecodeChunk *chunk, Expression exp) {
-    switch (exp.kind) {
-        case EXP_LITERAL: {
-            if (TO_EXPR_LITERAL(exp).specval == NULL) {
-                uint8_t const_index = add_constant(chunk, TO_EXPR_LITERAL(exp).dval);
-                emit_bytes(chunk, 2, OP_CONST, const_index);
-            } else {
-                if (strcmp(TO_EXPR_LITERAL(exp).specval, "true") == 0) {
-                    emit_byte(chunk, OP_TRUE);
-                } else if (strcmp(TO_EXPR_LITERAL(exp).specval, "false") == 0) {
-                    emit_bytes(chunk, 2, OP_TRUE, OP_NOT);
-                } else if (strcmp(TO_EXPR_LITERAL(exp).specval, "null") == 0) {
-                    emit_byte(chunk, OP_NULL);
-                }
-            }
-            break;
-        }
-        case EXP_STRING: {
-            uint8_t const_index = add_string(chunk, TO_EXPR_STRING(exp).str);
-            emit_bytes(chunk, 2, OP_STR, const_index);
-            break;
-        }
-        case EXP_VARIABLE: {
-            if (current_compiler->depth > 0) {
-                int index = resolve_local(TO_EXPR_VARIABLE(exp).name);
-                if (index != -1) {
-                    emit_bytes(chunk, 2, OP_DEEPGET, index);
-                } else {
-                    printf("Compiler error: Variable '%s' is not defined.", TO_EXPR_VARIABLE(exp).name);
-                    exit(1);
-                }
-            } else {
-                uint8_t name_index = add_string(chunk, TO_EXPR_VARIABLE(exp).name);
-                emit_bytes(chunk, 2, OP_GET_GLOBAL, name_index);
-            }
-            break;
-        }
-        case EXP_UNARY: {
-            compile_expression(chunk, *TO_EXPR_UNARY(exp).exp);
-            emit_byte(chunk, OP_NEG);
-            break;
-        }
-        case EXP_BINARY: {
-            compile_expression(chunk, *TO_EXPR_BINARY(exp).lhs);
-            compile_expression(chunk, *TO_EXPR_BINARY(exp).rhs);
+static void compile_expression(BytecodeChunk *chunk, Expression exp);
 
-            if (strcmp(TO_EXPR_BINARY(exp).operator, "+") == 0) {
-                emit_byte(chunk, OP_ADD);
-            } else if (strcmp(TO_EXPR_BINARY(exp).operator, "-") == 0) {
-                emit_byte(chunk, OP_SUB);                
-            } else if (strcmp(TO_EXPR_BINARY(exp).operator, "*") == 0) {
-                emit_byte(chunk, OP_MUL);
-            } else if (strcmp(TO_EXPR_BINARY(exp).operator, "/") == 0) {
-                emit_byte(chunk, OP_DIV);
-            } else if (strcmp(TO_EXPR_BINARY(exp).operator, "%%") == 0) {
-                emit_byte(chunk, OP_MOD);
-            } else if (strcmp(TO_EXPR_BINARY(exp).operator, ">") == 0) {
-                emit_byte(chunk, OP_GT);
-            } else if (strcmp(TO_EXPR_BINARY(exp).operator, "<") == 0) {
-                emit_byte(chunk, OP_LT);
-            } else if (strcmp(TO_EXPR_BINARY(exp).operator, ">=") == 0) {
-                emit_bytes(chunk, 2, OP_LT, OP_NOT);
-            } else if (strcmp(TO_EXPR_BINARY(exp).operator, "<=") == 0) {
-                emit_bytes(chunk, 2, OP_GT, OP_NOT);
-            } else if (strcmp(TO_EXPR_BINARY(exp).operator, "==") == 0) {
-                emit_byte(chunk, OP_EQ);
-            } else if (strcmp(TO_EXPR_BINARY(exp).operator, "!=") == 0) {
-                emit_bytes(chunk, 2, OP_EQ, OP_NOT);
-            }
-
-            break;
+static void handle_compile_expression_literal(BytecodeChunk *chunk, Expression exp) {
+    LiteralExpression e = TO_EXPR_LITERAL(exp);
+    if (e.specval == NULL) {
+        uint8_t const_index = add_constant(chunk, e.dval);
+        emit_bytes(chunk, 2, OP_CONST, const_index);
+    } else {
+        if (strcmp(e.specval, "true") == 0) {
+            emit_byte(chunk, OP_TRUE);
+        } else if (strcmp(e.specval, "false") == 0) {
+            emit_bytes(chunk, 2, OP_TRUE, OP_NOT);
+        } else if (strcmp(e.specval, "null") == 0) {
+            emit_byte(chunk, OP_NULL);
         }
-        case EXP_CALL: {
-            int ip = emit_ip(chunk);
-            for (size_t i = 0; i < exp.as.expr_call.arguments.count; i++) {
-                compile_expression(chunk, TO_EXPR_CALL(exp).arguments.data[i]);
-            }
-            emit_byte(chunk, OP_INC_FPCOUNT);
-            uint8_t funcname_index = add_string(chunk, TO_EXPR_CALL(exp).var.name);
-            Object *func = resolve_func(TO_EXPR_CALL(exp).var.name);
-            int16_t jump = -(chunk->code.count - TO_FUNC(*func)->location) - 3;
-            emit_bytes(chunk, 3, OP_JMP, (jump >> 8) & 0xFF, jump & 0xFF);
-            patch_ip(chunk, ip);
-            break;
-        }
-        case EXPR_GET: {
-            compile_expression(chunk, *TO_EXPR_GET(exp).exp);
-            uint8_t index = add_string(chunk, TO_EXPR_GET(exp).property_name);
-            emit_bytes(chunk, 2, OP_GETATTR, index);
-            break;
-        }
-        case EXP_ASSIGN: {
-            compile_expression(chunk, *TO_EXPR_ASSIGN(exp).rhs);
-            if (TO_EXPR_ASSIGN(exp).lhs->kind == EXP_VARIABLE) {
-                int index = resolve_local(TO_EXPR_VARIABLE(*TO_EXPR_ASSIGN(exp).lhs).name);
-                if (index != -1) {
-                    emit_bytes(chunk, 2, OP_DEEPSET, index);
-                } else {
-                    uint8_t name_index = add_string(chunk, TO_EXPR_VARIABLE(*TO_EXPR_ASSIGN(exp).lhs).name);
-                    emit_bytes(chunk, 2, OP_SET_GLOBAL, name_index);
-                }
-            } else if (TO_EXPR_ASSIGN(exp).lhs->kind == EXPR_GET) {
-                compile_expression(chunk, *TO_EXPR_GET(*TO_EXPR_ASSIGN(exp).lhs).exp);
-                uint8_t index = add_string(chunk, TO_EXPR_GET(*TO_EXPR_ASSIGN(exp).lhs).property_name);
-                emit_bytes(chunk, 2, OP_SETATTR, index);
-            } else {
-                printf("Compiler error.\n");
-                exit(1);
-            }
-            break;
-        }
-        case EXP_LOGICAL: {
-            /* We first compile the left-hand side of the expression. */
-            compile_expression(chunk, *TO_EXPR_LOGICAL(exp).lhs);
-            if (strcmp(exp.as.expr_logical.operator, "&&") == 0) {
-                /* For logical AND, we emit a conditional jump which we'll use
-                 * to jump over the right-hand side operand if the left operand
-                 * was falsey (aka short-circuiting). Effectively, we will leave 
-                 * the left operand on the stack as the result of evaluating this
-                 * expression. */
-                int end_jump = emit_jump(chunk, OP_JZ);
-                compile_expression(chunk, *TO_EXPR_LOGICAL(exp).rhs);
-                patch_jump(chunk, end_jump);
-            } else if (strcmp(TO_EXPR_LOGICAL(exp).operator, "||") == 0) {
-                /* For logical OR, we need to short-circuit when the left-hand side
-                 * is truthy. Thus, we have two jumps: the first one is conditional
-                 * jump that we use to jump over the code for the right-hand side. 
-                 * If the left-hand side was truthy, the execution falls through to
-                 * the second, unconditional jump that skips the code for the right
-                 * operand. However, if the left-hand side was falsey, it jumps over
-                 * the unconditional jump and evaluates the right-hand side operand. */
-                int else_jump = emit_jump(chunk, OP_JZ);
-                int end_jump = emit_jump(chunk, OP_JMP);
-                patch_jump(chunk, else_jump);
-                compile_expression(chunk, *TO_EXPR_LOGICAL(exp).rhs);
-                patch_jump(chunk, end_jump);
-            }
-            break;
-        }
-        case EXP_STRUCT: {
-            Object *blueprint = resolve_struct(TO_EXPR_STRUCT(exp).name);
-            if (blueprint == NULL) {
-                printf("Compiler error: struct '%s' is not defined.\n", TO_EXPR_STRUCT(exp).name);
-                exit(1);
-            }
-            if (TO_STRUCT_BLUEPRINT(*blueprint)->propertycount != TO_EXPR_STRUCT(exp).initializers.count) {
-                printf(
-                    "Compiler error: struct '%s' requires %d initializers.\n",
-                    TO_STRUCT_BLUEPRINT(*blueprint)->name,
-                    TO_STRUCT_BLUEPRINT(*blueprint)->propertycount
-                );
-                exit(1);
-            }
-            for (size_t i = 0; i < TO_STRUCT_BLUEPRINT(*blueprint)->propertycount; i++) {
-                char *property = TO_STRUCT_BLUEPRINT(*blueprint)->properties.data[i];
-                bool has_prop = false;
-                for (size_t j = 0; j < TO_EXPR_STRUCT(exp).initializers.count; j++) {
-                    if (strcmp(property, TO_EXPR_VARIABLE(*TO_EXPR_STRUCT_INIT(TO_EXPR_STRUCT(exp).initializers.data[j]).property).name) == 0) {
-                        has_prop = true;
-                        break;
-                    }
-                }
-                if (!has_prop) {
-                    printf(
-                        "Compiler error: struct '%s' requires properties: [",
-                        TO_STRUCT_BLUEPRINT(*blueprint)->name
-                    );
-                    for (size_t k = 0; k < TO_STRUCT_BLUEPRINT(*blueprint)->propertycount; k++) {
-                        printf(
-                            "'%s', ",
-                            TO_STRUCT_BLUEPRINT(*blueprint)->properties.data[k]
-                        );                       
-                    }
-                    printf("]\n");
-                    exit(1);
-                }
-            }
-            uint8_t name_index = add_string(chunk, TO_STRUCT_BLUEPRINT(*blueprint)->name);
-            emit_bytes(chunk, 3, OP_STRUCT, name_index, TO_EXPR_STRUCT(exp).initializers.count);
-            for (size_t i = 0; i < TO_EXPR_STRUCT(exp).initializers.count; i++) {
-                compile_expression(chunk, TO_EXPR_STRUCT(exp).initializers.data[i]);
-            }
-            break;
-        }
-        case EXP_STRUCT_INIT: {
-            compile_expression(chunk, *TO_EXPR_STRUCT_INIT(exp).value);
-            uint8_t property_name_index = add_string(chunk, TO_EXPR_VARIABLE(*TO_EXPR_STRUCT_INIT(exp).property).name);
-            emit_bytes(chunk, 2, OP_SETATTR, property_name_index);
-            break;
-        }
-        default: assert(0);
     }
+}
+
+static void handle_compile_expression_string(BytecodeChunk *chunk, Expression exp) {
+    StringExpression e = TO_EXPR_STRING(exp);
+    uint8_t const_index = add_string(chunk, e.str);
+    emit_bytes(chunk, 2, OP_STR, const_index);
+}
+
+static void handle_compile_expression_variable(BytecodeChunk *chunk, Expression exp) {
+    VariableExpression e = TO_EXPR_VARIABLE(exp);
+    if (current_compiler->depth > 0) {
+        int index = resolve_local(e.name);
+        if (index != -1) {
+            emit_bytes(chunk, 2, OP_DEEPGET, index);
+        } else {
+            printf("Compiler error: Variable '%s' is not defined.", e.name);
+            exit(1);
+        }
+    } else {
+        uint8_t name_index = add_string(chunk, e.name);
+        emit_bytes(chunk, 2, OP_GET_GLOBAL, name_index);
+    }
+}
+
+static void handle_compile_expression_unary(BytecodeChunk *chunk, Expression exp) {
+    UnaryExpression e = TO_EXPR_UNARY(exp);
+    compile_expression(chunk, *e.exp);
+    emit_byte(chunk, OP_NEG);
+}
+
+static void handle_compile_expression_binary(BytecodeChunk *chunk, Expression exp) {
+    BinaryExpression e = TO_EXPR_BINARY(exp);
+
+    compile_expression(chunk, *e.lhs);
+    compile_expression(chunk, *e.rhs);
+
+    if (strcmp(e.operator, "+") == 0) {
+        emit_byte(chunk, OP_ADD);
+    } else if (strcmp(e.operator, "-") == 0) {
+        emit_byte(chunk, OP_SUB);                
+    } else if (strcmp(e.operator, "*") == 0) {
+        emit_byte(chunk, OP_MUL);
+    } else if (strcmp(e.operator, "/") == 0) {
+        emit_byte(chunk, OP_DIV);
+    } else if (strcmp(e.operator, "%%") == 0) {
+        emit_byte(chunk, OP_MOD);
+    } else if (strcmp(e.operator, ">") == 0) {
+        emit_byte(chunk, OP_GT);
+    } else if (strcmp(e.operator, "<") == 0) {
+        emit_byte(chunk, OP_LT);
+    } else if (strcmp(e.operator, ">=") == 0) {
+        emit_bytes(chunk, 2, OP_LT, OP_NOT);
+    } else if (strcmp(e.operator, "<=") == 0) {
+        emit_bytes(chunk, 2, OP_GT, OP_NOT);
+    } else if (strcmp(e.operator, "==") == 0) {
+        emit_byte(chunk, OP_EQ);
+    } else if (strcmp(e.operator, "!=") == 0) {
+        emit_bytes(chunk, 2, OP_EQ, OP_NOT);
+    }
+}
+
+static void handle_compile_expression_call(BytecodeChunk *chunk, Expression exp) {
+    CallExpression e = TO_EXPR_CALL(exp);
+    int ip = emit_ip(chunk);
+    for (size_t i = 0; i < e.arguments.count; i++) {
+        compile_expression(chunk, e.arguments.data[i]);
+    }
+    emit_byte(chunk, OP_INC_FPCOUNT);
+    uint8_t funcname_index = add_string(chunk, e.var.name);
+    Object *func = resolve_func(e.var.name);
+    int16_t jump = -(chunk->code.count - TO_FUNC(*func)->location) - 3;
+    emit_bytes(chunk, 3, OP_JMP, (jump >> 8) & 0xFF, jump & 0xFF);
+    patch_ip(chunk, ip);
+}
+
+static void handle_compile_expression_get(BytecodeChunk *chunk, Expression exp) {
+    GetExpression e = TO_EXPR_GET(exp);
+    compile_expression(chunk, *e.exp);
+    uint8_t index = add_string(chunk, e.property_name);
+    emit_bytes(chunk, 2, OP_GETATTR, index);
+}
+
+static void handle_compile_expression_assign(BytecodeChunk *chunk, Expression exp) {
+    AssignExpression e = TO_EXPR_ASSIGN(exp);
+    compile_expression(chunk, *e.rhs);
+    if (e.lhs->kind == EXP_VARIABLE) {
+        int index = resolve_local(TO_EXPR_VARIABLE(*e.lhs).name);
+        if (index != -1) {
+            emit_bytes(chunk, 2, OP_DEEPSET, index);
+        } else {
+            uint8_t name_index = add_string(chunk, TO_EXPR_VARIABLE(*e.lhs).name);
+            emit_bytes(chunk, 2, OP_SET_GLOBAL, name_index);
+        }
+    } else if (e.lhs->kind == EXPR_GET) {
+        compile_expression(chunk, *TO_EXPR_GET(*e.lhs).exp);
+        uint8_t index = add_string(chunk, TO_EXPR_GET(*e.lhs).property_name);
+        emit_bytes(chunk, 2, OP_SETATTR, index);
+    } else {
+        printf("Compiler error.\n");
+        exit(1);
+    }
+}
+
+static void handle_compile_expression_logical(BytecodeChunk *chunk, Expression exp) {
+    LogicalExpression e = TO_EXPR_LOGICAL(exp);
+    /* We first compile the left-hand side of the expression. */
+    compile_expression(chunk, *e.lhs);
+    if (strcmp(e.operator, "&&") == 0) {
+        /* For logical AND, we emit a conditional jump which we'll use
+         * to jump over the right-hand side operand if the left operand
+         * was falsey (aka short-circuiting). Effectively, we will leave 
+         * the left operand on the stack as the result of evaluating this
+         * expression. */
+        int end_jump = emit_jump(chunk, OP_JZ);
+        compile_expression(chunk, *e.rhs);
+        patch_jump(chunk, end_jump);
+    } else if (strcmp(e.operator, "||") == 0) {
+        /* For logical OR, we need to short-circuit when the left-hand side
+         * is truthy. Thus, we have two jumps: the first one is conditional
+         * jump that we use to jump over the code for the right-hand side. 
+         * If the left-hand side was truthy, the execution falls through to
+         * the second, unconditional jump that skips the code for the right
+         * operand. However, if the left-hand side was falsey, it jumps over
+         * the unconditional jump and evaluates the right-hand side operand. */
+        int else_jump = emit_jump(chunk, OP_JZ);
+        int end_jump = emit_jump(chunk, OP_JMP);
+        patch_jump(chunk, else_jump);
+        compile_expression(chunk, *e.rhs);
+        patch_jump(chunk, end_jump);
+    }
+}
+
+static void handle_compile_expression_struct(BytecodeChunk *chunk, Expression exp) {
+    StructExpression e = TO_EXPR_STRUCT(exp);
+    Object *blueprintobj = resolve_struct(e.name);
+    if (blueprintobj == NULL) {
+        printf("Compiler error: struct '%s' is not defined.\n", e.name);
+        exit(1);
+    }
+    StructBlueprint *sb = TO_STRUCT_BLUEPRINT(*blueprintobj);
+    if (sb->propertycount != e.initializers.count) {
+        printf(
+            "Compiler error: struct '%s' requires %d initializers.\n",
+            sb->name,
+            sb->propertycount
+        );
+        exit(1);
+    }
+    for (size_t i = 0; i < sb->propertycount; i++) {
+        char *property = sb->properties.data[i];
+        bool found = false;
+        for (size_t j = 0; j < e.initializers.count; j++) {
+            StructInitializerExpression initializer = TO_EXPR_STRUCT_INIT(e.initializers.data[j]);
+            VariableExpression key = TO_EXPR_VARIABLE(*initializer.property);
+            if (strcmp(property, key.name) == 0) {
+                found = true;
+                break;
+            }
+        }
+        if (!found) {
+            printf(
+                "Compiler error: struct '%s' requires properties: [",
+                sb->name
+            );
+            for (size_t k = 0; k < sb->propertycount; k++) {
+                printf("'%s', ", sb->properties.data[k]);                       
+            }
+            printf("]\n");
+            exit(1);
+        }
+    }
+    uint8_t name_index = add_string(chunk, sb->name);
+    emit_bytes(chunk, 3, OP_STRUCT, name_index, e.initializers.count);
+    for (size_t i = 0; i < e.initializers.count; i++) {
+        compile_expression(chunk, e.initializers.data[i]);
+    }
+}
+
+static void handle_compile_expression_struct_init(BytecodeChunk *chunk, Expression exp) {
+    StructInitializerExpression e = TO_EXPR_STRUCT_INIT(exp);
+    compile_expression(chunk, *e.value);
+    VariableExpression key = TO_EXPR_VARIABLE(*e.property);
+    uint8_t property_name_index = add_string(chunk, key.name);
+    emit_bytes(chunk, 2, OP_SETATTR, property_name_index);
+}
+
+typedef void (*CompileExpressionHandlerFn)(BytecodeChunk *chunk, Expression exp);
+
+typedef struct {
+    CompileExpressionHandlerFn fn;
+    char *name;
+} CompileExpressionHandler;
+
+CompileExpressionHandler expression_handler[] = {
+    [EXP_LITERAL] = { .fn = handle_compile_expression_literal, .name = "EXP_LITERAL" },
+    [EXP_STRING] = { .fn = handle_compile_expression_string, .name = "EXP_STRING" },
+    [EXP_VARIABLE] = { .fn = handle_compile_expression_variable, .name = "EXP_VARIABLE" },
+    [EXP_UNARY] = { .fn = handle_compile_expression_unary, .name = "EXP_UNARY" },
+    [EXP_BINARY] = { .fn = handle_compile_expression_binary, .name = "EXP_BINARY" },
+    [EXP_CALL] = { .fn = handle_compile_expression_call, .name = "EXP_CALL" },
+    [EXPR_GET] = { .fn = handle_compile_expression_get, .name = "EXP_GET" },
+    [EXP_ASSIGN] = { .fn = handle_compile_expression_assign, .name = "EXP_ASSIGN" },
+    [EXP_LOGICAL] = { .fn = handle_compile_expression_logical, .name = "EXP_LOGICAL" },
+    [EXP_STRUCT] = { .fn = handle_compile_expression_struct, .name = "EXP_STRUCT" },
+    [EXP_STRUCT_INIT] = { .fn = handle_compile_expression_struct_init, .name = "EXP_STRUCT_INIT" },
+};
+
+static void compile_expression(BytecodeChunk *chunk, Expression exp) {
+    expression_handler[exp.kind].fn(chunk, exp);
 }
 
 void disassemble(BytecodeChunk *chunk) {
@@ -585,202 +618,229 @@ void disassemble(BytecodeChunk *chunk) {
     }
 }
 
-void compile(BytecodeChunk *chunk, Statement stmt, bool scoped) {
-    switch (stmt.kind) {
-        case STMT_PRINT: {
-            compile_expression(chunk, TO_STMT_PRINT(stmt).exp);
-            emit_byte(chunk, OP_PRINT);        
-            break;
-        }
-        case STMT_LET: {
-            compile_expression(chunk, TO_STMT_LET(stmt).initializer);
-            uint8_t name_index = add_string(chunk, TO_STMT_LET(stmt).name);
-            if (!scoped) {
-                emit_bytes(chunk, 2, OP_SET_GLOBAL, name_index);
-            } else {
-                current_compiler->locals[current_compiler->locals_count++] = chunk->sp[name_index];
-            }
-            break;
-        }
-        case STMT_EXPR: {
-            compile_expression(chunk, TO_STMT_EXPR(stmt).exp);
-            break;
-        }
-        case STMT_BLOCK: {
-            Compiler compiler;
-            init_compiler(&compiler, TO_STMT_BLOCK(&stmt).depth);
-            for (size_t i = 0; i < TO_STMT_BLOCK(&stmt).stmts.count; i++) {
-                compile(chunk, TO_STMT_BLOCK(&stmt).stmts.data[i], scoped);
-            }
-            end_compiler(&compiler);
-            break;
-        }
-        case STMT_IF: {
-            /* We first compile the conditional expression because the VM
-            .* expects something like OP_EQ to have already been executed
-             * and a boolean placed on the stack by the time it encounters
-             * an instruction like OP_JZ. */
-            compile_expression(chunk, TO_STMT_IF(stmt).condition);
+void compile(BytecodeChunk *chunk, Statement stmt, bool scoped);
 
-            /* Then, we emit an OP_JZ which jumps to the else clause if the
-             * condition is falsey. Because we do not know the size of the
-             * bytecode in the 'then' branch ahead of time, we do backpatching:
-             * first, we emit 0xFFFF as the relative jump offset which acts as
-             * a placeholder for the real jump offset that will be known only
-             * after we compile the 'then' branch because at that point the
-             * size of the 'then' branch is known. */ 
-            int then_jump = emit_jump(chunk, OP_JZ);
-            
-            compile(chunk, *TO_STMT_IF(stmt).then_branch, scoped);
+static void handle_compile_statement_print(BytecodeChunk *chunk, Statement stmt, bool scoped) {
+    PrintStatement s = TO_STMT_PRINT(stmt);
+    compile_expression(chunk, s.exp);
+    emit_byte(chunk, OP_PRINT);
+}
 
-            int else_jump = emit_jump(chunk, OP_JMP);
-
-            /* Then, we patch the 'then' jump. */
-            patch_jump(chunk, then_jump);
-
-            if (TO_STMT_IF(stmt).else_branch != NULL) {
-                compile(chunk, *TO_STMT_IF(stmt).else_branch, scoped);
-            }
-
-            /* Finally, we patch the 'else' jump. If the 'else' branch
-            + wasn't compiled, the offset should be zeroed out. */
-            patch_jump(chunk, else_jump);
-
-            break;
-        }
-        case STMT_WHILE: {    
-            /* We need to mark the beginning of the loop before we compile
-             * the conditional expression, so that we know where to return
-             * after the body of the loop is executed. */
-            int loop_start = chunk->code.count;
-
-            /* We then compile the conditional expression because the VM
-            .* expects something like OP_EQ to have already been executed
-             * and a boolean placed on the stack by the time it encounters
-             * an instruction like OP_JZ. */
-            compile_expression(chunk, TO_STMT_WHILE(stmt).condition);
-            
-            /* Then, we emit an OP_JZ which jumps to the else clause if the
-             * condition is falsey. Because we do not know the size of the
-             * bytecode in the body of the 'while' loop ahead of time, we do
-             * backpatching: first, we emit 0xFFFF as the relative jump offset
-             * which acts as a placeholder for the real jump offset that will
-             * be known only after we compile the body of the 'while' loop,
-             * because at that point its size is known. */ 
-            int exit_jump = emit_jump(chunk, OP_JZ);
-            
-            /* Then, we compile the body of the loop. */
-
-            for (size_t i = 0; i < TO_STMT_BLOCK(TO_STMT_WHILE(stmt).body).stmts.count; i++) {
-                if (TO_STMT_BLOCK(TO_STMT_WHILE(stmt).body).stmts.data[i].kind == STMT_CONTINUE) {
-                    current_compiler->backjmp_stack[current_compiler->backjmp_tos++] = loop_start;
-                }
-                compile(chunk, TO_STMT_BLOCK(TO_STMT_WHILE(stmt).body).stmts.data[i], scoped);
-            }
-
-            /* Then, we emit OP_JMP with a negative offset. */
-            emit_loop(chunk, loop_start);
-
-            if (current_compiler->jmp_tos > 0) {
-                int break_jump = current_compiler->jmp_stack[--current_compiler->jmp_tos];
-                patch_jump(chunk, break_jump);
-            }
-        
-            /* Finally, we patch the jump. */
-            patch_jump(chunk, exit_jump);
-
-            break;
-        }
-        case STMT_FN: {
-            Compiler compiler;
-            init_compiler(&compiler, 1);
-
-            Function func = {
-                .name = TO_STMT_FN(stmt).name,
-                .paramcount = TO_STMT_FN(stmt).parameters.count,
-                .location = (uint8_t)(chunk->code.count + 3),
-            };
-
-            /* Add parameter names to compiler->locals. */
-            for (size_t i = 0; i < TO_STMT_FN(stmt).parameters.count; i++) {
-                uint8_t parameter_index = add_string(chunk, TO_STMT_FN(stmt).parameters.data[i]);
-                current_compiler->locals[current_compiler->locals_count++] = chunk->sp[parameter_index];
-            }
-                     
-            table_insert(&current_compiler->enclosing->functions, func.name, AS_FUNC(func));
-
-            /* Emit the jump because we don't want to execute
-             * the code the first time we encounter it. */
-            int jump = emit_jump(chunk, OP_JMP);
-
-            /* Compile the function body and check if it is void. */
-            bool is_void = true;
-            for (size_t i = 0; i < TO_STMT_BLOCK(TO_STMT_FN(stmt).body).stmts.count; i++) {
-                if (TO_STMT_BLOCK(TO_STMT_FN(stmt).body).stmts.data[i].kind == STMT_RETURN) {
-                    is_void = false;
-                }
-            }
-
-            for (size_t i = 0; i < TO_STMT_BLOCK(TO_STMT_FN(stmt).body).stmts.count; i++) {
-                compile(chunk, TO_STMT_BLOCK(TO_STMT_FN(stmt).body).stmts.data[i], true);
-            }
-
-            /* If the function does not have a return statement,
-             * emit OP_NULL because we have to return something. */
-            if (is_void) {
-                emit_byte(chunk, OP_NULL);
-                int deepset_no = current_compiler->locals_count - 1;
-                for (size_t i = 0; i < current_compiler->locals_count; i++) {
-                    emit_bytes(chunk, 2, OP_DEEPSET, (uint8_t)deepset_no--);
-                }
-                emit_byte(chunk, OP_RET);
-            }
-
-            /* Finally, patch the jump. */
-            patch_jump(chunk, jump);
-
-            end_compiler(&compiler);
-
-            break;
-        }
-        case STMT_STRUCT: {
-            String_DynArray properties = {0};
-            for (size_t i = 0; i < TO_STMT_STRUCT(stmt).properties.count; i++) {
-                dynarray_insert(
-                    &properties,
-                    own_string(TO_STMT_STRUCT(stmt).properties.data[i])
-                );
-            }
-            StructBlueprint blueprint = {
-                .name = own_string(TO_STMT_STRUCT(stmt).name),
-                .propertycount = TO_STMT_STRUCT(stmt).properties.count,
-                .properties = properties
-            };
-            table_insert(&current_compiler->structs, blueprint.name, AS_STRUCT_BLUEPRINT(blueprint));
-            break;
-        }
-        case STMT_RETURN: {
-            /* Compile the return value and emit OP_RET. */
-            compile_expression(chunk, TO_STMT_RETURN(stmt).returnval);
-            int deepset_no = current_compiler->locals_count - 1;
-            for (size_t i = 0; i < current_compiler->locals_count; i++) {
-                emit_bytes(chunk, 2, OP_DEEPSET, (uint8_t)deepset_no--);
-            }
-            emit_byte(chunk, OP_RET);
-            break;
-        }
-        case STMT_BREAK: {
-            int break_jump = emit_jump(chunk, OP_JMP);
-            current_compiler->jmp_stack[current_compiler->jmp_tos++] = break_jump;
-            break;
-        }
-        case STMT_CONTINUE: {
-            if (current_compiler->backjmp_tos > 0) {
-                int loop_start = current_compiler->backjmp_stack[--current_compiler->backjmp_tos];
-                emit_loop(chunk, loop_start);
-            }
-            break;
-        }
-        default: assert(0);
+static void handle_compile_statement_let(BytecodeChunk *chunk, Statement stmt, bool scoped) {
+    LetStatement s = TO_STMT_LET(stmt);
+    compile_expression(chunk, s.initializer);
+    uint8_t name_index = add_string(chunk, s.name);
+    if (!scoped) {
+        emit_bytes(chunk, 2, OP_SET_GLOBAL, name_index);
+    } else {
+        current_compiler->locals[current_compiler->locals_count++] = chunk->sp[name_index];
     }
+}
+
+static void handle_compile_statement_expr(BytecodeChunk *chunk, Statement stmt, bool scoped) {
+    compile_expression(chunk, TO_STMT_EXPR(stmt).exp);
+}
+
+static void handle_compile_statement_block(BytecodeChunk *chunk, Statement stmt, bool scoped) {
+    BlockStatement s = TO_STMT_BLOCK(&stmt);
+    Compiler compiler;
+    init_compiler(&compiler, s.depth);
+    for (size_t i = 0; i < s.stmts.count; i++) {
+        compile(chunk, s.stmts.data[i], scoped);
+    }
+    end_compiler(&compiler);
+}
+
+static void handle_compile_statement_if(BytecodeChunk *chunk, Statement stmt, bool scoped) {
+    /* We first compile the conditional expression because the VM
+    .* expects something like OP_EQ to have already been executed
+     * and a boolean placed on the stack by the time it encounters
+     * an instruction like OP_JZ. */
+    IfStatement s = TO_STMT_IF(stmt);
+    compile_expression(chunk, s.condition);
+
+    /* Then, we emit an OP_JZ which jumps to the else clause if the
+     * condition is falsey. Because we do not know the size of the
+     * bytecode in the 'then' branch ahead of time, we do backpatching:
+     * first, we emit 0xFFFF as the relative jump offset which acts as
+     * a placeholder for the real jump offset that will be known only
+     * after we compile the 'then' branch because at that point the
+     * size of the 'then' branch is known. */ 
+    int then_jump = emit_jump(chunk, OP_JZ);
+    
+    compile(chunk, *s.then_branch, scoped);
+
+    int else_jump = emit_jump(chunk, OP_JMP);
+
+    /* Then, we patch the 'then' jump. */
+    patch_jump(chunk, then_jump);
+
+    if (s.else_branch != NULL) {
+        compile(chunk, *s.else_branch, scoped);
+    }
+
+    /* Finally, we patch the 'else' jump. If the 'else' branch
+     * wasn't compiled, the offset should be zeroed out. */
+    patch_jump(chunk, else_jump);
+}
+
+static void handle_compile_statement_while(BytecodeChunk *chunk, Statement stmt, bool scoped) {
+    /* We need to mark the beginning of the loop before we compile
+     * the conditional expression, so that we know where to return
+     * after the body of the loop is executed. */
+    WhileStatement s = TO_STMT_WHILE(stmt);
+    int loop_start = chunk->code.count;
+
+    /* We then compile the conditional expression because the VM
+    .* expects something like OP_EQ to have already been executed
+     * and a boolean placed on the stack by the time it encounters
+     * an instruction like OP_JZ. */
+    compile_expression(chunk, s.condition);
+    
+    /* Then, we emit an OP_JZ which jumps to the else clause if the
+     * condition is falsey. Because we do not know the size of the
+     * bytecode in the body of the 'while' loop ahead of time, we do
+     * backpatching: first, we emit 0xFFFF as the relative jump offset
+     * which acts as a placeholder for the real jump offset that will
+     * be known only after we compile the body of the 'while' loop,
+     * because at that point its size is known. */ 
+    int exit_jump = emit_jump(chunk, OP_JZ);
+    
+    /* Then, we compile the body of the loop. */
+    BlockStatement body = TO_STMT_BLOCK(s.body);
+    for (size_t i = 0; i < body.stmts.count; i++) {
+        if (body.stmts.data[i].kind == STMT_CONTINUE) {
+            current_compiler->backjmp_stack[current_compiler->backjmp_tos++] = loop_start;
+        }
+        compile(chunk, body.stmts.data[i], scoped);
+    }
+
+    /* Then, we emit OP_JMP with a negative offset. */
+    emit_loop(chunk, loop_start);
+
+    if (current_compiler->jmp_tos > 0) {
+        int break_jump = current_compiler->jmp_stack[--current_compiler->jmp_tos];
+        patch_jump(chunk, break_jump);
+    }
+
+    /* Finally, we patch the jump. */
+    patch_jump(chunk, exit_jump);
+}
+
+static void handle_compile_statement_fn(BytecodeChunk *chunk, Statement stmt, bool scoped) {
+    FunctionStatement s = TO_STMT_FN(stmt);
+    Compiler compiler;
+    init_compiler(&compiler, 1);
+
+    Function func = {
+        .name = s.name,
+        .paramcount = s.parameters.count,
+        .location = (uint8_t)(chunk->code.count + 3),
+    };
+
+    /* Add parameter names to compiler->locals. */
+    for (size_t i = 0; i < s.parameters.count; i++) {
+        uint8_t parameter_index = add_string(chunk, s.parameters.data[i]);
+        current_compiler->locals[current_compiler->locals_count++] = chunk->sp[parameter_index];
+    }
+                
+    table_insert(&current_compiler->enclosing->functions, func.name, AS_FUNC(func));
+
+    /* Emit the jump because we don't want to execute
+     * the code the first time we encounter it. */
+    int jump = emit_jump(chunk, OP_JMP);
+
+    /* Compile the function body and check if it is void. */
+    BlockStatement body = TO_STMT_BLOCK(s.body);
+    bool is_void = true;
+    for (size_t i = 0; i < body.stmts.count; i++) {
+        if (body.stmts.data[i].kind == STMT_RETURN) {
+            is_void = false;
+        }
+    }
+
+    for (size_t i = 0; i < body.stmts.count; i++) {
+        compile(chunk, body.stmts.data[i], true);
+    }
+
+    /* If the function does not have a return statement,
+        * emit OP_NULL because we have to return something. */
+    if (is_void) {
+        emit_byte(chunk, OP_NULL);
+        int deepset_no = current_compiler->locals_count - 1;
+        for (size_t i = 0; i < current_compiler->locals_count; i++) {
+            emit_bytes(chunk, 2, OP_DEEPSET, (uint8_t)deepset_no--);
+        }
+        emit_byte(chunk, OP_RET);
+    }
+
+    /* Finally, patch the jump. */
+    patch_jump(chunk, jump);
+
+    end_compiler(&compiler);
+}
+
+static void handle_compile_statement_struct(BytecodeChunk *chunk, Statement stmt, bool scoped) {
+    StructStatement s = TO_STMT_STRUCT(stmt);
+    String_DynArray properties = {0};
+    for (size_t i = 0; i < s.properties.count; i++) {
+        dynarray_insert(
+            &properties,
+            own_string(s.properties.data[i])
+        );
+    }
+    StructBlueprint blueprint = {
+        .name = own_string(s.name),
+        .propertycount = s.properties.count,
+        .properties = properties
+    };
+    table_insert(&current_compiler->structs, blueprint.name, AS_STRUCT_BLUEPRINT(blueprint));
+}
+
+static void handle_compile_statement_return(BytecodeChunk *chunk, Statement stmt, bool scoped) {
+    /* Compile the return value and emit OP_RET. */
+    ReturnStatement s = TO_STMT_RETURN(stmt);
+    compile_expression(chunk, s.returnval);
+    int deepset_no = current_compiler->locals_count - 1;
+    for (size_t i = 0; i < current_compiler->locals_count; i++) {
+        emit_bytes(chunk, 2, OP_DEEPSET, (uint8_t)deepset_no--);
+    }
+    emit_byte(chunk, OP_RET);
+}
+
+static void handle_compile_statement_break(BytecodeChunk *chunk, Statement stmt, bool scoped) {
+    int break_jump = emit_jump(chunk, OP_JMP);
+    current_compiler->jmp_stack[current_compiler->jmp_tos++] = break_jump;
+}
+
+static void handle_compile_statement_continue(BytecodeChunk *chunk, Statement stmt, bool scoped) {
+    if (current_compiler->backjmp_tos > 0) {
+        int loop_start = current_compiler->backjmp_stack[--current_compiler->backjmp_tos];
+        emit_loop(chunk, loop_start);
+    }
+}
+
+typedef void (*CompileHandlerFn)(BytecodeChunk *chunk, Statement stmt, bool scoped);
+
+typedef struct {
+    CompileHandlerFn fn;
+    char *name;
+} CompileHandler;
+
+CompileHandler handler[] = {
+    [STMT_PRINT] = { .fn = handle_compile_statement_print, .name = "STMT_PRINT" },
+    [STMT_LET] = { .fn = handle_compile_statement_let, .name = "STMT_LET" },
+    [STMT_EXPR] = { .fn = handle_compile_statement_expr, .name = "STMT_EXPR" },
+    [STMT_BLOCK] = { .fn = handle_compile_statement_block, .name = "STMT_BLOCK" },
+    [STMT_IF] = { .fn = handle_compile_statement_if, .name = "STMT_IF" },
+    [STMT_WHILE] = { .fn = handle_compile_statement_while, .name = "STMT_WHILE" },
+    [STMT_FN] = { .fn = handle_compile_statement_fn, .name = "STMT_FN" },
+    [STMT_STRUCT] = { .fn = handle_compile_statement_struct, .name = "STMT_STRUCT" },
+    [STMT_RETURN] = { .fn = handle_compile_statement_return, .name = "STMT_RETURN" },
+    [STMT_BREAK] = { .fn = handle_compile_statement_break, .name = "STMT_BREAK" },
+    [STMT_CONTINUE] = { .fn = handle_compile_statement_continue, .name = "STMT_CONTINUE" },
+};
+
+void compile(BytecodeChunk *chunk, Statement stmt, bool scoped) {
+    handler[stmt.kind].fn(chunk, stmt, scoped);
 }

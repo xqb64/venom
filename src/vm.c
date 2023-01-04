@@ -354,28 +354,6 @@ static inline int handle_op_null(VM *vm, BytecodeChunk *chunk, uint8_t **ip) {
 }
 
 static inline int handle_op_struct(VM *vm, BytecodeChunk *chunk, uint8_t **ip) {
-    uint8_t struct_name = READ_UINT8();
-    uint8_t property_count = READ_UINT8();
-
-    StructBlueprint sb = { 
-        .name = chunk->sp[struct_name],
-        .propertycount = property_count,
-    };
-
-    for (int i = 0; i < property_count; i++) {
-        uint8_t property_name = READ_UINT8();
-        dynarray_insert(&sb.properties, chunk->sp[property_name]);
-    }
-
-    table_insert(
-        &vm->struct_blueprints,
-        chunk->sp[struct_name],
-        AS_STRUCT_BLUEPRINT(sb)
-    );
-    return 0;
-}
-
-static inline int handle_op_struct(VM *vm, BytecodeChunk *chunk, uint8_t **ip) {
     uint8_t structname = READ_UINT8();
     uint8_t propertycount = READ_UINT8();
 
