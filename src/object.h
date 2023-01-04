@@ -46,14 +46,14 @@ typedef struct {
 typedef struct Object {
     ObjectType type;
     union {
-        char *str; // 8
-        double dval; // 8
-        bool bval; // 1
-        Function *func; // 8+1+8=17
-        uint8_t *ptr; // 8
-        Struct *struct_; // 8+8+8=24
-        StructBlueprint *struct_blueprint; // 8+24+8=40
-        HeapObject *heapobj; // 8
+        char *str;
+        double dval;
+        bool bval;
+        Function *func;
+        uint8_t *ptr;
+        Struct *struct_;
+        StructBlueprint *struct_blueprint;
+        HeapObject *heapobj;
     } as;
 } Object;
 
