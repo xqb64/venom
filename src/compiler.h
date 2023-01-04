@@ -22,7 +22,7 @@ typedef enum {
     OP_NEG,
     OP_JMP,
     OP_JZ,
-    OP_STRUCT_INIT,
+    OP_STRUCT,
     OP_RET,
     OP_CONST,
     OP_STR,

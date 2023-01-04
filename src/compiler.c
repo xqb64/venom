@@ -396,7 +396,7 @@ static void compile_expression(BytecodeChunk *chunk, Expression exp) {
                 }
             }
             uint8_t name_index = add_string(chunk, TO_STRUCT_BLUEPRINT(*blueprint)->name);
-            emit_bytes(chunk, 3, OP_STRUCT_INIT, name_index, TO_EXPR_STRUCT(exp).initializers.count);
+            emit_bytes(chunk, 3, OP_STRUCT, name_index, TO_EXPR_STRUCT(exp).initializers.count);
             for (size_t i = 0; i < TO_EXPR_STRUCT(exp).initializers.count; i++) {
                 compile_expression(chunk, TO_EXPR_STRUCT(exp).initializers.data[i]);
             }
@@ -540,12 +540,12 @@ void disassemble(BytecodeChunk *chunk) {
                 printf("OP_PRINT\n"); 
                 break;
             }
-            case OP_STRUCT_INIT: {
+            case OP_STRUCT: {
                 printf("%d: ", i);
                 uint8_t struct_name = *++ip;
                 uint8_t property_count = *++ip;
                 printf("%d: ", i);
-                printf("OP_STRUCT_INIT { type: '%s', propery_count: %d }\n", chunk->sp[struct_name], property_count);
+                printf("OP_STRUCT { type: '%s', propery_count: %d }\n", chunk->sp[struct_name], property_count);
                 i += 2; 
                 break;
             }
