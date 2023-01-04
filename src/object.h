@@ -46,7 +46,6 @@ typedef struct {
 typedef struct Object {
     ObjectType type;
     union {
-        char *prop;
         char *str;
         double dval;
         bool bval;
@@ -136,8 +135,6 @@ do { \
         printf("null"); \
     } else if IS_STRING(object) { \
         printf("%s", TO_STR(object)); \
-    } else if IS_PROP(object) { \
-        printf("prop: %s", TO_PROP(object)); \
     } else if IS_HEAP(object) { \
         if (IS_STRUCT(TO_HEAP(object)->obj)) { \
             printf("%s", TO_STRUCT(object).name); \

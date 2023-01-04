@@ -35,9 +35,7 @@ void end_compiler(Compiler *compiler) {
         compiler->enclosing->backjmp_tos = current_compiler->backjmp_tos;
 
         memcpy(compiler->enclosing->jmp_stack, current_compiler->jmp_stack, sizeof(current_compiler->jmp_stack));
-        compiler->enclosing->jmp_tos = current_compiler->jmp_tos;
-        
-        compiler->enclosing->depth = current_compiler->depth;
+        compiler->enclosing->jmp_tos = current_compiler->jmp_tos;        
     }
     current_compiler = compiler->enclosing;
 }
@@ -196,6 +194,18 @@ static int resolve_local(char *name) {
     return -1;
 }
 
+static Object *resolve_func(char *name) {
+    Compiler *current = current_compiler;
+    while (current != NULL) {
+        Object *func = table_get(&current->functions, name);
+        if (func != NULL) {
+            return func;
+        }
+        current = current->enclosing;
+    }
+    return NULL;
+}
+
 static void compile_expression(BytecodeChunk *chunk, Expression exp) {
     switch (exp.kind) {
         case EXP_LITERAL: {
@@ -219,7 +229,7 @@ static void compile_expression(BytecodeChunk *chunk, Expression exp) {
             break;
         }
         case EXP_VARIABLE: {
-            if (current_compiler && current_compiler->depth > 0) {
+            if (current_compiler->depth > 0) {
                 int index = resolve_local(TO_EXPR_VARIABLE(exp).name);
                 if (index != -1) {
                     emit_bytes(chunk, 2, OP_DEEP_GET, index);
@@ -273,8 +283,11 @@ static void compile_expression(BytecodeChunk *chunk, Expression exp) {
             for (size_t i = 0; i < exp.as.expr_call.arguments.count; i++) {
                 compile_expression(chunk, TO_EXPR_CALL(exp).arguments.data[i]);
             }
+            emit_byte(chunk, OP_INC_FP);
             uint8_t funcname_index = add_string(chunk, TO_EXPR_CALL(exp).var.name);
-            emit_bytes(chunk, 3, OP_INVOKE, funcname_index, TO_EXPR_CALL(exp).arguments.count);
+            Object *func = resolve_func(TO_EXPR_CALL(exp).var.name);
+            int16_t jump = -(chunk->code.count - TO_FUNC(*func).location) - 3;
+            emit_bytes(chunk, 3, OP_JMP, (jump >> 8) & 0xFF, jump & 0xFF);
             patch_ip(chunk, ip);
             break;
         }
@@ -350,28 +363,6 @@ static void compile_expression(BytecodeChunk *chunk, Expression exp) {
     }
 }
 
-void print_stmt(Statement stmt) {
-    switch (stmt.kind) {
-        case STMT_PRINT: printf("print [...]"); break;
-        case STMT_LET: printf("let [...]"); break;
-        case STMT_IF: printf("if [...]"); break;
-        case STMT_WHILE: printf("while [...]"); break;
-        case STMT_RETURN: printf("return [...]"); break;
-        case STMT_STRUCT: printf("struct [...]"); break;
-        case STMT_BREAK: printf("break [...]"); break;
-        case STMT_CONTINUE: printf("continue [...]"); break;
-        default: break;
-    }
-    printf("\n");
-}
-
-void print_block(Statement stmt) {
-    for (size_t i = 0; i < TO_STMT_BLOCK(&stmt).stmts.count; i++) {
-        print_stmt(TO_STMT_BLOCK(&stmt).stmts.data[i]);
-    }
-}
-
-#ifdef venom_debug
 void disassemble(BytecodeChunk *chunk) {
     int i = 0;
     for (
@@ -480,31 +471,6 @@ void disassemble(BytecodeChunk *chunk) {
                 i += 2;
                 break;
             }
-            case OP_FUNC: {
-                printf("%d: ", i);
-                printf("OP_FUNC { ");
-                uint8_t funcname_index = *++ip;
-                printf("name: '%s'", chunk->sp[funcname_index]);
-                uint8_t paramcount = *++ip;
-                printf(", paramcount: %d, parameters: [ ", paramcount);
-                for (; i < paramcount; i++) {
-                    uint8_t paramname_index = *++ip;
-                    printf(", '%s'", chunk->sp[paramname_index]);
-                }
-                uint8_t location = *++ip;
-                printf(" ], location: %d }\n", location);
-                i += 2 + paramcount;
-                break;
-            }
-            case OP_INVOKE: {
-                uint8_t funcname_index = *++ip;
-                printf("%d: ", i);
-                printf("OP_INVOKE { func: '%s', ", chunk->sp[funcname_index]);
-                uint8_t argcount = *++ip;
-                printf(", argcount: '%d' }\n", argcount);
-                i += 2;
-                break;
-            }
             case OP_RET: {
                 printf("%d: ", i);
                 printf("OP_RET\n");
@@ -576,7 +542,6 @@ void disassemble(BytecodeChunk *chunk) {
         }
     }
 }
-#endif
 
 void compile(BytecodeChunk *chunk, Statement stmt, bool scoped) {
     switch (stmt.kind) {
@@ -687,24 +652,21 @@ void compile(BytecodeChunk *chunk, Statement stmt, bool scoped) {
         case STMT_FN: {
             Compiler compiler;
             init_compiler(&compiler, 1);
-            emit_byte(chunk, OP_FUNC);
 
-            /* Emit function name. */
-            uint8_t name_index = add_string(chunk, TO_STMT_FN(stmt).name);
-            emit_byte(chunk, name_index);
-
-            /* Emit parameter count. */
-            emit_byte(chunk, (uint8_t)TO_STMT_FN(stmt).parameters.count);
+            Function func = {
+                .name = TO_STMT_FN(stmt).name,
+                .paramcount = TO_STMT_FN(stmt).parameters.count,
+                .location = (uint8_t)(chunk->code.count + 3),
+            };
 
             /* Add parameter names to compiler->locals. */
             for (size_t i = 0; i < TO_STMT_FN(stmt).parameters.count; i++) {
                 uint8_t parameter_index = add_string(chunk, TO_STMT_FN(stmt).parameters.data[i]);
                 current_compiler->locals[current_compiler->locals_count++] = chunk->sp[parameter_index];
             }
-           
-            /* Emit the location of the start of the function. */
-            emit_byte(chunk, (uint8_t)(chunk->code.count + 4));
-            
+                     
+            table_insert(&current_compiler->enclosing->functions, func.name, AS_FUNC(func));
+
             /* Emit the jump because we don't want to execute
              * the code the first time we encounter it. */
             int jump = emit_jump(chunk, OP_JMP);

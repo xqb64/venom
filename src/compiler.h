@@ -6,6 +6,7 @@
 #include <stdint.h>
 #include "dynarray.h"
 #include "parser.h"
+#include "table.h"
 
 typedef enum {
     OP_PRINT,
@@ -21,10 +22,8 @@ typedef enum {
     OP_NEGATE,
     OP_JMP,
     OP_JZ,
-    OP_FUNC,
     OP_STRUCT,
     OP_STRUCT_INIT,
-    OP_INVOKE,
     OP_RET,
     OP_CONST,
     OP_STR,
@@ -37,6 +36,7 @@ typedef enum {
     OP_GETATTR,
     OP_SETATTR,
     OP_IP,
+    OP_INC_FP,
 } Opcode;
 
 typedef DynArray(uint8_t) Uint8DynArray;
@@ -51,6 +51,7 @@ typedef struct BytecodeChunk {
 
 typedef struct Compiler {
     struct Compiler *enclosing;
+    Table functions;
     char *locals[256];
     int locals_count;
     int jmp_stack[256];

@@ -48,6 +48,8 @@ void run_file(char *file) {
     BytecodeChunk chunk;
     init_chunk(&chunk);
 
+    Compiler compiler;
+    init_compiler(&compiler, 0);
     for (size_t i = 0; i < stmts.count; i++) {
         compile(&chunk, stmts.data[i], false);
         free_stmt(stmts.data[i]);

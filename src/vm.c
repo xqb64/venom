@@ -303,73 +303,16 @@ static inline int handle_op_not(VM *vm, BytecodeChunk *chunk, uint8_t **ip) {
     return 0;
 }
 
-static inline int handle_op_func(VM *vm, BytecodeChunk *chunk, uint8_t **ip) {
-    /* At this point, ip points to OP_FUNC. 
-     * After the opcode, there is the index
-     * of the function's name in the string
-     * constant pool, followed by the number
-     * of function parameters. */
-    uint8_t funcname_index = READ_UINT8();
-    uint8_t paramcount = READ_UINT8();
-
-    /* After the number of parameters, there
-     * is one more byte: the location of the
-     * function in the bytecode. */ 
-    uint8_t location = READ_UINT8();
-
-    /* We make the function object... */
-    char *funcname = chunk->sp[funcname_index];
-    Function func = {
-        .location = location,
-        .name = funcname,
-        .paramcount = paramcount,
-    };
-
-    Object funcobj = AS_FUNC(func);
-
-    /* ...and insert it into the 'vm->globals' table. */
-    table_insert(&vm->globals, funcname, funcobj);
-    return 0;
-}
-
-static inline int handle_op_invoke(VM *vm, BytecodeChunk *chunk, uint8_t **ip) {
-    /* We first read the index of the function name and the argcount. */
-    uint8_t funcname = READ_UINT8();
-    uint8_t argcount = READ_UINT8();
-
-    /* Then, we look it up from the globals table. */ 
-    Object *funcobj = table_get(&vm->globals, chunk->sp[funcname]);
-    if (funcobj == NULL) {
-        /* Runtime error if the function is not defined. */
-        RUNTIME_ERROR(
-            "Variable '%s' is not defined",
-            chunk->sp[funcname]
-        );
-    }
-
-    /* If the number of arguments the function was called with 
-        + does not match the number of parameters the function was
-        * declared to accept, raise a runtime error. */
-    if (argcount != funcobj->as.func.paramcount) {
-        RUNTIME_ERROR(
-            "Function '%s' requires '%d' arguments.",
-            chunk->sp[funcname], argcount
-        );
-    }
-
-    vm->fp_count++;
-                    
-    /* We modify ip so that it points to one instruction
-     * just before the code we're invoking. */
-    *ip = &chunk->code.data[TO_FUNC(*funcobj).location-1];
-    return 0;
-}
-
 static inline int handle_op_ip(VM *vm, BytecodeChunk *chunk, uint8_t **ip) {
     int16_t offset = READ_INT16();
     Object ip_obj = AS_POINTER(*(ip)+offset);
     push(vm, ip_obj);
     vm->fp_stack[vm->fp_count] = vm->tos;
+    return 0;
+}
+
+static inline int handle_op_inc_fp(VM *vm, BytecodeChunk *chunk, uint8_t **ip) {
+    vm->fp_count++;
     return 0;
 }
 
@@ -498,14 +441,13 @@ Handler dispatcher[] = {
     [OP_JMP] = { .fn = handle_op_jmp, .opcode = "OP_JMP" },
     [OP_NEGATE] = { .fn = handle_op_negate, .opcode = "OP_NEGATE" },
     [OP_NOT] = { .fn = handle_op_not, .opcode = "OP_NOT" },
-    [OP_FUNC] = { .fn = handle_op_func, .opcode = "OP_FUNC" },
-    [OP_INVOKE] = { .fn = handle_op_invoke, .opcode = "OP_INVOKE" },
     [OP_RET] = { .fn = handle_op_ret, .opcode = "OP_RET" },
     [OP_TRUE] = { .fn = handle_op_true, .opcode = "OP_TRUE" },
     [OP_NULL] = { .fn = handle_op_null, .opcode = "OP_NULL" },
     [OP_STRUCT] = { .fn = handle_op_struct, .opcode = "OP_STRUCT" },
     [OP_STRUCT_INIT] = { .fn = handle_op_struct_init, .opcode = "OP_STRUCT_INIT" },
     [OP_IP] = { .fn = handle_op_ip, .opcode = "OP_IP" },
+    [OP_INC_FP] = { .fn = handle_op_inc_fp, .opcode = "OP_INC_FP" },
 };
 
 void print_current_instruction(uint8_t *ip) {
