@@ -232,7 +232,7 @@ static void compile_expression(BytecodeChunk *chunk, Expression exp) {
             if (current_compiler->depth > 0) {
                 int index = resolve_local(TO_EXPR_VARIABLE(exp).name);
                 if (index != -1) {
-                    emit_bytes(chunk, 2, OP_DEEP_GET, index);
+                    emit_bytes(chunk, 2, OP_DEEPGET, index);
                 } else {
                     printf("Compiler error: Variable '%s' is not defined.", TO_EXPR_VARIABLE(exp).name);
                     exit(1);
@@ -245,7 +245,7 @@ static void compile_expression(BytecodeChunk *chunk, Expression exp) {
         }
         case EXP_UNARY: {
             compile_expression(chunk, *TO_EXPR_UNARY(exp).exp);
-            emit_byte(chunk, OP_NEGATE);
+            emit_byte(chunk, OP_NEG);
             break;
         }
         case EXP_BINARY: {
@@ -283,7 +283,7 @@ static void compile_expression(BytecodeChunk *chunk, Expression exp) {
             for (size_t i = 0; i < exp.as.expr_call.arguments.count; i++) {
                 compile_expression(chunk, TO_EXPR_CALL(exp).arguments.data[i]);
             }
-            emit_byte(chunk, OP_INC_FP);
+            emit_byte(chunk, OP_INC_FPCOUNT);
             uint8_t funcname_index = add_string(chunk, TO_EXPR_CALL(exp).var.name);
             Object *func = resolve_func(TO_EXPR_CALL(exp).var.name);
             int16_t jump = -(chunk->code.count - TO_FUNC(*func).location) - 3;
@@ -302,7 +302,7 @@ static void compile_expression(BytecodeChunk *chunk, Expression exp) {
             if (TO_EXPR_ASSIGN(exp).lhs->kind == EXP_VARIABLE) {
                 int index = resolve_local(TO_EXPR_VARIABLE(*TO_EXPR_ASSIGN(exp).lhs).name);
                 if (index != -1) {
-                    emit_bytes(chunk, 2, OP_DEEP_SET, index);
+                    emit_bytes(chunk, 2, OP_DEEPSET, index);
                 } else {
                     uint8_t name_index = add_string(chunk, TO_EXPR_VARIABLE(*TO_EXPR_ASSIGN(exp).lhs).name);
                     emit_bytes(chunk, 2, OP_SET_GLOBAL, name_index);
@@ -392,17 +392,17 @@ void disassemble(BytecodeChunk *chunk) {
                 i++;
                 break;
             }
-            case OP_DEEP_GET: {
+            case OP_DEEPGET: {
                 uint8_t name_index = *++ip;
                 printf("%d: ", i);
-                printf("OP_DEEP_GET { index: '%d' }\n", name_index);
+                printf("OP_DEEPGET { index: '%d' }\n", name_index);
                 i++;
                 break;
             }
-            case OP_DEEP_SET: {
+            case OP_DEEPSET: {
                 uint8_t index = *++ip;
                 printf("%d: ", i);
-                printf("OP_DEEP_SET, byte (%d)\n", index);
+                printf("OP_DEEPSET, byte (%d)\n", index);
                 i++;
                 break;
             }
@@ -481,9 +481,9 @@ void disassemble(BytecodeChunk *chunk) {
                 printf("OP_NOT\n");
                 break;
             }
-            case OP_NEGATE: {
+            case OP_NEG: {
                 printf("%d: ", i);
-                printf("OP_NEGATE\n");
+                printf("OP_NEG\n");
                 break;
             }
             case OP_PRINT: {
@@ -517,6 +517,7 @@ void disassemble(BytecodeChunk *chunk) {
                 int16_t offset = *++ip;
                 offset <<= 8;
                 offset |= *++ip;
+                printf("%d: ", i);
                 printf("OP_IP { offset: %d }\n", offset);
                 i += 2;
                 break;
@@ -536,6 +537,11 @@ void disassemble(BytecodeChunk *chunk) {
                 uint8_t property_name_index = *++ip;
                 printf("%d: ", i);
                 printf("OP_SETATTR { '%s' }\n", chunk->sp[property_name_index]);
+                break;
+            }
+            case OP_INC_FPCOUNT: {
+                printf("%d: ", i);
+                printf("OP_INC_FPCOUNT\n");
                 break;
             }
             default: printf("Unknown instruction: %d.\n", *ip); break;
@@ -689,7 +695,7 @@ void compile(BytecodeChunk *chunk, Statement stmt, bool scoped) {
                 emit_byte(chunk, OP_NULL);
                 int deepset_no = current_compiler->locals_count - 1;
                 for (size_t i = 0; i < current_compiler->locals_count; i++) {
-                    emit_bytes(chunk, 2, OP_DEEP_SET, (uint8_t)deepset_no--);
+                    emit_bytes(chunk, 2, OP_DEEPSET, (uint8_t)deepset_no--);
                 }
                 emit_byte(chunk, OP_RET);
             }
@@ -717,7 +723,7 @@ void compile(BytecodeChunk *chunk, Statement stmt, bool scoped) {
             compile_expression(chunk, TO_STMT_RETURN(stmt).returnval);
             int deepset_no = current_compiler->locals_count - 1;
             for (size_t i = 0; i < current_compiler->locals_count; i++) {
-                emit_bytes(chunk, 2, OP_DEEP_SET, (uint8_t)deepset_no--);
+                emit_bytes(chunk, 2, OP_DEEPSET, (uint8_t)deepset_no--);
             }
             emit_byte(chunk, OP_RET);
             break;

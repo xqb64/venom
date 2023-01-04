@@ -19,7 +19,7 @@ typedef enum {
     OP_GT,
     OP_LT,
     OP_NOT,
-    OP_NEGATE,
+    OP_NEG,
     OP_JMP,
     OP_JZ,
     OP_STRUCT,
@@ -31,12 +31,12 @@ typedef enum {
     OP_NULL,
     OP_SET_GLOBAL,
     OP_GET_GLOBAL,
-    OP_DEEP_SET,
-    OP_DEEP_GET,
+    OP_DEEPSET,
+    OP_DEEPGET,
     OP_GETATTR,
     OP_SETATTR,
     OP_IP,
-    OP_INC_FP,
+    OP_INC_FPCOUNT,
 } Opcode;
 
 typedef DynArray(uint8_t) Uint8DynArray;

@@ -145,7 +145,7 @@ static inline int handle_op_str(VM *vm, BytecodeChunk *chunk, uint8_t **ip) {
     return 0;
 }
 
-static inline int handle_op_deep_set(VM *vm, BytecodeChunk *chunk, uint8_t **ip) {
+static inline int handle_op_deepset(VM *vm, BytecodeChunk *chunk, uint8_t **ip) {
     uint8_t index = READ_UINT8();
     Object obj = pop(vm);
     int fp = vm->fp_stack[vm->fp_count-1];
@@ -154,7 +154,7 @@ static inline int handle_op_deep_set(VM *vm, BytecodeChunk *chunk, uint8_t **ip)
     return 0;
 }
 
-static inline int handle_op_deep_get(VM *vm, BytecodeChunk *chunk, uint8_t **ip) {
+static inline int handle_op_deepget(VM *vm, BytecodeChunk *chunk, uint8_t **ip) {
     uint8_t index = READ_UINT8();
     int fp = vm->fp_stack[vm->fp_count-1];
     Object obj = vm->stack[fp+index];
@@ -290,7 +290,7 @@ static inline int handle_op_jmp(VM *vm, BytecodeChunk *chunk, uint8_t **ip) {
     return 0;
 }
 
-static inline int handle_op_negate(VM *vm, BytecodeChunk *chunk, uint8_t **ip) {
+static inline int handle_op_neg(VM *vm, BytecodeChunk *chunk, uint8_t **ip) {
     Object original = pop(vm);
     Object negated = AS_DOUBLE(-TO_DOUBLE(original));
     push(vm, negated);
@@ -311,7 +311,7 @@ static inline int handle_op_ip(VM *vm, BytecodeChunk *chunk, uint8_t **ip) {
     return 0;
 }
 
-static inline int handle_op_inc_fp(VM *vm, BytecodeChunk *chunk, uint8_t **ip) {
+static inline int handle_op_inc_fpcount(VM *vm, BytecodeChunk *chunk, uint8_t **ip) {
     vm->fp_count++;
     return 0;
 }
@@ -425,8 +425,8 @@ Handler dispatcher[] = {
     [OP_GET_GLOBAL] = { .fn = handle_op_get_global, .opcode = "OP_GET_GLOBAL" },
     [OP_SET_GLOBAL] = { .fn = handle_op_set_global, .opcode = "OP_SET_GLOBAL" },
     [OP_STR] = { .fn = handle_op_str, .opcode = "OP_STR" },
-    [OP_DEEP_GET] = { .fn = handle_op_deep_get, .opcode = "OP_DEEP_GET" },
-    [OP_DEEP_SET] = { .fn = handle_op_deep_set, .opcode = "OP_DEEP_SET" },
+    [OP_DEEPGET] = { .fn = handle_op_deepget, .opcode = "OP_DEEPGET" },
+    [OP_DEEPSET] = { .fn = handle_op_deepset, .opcode = "OP_DEEPSET" },
     [OP_GETATTR] = { .fn = handle_op_getattr, .opcode = "OP_GETATTR" },
     [OP_SETATTR] = { .fn = handle_op_setattr, .opcode = "OP_SETATTR" },
     [OP_ADD] = { .fn = handle_op_add, .opcode = "OP_ADD" },
@@ -439,7 +439,7 @@ Handler dispatcher[] = {
     [OP_EQ] = { .fn = handle_op_eq, .opcode = "OP_EQ" },
     [OP_JZ] = { .fn = handle_op_jz, .opcode = "OP_JZ" },
     [OP_JMP] = { .fn = handle_op_jmp, .opcode = "OP_JMP" },
-    [OP_NEGATE] = { .fn = handle_op_negate, .opcode = "OP_NEGATE" },
+    [OP_NEG] = { .fn = handle_op_neg, .opcode = "OP_NEG" },
     [OP_NOT] = { .fn = handle_op_not, .opcode = "OP_NOT" },
     [OP_RET] = { .fn = handle_op_ret, .opcode = "OP_RET" },
     [OP_TRUE] = { .fn = handle_op_true, .opcode = "OP_TRUE" },
@@ -447,7 +447,7 @@ Handler dispatcher[] = {
     [OP_STRUCT] = { .fn = handle_op_struct, .opcode = "OP_STRUCT" },
     [OP_STRUCT_INIT] = { .fn = handle_op_struct_init, .opcode = "OP_STRUCT_INIT" },
     [OP_IP] = { .fn = handle_op_ip, .opcode = "OP_IP" },
-    [OP_INC_FP] = { .fn = handle_op_inc_fp, .opcode = "OP_INC_FP" },
+    [OP_INC_FPCOUNT] = { .fn = handle_op_inc_fpcount, .opcode = "OP_INC_FPCOUNT" },
 };
 
 void print_current_instruction(uint8_t *ip) {
