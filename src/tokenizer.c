@@ -110,7 +110,6 @@ static Token identifier(Tokenizer *tokenizer) {
     return make_token(tokenizer, TOKEN_IDENTIFIER, length + 1);
 }
 
-#ifdef venom_debug
 void print_token(Token token) {
     printf("current token: Token { .type: ");
 
@@ -144,7 +143,6 @@ void print_token(Token token) {
 
     printf(", value: '%.*s' }\n", token.length, token.start);
 }
-#endif
 
 Token get_token(Tokenizer *tokenizer) {
     skip_whitespace(tokenizer);

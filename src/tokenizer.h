@@ -65,8 +65,6 @@ typedef struct
 void init_tokenizer(Tokenizer *tokenizer, char *source);
 Token get_token(Tokenizer *tokenizer);
 
-#ifdef venom_debug
 void print_token(Token token);
-#endif
 
 #endif

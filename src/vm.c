@@ -455,7 +455,7 @@ void print_current_instruction(uint8_t *ip) {
 }
 
 int run(VM *vm, BytecodeChunk *chunk) {
-#ifdef venom_debug
+#ifdef venom_debug_compiler
     disassemble(chunk);
 #endif
 
@@ -464,12 +464,12 @@ int run(VM *vm, BytecodeChunk *chunk) {
         ip < &chunk->code.data[chunk->code.count];  /* ip < addr of just beyond the last instruction */
         ip++
     ) {
-#ifdef venom_debug
+#ifdef venom_debug_vm
         print_current_instruction(ip);
 #endif
         int status = dispatcher[*ip].fn(vm, chunk, &ip);
         if (status != 0) return status;
-#ifdef venom_debug
+#ifdef venom_debug_vm
         PRINT_STACK();
 #endif
     }

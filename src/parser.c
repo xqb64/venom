@@ -164,7 +164,7 @@ static Token advance(Parser *parser, Tokenizer *tokenizer) {
     parser->previous = parser->current;
     parser->current = get_token(tokenizer);
 
-#ifdef venom_debug
+#ifdef venom_debug_parser
     print_token(parser->current);
 #endif
 
@@ -804,13 +804,9 @@ static Statement statement(Parser *parser, Tokenizer *tokenizer) {
     }
 }
 
-static Statement parse_statement(Parser *parser, Tokenizer *tokenizer) {
-    return statement(parser, tokenizer);
-}
-
 void parse(Parser *parser, Tokenizer *tokenizer, Statement_DynArray *stmts) {
     advance(parser, tokenizer);
     while (parser->current.type != TOKEN_EOF) {
-        dynarray_insert(stmts, parse_statement(parser, tokenizer));
+        dynarray_insert(stmts, statement(parser, tokenizer));
     }
 }

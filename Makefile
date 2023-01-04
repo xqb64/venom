@@ -6,8 +6,22 @@ CFLAGS += -Wno-unused-parameter
 CFLAGS += -O3
 LDLIBS = -lm
 
-ifeq ($(debug), 1)
-	CFLAGS += -Dvenom_debug
+ifeq ($(debug), all)
+	CFLAGS += -Dvenom_debug_parser
+	CFLAGS += -Dvenom_debug_compiler
+	CFLAGS += -Dvenom_debug_vm
+endif
+
+ifeq ($(debug), parser)
+	CFLAGS += -Dvenom_debug_parser
+endif
+
+ifeq ($(debug), compiler)
+	CFLAGS += -Dvenom_debug_compiler
+endif
+
+ifeq ($(debug), vm)
+	CFLAGS += -Dvenom_debug_vm
 endif
 
 obj/%.o: src/%.c $(wildcard src/*.h)
