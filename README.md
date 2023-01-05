@@ -1,8 +1,8 @@
 # venom
 
-An implementation of a minimal dynamic programming language. For now, the source code is tokenized, parsed into AST using a recursive-descent parser, and compiled to bytecode which is interpreted by a virtual machine. The plan is to have a mark-and-sweep garbage collector and to keep the VM RISC-like.
+A handcrafted virtual stack machine capable of executing a reduced instruction set consisting of only 27 microinstructions. The programs for the VM are written in a minimal, dynamically-typed, Turing-complete programming language featuring basic data types, functions, structures, and flow control. Besides the VM, the system includes an on-demand tokenizer, a recursive-descent parser, and a bytecode compiler.
 
-Status: almost usable.
+Status: usable, but needs thorough testing (coming soon).
 
 ## Examples
 
@@ -15,30 +15,30 @@ fn fib(n) {
     return fib(n-1) + fib(n-2);
 }
 
-print fib(20);
+print fib(40);
 ```
 
-Fizzbuzz:
+- **NOTE**: The above program has been the go-to benchmark throughout the development cycle. In the early versions of Venom, the running time on my system (AMD Ryzen 3 3200G with Radeon Vega Graphics) used to go as high as 9 minutes (admittedly, with debug prints enabled). The latest Venom version runs `fib(40)` in...wait for it:
 
-```rust
-fn fizzbuzz() {
-    let i = 0;
-    while (i < 100) {
-        if (i % 15 == 0) {
-            print "fizzbuzz";
-        } else if (i % 5 == 0) {
-            print "buzz";
-        } else if (i % 3 == 0) {
-            print "fizz";
-        } else {
-            print i;
-        }
-        i = i + 1;
-    }
-}
+    ```
+    ❯ time ./venom examples/example02.vnm
+    { 102334155.00 }
 
-fizzbuzz();
-```
+    real	0m32,672s
+    user	0m32,658s
+    sys	    0m0,002s
+    ```
+
+    ```
+    ❯ time python3 fib.py
+    102334155
+
+    real	0m28,893s
+    user	0m28,666s
+    sys	0m0,052s
+    ```
+
+    ...which is only `~3.77s` slower than Python! To be fair, Python could execute this code in a blink of an eye with `@functools.lru_cache()`.
 
 ## Compiling
 
@@ -48,10 +48,20 @@ Clone the repository and run:
 make
 ```
 
-## Running the tests
-
-Make a Python virtual environment, install `pytest`, and run:
+To enable the debug prints for one of the components of the system, run:
 
 ```
-pytest
+make debug=vm
+```
+
+To enable the debug prints for all system components, run:
+
+```
+make debug=all
+```
+
+To generate the performance graph, run:
+
+```
+make graph.png
 ```
