@@ -43,7 +43,7 @@ clean:
 #	$ make graph.png
 
 callgrind.out: venom
-	valgrind --tool=callgrind --callgrind-out-file=$@ ./$< examples/example02.vnm
+	valgrind --tool=callgrind --callgrind-out-file=$@ ./$< examples/fib.vnm
 
 graph.gv: callgrind.out
 	gprof2dot $< --format=callgrind --output=$@
