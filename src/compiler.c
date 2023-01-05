@@ -374,15 +374,15 @@ static void handle_compile_expression_struct(BytecodeChunk *chunk, Expression ex
         exit(1);
     }
     StructBlueprint *sb = TO_STRUCT_BLUEPRINT(*blueprintobj);
-    if (sb->propertycount != e.initializers.count) {
+    if (sb->properties.count != e.initializers.count) {
         printf(
-            "Compiler error: struct '%s' requires %d initializers.\n",
+            "Compiler error: struct '%s' requires %ld initializers.\n",
             sb->name,
-            sb->propertycount
+            sb->properties.count
         );
         exit(1);
     }
-    for (size_t i = 0; i < sb->propertycount; i++) {
+    for (size_t i = 0; i < sb->properties.count; i++) {
         char *property = sb->properties.data[i];
         bool found = false;
         for (size_t j = 0; j < e.initializers.count; j++) {
@@ -398,7 +398,7 @@ static void handle_compile_expression_struct(BytecodeChunk *chunk, Expression ex
                 "Compiler error: struct '%s' requires properties: [",
                 sb->name
             );
-            for (size_t k = 0; k < sb->propertycount; k++) {
+            for (size_t k = 0; k < sb->properties.count; k++) {
                 printf("'%s', ", sb->properties.data[k]);                       
             }
             printf("]\n");
@@ -618,7 +618,6 @@ static void handle_compile_statement_struct(BytecodeChunk *chunk, Statement stmt
     }
     StructBlueprint blueprint = {
         .name = own_string(s.name),
-        .propertycount = s.properties.count,
         .properties = properties
     };
     table_insert(&current_compiler->structs, blueprint.name, AS_STRUCT_BLUEPRINT(blueprint));

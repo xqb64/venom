@@ -40,7 +40,6 @@ typedef struct {
 typedef struct {
     char *name;
     String_DynArray properties;
-    int propertycount;
 } StructBlueprint;
 
 typedef struct Object {
