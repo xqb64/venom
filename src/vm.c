@@ -15,7 +15,6 @@ void init_vm(VM *vm) {
 void free_vm(VM* vm) {
     /* Free the globals table and its strings. */
     table_free(&vm->globals);
-    table_free(&vm->struct_blueprints); 
 }
 
 static inline void push(VM *vm, Object obj) {
@@ -228,13 +227,13 @@ static inline bool check_equality(VM *vm, Object *a, Object *b) {
     } else if (IS_BOOL(*a) && IS_BOOL(*b)) {
         return TO_BOOL(*a) == TO_BOOL(*b);      
     } else if (IS_HEAP(*a) && IS_HEAP(*b)) {
-        Object *blueprint = table_get(&vm->struct_blueprints, TO_STRUCT(*a)->name);
-        for (size_t i = 0; i < TO_STRUCT_BLUEPRINT(*blueprint)->properties.count; i++) {
-            char *prop = TO_STRUCT_BLUEPRINT(*blueprint)->properties.data[i];
+        for (size_t i = 0; i < 1024; i++) {
+            if (TO_STRUCT(*a)->properties->data[i] == NULL) continue;
+            char *key = TO_STRUCT(*a)->properties->data[i]->key;
             if (!check_equality(
                 vm,
-                table_get(TO_STRUCT(*a)->properties, prop),
-                table_get(TO_STRUCT(*b)->properties, prop)
+                table_get(TO_STRUCT(*a)->properties, key),
+                table_get(TO_STRUCT(*b)->properties, key)
             )) {
                 return false;
             }
