@@ -417,7 +417,7 @@ void print_current_instruction(uint8_t *ip) {
 }
 
 int run(VM *vm, BytecodeChunk *chunk) {
-#ifdef venom_debug_compiler
+#ifdef venom_debug_disassembler
     disassemble(chunk);
 #endif
 

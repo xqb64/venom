@@ -16,8 +16,8 @@ ifeq ($(debug), parser)
 	CFLAGS += -Dvenom_debug_parser
 endif
 
-ifeq ($(debug), compiler)
-	CFLAGS += -Dvenom_debug_compiler
+ifeq ($(debug), disassembler)
+	CFLAGS += -Dvenom_debug_disassembler
 endif
 
 ifeq ($(debug), vm)
