@@ -148,8 +148,8 @@ static inline int handle_op_deepset(VM *vm, BytecodeChunk *chunk, uint8_t **ip) 
     uint8_t index = READ_UINT8();
     Object obj = pop(vm);
     int fp = vm->fp_stack[vm->fp_count-1];
+    OBJECT_DECREF(vm->stack[fp+index]);
     vm->stack[fp+index] = obj;
-    OBJECT_DECREF(obj);
     return 0;
 }
 

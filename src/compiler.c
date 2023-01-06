@@ -40,6 +40,11 @@ void end_compiler(Compiler *compiler) {
     current_compiler = compiler->enclosing;
 }
 
+void free_compiler(Compiler *compiler) {
+    table_free(&compiler->structs);
+    table_free(&compiler->functions);
+}
+
 void init_chunk(BytecodeChunk *chunk) {
     memset(chunk, 0, sizeof(BytecodeChunk));
 }

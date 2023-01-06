@@ -122,6 +122,7 @@ void free_expression(Expression e) {
             free_expression(*TO_EXPR_LOGICAL(e).rhs);
             free(TO_EXPR_LOGICAL(e).lhs);
             free(TO_EXPR_LOGICAL(e).rhs);
+            free(TO_EXPR_LOGICAL(e).operator);
             break;
         }
         case EXP_CALL: {

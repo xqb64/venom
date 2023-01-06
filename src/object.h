@@ -77,6 +77,7 @@ do { \
     if (IS_STRUCT((object))) { \
         table_free((object).as.struct_->properties); \
         free((object).as.struct_->properties); \
+        free((object).as.struct_); \
     } \
 } while(0)
 
