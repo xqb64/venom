@@ -1,8 +1,7 @@
 #ifndef venom_tokenizer_h
 #define venom_tokenizer_h
 
-typedef enum
-{
+typedef enum {
     TOKEN_PRINT,
     TOKEN_LET,
     TOKEN_IDENTIFIER,
@@ -49,15 +48,13 @@ typedef enum
     TOKEN_ERROR,
 } TokenType;
 
-typedef struct
-{
-    TokenType type;
+typedef struct {
     char *start;
+    TokenType type;
     int length;
 } Token;
 
-typedef struct
-{
+typedef struct {
     char *current;
     int line;
 } Tokenizer;

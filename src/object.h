@@ -23,7 +23,7 @@ typedef enum {
     OBJ_STRUCT_BLUEPRINT,
     OBJ_PROPERTY,
     OBJ_NULL,
-} ObjectType;
+} __attribute__ ((__packed__)) ObjectType;
 
 typedef struct {
     char *name;
@@ -32,9 +32,9 @@ typedef struct {
 } Function;
 
 typedef struct {
-    char *name;
     Table *properties;
     int propertycount;
+    char *name;
 } Struct;
 
 typedef struct {

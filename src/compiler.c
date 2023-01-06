@@ -302,7 +302,6 @@ static void handle_compile_expression_call(BytecodeChunk *chunk, Expression exp)
         compile_expression(chunk, e.arguments.data[i]);
     }
     emit_byte(chunk, OP_INC_FPCOUNT);
-    uint8_t funcname_index = add_string(chunk, e.var.name);
     Object *func = resolve_func(e.var.name);
     int16_t jump = -(chunk->code.count - TO_FUNC(*func)->location) - 3;
     emit_bytes(chunk, 3, OP_JMP, (jump >> 8) & 0xFF, jump & 0xFF);
@@ -595,7 +594,7 @@ static void handle_compile_statement_fn(BytecodeChunk *chunk, Statement stmt, bo
     if (is_void) {
         emit_byte(chunk, OP_NULL);
         int deepset_no = current_compiler->locals_count - 1;
-        for (size_t i = 0; i < current_compiler->locals_count; i++) {
+        for (int i = 0; i < current_compiler->locals_count; i++) {
             emit_bytes(chunk, 2, OP_DEEPSET, (uint8_t)deepset_no--);
         }
         emit_byte(chunk, OP_RET);
@@ -628,7 +627,7 @@ static void handle_compile_statement_return(BytecodeChunk *chunk, Statement stmt
     ReturnStatement s = TO_STMT_RETURN(stmt);
     compile_expression(chunk, s.returnval);
     int deepset_no = current_compiler->locals_count - 1;
-    for (size_t i = 0; i < current_compiler->locals_count; i++) {
+    for (int i = 0; i < current_compiler->locals_count; i++) {
         emit_bytes(chunk, 2, OP_DEEPSET, (uint8_t)deepset_no--);
     }
     emit_byte(chunk, OP_RET);

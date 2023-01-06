@@ -19,7 +19,7 @@ typedef enum {
     EXP_LOGICAL,
     EXP_STRUCT,
     EXP_STRUCT_INIT,
-} ExpressionKind;
+} __attribute__ ((__packed__)) ExpressionKind;
 
 typedef struct Expression Expression;
 
@@ -134,7 +134,7 @@ typedef enum {
     STMT_FN,
     STMT_RETURN,
     STMT_STRUCT,
-} StatementKind;
+} __attribute__ ((__packed__)) StatementKind;
 
 typedef struct Statement Statement;
 
@@ -159,9 +159,9 @@ typedef struct {
 } BlockStatement;
 
 typedef struct {
+    String_DynArray parameters;
     char *name;
     Statement *body;
-    String_DynArray parameters;
 } FunctionStatement;
 
 typedef struct {

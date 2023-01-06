@@ -322,9 +322,6 @@ static inline int handle_op_ret(VM *vm, BytecodeChunk *chunk, uint8_t **ip) {
      * address. */
     Object returnvalue = pop(vm);
 
-    /* We pop the last frame pointer off the frame pointer stack. */
-    int fp = vm->fp_stack[--vm->fp_count];
-
     /* Then, we clean up everything between the top of the stack
      * and the frame pointer we popped in the previous step. */
 
@@ -333,9 +330,10 @@ static inline int handle_op_ret(VM *vm, BytecodeChunk *chunk, uint8_t **ip) {
      * caller. */
     Object returnaddr = pop(vm);
 
+    --vm->fp_count;
+
     /* Then, we push the return value back on the stack.  */
     push(vm, returnvalue);
-    OBJECT_DECREF(returnvalue);
 
     /* Finally, we modify the instruction pointer. */
     *ip = returnaddr.as.ptr;
