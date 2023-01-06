@@ -21,12 +21,12 @@ print fib(40);
 - **NOTE**: The above program has been the go-to benchmark throughout the development cycle. In the early versions of Venom, the running time on my system (AMD Ryzen 3 3200G with Radeon Vega Graphics) used to go as high as 9 minutes (admittedly, with debug prints enabled). The latest Venom version runs `fib(40)` in...wait for it:
 
     ```
-    ❯ time ./venom examples/example02.vnm
+    ❯ time ./venom benchmarks/fib40.vnm
     { 102334155.00 }
 
-    real	0m32,672s
-    user	0m32,658s
-    sys	    0m0,002s
+    real	0m28,325s
+    user	0m28,242s
+    sys	0m0,008s
     ```
 
     ```
@@ -38,7 +38,7 @@ print fib(40);
     sys	0m0,052s
     ```
 
-    ...which is only `~3.77s` slower than Python! To be fair, Python could execute this code in a blink of an eye with `@functools.lru_cache()`.
+    ...which is as fast as Python! To be fair, Python could execute this code in a blink of an eye with `@functools.lru_cache()`.
 
 ## Compiling
 
