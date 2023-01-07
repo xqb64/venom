@@ -479,6 +479,9 @@ static void handle_compile_statement_block(BytecodeChunk *chunk, Statement stmt,
     for (size_t i = 0; i < s.stmts.count; i++) {
         compile(chunk, s.stmts.data[i], scoped);
     }
+    for (int i = 0; i < current_compiler->locals_count; i++) {
+        emit_byte(chunk, OP_POP);
+    }
     end_compiler(&compiler);
 }
 
@@ -520,6 +523,7 @@ static void handle_compile_statement_while(BytecodeChunk *chunk, Statement stmt,
      * the conditional expression, so that we know where to return
      * after the body of the loop is executed. */
     WhileStatement s = TO_STMT_WHILE(stmt);
+
     int loop_start = chunk->code.count;
 
     /* We then compile the conditional expression because the VM
@@ -527,7 +531,10 @@ static void handle_compile_statement_while(BytecodeChunk *chunk, Statement stmt,
      * and a boolean placed on the stack by the time it encounters
      * an instruction like OP_JZ. */
     compile_expression(chunk, s.condition);
-    
+
+    Compiler compiler;
+    init_compiler(&compiler, TO_STMT_BLOCK(s.body).depth);
+
     /* Then, we emit an OP_JZ which jumps to the else clause if the
      * condition is falsey. Because we do not know the size of the
      * bytecode in the body of the 'while' loop ahead of time, we do
@@ -546,6 +553,11 @@ static void handle_compile_statement_while(BytecodeChunk *chunk, Statement stmt,
         compile(chunk, body.stmts.data[i], scoped);
     }
 
+    int to_pop = current_compiler->locals_count - current_compiler->enclosing->locals_count;
+    for (int i = 0; i < to_pop; i++) {
+        emit_byte(chunk, OP_POP);
+    }
+
     /* Then, we emit OP_JMP with a negative offset. */
     emit_loop(chunk, loop_start);
 
@@ -556,6 +568,8 @@ static void handle_compile_statement_while(BytecodeChunk *chunk, Statement stmt,
 
     /* Finally, we patch the jump. */
     patch_jump(chunk, exit_jump);
+
+    end_compiler(&compiler);
 }
 
 static void handle_compile_statement_fn(BytecodeChunk *chunk, Statement stmt, bool scoped) {

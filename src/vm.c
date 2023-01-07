@@ -350,6 +350,12 @@ static inline int handle_op_null(VM *vm, BytecodeChunk *chunk, uint8_t **ip) {
     return 0;
 }
 
+static inline int handle_op_pop(VM *vm, BytecodeChunk *chunk, uint8_t **ip) {
+    Object obj = pop(vm);
+    OBJECT_DECREF(obj);
+    return 0;
+}
+
 static inline int handle_op_struct(VM *vm, BytecodeChunk *chunk, uint8_t **ip) {
     uint8_t structname = READ_UINT8();
     uint8_t propertycount = READ_UINT8();
@@ -401,6 +407,7 @@ Handler dispatcher[] = {
     [OP_STRUCT] = { .fn = handle_op_struct, .opcode = "OP_STRUCT" },
     [OP_IP] = { .fn = handle_op_ip, .opcode = "OP_IP" },
     [OP_INC_FPCOUNT] = { .fn = handle_op_inc_fpcount, .opcode = "OP_INC_FPCOUNT" },
+    [OP_POP] = { .fn = handle_op_pop, .opcode = "OP_POP" },
 };
 
 void print_current_instruction(uint8_t *ip) {

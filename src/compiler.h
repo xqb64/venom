@@ -36,6 +36,7 @@ typedef enum {
     OP_SETATTR,
     OP_IP,
     OP_INC_FPCOUNT,
+    OP_POP,
 } Opcode;
 
 typedef DynArray(uint8_t) Uint8DynArray;
