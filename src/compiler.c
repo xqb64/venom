@@ -472,17 +472,39 @@ static void handle_compile_statement_expr(BytecodeChunk *chunk, Statement stmt, 
     compile_expression(chunk, TO_STMT_EXPR(stmt).exp);
 }
 
+static void print_compiler(Compiler *compiler) {
+    if (compiler == NULL) {
+        printf("Compiler { NULL }");
+        return;
+    }
+    printf("Compiler { addr: %p, depth: %d, ", compiler, compiler->depth);
+    printf("locals: [");
+    for (int i = 0; i < compiler->locals_count; i++) {
+        printf("%s, ", compiler->locals[i]);
+    }
+    printf("]");
+    printf(", enclosing: ");
+    print_compiler(compiler->enclosing);
+    printf("}\n");
+}
+
 static void handle_compile_statement_block(BytecodeChunk *chunk, Statement stmt, bool scoped) {
     BlockStatement s = TO_STMT_BLOCK(&stmt);
     Compiler compiler;
-    init_compiler(&compiler, s.depth);
+    if (s.depth > 1) {
+        init_compiler(&compiler, s.depth);
+    }
     for (size_t i = 0; i < s.stmts.count; i++) {
         compile(chunk, s.stmts.data[i], scoped);
     }
-    for (int i = 0; i < current_compiler->locals_count; i++) {
+    print_compiler(current_compiler);
+    int pop_count = current_compiler->locals_count - current_compiler->enclosing->locals_count;
+    for (int i = 0; i < pop_count; i++) {
         emit_byte(chunk, OP_POP);
     }
-    end_compiler(&compiler);
+    if (s.depth > 1) {
+        end_compiler(&compiler);
+    }
 }
 
 static void handle_compile_statement_if(BytecodeChunk *chunk, Statement stmt, bool scoped) {
@@ -583,42 +605,27 @@ static void handle_compile_statement_fn(BytecodeChunk *chunk, Statement stmt, bo
         .location = (uint8_t)(chunk->code.count + 3),
     };
 
-    /* Add parameter names to compiler->locals. */
-    for (size_t i = 0; i < s.parameters.count; i++) {
-        uint8_t parameter_index = add_string(chunk, s.parameters.data[i]);
-        current_compiler->locals[current_compiler->locals_count++] = chunk->sp[parameter_index];
+    table_insert(&current_compiler->enclosing->functions, func.name, AS_FUNC(func));
+
+    if (s.parameters.count > 0) {
+        memcpy(current_compiler->locals, s.parameters.data, sizeof(*s.parameters.data));
+        current_compiler->locals_count += s.parameters.count;
     }
                 
-    table_insert(&current_compiler->enclosing->functions, func.name, AS_FUNC(func));
 
     /* Emit the jump because we don't want to execute
      * the code the first time we encounter it. */
     int jump = emit_jump(chunk, OP_JMP);
 
-    /* Compile the function body and check if it is void. */
-    BlockStatement body = TO_STMT_BLOCK(s.body);
-    bool is_void = true;
-    for (size_t i = 0; i < body.stmts.count; i++) {
-        if (body.stmts.data[i].kind == STMT_RETURN) {
-            is_void = false;
-        }
-    }
+    print_compiler(current_compiler);
 
-    for (size_t i = 0; i < body.stmts.count; i++) {
-        compile(chunk, body.stmts.data[i], true);
-    }
+    compile(chunk, *s.body, true);
 
     /* If the function does not have a return statement,
-        * emit OP_NULL because we have to return something. */
-    if (is_void) {
-        emit_byte(chunk, OP_NULL);
-        int deepset_no = current_compiler->locals_count - 1;
-        for (int i = 0; i < current_compiler->locals_count; i++) {
-            emit_bytes(chunk, 2, OP_DEEPSET, (uint8_t)deepset_no--);
-        }
-        emit_byte(chunk, OP_RET);
-    }
-
+     * emit OP_NULL because we have to return something. */
+    emit_byte(chunk, OP_NULL);
+    emit_byte(chunk, OP_RET);
+ 
     /* Finally, patch the jump. */
     patch_jump(chunk, jump);
 
@@ -645,6 +652,8 @@ static void handle_compile_statement_return(BytecodeChunk *chunk, Statement stmt
     /* Compile the return value and emit OP_RET. */
     ReturnStatement s = TO_STMT_RETURN(stmt);
     compile_expression(chunk, s.returnval);
+    printf("from return: ");
+    print_compiler(current_compiler);
     int deepset_no = current_compiler->locals_count - 1;
     for (int i = 0; i < current_compiler->locals_count; i++) {
         emit_bytes(chunk, 2, OP_DEEPSET, (uint8_t)deepset_no--);
