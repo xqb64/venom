@@ -34,6 +34,7 @@ DisassembleHandler disassemble_handler[] = {
     [OP_STRUCT] = { .opcode = "OP_STRUCT", .operands = 2 },
     [OP_IP] = { .opcode = "OP_IP", .operands = 2 },
     [OP_INC_FPCOUNT] = { .opcode = "OP_INC_FPCOUNT", .operands = 0 },
+    [OP_POP] = { .opcode = "OP_POP", .operands = 0 },
 };
 
 void disassemble(BytecodeChunk *chunk) {
@@ -50,13 +51,12 @@ void disassemble(BytecodeChunk *chunk) {
     (ip += 2, \
     (int16_t)((ip[-1] << 8) | ip[0]))
     
-    int i = 0;
     for (
         uint8_t *ip = chunk->code.data;    
         ip < &chunk->code.data[chunk->code.count];  /* ip < addr of just beyond the last instruction */
-        ip++, i++
+        ip++
     ) {
-        printf("%d: ", i);
+        printf("%ld: ", ip - chunk->code.data);
         printf("%s", disassemble_handler[*ip].opcode);
         switch (disassemble_handler[*ip].operands) {
             case 0: break;

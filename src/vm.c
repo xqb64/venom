@@ -67,7 +67,7 @@ do { \
 
 static inline int handle_op_print(VM *vm, BytecodeChunk *chunk, uint8_t **ip) {
     Object object = pop(vm);
-#ifdef venom_debug
+#ifdef venom_debug_vm
     printf("dbg print :: ");
 #endif
     PRINT_OBJECT(object);
