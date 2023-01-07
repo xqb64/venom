@@ -34,11 +34,6 @@ void end_compiler(Compiler *compiler) {
         memcpy(compiler->enclosing->jmp_stack, current_compiler->jmp_stack, sizeof(current_compiler->jmp_stack));
         compiler->enclosing->jmp_tos = current_compiler->jmp_tos;        
     }
-    /* TODO: Figure this out. */
-    if (compiler->enclosing->enclosing != NULL) {
-        memcpy(compiler->enclosing->backjmp_stack, compiler->enclosing->enclosing->backjmp_stack, sizeof(compiler->enclosing->enclosing->backjmp_stack));
-        compiler->enclosing->backjmp_tos = compiler->enclosing->enclosing->backjmp_tos;
-    }
     current_compiler = compiler->enclosing;
 }
 
@@ -533,6 +528,7 @@ static void handle_compile_statement_while(BytecodeChunk *chunk, Statement stmt,
 
     int loop_start = chunk->code.count;
     current_compiler->backjmp_stack[current_compiler->backjmp_tos++] = loop_start;
+    size_t backjmp_tos_before = current_compiler->backjmp_tos;
 
     /* We then compile the conditional expression because the VM
     .* expects something like OP_EQ to have already been executed
@@ -558,6 +554,11 @@ static void handle_compile_statement_while(BytecodeChunk *chunk, Statement stmt,
     if (current_compiler->jmp_tos > 0) {
         int break_jump = current_compiler->jmp_stack[--current_compiler->jmp_tos];
         patch_jump(chunk, break_jump);
+    }
+
+    /* If a 'continue' wasn't popped off the backjmp stack, pop it. */
+    if (current_compiler->backjmp_tos == backjmp_tos_before) {
+        current_compiler->backjmp_tos--;
     }
 
     /* Finally, we patch the jump. */
