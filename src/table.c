@@ -34,7 +34,7 @@ static void list_free(Bucket *head) {
         tmp = head;
         head = head->next;
         free(tmp->key);
-        if (IS_HEAP(tmp->obj)) {
+        if (IS_STRUCT(tmp->obj)) {
             OBJECT_DECREF(tmp->obj);
         } else if (IS_STRUCT_BLUEPRINT(tmp->obj)) {
             StructBlueprint *blueprint = TO_STRUCT_BLUEPRINT(tmp->obj);

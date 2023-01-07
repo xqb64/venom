@@ -32,6 +32,7 @@ typedef struct {
 } Function;
 
 typedef struct {
+    int refcount;
     Table *properties;
     int propertycount;
     char *name;
@@ -52,14 +53,9 @@ typedef struct Object {
         uint8_t *ptr;
         Struct *struct_;
         StructBlueprint *struct_blueprint;
-        HeapObject *heapobj;
+        int *refcount;
     } as;
 } Object;
-
-typedef struct HeapObject {
-    Object obj;
-    int refcount;
-} HeapObject;
 
 #define IS_BOOL(object) ((object).type == OBJ_BOOLEAN)
 #define IS_NUM(object) ((object).type == OBJ_NUMBER)
@@ -69,7 +65,6 @@ typedef struct HeapObject {
 #define IS_STRING(object) ((object).type == OBJ_STRING)
 #define IS_STRUCT(object) ((object).type == OBJ_STRUCT)
 #define IS_STRUCT_BLUEPRINT(object) ((object).type == OBJ_STRUCT_BLUEPRINT)
-#define IS_HEAP(object) ((object).type == OBJ_HEAP)
 #define IS_PROP(object) ((object).type == OBJ_PROPERTY)
 
 #define DEALLOC_OBJ(object) \
@@ -83,17 +78,16 @@ do { \
 
 #define OBJECT_INCREF(object) \
 do { \
-    if ((object).type == OBJ_HEAP) { \
-        (object).as.heapobj->refcount++; \
+    if (IS_STRUCT((object))) { \
+        ++*(object).as.refcount; \
     } \
 } while (0)
 
 #define OBJECT_DECREF(object) \
 do { \
-    if ((object).type == OBJ_HEAP) { \
-        if (--(object).as.heapobj->refcount == 0) { \
-            DEALLOC_OBJ((object).as.heapobj->obj); \
-            free((object).as.heapobj); \
+    if (IS_STRUCT((object))) { \
+        if (--*(object).as.refcount == 0) { \
+            DEALLOC_OBJ((object)); \
         } \
     } \
 } while(0)
@@ -104,16 +98,14 @@ do { \
 #define AS_POINTER(thing) ((Object){ .type = OBJ_POINTER, .as.ptr = (thing) })
 #define AS_STR(thing) ((Object){ .type = OBJ_STRING, .as.str = (thing) })
 #define AS_NULL() ((Object){ .type = OBJ_NULL })
-#define AS_HEAP(thing) ((Object){ .type = OBJ_HEAP, .as.heapobj = (thing) })
 #define AS_PROP(thing) ((Object){ .type = OBJ_PROPERTY, .as.prop = (thing) })
-#define AS_STRUCT(thing) ((Object){ .type = OBJ_STRUCT, .as.struct_ = ALLOC(thing) })
+#define AS_STRUCT(thing) ((Object){ .type = OBJ_STRUCT, .as.struct_ = (thing) })
 #define AS_STRUCT_BLUEPRINT(thing) ((Object){ .type = OBJ_STRUCT_BLUEPRINT, .as.struct_blueprint = ALLOC(thing) })
 
 #define TO_DOUBLE(object) ((object).as.dval)
 #define TO_BOOL(object) ((object).as.bval)
-#define TO_STRUCT(object) ((object).as.heapobj->obj.as.struct_)
+#define TO_STRUCT(object) ((object).as.struct_)
 #define TO_FUNC(object) ((object).as.func)
-#define TO_HEAP(object) ((object).as.heapobj)
 #define TO_PROP(object) ((object).as.prop)
 #define TO_STRUCT_BLUEPRINT(object) ((object).as.struct_blueprint)
 #define TO_PTR(object) ((object).as.ptr)
@@ -135,13 +127,11 @@ do { \
         printf("null"); \
     } else if IS_STRING(object) { \
         printf("%s", TO_STR(object)); \
-    } else if IS_HEAP(object) { \
-        if (IS_STRUCT(TO_HEAP(object)->obj)) { \
-            printf("%s", TO_STRUCT(object)->name); \
-            printf(" {"); \
-            table_print(TO_STRUCT(object)->properties); \
-            printf(" }"); \
-        } \
+    } else if (IS_STRUCT(object)) { \
+        printf("%s", TO_STRUCT(object)->name); \
+        printf(" {"); \
+        table_print(TO_STRUCT(object)->properties); \
+        printf(" }"); \
     } \
     printf(" }"); \
 } while (0)

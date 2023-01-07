@@ -226,7 +226,7 @@ static inline bool check_equality(VM *vm, Object *a, Object *b) {
         return strcmp(TO_STR(*a), TO_STR(*b)) == 0;
     } else if (IS_BOOL(*a) && IS_BOOL(*b)) {
         return TO_BOOL(*a) == TO_BOOL(*b);      
-    } else if (IS_HEAP(*a) && IS_HEAP(*b)) {
+    } else if (IS_STRUCT(*a) && IS_STRUCT(*b)) {
         for (size_t i = 0; i < 1024; i++) {
             if (TO_STRUCT(*a)->properties->data[i] == NULL) continue;
             char *key = TO_STRUCT(*a)->properties->data[i]->key;
@@ -358,18 +358,12 @@ static inline int handle_op_struct(VM *vm, BytecodeChunk *chunk, uint8_t **ip) {
         .name = chunk->sp[structname],
         .propertycount = propertycount,
         .properties = malloc(sizeof(Table)),
+        .refcount = 1,
     };
 
     memset(s.properties, 0, sizeof(Table));
 
-    Object structobj = AS_STRUCT(s);
-
-    HeapObject heapobj = {
-        .refcount = 1,
-        .obj = structobj,
-    };
-
-    push(vm, AS_HEAP(ALLOC(heapobj)));
+    push(vm, AS_STRUCT(ALLOC(s)));
     return 0;
 }
 
