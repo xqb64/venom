@@ -8,19 +8,19 @@ LDLIBS = -lm
 
 ifeq ($(debug), all)
 	CFLAGS += -Dvenom_debug_parser
-	CFLAGS += -Dvenom_debug_compiler
+	CFLAGS += -Dvenom_debug_disassembler
 	CFLAGS += -Dvenom_debug_vm
 endif
 
-ifeq ($(debug), parser)
+ifeq (parser, $(findstring parser, $(debug)))
 	CFLAGS += -Dvenom_debug_parser
 endif
 
-ifeq ($(debug), disassembler)
+ifeq (disassembler, $(findstring disassembler, $(debug)))
 	CFLAGS += -Dvenom_debug_disassembler
 endif
 
-ifeq ($(debug), vm)
+ifeq (vm, $(findstring vm, $(debug)))
 	CFLAGS += -Dvenom_debug_vm
 endif
 
