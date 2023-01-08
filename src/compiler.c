@@ -188,7 +188,7 @@ static int resolve_local(char *name) {
     while (current != NULL) {
         for (int i = current->locals_count - 1; i >= 0; i--) {
             if (strcmp(current->locals[i], name) == 0) {
-                return i;
+                return i+1;
             }
         }
         current = current->enclosing;
@@ -622,7 +622,7 @@ static void handle_compile_statement_return(BytecodeChunk *chunk, Statement stmt
     /* Compile the return value and emit OP_RET. */
     ReturnStatement s = TO_STMT_RETURN(stmt);
     compile_expression(chunk, s.returnval);
-    int deepset_no = current_compiler->locals_count - 1;
+    int deepset_no = current_compiler->locals_count;
     for (int i = 0; i < current_compiler->locals_count; i++) {
         emit_bytes(chunk, 2, OP_DEEPSET, (uint8_t)deepset_no--);
     }
