@@ -317,17 +317,9 @@ static inline int handle_op_inc_fpcount(VM *vm, BytecodeChunk *chunk, uint8_t **
 
 static inline int handle_op_ret(VM *vm, BytecodeChunk *chunk, uint8_t **ip) {
     /* By the time we encounter OP_RET, the return
-     * value is located on the stack. Beneath it are
-     * the function arguments, followed by the return
-     * address. */
+     * value is located on the stack, followed by
+     * the return address. */
     Object returnvalue = pop(vm);
-
-    /* Then, we clean up everything between the top of the stack
-     * and the frame pointer we popped in the previous step. */
-
-    /* After the arguments comes the return address which we'll
-     * use to modify the instruction pointer ip and return to the
-     * caller. */
     Object returnaddr = pop(vm);
 
     --vm->fp_count;
