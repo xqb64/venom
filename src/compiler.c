@@ -10,6 +10,14 @@
 
 Compiler *current_compiler = NULL;
 
+#define COMPILER_ERROR(...) \
+do { \
+    fprintf(stderr, "Compiler error: "); \
+    fprintf(stderr, __VA_ARGS__); \
+    fprintf(stderr, "\n"); \
+    exit(1); \
+} while (0)
+
 void init_compiler(Compiler *compiler, size_t depth) {
     memset(compiler, 0, sizeof(Compiler));
     compiler->enclosing = current_compiler;
@@ -251,8 +259,7 @@ static void handle_compile_expression_variable(BytecodeChunk *chunk, Expression 
         if (index != -1) {
             emit_bytes(chunk, 2, OP_DEEPGET, index);
         } else {
-            printf("Compiler error: Variable '%s' is not defined.", e.name);
-            exit(1);
+            COMPILER_ERROR("Variable '%s' is not defined.", e.name);
         }
     } else {
         uint8_t name_index = add_string(chunk, e.name);
@@ -333,8 +340,7 @@ static void handle_compile_expression_assign(BytecodeChunk *chunk, Expression ex
         uint8_t index = add_string(chunk, TO_EXPR_GET(*e.lhs).property_name);
         emit_bytes(chunk, 2, OP_SETATTR, index);
     } else {
-        printf("Compiler error.\n");
-        exit(1);
+        COMPILER_ERROR("invalid assignment.\n");
     }
 }
 
@@ -371,17 +377,15 @@ static void handle_compile_expression_struct(BytecodeChunk *chunk, Expression ex
     StructExpression e = TO_EXPR_STRUCT(exp);
     Object *blueprintobj = resolve_struct(e.name);
     if (blueprintobj == NULL) {
-        printf("Compiler error: struct '%s' is not defined.\n", e.name);
-        exit(1);
+        COMPILER_ERROR("struct '%s' is not defined.\n", e.name);
     }
     StructBlueprint *sb = TO_STRUCT_BLUEPRINT(*blueprintobj);
     if (sb->properties.count != e.initializers.count) {
-        printf(
-            "Compiler error: struct '%s' requires %ld initializers.\n",
+        COMPILER_ERROR(
+            "struct '%s' requires %ld initializers.\n",
             sb->name,
             sb->properties.count
         );
-        exit(1);
     }
     for (size_t i = 0; i < sb->properties.count; i++) {
         char *property = sb->properties.data[i];
@@ -395,15 +399,19 @@ static void handle_compile_expression_struct(BytecodeChunk *chunk, Expression ex
             }
         }
         if (!found) {
-            printf(
-                "Compiler error: struct '%s' requires properties: [",
-                sb->name
-            );
+            int msg_len = 0;
             for (size_t k = 0; k < sb->properties.count; k++) {
-                printf("'%s', ", sb->properties.data[k]);                       
+                msg_len += strlen(sb->properties.data[k]) + 2; // 2 = len(", ")                       
             }
-            printf("]\n");
-            exit(1);
+            char properties[msg_len+1];
+            for (size_t k = 0; k < sb->properties.count; k++) {
+                strcat(properties, sb->properties.data[k]);
+                strcat(properties, ", ");                      
+            }
+            properties[msg_len] = '\0';
+            COMPILER_ERROR(
+                "struct '%s' requires properties: [%s]", sb->name, properties
+            );
         }
     }
     uint8_t name_index = add_string(chunk, sb->name);
