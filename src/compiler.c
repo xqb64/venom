@@ -103,58 +103,53 @@ static void emit_bytes(BytecodeChunk *chunk, uint8_t n, ...) {
     va_end(ap);
 }
 
-static int emit_jump(BytecodeChunk *chunk, Opcode jump) {
-    emit_byte(chunk, jump);
-    emit_bytes(chunk, 2, 0xFF, 0xFF);
-    /* In this case, the jump is the last emitted instruction. 
+static int emit_placeholder(BytecodeChunk *chunk, Opcode op) {
+    emit_bytes(chunk, 3, op, 0xFF, 0xFF);
+    /* The opcode, followed by its 2-byte offset is the last
+     * emitted instruction. 
      *
-     * For example, if we have: [
-     *     OP_CONST, operand,
-     *     OP_CONST, operand,
-     *     OP_EQ, 
-     *     OP_JZ, operand, operand
-     * ]                             ^-- count
+     * e.g. if `chunk->code.data` is:
+     * 
+     * [OP_CONST, operand,
+     *  OP_CONST, operand,
+     *  OP_EQ, 
+     *  OP_JZ, operand, operand]
+     *                            ^-- `chunk->code.count`
      *
-     * the count will be 8. Because the indexing is zero-based,
-     * the count points to just beyond the two operands, so to
-     * get to OP_JZ, we need to subtract 3 (two operands plus
-     * one 'extra' slot to adjust for zero-based indexing). */
+     * `chunk->code.count` will be 8. Because the indexing is
+     * zero-based, the count points to just beyond the 2-byte
+     * offset. In order to get the position of the opcode, we
+     * need to go back 3 slots (two operands plus one 'extra'
+     * slot to adjust for zero-based indexing). */
     return chunk->code.count - 3;
 }
 
-static int emit_ip(BytecodeChunk *chunk) {
-    emit_bytes(chunk, 3, OP_IP, 0xFF, 0xFF);
-    return chunk->code.count - 3;
-}
-
-static void patch_ip(BytecodeChunk *chunk, int ip) {
-    int16_t bytes_emitted = (chunk->code.count - 1) - (ip + 2);
-    chunk->code.data[ip+1] = (bytes_emitted >> 8) & 0xFF;
-    chunk->code.data[ip+2] = bytes_emitted & 0xFF;
-}
-
-static void patch_jump(BytecodeChunk *chunk, int jump) {
-    /* In this case, one or both branches have been compiled.
+static void patch_placeholder(BytecodeChunk *chunk, int op) {
+    /* We are given the 0-based index of the opcode, and we want
+     * to patch the offset that follows with the number of emitted
+     * instructions after the opcode and the placeholder.
      *
-     * For example, if we have: [
-     *     OP_CONST, operand,
-     *     OP_CONST, operand,
-     *     OP_EQ, 
-     *     OP_JZ, operand, operand,
-     *     OP_CONST, operand,
-     *     OP_PRINT,
-     * ]             ^-- count
+     * For example, if we have:
      *
-     * We first adjust for zero-based indexing by subtracting 1
+     * [OP_CONST, operand,
+     *  OP_CONST, operand,
+     *  OP_EQ, 
+     *  OP_JZ, operand, operand,
+     *  OP_STR, operand, 
+     *  OP_PRINT]
+     *             ^-- `chunk->code.count`
+     *
+     * `op` will be 5. To get the number of emitted instructions,
+     * we first adjust for zero-based indexing by subtracting 1
      * (such that count points to the last element. Then we take
-     * the index of OP_JZ (5 in this case) and add 2 because we
-     * need to adjust for the operands. The result of subtraction
-     * of these two is the number of emitted bytes after the jump,
-     * and we use that number to build a 16-bit offset that we use
-     * to patch the jump. */
-    int16_t bytes_emitted = (chunk->code.count - 1) - (jump + 2);
-    chunk->code.data[jump+1] = (bytes_emitted >> 8) & 0xFF;
-    chunk->code.data[jump+2] = bytes_emitted & 0xFF;
+     * the index of the opcode (OP_JZ, i.e., 5 in this case) and add
+     * 2 because we need to adjust for the operands. The result of
+     * the subtraction of these two is the number of emitted bytes
+     * we need, and we use it to build a signed 16-bit offset to
+     * patch the placeholder. */
+    int16_t bytes_emitted = (chunk->code.count - 1) - (op + 2);
+    chunk->code.data[op+1] = (bytes_emitted >> 8) & 0xFF;
+    chunk->code.data[op+2] = bytes_emitted & 0xFF;
 }
 
 static void emit_loop(BytecodeChunk *chunk, int loop_start) {
@@ -306,7 +301,7 @@ static void handle_compile_expression_binary(BytecodeChunk *chunk, Expression ex
 
 static void handle_compile_expression_call(BytecodeChunk *chunk, Expression exp) {
     CallExpression e = TO_EXPR_CALL(exp);
-    int ip = emit_ip(chunk);
+    int ip = emit_placeholder(chunk, OP_IP);
     for (size_t i = 0; i < e.arguments.count; i++) {
         compile_expression(chunk, e.arguments.data[i]);
     }
@@ -314,7 +309,7 @@ static void handle_compile_expression_call(BytecodeChunk *chunk, Expression exp)
     Object *func = resolve_func(e.var.name);
     int16_t jump = -(chunk->code.count - TO_FUNC(*func)->location) - 3;
     emit_bytes(chunk, 3, OP_JMP, (jump >> 8) & 0xFF, jump & 0xFF);
-    patch_ip(chunk, ip);
+    patch_placeholder(chunk, ip);
 }
 
 static void handle_compile_expression_get(BytecodeChunk *chunk, Expression exp) {
@@ -354,9 +349,9 @@ static void handle_compile_expression_logical(BytecodeChunk *chunk, Expression e
          * was falsey (aka short-circuiting). Effectively, we will leave 
          * the left operand on the stack as the result of evaluating this
          * expression. */
-        int end_jump = emit_jump(chunk, OP_JZ);
+        int end_jump = emit_placeholder(chunk, OP_JZ);
         compile_expression(chunk, *e.rhs);
-        patch_jump(chunk, end_jump);
+        patch_placeholder(chunk, end_jump);
     } else if (strcmp(e.operator, "||") == 0) {
         /* For logical OR, we need to short-circuit when the left-hand side
          * is truthy. Thus, we have two jumps: the first one is conditional
@@ -365,11 +360,11 @@ static void handle_compile_expression_logical(BytecodeChunk *chunk, Expression e
          * the second, unconditional jump that skips the code for the right
          * operand. However, if the left-hand side was falsey, it jumps over
          * the unconditional jump and evaluates the right-hand side operand. */
-        int else_jump = emit_jump(chunk, OP_JZ);
-        int end_jump = emit_jump(chunk, OP_JMP);
-        patch_jump(chunk, else_jump);
+        int else_jump = emit_placeholder(chunk, OP_JZ);
+        int end_jump = emit_placeholder(chunk, OP_JMP);
+        patch_placeholder(chunk, else_jump);
         compile_expression(chunk, *e.rhs);
-        patch_jump(chunk, end_jump);
+        patch_placeholder(chunk, end_jump);
     }
 }
 
@@ -510,14 +505,14 @@ static void handle_compile_statement_if(BytecodeChunk *chunk, Statement stmt, bo
      * a placeholder for the real jump offset that will be known only
      * after we compile the 'then' branch because at that point the
      * size of the 'then' branch is known. */ 
-    int then_jump = emit_jump(chunk, OP_JZ);
+    int then_jump = emit_placeholder(chunk, OP_JZ);
     
     compile(chunk, *s.then_branch, scoped);
 
-    int else_jump = emit_jump(chunk, OP_JMP);
+    int else_jump = emit_placeholder(chunk, OP_JMP);
 
     /* Then, we patch the 'then' jump. */
-    patch_jump(chunk, then_jump);
+    patch_placeholder(chunk, then_jump);
 
     if (s.else_branch != NULL) {
         compile(chunk, *s.else_branch, scoped);
@@ -525,7 +520,7 @@ static void handle_compile_statement_if(BytecodeChunk *chunk, Statement stmt, bo
 
     /* Finally, we patch the 'else' jump. If the 'else' branch
      * wasn't compiled, the offset should be zeroed out. */
-    patch_jump(chunk, else_jump);
+    patch_placeholder(chunk, else_jump);
 }
 
 static void handle_compile_statement_while(BytecodeChunk *chunk, Statement stmt, bool scoped) {
@@ -551,7 +546,7 @@ static void handle_compile_statement_while(BytecodeChunk *chunk, Statement stmt,
      * which acts as a placeholder for the real jump offset that will
      * be known only after we compile the body of the 'while' loop,
      * because at that point its size is known. */ 
-    int exit_jump = emit_jump(chunk, OP_JZ);
+    int exit_jump = emit_placeholder(chunk, OP_JZ);
     
     /* Then, we compile the body of the loop. */
     compile(chunk, *s.body, scoped);
@@ -561,7 +556,7 @@ static void handle_compile_statement_while(BytecodeChunk *chunk, Statement stmt,
 
     if (current_compiler->jmp_tos > 0) {
         int break_jump = current_compiler->jmp_stack[--current_compiler->jmp_tos];
-        patch_jump(chunk, break_jump);
+        patch_placeholder(chunk, break_jump);
     }
 
     /* If a 'continue' wasn't popped off the backjmp stack, pop it. */
@@ -570,7 +565,7 @@ static void handle_compile_statement_while(BytecodeChunk *chunk, Statement stmt,
     }
 
     /* Finally, we patch the jump. */
-    patch_jump(chunk, exit_jump);
+    patch_placeholder(chunk, exit_jump);
 
 }
 
@@ -595,7 +590,7 @@ static void handle_compile_statement_fn(BytecodeChunk *chunk, Statement stmt, bo
 
     /* Emit the jump because we don't want to execute
      * the code the first time we encounter it. */
-    int jump = emit_jump(chunk, OP_JMP);
+    int jump = emit_placeholder(chunk, OP_JMP);
 
     compile(chunk, *s.body, true);
 
@@ -605,7 +600,7 @@ static void handle_compile_statement_fn(BytecodeChunk *chunk, Statement stmt, bo
     emit_byte(chunk, OP_RET);
  
     /* Finally, patch the jump. */
-    patch_jump(chunk, jump);
+    patch_placeholder(chunk, jump);
 
     end_compiler(&compiler);
 }
@@ -638,7 +633,7 @@ static void handle_compile_statement_return(BytecodeChunk *chunk, Statement stmt
 }
 
 static void handle_compile_statement_break(BytecodeChunk *chunk, Statement stmt, bool scoped) {
-    int break_jump = emit_jump(chunk, OP_JMP);
+    int break_jump = emit_placeholder(chunk, OP_JMP);
     current_compiler->jmp_stack[current_compiler->jmp_tos++] = break_jump;
 }
 
