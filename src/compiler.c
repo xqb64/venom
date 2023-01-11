@@ -241,12 +241,7 @@ static void emit_loop(BytecodeChunk *chunk, int loop_start) {
 }
 
 static void emit_stack_cleanup(BytecodeChunk *chunk) {
-    int pop_count;
-    if (current_compiler->enclosing != NULL) {
-        pop_count = current_compiler->locals_count - current_compiler->enclosing->locals_count;
-    } else {
-        pop_count = current_compiler->locals_count;
-    }
+    int pop_count = current_compiler->locals_count - current_compiler->enclosing->locals_count;
     for (int i = 0; i < pop_count; i++) {
         emit_byte(chunk, OP_POP);
     }
