@@ -18,30 +18,75 @@ do { \
     exit(1); \
 } while (0)
 
+#define COPY_ARRAY(dest, src) \
+do { \
+    memcpy((dest), (src), sizeof((src))); \
+} while (0)
+
+static void print_compiler(Compiler *compiler) {
+    printf("Compiler { ");
+    if (compiler == NULL) {
+        printf("NULL }");
+        return;
+    }
+    printf("depth: %d, ", compiler->depth);
+    printf("locals: [");
+    for (int i = 0; i < compiler->locals_count; i++) {
+        printf("%s, ", compiler->locals[i]);
+    }
+    printf("]");
+    printf(", enclosing: ");
+    print_compiler(compiler->enclosing);
+    printf(" }");
+}
+
 void init_compiler(Compiler *compiler, size_t depth) {
+    /* Zero-initialize the compiler. */
     memset(compiler, 0, sizeof(Compiler));
-    compiler->enclosing = current_compiler;
+
+    /* Assign the depth. */
+    compiler->depth = depth;
+
     if (current_compiler != NULL) {
-        /* Inherit everythig else from the current compiler. */
-        memcpy(compiler->locals, current_compiler->locals, sizeof(current_compiler->locals));
+        /* We want to inherit current_compiler's locals. */
+        COPY_ARRAY(compiler->locals, current_compiler->locals);
         compiler->locals_count = current_compiler->locals_count;
 
-        memcpy(compiler->backjmp_stack, current_compiler->backjmp_stack, sizeof(current_compiler->backjmp_stack));
+        /* We want to forward-propagate current_compiler's backjmp_stack
+         * (and the accompanying top of stack pointer) which contains the
+         * addresses where loops begin, so that a 'continue' statement
+         * could use the address to patch the backward jump. */
+        COPY_ARRAY(compiler->backjmp_stack, current_compiler->backjmp_stack);
         compiler->backjmp_tos = current_compiler->backjmp_tos;
 
-        memcpy(compiler->jmp_stack, current_compiler->jmp_stack, sizeof(current_compiler->jmp_stack));
-        compiler->jmp_tos = current_compiler->jmp_tos;
+        /* If the scope depth of the compiler we're initializing is the
+         * same as the depth of the current_compiler (which happens when
+         * a function statement initializes a compiler, followed by another
+         * initialization by the block statement), set the parent of newly
+         * initialized compiler to current_compiler's parent.
+         *
+         * Otherwise, if the scope depths are different,
+         * use the current_compiler as the parent. */
+        if (compiler->depth != current_compiler->depth) {
+            compiler->enclosing = current_compiler;
+        } else {
+            compiler->enclosing = current_compiler->enclosing;
+        }
     }
-    compiler->depth = depth;
+
+    /* Finally, set the current_compiler to be the newly initialized compiler. */
     current_compiler = compiler;
 }
 
 void end_compiler(Compiler *compiler) {
-    if (compiler->enclosing != NULL) {
-        /* Inherit everythig else from the current compiler. */
-        memcpy(compiler->enclosing->jmp_stack, current_compiler->jmp_stack, sizeof(current_compiler->jmp_stack));
-        compiler->enclosing->jmp_tos = current_compiler->jmp_tos;        
-    }
+    /* We want to backward-propagate current_compiler's jmp_stack
+     * (and the accompanying top of stack pointer) which contains the
+     * addresses of the jumps, so that we could patch the jump after
+     * we compile the entire loop. */
+    COPY_ARRAY(compiler->enclosing->jmp_stack, current_compiler->jmp_stack);
+    compiler->enclosing->jmp_tos = current_compiler->jmp_tos;
+
+    /* Finally, set the current_compiler to be the compiler's parent. */
     current_compiler = compiler->enclosing;
 }
 
@@ -58,6 +103,15 @@ void free_chunk(BytecodeChunk *chunk) {
     dynarray_free(&chunk->code);
     for (int i = 0; i < chunk->sp_count; i++) 
         free(chunk->sp[i]);
+}
+
+static bool sp_contains(BytecodeChunk *chunk, const char *string) {
+    for (size_t i = 0; i < chunk->sp_count; i++) {
+        if (strcmp(chunk->sp[i], string) == 0) {
+            return true;
+        }
+    }
+    return false;
 }
 
 static uint8_t add_string(BytecodeChunk *chunk, const char *string) {
@@ -186,9 +240,21 @@ static void emit_loop(BytecodeChunk *chunk, int loop_start) {
     emit_byte(chunk, offset & 0xFF);
 }
 
+static void emit_stack_cleanup(BytecodeChunk *chunk) {
+    int pop_count;
+    if (current_compiler->enclosing != NULL) {
+        pop_count = current_compiler->locals_count - current_compiler->enclosing->locals_count;
+    } else {
+        pop_count = current_compiler->locals_count;
+    }
+    for (int i = 0; i < pop_count; i++) {
+        emit_byte(chunk, OP_POP);
+    }
+}
+
 static int resolve_local(char *name) {
     Compiler *current = current_compiler;
-    while (current != NULL) {
+    while (current->depth != 0) {
         for (int i = current->locals_count - 1; i >= 0; i--) {
             if (strcmp(current->locals[i], name) == 0) {
                 return i+1;
@@ -249,16 +315,16 @@ static void handle_compile_expression_string(BytecodeChunk *chunk, Expression ex
 
 static void handle_compile_expression_variable(BytecodeChunk *chunk, Expression exp) {
     VariableExpression e = TO_EXPR_VARIABLE(exp);
-    if (current_compiler->depth > 0) {
-        int index = resolve_local(e.name);
-        if (index != -1) {
-            emit_bytes(chunk, 2, OP_DEEPGET, index);
+    int index = resolve_local(e.name);
+    if (index != -1) {
+        emit_bytes(chunk, 2, OP_DEEPGET, index);
+    } else {
+        if (sp_contains(chunk, e.name)) {
+            uint8_t name_index = add_string(chunk, e.name);
+            emit_bytes(chunk, 2, OP_GET_GLOBAL, name_index);
         } else {
             COMPILER_ERROR("Variable '%s' is not defined.", e.name);
         }
-    } else {
-        uint8_t name_index = add_string(chunk, e.name);
-        emit_bytes(chunk, 2, OP_GET_GLOBAL, name_index);
     }
 }
 
@@ -323,12 +389,17 @@ static void handle_compile_expression_assign(BytecodeChunk *chunk, Expression ex
     AssignExpression e = TO_EXPR_ASSIGN(exp);
     compile_expression(chunk, *e.rhs);
     if (e.lhs->kind == EXP_VARIABLE) {
-        int index = resolve_local(TO_EXPR_VARIABLE(*e.lhs).name);
+        VariableExpression var = TO_EXPR_VARIABLE(*e.lhs);
+        int index = resolve_local(var.name);
         if (index != -1) {
             emit_bytes(chunk, 2, OP_DEEPSET, index);
         } else {
-            uint8_t name_index = add_string(chunk, TO_EXPR_VARIABLE(*e.lhs).name);
-            emit_bytes(chunk, 2, OP_SET_GLOBAL, name_index);
+            if (sp_contains(chunk, var.name)) {
+                uint8_t name_index = add_string(chunk, var.name);
+                emit_bytes(chunk, 2, OP_SET_GLOBAL, name_index);
+            } else {
+                COMPILER_ERROR("Variable '%s' is not defined.", var.name);
+            }
         }
     } else if (e.lhs->kind == EXPR_GET) {
         compile_expression(chunk, *TO_EXPR_GET(*e.lhs).exp);
@@ -449,48 +520,50 @@ static void compile_expression(BytecodeChunk *chunk, Expression exp) {
     expression_handler[exp.kind].fn(chunk, exp);
 }
 
-void compile(BytecodeChunk *chunk, Statement stmt, bool scoped);
+void compile(BytecodeChunk *chunk, Statement stmt);
 
-static void handle_compile_statement_print(BytecodeChunk *chunk, Statement stmt, bool scoped) {
+static void handle_compile_statement_print(BytecodeChunk *chunk, Statement stmt) {
     PrintStatement s = TO_STMT_PRINT(stmt);
     compile_expression(chunk, s.exp);
     emit_byte(chunk, OP_PRINT);
 }
 
-static void handle_compile_statement_let(BytecodeChunk *chunk, Statement stmt, bool scoped) {
+static void handle_compile_statement_let(BytecodeChunk *chunk, Statement stmt) {
     LetStatement s = TO_STMT_LET(stmt);
     compile_expression(chunk, s.initializer);
     uint8_t name_index = add_string(chunk, s.name);
-    if (!scoped) {
+    if (current_compiler->depth == 0) {
         emit_bytes(chunk, 2, OP_SET_GLOBAL, name_index);
     } else {
         current_compiler->locals[current_compiler->locals_count++] = chunk->sp[name_index];
     }
 }
 
-static void handle_compile_statement_expr(BytecodeChunk *chunk, Statement stmt, bool scoped) {
+static void handle_compile_statement_expr(BytecodeChunk *chunk, Statement stmt) {
     compile_expression(chunk, TO_STMT_EXPR(stmt).exp);
 }
 
-static void handle_compile_statement_block(BytecodeChunk *chunk, Statement stmt, bool scoped) {
+static void handle_compile_statement_block(BytecodeChunk *chunk, Statement stmt) {
     BlockStatement s = TO_STMT_BLOCK(&stmt);
     Compiler compiler;
-    if (s.depth > 1) {
-        init_compiler(&compiler, s.depth);
-    }
+
+    init_compiler(&compiler, s.depth);
+
+    /* Compile the body of the black. */
     for (size_t i = 0; i < s.stmts.count; i++) {
-        compile(chunk, s.stmts.data[i], scoped);
+        compile(chunk, s.stmts.data[i]);
     }
-    int pop_count = current_compiler->locals_count - current_compiler->enclosing->locals_count;
-    for (int i = 0; i < pop_count; i++) {
-        emit_byte(chunk, OP_POP);
-    }
-    if (s.depth > 1) {
-        end_compiler(&compiler);
-    }
+
+    /* After the block ends, we want to clean up the stack. 
+     * For example, if we have a global 'while' loop, the
+     * `current_compiler` variable will be of depth == 0,
+     * which means the compiler that encloses it will be NULL.
+     * In that scenario, we only want to pop. */
+    emit_stack_cleanup(chunk);
+    end_compiler(&compiler);
 }
 
-static void handle_compile_statement_if(BytecodeChunk *chunk, Statement stmt, bool scoped) {
+static void handle_compile_statement_if(BytecodeChunk *chunk, Statement stmt) {
     /* We first compile the conditional expression because the VM
     .* expects something like OP_EQ to have already been executed
      * and a boolean placed on the stack by the time it encounters
@@ -507,7 +580,7 @@ static void handle_compile_statement_if(BytecodeChunk *chunk, Statement stmt, bo
      * size of the 'then' branch is known. */ 
     int then_jump = emit_placeholder(chunk, OP_JZ);
     
-    compile(chunk, *s.then_branch, scoped);
+    compile(chunk, *s.then_branch);
 
     int else_jump = emit_placeholder(chunk, OP_JMP);
 
@@ -515,7 +588,7 @@ static void handle_compile_statement_if(BytecodeChunk *chunk, Statement stmt, bo
     patch_placeholder(chunk, then_jump);
 
     if (s.else_branch != NULL) {
-        compile(chunk, *s.else_branch, scoped);
+        compile(chunk, *s.else_branch);
     }
 
     /* Finally, we patch the 'else' jump. If the 'else' branch
@@ -523,7 +596,7 @@ static void handle_compile_statement_if(BytecodeChunk *chunk, Statement stmt, bo
     patch_placeholder(chunk, else_jump);
 }
 
-static void handle_compile_statement_while(BytecodeChunk *chunk, Statement stmt, bool scoped) {
+static void handle_compile_statement_while(BytecodeChunk *chunk, Statement stmt) {
     /* We need to mark the beginning of the loop before we compile
      * the conditional expression, so that we know where to return
      * after the body of the loop is executed. */
@@ -549,7 +622,7 @@ static void handle_compile_statement_while(BytecodeChunk *chunk, Statement stmt,
     int exit_jump = emit_placeholder(chunk, OP_JZ);
     
     /* Then, we compile the body of the loop. */
-    compile(chunk, *s.body, scoped);
+    compile(chunk, *s.body);
 
     /* Then, we emit OP_JMP with a negative offset. */
     emit_loop(chunk, loop_start);
@@ -569,7 +642,7 @@ static void handle_compile_statement_while(BytecodeChunk *chunk, Statement stmt,
 
 }
 
-static void handle_compile_statement_fn(BytecodeChunk *chunk, Statement stmt, bool scoped) {
+static void handle_compile_statement_fn(BytecodeChunk *chunk, Statement stmt) {
     FunctionStatement s = TO_STMT_FN(stmt);
     Compiler compiler;
     init_compiler(&compiler, 1);
@@ -592,7 +665,7 @@ static void handle_compile_statement_fn(BytecodeChunk *chunk, Statement stmt, bo
      * the code the first time we encounter it. */
     int jump = emit_placeholder(chunk, OP_JMP);
 
-    compile(chunk, *s.body, true);
+    compile(chunk, *s.body);
 
     /* If the function does not have a return statement,
      * emit OP_NULL because we have to return something. */
@@ -605,7 +678,7 @@ static void handle_compile_statement_fn(BytecodeChunk *chunk, Statement stmt, bo
     end_compiler(&compiler);
 }
 
-static void handle_compile_statement_struct(BytecodeChunk *chunk, Statement stmt, bool scoped) {
+static void handle_compile_statement_struct(BytecodeChunk *chunk, Statement stmt) {
     StructStatement s = TO_STMT_STRUCT(stmt);
     String_DynArray properties = {0};
     for (size_t i = 0; i < s.properties.count; i++) {
@@ -621,7 +694,7 @@ static void handle_compile_statement_struct(BytecodeChunk *chunk, Statement stmt
     table_insert(&current_compiler->structs, blueprint.name, AS_STRUCT_BLUEPRINT(blueprint));
 }
 
-static void handle_compile_statement_return(BytecodeChunk *chunk, Statement stmt, bool scoped) {
+static void handle_compile_statement_return(BytecodeChunk *chunk, Statement stmt) {
     /* Compile the return value and emit OP_RET. */
     ReturnStatement s = TO_STMT_RETURN(stmt);
     compile_expression(chunk, s.returnval);
@@ -632,17 +705,19 @@ static void handle_compile_statement_return(BytecodeChunk *chunk, Statement stmt
     emit_byte(chunk, OP_RET);
 }
 
-static void handle_compile_statement_break(BytecodeChunk *chunk, Statement stmt, bool scoped) {
+static void handle_compile_statement_break(BytecodeChunk *chunk, Statement stmt) {
+    emit_stack_cleanup(chunk);
     int break_jump = emit_placeholder(chunk, OP_JMP);
     current_compiler->jmp_stack[current_compiler->jmp_tos++] = break_jump;
 }
 
-static void handle_compile_statement_continue(BytecodeChunk *chunk, Statement stmt, bool scoped) {
+static void handle_compile_statement_continue(BytecodeChunk *chunk, Statement stmt) {
     int loop_start = current_compiler->backjmp_stack[--current_compiler->backjmp_tos];
+    emit_stack_cleanup(chunk);
     emit_loop(chunk, loop_start);
 }
 
-typedef void (*CompileHandlerFn)(BytecodeChunk *chunk, Statement stmt, bool scoped);
+typedef void (*CompileHandlerFn)(BytecodeChunk *chunk, Statement stmt);
 
 typedef struct {
     CompileHandlerFn fn;
@@ -663,6 +738,6 @@ CompileHandler handler[] = {
     [STMT_CONTINUE] = { .fn = handle_compile_statement_continue, .name = "STMT_CONTINUE" },
 };
 
-void compile(BytecodeChunk *chunk, Statement stmt, bool scoped) {
-    handler[stmt.kind].fn(chunk, stmt, scoped);
+void compile(BytecodeChunk *chunk, Statement stmt) {
+    handler[stmt.kind].fn(chunk, stmt);
 }

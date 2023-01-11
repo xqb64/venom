@@ -34,7 +34,7 @@ venom: $(SRC:src/%.c=obj/%.o)
 
 clean:
 	rm -rvf obj venom
-	rm -r graph.gv graph.png callgrind.out
+	rm -f graph.gv graph.png callgrind.out
 
 # profiling stuff
 #
