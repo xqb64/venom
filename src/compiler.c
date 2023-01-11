@@ -207,32 +207,42 @@ static void patch_placeholder(BytecodeChunk *chunk, int op) {
 }
 
 static void emit_loop(BytecodeChunk *chunk, int loop_start) {
-    /* In this case, the conditional expression has been compiled.
+    /* 
+     * For example, consider the following bytecode for the program
+     * on the side:
      *
-     * For example, if we have: [
-     *     OP_STR_CONST @ 14 ('x')
-     *     OP_CONST @ 14 ('0.00')
-     *     OP_SET_GLOBAL
-     *     OP_GET_GLOBAL @ 14
-     *     OP_CONST @ 0 ('10.00')
-     *     OP_LT
-     *     OP_JZ
-     *     OP_GET_GLOBAL @ 14
-     *     OP_PRINT
-     *     OP_STR_CONST @ 14 ('x')
-     *     OP_GET_GLOBAL @ 14
-     *     OP_CONST @ 13 ('1.00')
-     *     OP_ADD
-     *     OP_SET_GLOBAL
-     *     OP_JMP
-     * ]            ^-- count
+     *     0: OP_CONST (value: 0.000000)    |
+     *     2: OP_SET_GLOBAL (index: 0)      |
+     *     4: OP_GET_GLOBAL (index: 0)      |
+     *     6: OP_CONST (value: 5.000000)    |   let x = 0;
+     *     8: OP_LT                         |   while (x < 5) {
+     *     9: OP_JZ (offset: 13)            |       print x;
+     *     12: OP_GET_GLOBAL (index: 0)     |       x = x+1;
+     *     14: OP_PRINT                     |   }
+     *     15: OP_GET_GLOBAL (index: 0)     |
+     *     17: OP_CONST (value: 1.000000)   |
+     *     19: OP_ADD                       |
+     *     20: OP_SET_GLOBAL (index: 0)     |
+     *     22: OP_JMP (offset: -21)         |
      *
-     * In this case, the loop_start is at '5'. If the count points to
-     * one instruction beyond the end of the bytecode '23'), in order
-     * to get to the beginning of the loop, we need to go backwards 18
-     * instructions (chunk->code.count - loop_start = 23 - 5 = 18).
-     * However, we need to make sure we include the 2-byte operand for
-     * OP_JMP, so we add +2 to the offset.
+     * In this case, the loop starts at `4`, OP_GET_GLOBAL.
+     *
+     * We first emit OP_JMP, so the count will be 23 and will
+     * point to one instruction beyond the end of the bytecode.
+     * In order to go back to the beginning of the loop, we need
+     * to go backwards 19 instructions:
+     *
+     *     `chunk->code.count` - `loop_start` = 23 - 4 = 19
+     *
+     * However, we need to make sure we include the 2-byte offset
+     * for OP_JMP (23 - 4 + 2 = 21), because by the time the vm
+     * encounters this jump, it will have read the 2-byte offset
+     * as well - which means it will need to jump from `24` to `4`.
+     * In order to get there, we need to be one step behind so that
+     * the main loop will increment the instruction pointer to the
+     * next instruction.
+     *
+     * So, 24 - 21 = 3, and we wait for the main loop to increment ip.
      */
     emit_byte(chunk, OP_JMP);
     int16_t offset = -(chunk->code.count - loop_start + 2);
