@@ -420,25 +420,59 @@ static void handle_compile_expression_logical(BytecodeChunk *chunk, Expression e
     /* We first compile the left-hand side of the expression. */
     compile_expression(chunk, *e.lhs);
     if (strcmp(e.operator, "&&") == 0) {
-        /* For logical AND, we emit a conditional jump which we'll use
-         * to jump over the right-hand side operand if the left operand
-         * was falsey (aka short-circuiting). Effectively, we will leave 
-         * the left operand on the stack as the result of evaluating this
-         * expression. */
+        /* For logical AND, we need to short-circuit when the left-hand side is falsey.
+         *
+         * When the left-hand side is falsey, OP_JZ will eat the boolean value ('false')
+         * that was on stack after evaluating the left side, which means we need to
+         * make sure to put that value back on the stack. This does not happen if the
+         * left-hand side is truthy, because the result of evaluating the right-hand
+         * side will remain on the stack. Hence why we need to only care about pushing
+         * 'false'.
+         *
+         * We emit two jumps:
+         *
+         * 1) a conditial jump that jumps over both the right-hand side and the other
+         *    jump (described below) - and goes straight to pushing 'false'
+         * 2) an unconditional jump that skips over pushing 'false
+         *
+         * If the left-hand side is falsey, the vm will take the conditional jump and
+         * push 'false' on the stack.
+         *
+         * If the left-hand side is truthy, the vm will evaluate the right-hand side
+         * and skip over pushing 'false' on the stack.
+         */
         int end_jump = emit_placeholder(chunk, OP_JZ);
         compile_expression(chunk, *e.rhs);
+        int false_jump = emit_placeholder(chunk, OP_JMP);
         patch_placeholder(chunk, end_jump);
+        emit_bytes(chunk, 2, OP_TRUE, OP_NOT);
+        patch_placeholder(chunk, false_jump);
     } else if (strcmp(e.operator, "||") == 0) {
-        /* For logical OR, we need to short-circuit when the left-hand side
-         * is truthy. Thus, we have two jumps: the first one is conditional
-         * jump that we use to jump over the code for the right-hand side. 
-         * If the left-hand side was truthy, the execution falls through to
-         * the second, unconditional jump that skips the code for the right
-         * operand. However, if the left-hand side was falsey, it jumps over
-         * the unconditional jump and evaluates the right-hand side operand. */
-        int else_jump = emit_placeholder(chunk, OP_JZ);
+        /* For logical OR, we need to short-circuit when the left-hand side is truthy.
+         *
+         * When left-hand side is truthy, OP_JZ will eat the boolean value ('true')
+         * that was on the stack after evaluating the left-hand side, which means
+         * we need to make sure to put that value back on the stack. This does not
+         * happen if the left-hand sie is falsey, because the result of evaluating
+         * the right-hand side will remain on the stack. Hence why we need to only
+         * care about pushing 'true'.
+         *
+         * We emit two jumps:
+         *
+         * 1) a conditional jump that jumps over pushing 'true' and the other jump
+         *    (described below) - and goes straight to evaluating the right-hand side
+         * 2) an unconditional jump that jumps over evaluating the right-hand side
+         *
+         * If the left-hand side is truthy, the vm will first push 'true' back on
+         * the stack and then fall through to the second, unconditional jump that
+         * skips evaluating the right-hand side.
+         *
+         * If the left-hand side is falsey, it jumps over pushing 'true' back on
+         * the stack and the unconditional jump, and evaluates the right-hand side. */
+        int true_jump = emit_placeholder(chunk, OP_JZ);
+        emit_byte(chunk, OP_TRUE);
         int end_jump = emit_placeholder(chunk, OP_JMP);
-        patch_placeholder(chunk, else_jump);
+        patch_placeholder(chunk, true_jump);
         compile_expression(chunk, *e.rhs);
         patch_placeholder(chunk, end_jump);
     }
@@ -591,6 +625,9 @@ static void handle_compile_statement_if(BytecodeChunk *chunk, Statement stmt) {
 
     /* Then, we patch the 'then' jump. */
     patch_placeholder(chunk, then_jump);
+
+    // int logical_jump = current_compiler->logical_stack[--current_compiler->logical_count];
+    // patch_placeholder(chunk, logical_jump);
 
     if (s.else_branch != NULL) {
         compile(chunk, *s.else_branch);
