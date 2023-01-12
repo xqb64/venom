@@ -54,8 +54,6 @@ typedef struct Compiler {
     Table functions;
     Table structs;
     char *locals[256];
-    int logical_stack[256];
-    int logical_count;
     int locals_count;
     int jmp_stack[256];
     size_t jmp_tos;
