@@ -7,17 +7,22 @@ CFLAGS += -O3
 LDLIBS = -lm
 
 ifeq ($(debug), all)
-	CFLAGS += -Dvenom_debug_parser
+	CFLAGS += -Dvenom_debug_compiler
 	CFLAGS += -Dvenom_debug_disassembler
+	CFLAGS += -Dvenom_debug_parser
 	CFLAGS += -Dvenom_debug_vm
 endif
 
-ifeq (parser, $(findstring parser, $(debug)))
-	CFLAGS += -Dvenom_debug_parser
+ifeq (compiler, $(findstring compiler, $(debug)))
+	CFLAGS += -Dvenom_debug_compiler
 endif
 
 ifeq (disassembler, $(findstring disassembler, $(debug)))
 	CFLAGS += -Dvenom_debug_disassembler
+endif
+
+ifeq (parser, $(findstring parser, $(debug)))
+	CFLAGS += -Dvenom_debug_parser
 endif
 
 ifeq (vm, $(findstring vm, $(debug)))

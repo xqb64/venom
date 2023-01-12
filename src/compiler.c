@@ -29,6 +29,7 @@ static void print_compiler(Compiler *compiler) {
         printf("NULL }");
         return;
     }
+    printf("id: %p, ", compiler);
     printf("depth: %d, ", compiler->depth);
     printf("locals: [");
     for (int i = 0; i < compiler->locals_count; i++) {
@@ -74,6 +75,12 @@ void init_compiler(Compiler *compiler, size_t depth) {
         }
     }
 
+#ifdef venom_debug_compiler
+    printf("initting compiler: ");
+    print_compiler(compiler);
+    printf("\n");
+#endif
+
     /* Finally, set the current_compiler to be the newly initialized compiler. */
     current_compiler = compiler;
 }
@@ -85,6 +92,12 @@ void end_compiler(Compiler *compiler) {
      * we compile the entire loop. */
     COPY_ARRAY(compiler->enclosing->jmp_stack, current_compiler->jmp_stack);
     compiler->enclosing->jmp_tos = current_compiler->jmp_tos;
+
+#ifdef venom_debug_compiler
+    printf("ending compiler: ");
+    print_compiler(compiler->enclosing);
+    printf("\n");
+#endif
 
     /* Finally, set the current_compiler to be the compiler's parent. */
     current_compiler = compiler->enclosing;
