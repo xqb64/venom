@@ -370,7 +370,7 @@ static Expression equality(Parser *parser, Tokenizer *tokenizer) {
 
 static Expression and_(Parser *parser, Tokenizer *tokenizer) {
     Expression expr = equality(parser, tokenizer);
-    if (match(parser, tokenizer, 1, TOKEN_DOUBLE_AMPERSAND)) {
+    while (match(parser, tokenizer, 1, TOKEN_DOUBLE_AMPERSAND)) {
         char *op = own_string_n(parser->previous.start, parser->previous.length);
         Expression right = equality(parser, tokenizer);
         LogicalExpression logexp = {
@@ -385,7 +385,7 @@ static Expression and_(Parser *parser, Tokenizer *tokenizer) {
 
 static Expression or_(Parser *parser, Tokenizer *tokenizer) {
     Expression expr = and_(parser, tokenizer);
-    if (match(parser, tokenizer, 1, TOKEN_DOUBLE_PIPE)) {
+    while (match(parser, tokenizer, 1, TOKEN_DOUBLE_PIPE)) {
         char *op = own_string_n(parser->previous.start, parser->previous.length);
         Expression right = and_(parser, tokenizer);
         LogicalExpression logexp = {
