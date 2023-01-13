@@ -305,8 +305,8 @@ static inline int handle_op_not(VM *vm, BytecodeChunk *chunk, uint8_t **ip) {
 static inline int handle_op_ip(VM *vm, BytecodeChunk *chunk, uint8_t **ip) {
     int16_t offset = READ_INT16();
     Object ip_obj = AS_POINTER(*(ip)+offset);
-    vm->fp_stack[vm->fp_count] = vm->tos;
     push(vm, ip_obj);
+    vm->fp_stack[vm->fp_count] = vm->tos;
     return 0;
 }
 

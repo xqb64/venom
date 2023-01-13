@@ -41,11 +41,23 @@ static void print_compiler(Compiler *compiler) {
 }
 
 void init_compiler(Compiler *compiler, size_t depth) {
+    /* If the scope depth of the compiler we're initializing
+     * is the same as the depth of the current_compiler (which
+     * happens when a function statement initializes a compiler,
+     * followed by another initialization by the block statement),
+     * don't iniatialize a new compiler and use the current one. */
+    if (current_compiler && current_compiler->depth == depth) {
+        return;
+    }
+
     /* Zero-initialize the compiler. */
     memset(compiler, 0, sizeof(Compiler));
 
     /* Assign the depth. */
     compiler->depth = depth;
+
+    /* Assign the parent compiler. */
+    compiler->enclosing = current_compiler;
 
     if (current_compiler != NULL) {
         /* We want to inherit current_compiler's locals. */
@@ -58,20 +70,6 @@ void init_compiler(Compiler *compiler, size_t depth) {
          * could use the address to patch the backward jump. */
         COPY_ARRAY(compiler->backjmp_stack, current_compiler->backjmp_stack);
         compiler->backjmp_tos = current_compiler->backjmp_tos;
-
-        /* If the scope depth of the compiler we're initializing is the
-         * same as the depth of the current_compiler (which happens when
-         * a function statement initializes a compiler, followed by another
-         * initialization by the block statement), set the parent of newly
-         * initialized compiler to current_compiler's parent.
-         *
-         * Otherwise, if the scope depths are different,
-         * use the current_compiler as the parent. */
-        if (compiler->depth != current_compiler->depth) {
-            compiler->enclosing = current_compiler;
-        } else {
-            compiler->enclosing = current_compiler->enclosing;
-        }
     }
 
 #ifdef venom_debug_compiler
@@ -85,6 +83,10 @@ void init_compiler(Compiler *compiler, size_t depth) {
 }
 
 void end_compiler(Compiler *compiler) {
+    if (current_compiler->enclosing->depth == 0) {
+        return;
+    }
+
     /* We want to backward-propagate current_compiler's jmp_stack
      * (and the accompanying top of stack pointer) which contains the
      * addresses of the jumps, so that we could patch the jump after
@@ -94,7 +96,7 @@ void end_compiler(Compiler *compiler) {
 
 #ifdef venom_debug_compiler
     printf("ending compiler: ");
-    print_compiler(compiler->enclosing);
+    print_compiler(compiler);
     printf("\n");
 #endif
 
@@ -274,7 +276,7 @@ static int resolve_local(char *name) {
     while (current->depth != 0) {
         for (int i = current->locals_count - 1; i >= 0; i--) {
             if (strcmp(current->locals[i], name) == 0) {
-                return i+1;
+                return i;
             }
         }
         current = current->enclosing;
@@ -605,11 +607,7 @@ static void handle_compile_statement_block(BytecodeChunk *chunk, Statement stmt)
         compile(chunk, s.stmts.data[i]);
     }
 
-    /* After the block ends, we want to clean up the stack. 
-     * For example, if we have a global 'while' loop, the
-     * `current_compiler` variable will be of depth == 0,
-     * which means the compiler that encloses it will be NULL.
-     * In that scenario, we only want to pop. */
+    /* After the block ends, we want to clean up the stack. */
     emit_stack_cleanup(chunk);
     end_compiler(&compiler);
 }
@@ -752,7 +750,7 @@ static void handle_compile_statement_return(BytecodeChunk *chunk, Statement stmt
     /* Compile the return value and emit OP_RET. */
     ReturnStatement s = TO_STMT_RETURN(stmt);
     compile_expression(chunk, s.returnval);
-    int deepset_no = current_compiler->locals_count;
+    int deepset_no = current_compiler->locals_count-1;
     for (int i = 0; i < current_compiler->locals_count; i++) {
         emit_bytes(chunk, 2, OP_DEEPSET, (uint8_t)deepset_no--);
     }
