@@ -254,7 +254,7 @@ static char *operator(Token token) {
 }
 
 static Expression finish_call(Parser *parser, Tokenizer *tokenizer, Expression exp) {
-    Expression_DynArray arguments = {0};
+    DynArray_Expression arguments = {0};
     if (!check(parser, TOKEN_RIGHT_PAREN)) {
         do {
             dynarray_insert(&arguments, expression(parser, tokenizer));
@@ -427,7 +427,7 @@ static Expression grouping(Parser *parser, Tokenizer *tokenizer) {
 
 static Statement block(Parser *parser, Tokenizer *tokenizer) {
     parser->depth++;
-    Statement_DynArray stmts = {0};
+    DynArray_Statement stmts = {0};
     while (!check(parser, TOKEN_RIGHT_BRACE) && !check(parser, TOKEN_EOF)) {
         dynarray_insert(&stmts, statement(parser, tokenizer));
     }
@@ -451,7 +451,7 @@ static Expression struct_initializer(Parser *parser, Tokenizer *tokenizer) {
         TOKEN_LEFT_BRACE,
         "Expected '{' after struct name."
     );
-    Expression_DynArray initializers = {0};
+    DynArray_Expression initializers = {0};
     do {
         Expression property = expression(parser, tokenizer);
         consume(
@@ -678,7 +678,7 @@ static Statement function_statement(Parser *parser, Tokenizer *tokenizer) {
         TOKEN_LEFT_PAREN,
         "Expected '(' after identifier."
     );
-    String_DynArray parameters = {0};
+    DynArray_char_ptr parameters = {0};
     if (!check(parser, TOKEN_RIGHT_PAREN)) {
         do {
             Token parameter = consume(
@@ -755,7 +755,7 @@ static Statement struct_statement(Parser *parser, Tokenizer *tokenizer) {
         TOKEN_LEFT_BRACE,
         "Expected '{' after 'struct'."
     );
-    String_DynArray properties = {0};
+    DynArray_char_ptr properties = {0};
     do {
         Token property = consume(
             parser, tokenizer,
@@ -805,7 +805,7 @@ static Statement statement(Parser *parser, Tokenizer *tokenizer) {
     }
 }
 
-void parse(Parser *parser, Tokenizer *tokenizer, Statement_DynArray *stmts) {
+void parse(Parser *parser, Tokenizer *tokenizer, DynArray_Statement *stmts) {
     advance(parser, tokenizer);
     while (parser->current.type != TOKEN_EOF) {
         dynarray_insert(stmts, statement(parser, tokenizer));

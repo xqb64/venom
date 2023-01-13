@@ -39,24 +39,22 @@ typedef enum {
     OP_POP,
 } Opcode;
 
-typedef DynArray(uint8_t) Uint8DynArray;
-typedef DynArray(double) DoubleDynArray;
+typedef DynArray(uint8_t) DynArray_uint8_t;
+typedef DynArray(double) DynArray_double;
 
 typedef struct BytecodeChunk {
-    Uint8DynArray code;
-    DoubleDynArray cp;    /* constant pool */
-    String_DynArray sp;   /* string pool */
+    DynArray_uint8_t code;
+    DynArray_double cp;    /* constant pool */
+    DynArray_char_ptr sp;   /* string pool */
 } BytecodeChunk;
 
 typedef struct Compiler {
     struct Compiler *enclosing;
     Table functions;
     Table structs;
-    String_DynArray locals;
-    int jmp_stack[256];
-    size_t jmp_tos;
-    int backjmp_stack[256];
-    size_t backjmp_tos;
+    DynArray_char_ptr locals;
+    DynArray_int breaks;
+    DynArray_int continues;
     int depth;
 } Compiler;
 

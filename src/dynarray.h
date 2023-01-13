@@ -23,6 +23,8 @@ do { \
     free((array)->data); \
 } while (0)
 
-typedef DynArray(int) IntDynArray;
+#define dynarray_pop(array) ((array)->data[--(array)->count])
+
+typedef DynArray(int) DynArray_int;
 
 #endif

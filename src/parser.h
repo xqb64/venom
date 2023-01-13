@@ -23,7 +23,7 @@ typedef enum {
 
 typedef struct Expression Expression;
 
-typedef DynArray(Expression) Expression_DynArray;
+typedef DynArray(Expression) DynArray_Expression;
 
 typedef struct LiteralExpression {
     double dval;
@@ -50,7 +50,7 @@ typedef struct BinaryExpression {
 
 typedef struct CallExpression {
     VariableExpression var;
-    Expression_DynArray arguments;
+    DynArray_Expression arguments;
 } CallExpression;
 
 typedef struct GetExpression {
@@ -71,7 +71,7 @@ typedef struct LogicalExpression {
 
 typedef struct StructExpression {
     char *name;
-    Expression_DynArray initializers;
+    DynArray_Expression initializers;
 } StructExpression;
 
 typedef struct StructInitializerExpression {
@@ -79,7 +79,7 @@ typedef struct StructInitializerExpression {
     Expression *value;
 } StructInitializerExpression;
 
-typedef DynArray(StructInitializerExpression) StructInitializerExpressionDynArray;
+typedef DynArray(StructInitializerExpression) DynArray_StructInitializerExpression;
 
 typedef struct Expression {
     ExpressionKind kind;
@@ -138,7 +138,7 @@ typedef enum {
 
 typedef struct Statement Statement;
 
-typedef DynArray(Statement) Statement_DynArray;
+typedef DynArray(Statement) DynArray_Statement;
 
 typedef struct {
     char *name;
@@ -154,12 +154,12 @@ typedef struct {
 } ExpressionStatement;
 
 typedef struct {
-    Statement_DynArray stmts;
+    DynArray_Statement stmts;
     size_t depth;
 } BlockStatement;
 
 typedef struct {
-    String_DynArray parameters;
+    DynArray_char_ptr parameters;
     char *name;
     Statement *body;
 } FunctionStatement;
@@ -181,7 +181,7 @@ typedef struct {
 
 typedef struct {
     char *name;
-    String_DynArray properties;
+    DynArray_char_ptr properties;
 } StructStatement;
 
 typedef struct {} BreakStatement;
@@ -232,7 +232,7 @@ typedef struct {
     size_t depth;
 } Parser;
 
-void parse(Parser *parser, Tokenizer *tokenizer, Statement_DynArray *stmts);
+void parse(Parser *parser, Tokenizer *tokenizer, DynArray_Statement *stmts);
 void free_expression(Expression e);
 void free_stmt(Statement stmt);
 void init_parser(Parser *parser);

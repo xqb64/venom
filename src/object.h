@@ -10,7 +10,7 @@ typedef struct HeapObject HeapObject;
 
 void table_print(Table *table);
 
-typedef DynArray(char *) String_DynArray;
+typedef DynArray(char *) DynArray_char_ptr;
 
 typedef enum {
     OBJ_NUMBER,
@@ -40,7 +40,7 @@ typedef struct {
 
 typedef struct {
     char *name;
-    String_DynArray properties;
+    DynArray_char_ptr properties;
 } StructBlueprint;
 
 typedef struct Object {

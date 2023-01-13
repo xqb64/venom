@@ -24,9 +24,9 @@ do { \
 
 #define COPY_DYNARRAY(dest, src) \
 do { \
-    memcpy((dest)->data, (src)->data, sizeof((src)->data) * (src)->count); \
-    (dest)->count = (src)->count; \
-    (dest)->capacity = (src)->capacity; \
+    for (size_t i = 0; i < (src)->count; i++) { \
+        dynarray_insert((dest), (src)->data[i]); \
+    } \
 } while (0)
 
 static void print_compiler(Compiler *compiler) {
@@ -48,15 +48,6 @@ static void print_compiler(Compiler *compiler) {
 }
 
 void init_compiler(Compiler *compiler, size_t depth) {
-    /* If the scope depth of the compiler we're initializing
-     * is the same as the depth of the current_compiler (which
-     * happens when a function statement initializes a compiler,
-     * followed by another initialization by the block statement),
-     * don't iniatialize a new compiler and use the current one. */
-    if (current_compiler && current_compiler->depth == depth) {
-        return;
-    }
-
     /* Zero-initialize the compiler. */
     memset(compiler, 0, sizeof(Compiler));
 
@@ -74,8 +65,7 @@ void init_compiler(Compiler *compiler, size_t depth) {
          * (and the accompanying top of stack pointer) which contains the
          * addresses where loops begin, so that a 'continue' statement
          * could use the address to patch the backward jump. */
-        COPY_ARRAY(compiler->backjmp_stack, current_compiler->backjmp_stack);
-        compiler->backjmp_tos = current_compiler->backjmp_tos;
+        COPY_DYNARRAY(&compiler->continues, &current_compiler->continues);
     }
 
 #ifdef venom_debug_compiler
@@ -89,16 +79,11 @@ void init_compiler(Compiler *compiler, size_t depth) {
 }
 
 void end_compiler(Compiler *compiler) {
-    if (current_compiler->enclosing->depth == 0) {
-        return;
-    }
-
     /* We want to backward-propagate current_compiler's jmp_stack
      * (and the accompanying top of stack pointer) which contains the
      * addresses of the jumps, so that we could patch the jump after
      * we compile the entire loop. */
-    COPY_ARRAY(compiler->enclosing->jmp_stack, current_compiler->jmp_stack);
-    compiler->enclosing->jmp_tos = current_compiler->jmp_tos;
+    COPY_DYNARRAY(&compiler->enclosing->breaks, &current_compiler->breaks);
 
 #ifdef venom_debug_compiler
     printf("ending compiler: ");
@@ -108,9 +93,14 @@ void end_compiler(Compiler *compiler) {
 
     /* Finally, set the current_compiler to be the compiler's parent. */
     current_compiler = compiler->enclosing;
+
+    free_compiler(compiler);
 }
 
 void free_compiler(Compiler *compiler) {
+    dynarray_free(&compiler->locals);
+    dynarray_free(&compiler->breaks);
+    dynarray_free(&compiler->continues);
     table_free(&compiler->structs);
     table_free(&compiler->functions);
 }
@@ -123,6 +113,8 @@ void free_chunk(BytecodeChunk *chunk) {
     dynarray_free(&chunk->code);
     for (int i = 0; i < chunk->sp.count; i++) 
         free(chunk->sp.data[i]);
+    dynarray_free(&chunk->sp);
+    dynarray_free(&chunk->cp);
 }
 
 static bool sp_contains(BytecodeChunk *chunk, const char *string) {
@@ -420,7 +412,7 @@ static void handle_compile_expression_call(BytecodeChunk *chunk, Expression exp)
 static void handle_compile_expression_get(BytecodeChunk *chunk, Expression exp) {
     GetExpression e = TO_EXPR_GET(exp);
     compile_expression(chunk, *e.exp);
-    size_t index = add_string(chunk, e.property_name);
+    uint32_t index = add_string(chunk, e.property_name);
     emit_byte(chunk, OP_GETATTR);
     emit_uint32(chunk, index);
 }
@@ -445,7 +437,7 @@ static void handle_compile_expression_assign(BytecodeChunk *chunk, Expression ex
         }
     } else if (e.lhs->kind == EXPR_GET) {
         compile_expression(chunk, *TO_EXPR_GET(*e.lhs).exp);
-        size_t index = add_string(chunk, TO_EXPR_GET(*e.lhs).property_name);
+        uint32_t index = add_string(chunk, TO_EXPR_GET(*e.lhs).property_name);
         emit_byte(chunk, OP_SETATTR);
         emit_uint32(chunk, index);
     } else {
@@ -628,7 +620,9 @@ static void handle_compile_statement_block(BytecodeChunk *chunk, Statement stmt)
     BlockStatement s = TO_STMT_BLOCK(&stmt);
     Compiler compiler;
 
-    init_compiler(&compiler, s.depth);
+    if (s.depth > 1) {
+        init_compiler(&compiler, s.depth);
+    }
 
     /* Compile the body of the black. */
     for (size_t i = 0; i < s.stmts.count; i++) {
@@ -636,8 +630,13 @@ static void handle_compile_statement_block(BytecodeChunk *chunk, Statement stmt)
     }
 
     /* After the block ends, we want to clean up the stack. */
-    emit_stack_cleanup(chunk);
-    end_compiler(&compiler);
+    if (s.depth > 1) {
+        emit_stack_cleanup(chunk);
+    }
+
+    if (s.depth > 1) {
+        end_compiler(&compiler);
+    }
 }
 
 static void handle_compile_statement_if(BytecodeChunk *chunk, Statement stmt) {
@@ -683,8 +682,8 @@ static void handle_compile_statement_while(BytecodeChunk *chunk, Statement stmt)
     WhileStatement s = TO_STMT_WHILE(stmt);
 
     int loop_start = chunk->code.count;
-    current_compiler->backjmp_stack[current_compiler->backjmp_tos++] = loop_start;
-    size_t backjmp_tos_before = current_compiler->backjmp_tos;
+    dynarray_insert(&current_compiler->continues, loop_start);
+    size_t loop_start_count = current_compiler->continues.count;
 
     /* We then compile the conditional expression because the VM
     .* expects something like OP_EQ to have already been executed
@@ -707,14 +706,14 @@ static void handle_compile_statement_while(BytecodeChunk *chunk, Statement stmt)
     /* Then, we emit OP_JMP with a negative offset. */
     emit_loop(chunk, loop_start);
 
-    if (current_compiler->jmp_tos > 0) {
-        int break_jump = current_compiler->jmp_stack[--current_compiler->jmp_tos];
+    if (current_compiler->breaks.count > 0) {
+        int break_jump = dynarray_pop(&current_compiler->breaks);
         patch_placeholder(chunk, break_jump);
     }
 
     /* If a 'continue' wasn't popped off the backjmp stack, pop it. */
-    if (current_compiler->backjmp_tos == backjmp_tos_before) {
-        current_compiler->backjmp_tos--;
+    if (current_compiler->continues.count == loop_start_count) {
+        dynarray_pop(&current_compiler->continues);
     }
 
     /* Finally, we patch the jump. */
@@ -737,9 +736,7 @@ static void handle_compile_statement_fn(BytecodeChunk *chunk, Statement stmt) {
 
     if (s.parameters.count > 0) {
         COPY_DYNARRAY(&current_compiler->locals, &s.parameters);
-        current_compiler->locals.count += s.parameters.count;
-    }
-                
+    }                
 
     /* Emit the jump because we don't want to execute
      * the code the first time we encounter it. */
@@ -749,6 +746,7 @@ static void handle_compile_statement_fn(BytecodeChunk *chunk, Statement stmt) {
 
     /* If the function does not have a return statement,
      * emit OP_NULL because we have to return something. */
+    emit_stack_cleanup(chunk);
     emit_byte(chunk, OP_NULL);
     emit_byte(chunk, OP_RET);
  
@@ -760,7 +758,7 @@ static void handle_compile_statement_fn(BytecodeChunk *chunk, Statement stmt) {
 
 static void handle_compile_statement_struct(BytecodeChunk *chunk, Statement stmt) {
     StructStatement s = TO_STMT_STRUCT(stmt);
-    String_DynArray properties = {0};
+    DynArray_char_ptr properties = {0};
     for (size_t i = 0; i < s.properties.count; i++) {
         dynarray_insert(
             &properties,
@@ -789,11 +787,11 @@ static void handle_compile_statement_return(BytecodeChunk *chunk, Statement stmt
 static void handle_compile_statement_break(BytecodeChunk *chunk, Statement stmt) {
     emit_stack_cleanup(chunk);
     int break_jump = emit_placeholder(chunk, OP_JMP);
-    current_compiler->jmp_stack[current_compiler->jmp_tos++] = break_jump;
+    dynarray_insert(&current_compiler->breaks, break_jump);
 }
 
 static void handle_compile_statement_continue(BytecodeChunk *chunk, Statement stmt) {
-    int loop_start = current_compiler->backjmp_stack[--current_compiler->backjmp_tos];
+    int loop_start = dynarray_pop(&current_compiler->continues);
     emit_stack_cleanup(chunk);
     emit_loop(chunk, loop_start);
 }

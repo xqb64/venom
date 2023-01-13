@@ -38,7 +38,7 @@ static char *read_file(const char *path) {
 void run_file(char *file) {
     char *source = read_file(file);
 
-    Statement_DynArray stmts = {0};
+    DynArray_Statement stmts = {0};
     Parser parser;
     Tokenizer tokenizer;
     init_tokenizer(&tokenizer, source);
