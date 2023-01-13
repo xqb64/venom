@@ -145,18 +145,44 @@ static inline int handle_op_str(VM *vm, BytecodeChunk *chunk, uint8_t **ip) {
 }
 
 static inline int handle_op_deepset(VM *vm, BytecodeChunk *chunk, uint8_t **ip) {
+    /* OP_DEEPSET works by reading a 1-based index from the
+     * bytecode, popping the stack, fetching the current frame
+     * pointer from the frame pointer stack, and setting index'th
+     * item after the frame pointer to the popped object.
+     *
+     * However, if there are no frame pointers on the stack,
+     * and since indexes are 1-based, to set the third item
+     * on the stack (located at index 2), we need to subtract
+     * 1 from the index.
+     * 
+     * We also need to make sure to adjust the refcount of the
+     * object being set. */
     uint8_t index = READ_UINT8();
     Object obj = pop(vm);
     int fp = vm->fp_stack[vm->fp_count-1];
-    OBJECT_DECREF(vm->stack[fp+index]);
-    vm->stack[fp+index] = obj;
+    int adjustment = vm->fp_count == 0 ? -1 : 0;
+    OBJECT_DECREF(vm->stack[fp+index+adjustment]);
+    vm->stack[fp+index+adjustment] = obj;
     return 0;
 }
 
 static inline int handle_op_deepget(VM *vm, BytecodeChunk *chunk, uint8_t **ip) {
+    /* OP_DEEPGET works by reading a 1-based index from the
+     * bytecode, fetching the current frame pointer from the
+     * frame pointer stack, getting index'th item after
+     * the frame pointer and pushing it on the stack.
+     *
+     * However, if there are no frame pointers on the stack,
+     * and since indexes are 1-based, to get the third item
+     * on the stack (located at index 2), we need to subtract
+     * 1 from the index. 
+     * 
+     * We also need to make sure to adjust the refcount of the
+     * object that we get. */
     uint8_t index = READ_UINT8();
     int fp = vm->fp_stack[vm->fp_count-1];
-    Object obj = vm->stack[fp+index];
+    int adjustment = vm->fp_count == 0 ? -1 : 0;
+    Object obj = vm->stack[fp+index+adjustment];
     push(vm, obj);
     OBJECT_INCREF(obj);
     return 0;
@@ -305,8 +331,8 @@ static inline int handle_op_not(VM *vm, BytecodeChunk *chunk, uint8_t **ip) {
 static inline int handle_op_ip(VM *vm, BytecodeChunk *chunk, uint8_t **ip) {
     int16_t offset = READ_INT16();
     Object ip_obj = AS_POINTER(*(ip)+offset);
-    push(vm, ip_obj);
     vm->fp_stack[vm->fp_count] = vm->tos;
+    push(vm, ip_obj);
     return 0;
 }
 

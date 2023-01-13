@@ -336,7 +336,7 @@ static void handle_compile_expression_variable(BytecodeChunk *chunk, Expression 
     VariableExpression e = TO_EXPR_VARIABLE(exp);
     int index = resolve_local(e.name);
     if (index != -1) {
-        emit_bytes(chunk, 2, OP_DEEPGET, index);
+        emit_bytes(chunk, 2, OP_DEEPGET, index+1);
     } else {
         if (sp_contains(chunk, e.name)) {
             uint8_t name_index = add_string(chunk, e.name);
@@ -411,7 +411,7 @@ static void handle_compile_expression_assign(BytecodeChunk *chunk, Expression ex
         VariableExpression var = TO_EXPR_VARIABLE(*e.lhs);
         int index = resolve_local(var.name);
         if (index != -1) {
-            emit_bytes(chunk, 2, OP_DEEPSET, index);
+            emit_bytes(chunk, 2, OP_DEEPSET, index+1);
         } else {
             if (sp_contains(chunk, var.name)) {
                 uint8_t name_index = add_string(chunk, var.name);
@@ -750,7 +750,7 @@ static void handle_compile_statement_return(BytecodeChunk *chunk, Statement stmt
     /* Compile the return value and emit OP_RET. */
     ReturnStatement s = TO_STMT_RETURN(stmt);
     compile_expression(chunk, s.returnval);
-    int deepset_no = current_compiler->locals_count-1;
+    int deepset_no = current_compiler->locals_count;
     for (int i = 0; i < current_compiler->locals_count; i++) {
         emit_bytes(chunk, 2, OP_DEEPSET, (uint8_t)deepset_no--);
     }
