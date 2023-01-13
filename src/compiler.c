@@ -128,7 +128,7 @@ static bool sp_contains(BytecodeChunk *chunk, const char *string) {
 
 static uint32_t add_string(BytecodeChunk *chunk, const char *string) {
     /* Check if the string is already present in the pool. */
-    for (uint32_t i = 0; i < chunk->sp.count; i++) {
+    for (size_t i = 0; i < chunk->sp.count; i++) {
         /* If it is, return the index. */
         if (strcmp(chunk->sp.data[i], string) == 0) {
             return i;
@@ -143,7 +143,7 @@ static uint32_t add_string(BytecodeChunk *chunk, const char *string) {
 
 static uint32_t add_constant(BytecodeChunk *chunk, double constant) {
     /* Check if the constant is already present in the pool. */
-    for (uint32_t i = 0; i < chunk->cp.count; i++) {
+    for (size_t i = 0; i < chunk->cp.count; i++) {
         /* If it is, return the index. */
         if (chunk->cp.data[i] == constant) {
             return i;
@@ -620,6 +620,9 @@ static void handle_compile_statement_block(BytecodeChunk *chunk, Statement stmt)
     BlockStatement s = TO_STMT_BLOCK(&stmt);
     Compiler compiler;
 
+    /* Only initialize a new compiler if the scope depth is
+     * greater than 1 (for scope depths of 1, the compiler
+     * will be initialized by statement_fn()). */
     if (s.depth > 1) {
         init_compiler(&compiler, s.depth);
     }
@@ -629,12 +632,16 @@ static void handle_compile_statement_block(BytecodeChunk *chunk, Statement stmt)
         compile(chunk, s.stmts.data[i]);
     }
 
-    /* After the block ends, we want to clean up the stack. */
+    /* After the block ends, the stack should be cleaned up if the
+     * scope depth is greater than 1 (for scope depths of 1, the
+     * stack cleanup is taken care of by statement_fn()). 
+     * 
+     * Besides cleaning up the stack, the compiler for the current
+     * block should be ended if the scope depth is greater than 1
+     * (for scope depths of 1, the compiler will not be init'ed in
+     * the first place - again, statement_fn() takes care of that). */
     if (s.depth > 1) {
         emit_stack_cleanup(chunk);
-    }
-
-    if (s.depth > 1) {
         end_compiler(&compiler);
     }
 }
@@ -662,9 +669,6 @@ static void handle_compile_statement_if(BytecodeChunk *chunk, Statement stmt) {
 
     /* Then, we patch the 'then' jump. */
     patch_placeholder(chunk, then_jump);
-
-    // int logical_jump = current_compiler->logical_stack[--current_compiler->logical_count];
-    // patch_placeholder(chunk, logical_jump);
 
     if (s.else_branch != NULL) {
         compile(chunk, *s.else_branch);
@@ -745,7 +749,10 @@ static void handle_compile_statement_fn(BytecodeChunk *chunk, Statement stmt) {
     compile(chunk, *s.body);
 
     /* If the function does not have a return statement,
-     * emit OP_NULL because we have to return something. */
+     * clean the stack up here (because statement_block()
+     * does not clean up the stack for scope depths of 1)
+     * and emit OP_NULL because OP_RET that follows expects
+     * some return value to be on the stack. */
     emit_stack_cleanup(chunk);
     emit_byte(chunk, OP_NULL);
     emit_byte(chunk, OP_RET);
