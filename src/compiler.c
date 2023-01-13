@@ -17,11 +17,6 @@ do { \
     exit(1); \
 } while (0)
 
-#define COPY_ARRAY(dest, src) \
-do { \
-    memcpy((dest), (src), sizeof((src))); \
-} while (0)
-
 #define COPY_DYNARRAY(dest, src) \
 do { \
     for (size_t i = 0; i < (src)->count; i++) { \
