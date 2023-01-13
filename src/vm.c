@@ -47,6 +47,17 @@ do { \
     (*ip += 2, \
     (int16_t)(((*ip)[-1] << 8) | (*ip)[0]))
 
+#define READ_UINT32() \
+    /* ip points to one of the jump instructions and there \
+     * is a 2-byte operand (offset) that comes after the jump \
+     * instruction. We want to increment the ip so it points \
+     * to the last of the two operands, and construct a 16-bit \
+     * offset from the two bytes. Then ip is incremented in \
+     * the loop again so it points to the next instruction \
+     * (as opposed to pointing somewhere in the middle). */ \
+    (*ip += 4, \
+    (uint32_t)(((*ip)[-3] << 24) | ((*ip)[-2] << 16) | ((*ip)[-1] << 8) | (*ip)[0]))
+
 #define PRINT_STACK() \
 do { \
     printf("stack: ["); \
@@ -85,8 +96,8 @@ static inline int handle_op_const(VM *vm, BytecodeChunk *chunk, uint8_t **ip) {
     * the constant in the constant pool that comes
     * after the opcode, and push the constant on
     * the stack. */
-    uint8_t index = READ_UINT8();
-    Object obj = AS_DOUBLE(chunk->cp[index]);
+    uint32_t index = READ_UINT32();
+    Object obj = AS_DOUBLE(chunk->cp.data[index]);
     push(vm, obj);
     return 0;
 }
@@ -102,12 +113,12 @@ static inline int handle_op_get_global(VM *vm, BytecodeChunk *chunk, uint8_t **i
     * We then look up the variable and push its value
     * on the stack. If we can't find the variable,
     * we bail out. */
-    uint8_t name_index = READ_UINT8();
-    Object *obj = table_get(&vm->globals, chunk->sp[name_index]);
+    uint32_t name_index = READ_UINT32();
+    Object *obj = table_get(&vm->globals, chunk->sp.data[name_index]);
     if (obj == NULL) {
         RUNTIME_ERROR(
             "Variable '%s' is not defined",
-            chunk->sp[name_index]
+            chunk->sp.data[name_index]
         );
     }
     push(vm, *obj);
@@ -123,9 +134,9 @@ static inline int handle_op_set_global(VM *vm, BytecodeChunk *chunk, uint8_t **i
     * and the value of the double constant that the name
     * refers to. We pop these two and add the variable
     * to the globals table. */
-    uint8_t name_index = READ_UINT8();
+    uint32_t name_index = READ_UINT32();
     Object constant = pop(vm);
-    table_insert(&vm->globals, chunk->sp[name_index], constant);
+    table_insert(&vm->globals, chunk->sp.data[name_index], constant);
     return 0;
 }
 
@@ -138,8 +149,8 @@ static inline int handle_op_str(VM *vm, BytecodeChunk *chunk, uint8_t **ip) {
     * the constant in the constant pool that comes
     * after the opcode, and push the constant on
     * the stack. */
-    uint8_t index = READ_UINT8();
-    Object obj = AS_STR(chunk->sp[index]);
+    uint32_t index = READ_UINT32();
+    Object obj = AS_STR(chunk->sp.data[index]);
     push(vm, obj);
     return 0;
 }
@@ -157,7 +168,7 @@ static inline int handle_op_deepset(VM *vm, BytecodeChunk *chunk, uint8_t **ip) 
      * 
      * We also need to make sure to adjust the refcount of the
      * object being set. */
-    uint8_t index = READ_UINT8();
+    uint32_t index = READ_UINT32();
     Object obj = pop(vm);
     int fp = vm->fp_stack[vm->fp_count-1];
     int adjustment = vm->fp_count == 0 ? -1 : 0;
@@ -179,7 +190,7 @@ static inline int handle_op_deepget(VM *vm, BytecodeChunk *chunk, uint8_t **ip) 
      * 
      * We also need to make sure to adjust the refcount of the
      * object that we get. */
-    uint8_t index = READ_UINT8();
+    uint32_t index = READ_UINT32();
     int fp = vm->fp_stack[vm->fp_count-1];
     int adjustment = vm->fp_count == 0 ? -1 : 0;
     Object obj = vm->stack[fp+index+adjustment];
@@ -189,13 +200,13 @@ static inline int handle_op_deepget(VM *vm, BytecodeChunk *chunk, uint8_t **ip) 
 }
 
 static inline int handle_op_getattr(VM *vm, BytecodeChunk *chunk, uint8_t **ip) {
-    uint8_t property_name_index = READ_UINT8();
+    uint32_t property_name_index = READ_UINT32();
     Object obj = pop(vm);
-    Object *property = table_get(TO_STRUCT(obj)->properties, chunk->sp[property_name_index]);
+    Object *property = table_get(TO_STRUCT(obj)->properties, chunk->sp.data[property_name_index]);
     if (property == NULL) {
         RUNTIME_ERROR(
             "Property '%s' is not defined on object '%s'",
-            chunk->sp[property_name_index],
+            chunk->sp.data[property_name_index],
             TO_STRUCT(obj)->name
         );
     }
@@ -206,10 +217,10 @@ static inline int handle_op_getattr(VM *vm, BytecodeChunk *chunk, uint8_t **ip) 
 }
 
 static inline int handle_op_setattr(VM *vm, BytecodeChunk *chunk, uint8_t **ip) {
-    uint8_t property_name_index = READ_UINT8();
+    uint32_t property_name_index = READ_UINT32();
     Object value = pop(vm);
     Object structobj = pop(vm);
-    table_insert(TO_STRUCT(structobj)->properties, chunk->sp[property_name_index], value);
+    table_insert(TO_STRUCT(structobj)->properties, chunk->sp.data[property_name_index], value);
     push(vm, structobj);
     return 0;
 }
@@ -375,11 +386,11 @@ static inline int handle_op_pop(VM *vm, BytecodeChunk *chunk, uint8_t **ip) {
 }
 
 static inline int handle_op_struct(VM *vm, BytecodeChunk *chunk, uint8_t **ip) {
-    uint8_t structname = READ_UINT8();
-    uint8_t propertycount = READ_UINT8();
+    uint32_t structname = READ_UINT32();
+    uint32_t propertycount = READ_UINT32();
 
     Struct s = {
-        .name = chunk->sp[structname],
+        .name = chunk->sp.data[structname],
         .propertycount = propertycount,
         .properties = malloc(sizeof(Table)),
         .refcount = 1,

@@ -8,14 +8,14 @@ typedef struct {
 
 DisassembleHandler disassemble_handler[] = {
     [OP_PRINT] = { .opcode = "OP_PRINT", .operands = 0 },
-    [OP_CONST] = { .opcode = "OP_CONST", .operands = 1 },
-    [OP_GET_GLOBAL] = { .opcode = "OP_GET_GLOBAL", .operands = 1 },
-    [OP_SET_GLOBAL] = { .opcode = "OP_SET_GLOBAL", .operands = 1 },
-    [OP_STR] = { .opcode = "OP_STR", .operands = 1 },
-    [OP_DEEPGET] = { .opcode = "OP_DEEPGET", .operands = 1 },
-    [OP_DEEPSET] = { .opcode = "OP_DEEPSET", .operands = 1 },
-    [OP_GETATTR] = { .opcode = "OP_GETATTR", .operands = 1 },
-    [OP_SETATTR] = { .opcode = "OP_SETATTR", .operands = 1 },
+    [OP_CONST] = { .opcode = "OP_CONST", .operands = 4 },
+    [OP_GET_GLOBAL] = { .opcode = "OP_GET_GLOBAL", .operands = 4 },
+    [OP_SET_GLOBAL] = { .opcode = "OP_SET_GLOBAL", .operands = 4 },
+    [OP_STR] = { .opcode = "OP_STR", .operands = 4 },
+    [OP_DEEPGET] = { .opcode = "OP_DEEPGET", .operands = 4 },
+    [OP_DEEPSET] = { .opcode = "OP_DEEPSET", .operands = 4 },
+    [OP_GETATTR] = { .opcode = "OP_GETATTR", .operands = 4 },
+    [OP_SETATTR] = { .opcode = "OP_SETATTR", .operands = 4 },
     [OP_ADD] = { .opcode = "OP_ADD", .operands = 0 },
     [OP_SUB] = { .opcode = "OP_SUB", .operands = 0 },
     [OP_MUL] = { .opcode = "OP_MUL", .operands = 0 },
@@ -31,7 +31,7 @@ DisassembleHandler disassemble_handler[] = {
     [OP_RET] = { .opcode = "OP_RET", .operands = 0 },
     [OP_TRUE] = { .opcode = "OP_TRUE", .operands = 0 },
     [OP_NULL] = { .opcode = "OP_NULL", .operands = 0 },
-    [OP_STRUCT] = { .opcode = "OP_STRUCT", .operands = 2 },
+    [OP_STRUCT] = { .opcode = "OP_STRUCT", .operands = 8 },
     [OP_IP] = { .opcode = "OP_IP", .operands = 2 },
     [OP_INC_FPCOUNT] = { .opcode = "OP_INC_FPCOUNT", .operands = 0 },
     [OP_POP] = { .opcode = "OP_POP", .operands = 0 },
@@ -50,7 +50,12 @@ void disassemble(BytecodeChunk *chunk) {
      * (as opposed to pointing somewhere in the middle). */ \
     (ip += 2, \
     (int16_t)((ip[-1] << 8) | ip[0]))
-    
+
+#define READ_UINT32() \
+    (ip += 4, \
+    (uint32_t)((ip[-3] << 24) | (ip[-2] << 16) | (ip[-1] << 8) | ip[0]))
+
+
     for (
         uint8_t *ip = chunk->code.data;    
         ip < &chunk->code.data[chunk->code.count];  /* ip < addr of just beyond the last instruction */
@@ -60,37 +65,35 @@ void disassemble(BytecodeChunk *chunk) {
         printf("%s", disassemble_handler[*ip].opcode);
         switch (disassemble_handler[*ip].operands) {
             case 0: break;
-            case 1: {
+            case 2: {
+                printf(" (offset: %d)", READ_INT16());
+                break;
+            }
+            case 4: {
                 switch (*ip) {
                     case OP_CONST: {
-                        uint8_t const_index = READ_UINT8();
-                        printf(" (value: %f)", chunk->cp[const_index]);
+                        uint32_t const_index = READ_UINT32();
+                        printf(" (value: %f)", chunk->cp.data[const_index]);
                         break;
                     }
                     case OP_STR: {
-                        uint8_t str_index = READ_UINT8();
-                        printf(" (value: %s)", chunk->sp[str_index]);
+                        uint32_t str_index = READ_UINT32();
+                        printf(" (value: %s)", chunk->sp.data[str_index]);
                         break;
                     }
-                    default: {
-                        printf(" (index: %d)", READ_UINT8());
-                        break;
-                    } 
+                    default: break;
                 }
                 break;
             }
-            case 2: {
+            case 8: {
                 switch (*ip) {
                     case OP_STRUCT: {
                         uint8_t name_index = READ_UINT8();
                         uint8_t propertycount = READ_UINT8();
-                        printf(" (name: %s, propertycount: %d)", chunk->sp[name_index], propertycount);
+                        printf(" (name: %s, propertycount: %d)", chunk->sp.data[name_index], propertycount);
                         break;
                     }
-                    default: {
-                        printf(" (offset: %d)", READ_INT16());
-                        break;
-                    }
+                    default: break;
                 }
                 break;
             }

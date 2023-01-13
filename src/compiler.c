@@ -22,6 +22,13 @@ do { \
     memcpy((dest), (src), sizeof((src))); \
 } while (0)
 
+#define COPY_DYNARRAY(dest, src) \
+do { \
+    memcpy((dest)->data, (src)->data, sizeof((src)->data) * (src)->count); \
+    (dest)->count = (src)->count; \
+    (dest)->capacity = (src)->capacity; \
+} while (0)
+
 static void print_compiler(Compiler *compiler) {
     printf("Compiler { ");
     if (compiler == NULL) {
@@ -31,8 +38,8 @@ static void print_compiler(Compiler *compiler) {
     printf("id: %p, ", compiler);
     printf("depth: %d, ", compiler->depth);
     printf("locals: [");
-    for (int i = 0; i < compiler->locals_count; i++) {
-        printf("%s, ", compiler->locals[i]);
+    for (int i = 0; i < compiler->locals.count; i++) {
+        printf("%s, ", compiler->locals.data[i]);
     }
     printf("]");
     printf(", enclosing: ");
@@ -61,8 +68,7 @@ void init_compiler(Compiler *compiler, size_t depth) {
 
     if (current_compiler != NULL) {
         /* We want to inherit current_compiler's locals. */
-        COPY_ARRAY(compiler->locals, current_compiler->locals);
-        compiler->locals_count = current_compiler->locals_count;
+        COPY_DYNARRAY(&compiler->locals, &current_compiler->locals);
 
         /* We want to forward-propagate current_compiler's backjmp_stack
          * (and the accompanying top of stack pointer) which contains the
@@ -115,46 +121,46 @@ void init_chunk(BytecodeChunk *chunk) {
 
 void free_chunk(BytecodeChunk *chunk) {
     dynarray_free(&chunk->code);
-    for (int i = 0; i < chunk->sp_count; i++) 
-        free(chunk->sp[i]);
+    for (int i = 0; i < chunk->sp.count; i++) 
+        free(chunk->sp.data[i]);
 }
 
 static bool sp_contains(BytecodeChunk *chunk, const char *string) {
-    for (size_t i = 0; i < chunk->sp_count; i++) {
-        if (strcmp(chunk->sp[i], string) == 0) {
+    for (size_t i = 0; i < chunk->sp.count; i++) {
+        if (strcmp(chunk->sp.data[i], string) == 0) {
             return true;
         }
     }
     return false;
 }
 
-static uint8_t add_string(BytecodeChunk *chunk, const char *string) {
+static uint32_t add_string(BytecodeChunk *chunk, const char *string) {
     /* Check if the string is already present in the pool. */
-    for (uint8_t i = 0; i < chunk->sp_count; i++) {
+    for (uint32_t i = 0; i < chunk->sp.count; i++) {
         /* If it is, return the index. */
-        if (strcmp(chunk->sp[i], string) == 0) {
+        if (strcmp(chunk->sp.data[i], string) == 0) {
             return i;
         }
     }
     /* Otherwise, own the string, insert it into the pool
      * and return the index. */
     char *s = own_string(string);
-    chunk->sp[chunk->sp_count++] = s;
-    return chunk->sp_count - 1;
+    dynarray_insert(&chunk->sp, s);
+    return chunk->sp.count - 1;
 }
 
-static uint8_t add_constant(BytecodeChunk *chunk, double constant) {
+static uint32_t add_constant(BytecodeChunk *chunk, double constant) {
     /* Check if the constant is already present in the pool. */
-    for (uint8_t i = 0; i < chunk->cp_count; i++) {
+    for (uint32_t i = 0; i < chunk->cp.count; i++) {
         /* If it is, return the index. */
-        if (chunk->cp[i] == constant) {
+        if (chunk->cp.data[i] == constant) {
             return i;
         }
     }
     /* Otherwise, insert the constant into the pool
      * and return the index. */
-    chunk->cp[chunk->cp_count++] = constant;
-    return chunk->cp_count - 1;
+    dynarray_insert(&chunk->cp, constant);
+    return chunk->cp.count - 1;
 }
 
 static void emit_byte(BytecodeChunk *chunk, uint8_t byte) {
@@ -169,6 +175,16 @@ static void emit_bytes(BytecodeChunk *chunk, uint8_t n, ...) {
         emit_byte(chunk, byte);
     }
     va_end(ap);
+}
+
+static void emit_uint32(BytecodeChunk *chunk, uint32_t index) {
+    emit_bytes(
+        chunk, 4,
+        (index >> 24) & 0xFF,
+        (index >> 16) & 0xFF,
+        (index >> 8) & 0xFF,
+        index & 0xFF
+    );
 }
 
 static int emit_placeholder(BytecodeChunk *chunk, Opcode op) {
@@ -265,7 +281,7 @@ static void emit_loop(BytecodeChunk *chunk, int loop_start) {
 }
 
 static void emit_stack_cleanup(BytecodeChunk *chunk) {
-    int pop_count = current_compiler->locals_count - current_compiler->enclosing->locals_count;
+    int pop_count = current_compiler->locals.count - current_compiler->enclosing->locals.count;
     for (int i = 0; i < pop_count; i++) {
         emit_byte(chunk, OP_POP);
     }
@@ -274,8 +290,8 @@ static void emit_stack_cleanup(BytecodeChunk *chunk) {
 static int resolve_local(char *name) {
     Compiler *current = current_compiler;
     while (current->depth != 0) {
-        for (int i = current->locals_count - 1; i >= 0; i--) {
-            if (strcmp(current->locals[i], name) == 0) {
+        for (int i = current->locals.count - 1; i >= 0; i--) {
+            if (strcmp(current->locals.data[i], name) == 0) {
                 return i;
             }
         }
@@ -313,8 +329,9 @@ static void compile_expression(BytecodeChunk *chunk, Expression exp);
 static void handle_compile_expression_literal(BytecodeChunk *chunk, Expression exp) {
     LiteralExpression e = TO_EXPR_LITERAL(exp);
     if (e.specval == NULL) {
-        uint8_t const_index = add_constant(chunk, e.dval);
-        emit_bytes(chunk, 2, OP_CONST, const_index);
+        uint32_t const_index = add_constant(chunk, e.dval);
+        emit_byte(chunk, OP_CONST);
+        emit_uint32(chunk, const_index);
     } else {
         if (strcmp(e.specval, "true") == 0) {
             emit_byte(chunk, OP_TRUE);
@@ -328,19 +345,22 @@ static void handle_compile_expression_literal(BytecodeChunk *chunk, Expression e
 
 static void handle_compile_expression_string(BytecodeChunk *chunk, Expression exp) {
     StringExpression e = TO_EXPR_STRING(exp);
-    uint8_t const_index = add_string(chunk, e.str);
-    emit_bytes(chunk, 2, OP_STR, const_index);
+    uint32_t const_index = add_string(chunk, e.str);
+    emit_byte(chunk, OP_STR);
+    emit_uint32(chunk, const_index);
 }
 
 static void handle_compile_expression_variable(BytecodeChunk *chunk, Expression exp) {
     VariableExpression e = TO_EXPR_VARIABLE(exp);
     int index = resolve_local(e.name);
     if (index != -1) {
-        emit_bytes(chunk, 2, OP_DEEPGET, index+1);
+        emit_byte(chunk, OP_DEEPGET);
+        emit_uint32(chunk, index+1);
     } else {
         if (sp_contains(chunk, e.name)) {
-            uint8_t name_index = add_string(chunk, e.name);
-            emit_bytes(chunk, 2, OP_GET_GLOBAL, name_index);
+            uint32_t name_index = add_string(chunk, e.name);
+            emit_byte(chunk, OP_GET_GLOBAL);
+            emit_uint32(chunk, name_index);
         } else {
             COMPILER_ERROR("Variable '%s' is not defined.", e.name);
         }
@@ -400,8 +420,9 @@ static void handle_compile_expression_call(BytecodeChunk *chunk, Expression exp)
 static void handle_compile_expression_get(BytecodeChunk *chunk, Expression exp) {
     GetExpression e = TO_EXPR_GET(exp);
     compile_expression(chunk, *e.exp);
-    uint8_t index = add_string(chunk, e.property_name);
-    emit_bytes(chunk, 2, OP_GETATTR, index);
+    size_t index = add_string(chunk, e.property_name);
+    emit_byte(chunk, OP_GETATTR);
+    emit_uint32(chunk, index);
 }
 
 static void handle_compile_expression_assign(BytecodeChunk *chunk, Expression exp) {
@@ -411,19 +432,22 @@ static void handle_compile_expression_assign(BytecodeChunk *chunk, Expression ex
         VariableExpression var = TO_EXPR_VARIABLE(*e.lhs);
         int index = resolve_local(var.name);
         if (index != -1) {
-            emit_bytes(chunk, 2, OP_DEEPSET, index+1);
+            emit_byte(chunk, OP_DEEPSET);
+            emit_uint32(chunk, index+1);
         } else {
             if (sp_contains(chunk, var.name)) {
-                uint8_t name_index = add_string(chunk, var.name);
-                emit_bytes(chunk, 2, OP_SET_GLOBAL, name_index);
+                uint32_t name_index = add_string(chunk, var.name);
+                emit_byte(chunk, OP_SET_GLOBAL);
+                emit_uint32(chunk, name_index);
             } else {
                 COMPILER_ERROR("Variable '%s' is not defined.", var.name);
             }
         }
     } else if (e.lhs->kind == EXPR_GET) {
         compile_expression(chunk, *TO_EXPR_GET(*e.lhs).exp);
-        uint8_t index = add_string(chunk, TO_EXPR_GET(*e.lhs).property_name);
-        emit_bytes(chunk, 2, OP_SETATTR, index);
+        size_t index = add_string(chunk, TO_EXPR_GET(*e.lhs).property_name);
+        emit_byte(chunk, OP_SETATTR);
+        emit_uint32(chunk, index);
     } else {
         COMPILER_ERROR("invalid assignment.\n");
     }
@@ -533,8 +557,10 @@ static void handle_compile_expression_struct(BytecodeChunk *chunk, Expression ex
             );
         }
     }
-    uint8_t name_index = add_string(chunk, sb->name);
-    emit_bytes(chunk, 3, OP_STRUCT, name_index, e.initializers.count);
+    uint32_t name_index = add_string(chunk, sb->name);
+    emit_byte(chunk, OP_STRUCT);
+    emit_uint32(chunk, name_index);
+    emit_uint32(chunk, e.initializers.count);
     for (size_t i = 0; i < e.initializers.count; i++) {
         compile_expression(chunk, e.initializers.data[i]);
     }
@@ -544,8 +570,9 @@ static void handle_compile_expression_struct_init(BytecodeChunk *chunk, Expressi
     StructInitializerExpression e = TO_EXPR_STRUCT_INIT(exp);
     compile_expression(chunk, *e.value);
     VariableExpression key = TO_EXPR_VARIABLE(*e.property);
-    uint8_t property_name_index = add_string(chunk, key.name);
-    emit_bytes(chunk, 2, OP_SETATTR, property_name_index);
+    uint32_t property_name_index = add_string(chunk, key.name);
+    emit_byte(chunk, OP_SETATTR);
+    emit_uint32(chunk, property_name_index);
 }
 
 typedef void (*CompileExpressionHandlerFn)(BytecodeChunk *chunk, Expression exp);
@@ -584,11 +611,12 @@ static void handle_compile_statement_print(BytecodeChunk *chunk, Statement stmt)
 static void handle_compile_statement_let(BytecodeChunk *chunk, Statement stmt) {
     LetStatement s = TO_STMT_LET(stmt);
     compile_expression(chunk, s.initializer);
-    uint8_t name_index = add_string(chunk, s.name);
+    uint32_t name_index = add_string(chunk, s.name);
     if (current_compiler->depth == 0) {
-        emit_bytes(chunk, 2, OP_SET_GLOBAL, name_index);
+        emit_byte(chunk, OP_SET_GLOBAL);
+        emit_uint32(chunk, name_index);
     } else {
-        current_compiler->locals[current_compiler->locals_count++] = chunk->sp[name_index];
+        dynarray_insert(&current_compiler->locals, chunk->sp.data[name_index]);
     }
 }
 
@@ -708,8 +736,8 @@ static void handle_compile_statement_fn(BytecodeChunk *chunk, Statement stmt) {
     table_insert(&current_compiler->enclosing->functions, func.name, AS_FUNC(func));
 
     if (s.parameters.count > 0) {
-        memcpy(current_compiler->locals, s.parameters.data, sizeof(*s.parameters.data));
-        current_compiler->locals_count += s.parameters.count;
+        COPY_DYNARRAY(&current_compiler->locals, &s.parameters);
+        current_compiler->locals.count += s.parameters.count;
     }
                 
 
@@ -750,9 +778,10 @@ static void handle_compile_statement_return(BytecodeChunk *chunk, Statement stmt
     /* Compile the return value and emit OP_RET. */
     ReturnStatement s = TO_STMT_RETURN(stmt);
     compile_expression(chunk, s.returnval);
-    int deepset_no = current_compiler->locals_count;
-    for (int i = 0; i < current_compiler->locals_count; i++) {
-        emit_bytes(chunk, 2, OP_DEEPSET, (uint8_t)deepset_no--);
+    int deepset_no = current_compiler->locals.count;
+    for (int i = 0; i < current_compiler->locals.count; i++) {
+        emit_byte(chunk, OP_DEEPSET);
+        emit_uint32(chunk, deepset_no--);
     }
     emit_byte(chunk, OP_RET);
 }

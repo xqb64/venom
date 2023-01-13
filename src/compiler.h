@@ -40,21 +40,19 @@ typedef enum {
 } Opcode;
 
 typedef DynArray(uint8_t) Uint8DynArray;
+typedef DynArray(double) DoubleDynArray;
 
 typedef struct BytecodeChunk {
     Uint8DynArray code;
-    double cp[POOL_MAX];  /* constant pool */
-    char *sp[POOL_MAX];   /* string pool */
-    uint8_t cp_count;
-    uint8_t sp_count;
+    DoubleDynArray cp;    /* constant pool */
+    String_DynArray sp;   /* string pool */
 } BytecodeChunk;
 
 typedef struct Compiler {
     struct Compiler *enclosing;
     Table functions;
     Table structs;
-    char *locals[256];
-    int locals_count;
+    String_DynArray locals;
     int jmp_stack[256];
     size_t jmp_tos;
     int backjmp_stack[256];

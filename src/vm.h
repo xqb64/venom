@@ -1,7 +1,7 @@
 #ifndef venom_vm_h
 #define venom_vm_h
 
-#define STACK_MAX 256
+#define STACK_MAX 1024
 
 #include "compiler.h"
 #include "dynarray.h"
