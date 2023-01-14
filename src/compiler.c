@@ -722,25 +722,31 @@ static void handle_compile_statement_while(BytecodeChunk *chunk, Statement stmt)
 
 static void handle_compile_statement_fn(BytecodeChunk *chunk, Statement stmt) {
     FunctionStatement s = TO_STMT_FN(stmt);
+
+    /* Initialize a new compiler of depth=1. */
     Compiler compiler;
     init_compiler(&compiler, 1);
 
+    /* Create a new Function object and insert it
+     * into the enclosing compiler's functions Table.
+     * NOTE: the enclosing compiler will be the one
+     * with scope depth=0. */
     Function func = {
         .name = s.name,
         .paramcount = s.parameters.count,
-        .location = (uint8_t)(chunk->code.count + 3),
+        .location = chunk->code.count + 3,
     };
-
     table_insert(&current_compiler->enclosing->functions, func.name, AS_FUNC(func));
 
-    if (s.parameters.count > 0) {
-        COPY_DYNARRAY(&current_compiler->locals, &s.parameters);
-    }                
+    /* Copy the function parameters into the current
+     * compiler's locals array. */
+    COPY_DYNARRAY(&current_compiler->locals, &s.parameters);
 
     /* Emit the jump because we don't want to execute
      * the code the first time we encounter it. */
     int jump = emit_placeholder(chunk, OP_JMP);
 
+    /* Compile the function body. */
     compile(chunk, *s.body);
 
     /* If the function does not have a return statement,

@@ -27,7 +27,7 @@ typedef enum {
 
 typedef struct {
     char *name;
-    uint8_t location;
+    size_t location;
     size_t paramcount;
 } Function;
 
@@ -118,9 +118,6 @@ do { \
         printf("%s", TO_BOOL(object) ? "true" : "false"); \
     } else if IS_NUM(object) { \
         printf("%.2f", TO_DOUBLE(object)); \
-    } else if IS_FUNC(object) { \
-        printf("<fn %s", TO_FUNC(object)->name); \
-        printf(" @ %d>", TO_FUNC(object)->location); \
     } else if IS_POINTER(object) { \
         printf("PTR ('%p')", TO_PTR(object)); \
     } else if IS_NULL(object) { \
