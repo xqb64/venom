@@ -30,6 +30,9 @@ def test_assignment_global(tmp_path, a, b):
         assert f"dbg print :: {value:.2f}\n".encode('utf-8') in process.stdout
         assert process.returncode == 0
 
+    # the stack must end up empty because we're not in a func
+    assert f"stack: []".encode('utf-8') in process.stdout
+
 
 @pytest.mark.parametrize(
     "a, b",

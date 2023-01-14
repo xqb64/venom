@@ -78,7 +78,7 @@ void end_compiler(Compiler *compiler) {
      * (and the accompanying top of stack pointer) which contains the
      * addresses of the jumps, so that we could patch the jump after
      * we compile the entire loop. */
-    COPY_DYNARRAY(&compiler->enclosing->breaks, &current_compiler->breaks);
+    COPY_DYNARRAY(&compiler->enclosing->breaks, &compiler->breaks);
 
 #ifdef venom_debug_compiler
     printf("ending compiler: ");
@@ -93,6 +93,7 @@ void end_compiler(Compiler *compiler) {
 }
 
 void free_compiler(Compiler *compiler) {
+    dynarray_free(&compiler->globals);
     dynarray_free(&compiler->locals);
     dynarray_free(&compiler->breaks);
     dynarray_free(&compiler->continues);
@@ -279,8 +280,8 @@ static bool resolve_global(char *name) {
     while (current->depth != 0) {
         current = current->enclosing;
     }
-    for (int i = current->locals.count - 1; i >= 0; i--) {
-        if (strcmp(current->locals.data[i], name) == 0) {
+    for (int i = current->globals.count - 1; i >= 0; i--) {
+        if (strcmp(current->globals.data[i], name) == 0) {
             return true;
         }
     }
@@ -615,6 +616,7 @@ static void handle_compile_statement_let(BytecodeChunk *chunk, Statement stmt) {
     compile_expression(chunk, s.initializer);
     uint32_t name_index = add_string(chunk, s.name);
     if (current_compiler->depth == 0) {
+        dynarray_insert(&current_compiler->globals, s.name);
         emit_byte(chunk, OP_SET_GLOBAL);
         emit_uint32(chunk, name_index);
     } else {

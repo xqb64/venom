@@ -24,6 +24,9 @@ def test_calculator(tmp_path, a, b):
         assert f"dbg print :: {expected}\n".encode('utf-8') in process.stdout
         assert process.returncode == 0
 
+        # the stack must end up empty because we're not in a func
+        assert f"stack: []".encode('utf-8') in process.stdout
+
 
 @pytest.mark.parametrize(
     "a, b, c",
@@ -41,3 +44,6 @@ def test_calculator_grouping(tmp_path, a, b, c):
         )
         assert f"dbg print :: {expected}\n".encode('utf-8') in process.stdout
         assert process.returncode == 0
+
+        # the stack must end up empty because we're not in a func
+        assert f"stack: []".encode('utf-8') in process.stdout

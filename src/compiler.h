@@ -52,6 +52,7 @@ typedef struct Compiler {
     struct Compiler *enclosing;
     Table functions;
     Table structs;
+    DynArray_char_ptr globals;
     DynArray_char_ptr locals;
     DynArray_int breaks;
     DynArray_int continues;
@@ -63,6 +64,6 @@ void free_chunk(BytecodeChunk *chunk);
 void compile(BytecodeChunk *chunk, Statement stmt);
 void disassemble(BytecodeChunk *chunk);
 void init_compiler(Compiler *compiler, size_t depth);
-void free_compiler(Compiler *compiler);
+void end_compiler(Compiler *compiler);
 
 #endif
