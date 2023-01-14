@@ -3,7 +3,7 @@ VALGRIND_CMD = [
     "--leak-check=full",
     "--show-leak-kinds=all",
     "--error-exitcode=1",
-    "./a.out"
+    "./venom",
 ]
 
 SINGLE_OPERAND_GROUP = [1, 3, 23, -23, 3.14, -3.14, 0, 100, -100, 5]

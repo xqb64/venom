@@ -113,7 +113,6 @@ do { \
 
 #define PRINT_OBJECT(object) \
 do { \
-    printf("{ "); \
     if IS_BOOL(object) { \
         printf("%s", TO_BOOL(object) ? "true" : "false"); \
     } else if IS_NUM(object) { \
@@ -125,12 +124,13 @@ do { \
     } else if IS_STRING(object) { \
         printf("%s", TO_STR(object)); \
     } else if (IS_STRUCT(object)) { \
+        printf("{ "); \
         printf("%s", TO_STRUCT(object)->name); \
         printf(" {"); \
         table_print(TO_STRUCT(object)->properties); \
         printf(" }"); \
+        printf(" }"); \
     } \
-    printf(" }"); \
 } while (0)
 
 #endif

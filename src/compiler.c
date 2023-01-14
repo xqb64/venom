@@ -274,6 +274,19 @@ static void emit_stack_cleanup(BytecodeChunk *chunk) {
     }
 }
 
+static bool resolve_global(char *name) {
+    Compiler *current = current_compiler;
+    while (current->depth != 0) {
+        current = current->enclosing;
+    }
+    for (int i = current->locals.count - 1; i >= 0; i--) {
+        if (strcmp(current->locals.data[i], name) == 0) {
+            return true;
+        }
+    }
+    return false;
+}
+
 static int resolve_local(char *name) {
     Compiler *current = current_compiler;
     while (current->depth != 0) {
@@ -344,7 +357,8 @@ static void handle_compile_expression_variable(BytecodeChunk *chunk, Expression 
         emit_byte(chunk, OP_DEEPGET);
         emit_uint32(chunk, index+1);
     } else {
-        if (sp_contains(chunk, e.name)) {
+        bool is_defined = resolve_global(e.name);
+        if (is_defined) {
             uint32_t name_index = add_string(chunk, e.name);
             emit_byte(chunk, OP_GET_GLOBAL);
             emit_uint32(chunk, name_index);
@@ -422,7 +436,8 @@ static void handle_compile_expression_assign(BytecodeChunk *chunk, Expression ex
             emit_byte(chunk, OP_DEEPSET);
             emit_uint32(chunk, index+1);
         } else {
-            if (sp_contains(chunk, var.name)) {
+            bool is_defined = resolve_global(var.name);
+            if (is_defined) {
                 uint32_t name_index = add_string(chunk, var.name);
                 emit_byte(chunk, OP_SET_GLOBAL);
                 emit_uint32(chunk, name_index);
@@ -717,7 +732,6 @@ static void handle_compile_statement_while(BytecodeChunk *chunk, Statement stmt)
 
     /* Finally, we patch the jump. */
     patch_placeholder(chunk, exit_jump);
-
 }
 
 static void handle_compile_statement_fn(BytecodeChunk *chunk, Statement stmt) {

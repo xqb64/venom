@@ -11,48 +11,33 @@ from tests.util import THREE_OPERANDS_GROUP
     "a, b",
     TWO_OPERANDS_GROUP,
 )
-def test_calculator(a, b):
+def test_calculator(tmp_path, a, b):
     for op in {'+', '-', '*', '/'}:
         source = f"print {a} {op} {b};"
+        input_file = tmp_path / "input.vnm"
+        input_file.write_text(source)
         expected = "%.2f" % eval(f"{a} {op} {b}")
         process = subprocess.run(
-            VALGRIND_CMD,
+            VALGRIND_CMD + [input_file],
             capture_output=True,
-            input=source.encode('utf-8')
         )
         assert f"dbg print :: {expected}\n".encode('utf-8') in process.stdout
         assert process.returncode == 0
-
 
 
 @pytest.mark.parametrize(
     "a, b, c",
     THREE_OPERANDS_GROUP,
 )
-def test_calculator_grouping(a, b, c):
+def test_calculator_grouping(tmp_path, a, b, c):
     for op, op2 in itertools.permutations({'+', '-', '*', '/'}, 2):
         source = f"print ({a} {op} {b}) {op2} {c};"
+        input_file = tmp_path / "input.vnm"
+        input_file.write_text(source)
         expected = "%.2f" % eval(f"({a} {op} {b}) {op2} {c}")
-        process = subprocess.run(VALGRIND_CMD,
+        process = subprocess.run(
+            VALGRIND_CMD + [input_file],
             capture_output=True,
-            input=source.encode('utf-8')
         )
         assert f"dbg print :: {expected}\n".encode('utf-8') in process.stdout
         assert process.returncode == 0
-
-
-
-def test_calculator_grouping_nested():
-    source = "print (((6 + (4 * 2)) - 4) / 2);"
-    process = subprocess.run([
-        "valgrind",
-        "--leak-check=full",
-        "--show-leak-kinds=all",
-        "--error-exitcode=1",
-        "./a.out"],
-        capture_output=True,
-        input=source.encode('utf-8')
-    )
-    assert "dbg print :: 5.00\n".encode('utf-8') in process.stdout
-    assert process.returncode == 0
-

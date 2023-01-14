@@ -52,17 +52,19 @@ void run_file(char *file) {
     init_compiler(&compiler, 0);
     for (size_t i = 0; i < stmts.count; i++) {
         compile(&chunk, stmts.data[i]);
-        free_stmt(stmts.data[i]);
     }
 
     VM vm;
     init_vm(&vm);
     run(&vm, &chunk);
+    free_vm(&vm);
 
+    for (size_t i = 0; i < stmts.count; i++) {
+        free_stmt(stmts.data[i]);
+    }
     dynarray_free(&stmts);
     free_compiler(&compiler);
     free_chunk(&chunk);
-    free_vm(&vm);
     free(source);
 }
 

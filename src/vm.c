@@ -63,7 +63,9 @@ do { \
     printf("stack: ["); \
     for (size_t i = 0; i < vm->tos; i++) { \
         PRINT_OBJECT(vm->stack[i]); \
-        printf(", "); \
+        if (i < vm->tos-1) { \
+            printf(", "); \
+        } \
     } \
     printf("]\n"); \
 } while(0)
