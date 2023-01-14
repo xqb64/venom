@@ -259,6 +259,12 @@ static inline bool check_equality(VM *vm, Object *a, Object *b) {
     if (a->type != b->type) {
         return false;
     }
+    if (IS_BOOL(*a) && IS_BOOL(*b)) {
+        return TO_BOOL(*a) == TO_BOOL(*b);
+    }
+    if (IS_NULL(*a) && IS_NULL(*b)) {
+        return true;
+    }
     if (IS_NUM(*a) && IS_NUM(*b)) {
         return TO_DOUBLE(*a) == TO_DOUBLE(*b);
     } else if (IS_STRING(*a) && IS_STRING(*b)) {
