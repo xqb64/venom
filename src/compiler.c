@@ -632,30 +632,15 @@ static void handle_compile_statement_block(BytecodeChunk *chunk, Statement stmt)
     BlockStatement s = TO_STMT_BLOCK(&stmt);
     Compiler compiler;
 
-    /* Only initialize a new compiler if the scope depth is
-     * greater than 1 (for scope depths of 1, the compiler
-     * will be initialized by statement_fn()). */
-    if (s.depth > 1) {
-        init_compiler(&compiler, s.depth);
-    }
+    init_compiler(&compiler, s.depth);
 
     /* Compile the body of the black. */
     for (size_t i = 0; i < s.stmts.count; i++) {
         compile(chunk, s.stmts.data[i]);
     }
 
-    /* After the block ends, the stack should be cleaned up if the
-     * scope depth is greater than 1 (for scope depths of 1, the
-     * stack cleanup is taken care of by statement_fn()). 
-     * 
-     * Besides cleaning up the stack, the compiler for the current
-     * block should be ended if the scope depth is greater than 1
-     * (for scope depths of 1, the compiler will not be init'ed in
-     * the first place - again, statement_fn() takes care of that). */
-    if (s.depth > 1) {
-        emit_stack_cleanup(chunk);
-        end_compiler(&compiler);
-    }
+    emit_stack_cleanup(chunk);
+    end_compiler(&compiler);
 }
 
 static void handle_compile_statement_if(BytecodeChunk *chunk, Statement stmt) {
