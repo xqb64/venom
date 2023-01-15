@@ -129,6 +129,9 @@ static inline bool check_equality(Object *left, Object *right) {
                 return false;
             }
         }
+        /* We haven't returned false while iterating over 
+         * the table, which means the properties are equal,
+         * and so are the two structs. */
         return true;
     }
     assert(0);
