@@ -113,15 +113,6 @@ void free_chunk(BytecodeChunk *chunk) {
     dynarray_free(&chunk->cp);
 }
 
-static bool sp_contains(BytecodeChunk *chunk, const char *string) {
-    for (size_t i = 0; i < chunk->sp.count; i++) {
-        if (strcmp(chunk->sp.data[i], string) == 0) {
-            return true;
-        }
-    }
-    return false;
-}
-
 static uint32_t add_string(BytecodeChunk *chunk, const char *string) {
     /* Check if the string is already present in the pool. */
     for (size_t i = 0; i < chunk->sp.count; i++) {
