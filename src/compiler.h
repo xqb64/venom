@@ -49,7 +49,6 @@ typedef struct BytecodeChunk {
 } BytecodeChunk;
 
 typedef struct Compiler {
-    struct Compiler *enclosing;
     Table functions;
     Table structs;
     DynArray_char_ptr globals;
@@ -57,13 +56,13 @@ typedef struct Compiler {
     DynArray_int breaks;
     DynArray_int continues;
     int depth;
+    int pops[256];
 } Compiler;
 
 void init_chunk(BytecodeChunk *chunk);
 void free_chunk(BytecodeChunk *chunk);
 void compile(BytecodeChunk *chunk, Statement stmt);
 void disassemble(BytecodeChunk *chunk);
-void init_compiler(Compiler *compiler, size_t depth);
-void end_compiler(Compiler *compiler);
+void init_compiler();
 
 #endif
