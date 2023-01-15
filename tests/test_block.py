@@ -3,16 +3,15 @@ import pytest
 import textwrap
 
 from tests.util import VALGRIND_CMD
-from tests.util import TWO_OPERANDS_GROUP
 
 
 def test_block_func_param_inherited(tmp_path):
     source = textwrap.dedent(
         """
         fn main(x) {
-            if (x == 0) {
-                print x;
-            }
+          if (x == 0) {
+            print x;
+          }
         }
         main(0);
         """
@@ -29,18 +28,17 @@ def test_block_func_param_inherited(tmp_path):
     assert f"dbg print :: {0:.2f}\n".encode('utf-8') in process.stdout
     assert process.returncode == 0
 
-    # null must remain on the stack because it's a void func
-    assert f"stack: [null]".encode('utf-8') in process.stdout
-
+    # the stack must end up empty
+    assert b"stack: []" in process.stdout
 
 def test_block_local_var_inherited(tmp_path):
     source = textwrap.dedent(
         """
         fn main(x) {
-            let z = 3;
-            if (x == 0) {
-                print z;
-            }
+          let z = 3;
+          if (x == 0) {
+            print z;
+          }
         }
         main(0);
         """
@@ -57,8 +55,8 @@ def test_block_local_var_inherited(tmp_path):
     assert f"dbg print :: {3:.2f}\n".encode('utf-8') in process.stdout
     assert process.returncode == 0
 
-    # null must remain on the stack because it's a void func
-    assert f"stack: [null]".encode('utf-8') in process.stdout
+    # the stack must end up empty
+    assert b"stack: []" in process.stdout
 
 
 def test_block_undefined_var(tmp_path):
@@ -91,10 +89,9 @@ def test_block_return_value_remains_on_stack(tmp_path):
     source = textwrap.dedent(
         """
         fn main(x) {
-            let z = 3;
-            print x+z;
+          let z = 3;
+          print x+z;
         }
-
         let spam = main(4);
         print spam;
         """
@@ -122,7 +119,7 @@ def test_block_return_value_remains_on_stack(tmp_path):
     assert process.returncode == 0
 
     # the stack must end up empty because we're consuimg the return value
-    assert f"stack: []" in output
+    assert "stack: []" in output
 
 
 def test_block_return_value_gets_popped(tmp_path):
@@ -132,9 +129,7 @@ def test_block_return_value_gets_popped(tmp_path):
           let z = 3;
           print x+z;
         }
-
         main(4);
-
         let egg = 0;
         while (egg < 5) {
           let wut = "Hello, world!";
@@ -171,4 +166,4 @@ def test_block_return_value_gets_popped(tmp_path):
 
     # the stack must end up empty because we're consuimg the
     # boolean value in the while condition
-    assert f"stack: []" in output
+    assert "stack: []" in output

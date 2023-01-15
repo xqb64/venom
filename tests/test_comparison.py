@@ -32,8 +32,9 @@ def test_comparison_global(tmp_path, x, y):
         assert f"dbg print :: {expected}\n".encode('utf-8') in process.stdout
         assert process.returncode == 0
 
-        # the stack must end up empty because we're not in a func
-        assert f"stack: []".encode('utf-8') in process.stdout
+        # the stack must end up empty
+        assert b"stack: []" in process.stdout
+
 
 @pytest.mark.parametrize(
     "x, y",
@@ -44,9 +45,9 @@ def test_comparison_func(tmp_path, x, y):
         source = textwrap.dedent(
             """
             fn main() {
-                let x = %d;
-                let y = %d;
-                print x %s y;
+              let x = %d;
+              let y = %d;
+              print x %s y;
             }
             main();""" % (x, y, op)
         )
@@ -64,5 +65,5 @@ def test_comparison_func(tmp_path, x, y):
         assert f"dbg print :: {expected}\n".encode('utf-8') in process.stdout
         assert process.returncode == 0
         
-        # null must remain on the stack because it's a void func
-        assert f"stack: [null]".encode('utf-8') in process.stdout
+        # the stack must end up empty
+        assert b"stack: []" in process.stdout

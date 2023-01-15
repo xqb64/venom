@@ -32,7 +32,7 @@ def test_equality_global(tmp_path, x, y):
     assert process.returncode == 0
 
     # the stack must end up empty
-    assert f"stack: []".encode("utf-8") in process.stdout
+    assert b"stack: []" in process.stdout
 
 
 @pytest.mark.parametrize(
@@ -65,7 +65,7 @@ def test_equality_func(tmp_path, x, y):
     assert process.returncode == 0
 
     # the stack must end up empty
-    assert f"stack: []".encode("utf-8") in process.stdout
+    assert b"stack: []" in process.stdout
 
 
 def test_equality_two_structs(tmp_path):
@@ -216,7 +216,7 @@ def test_equality_booleans(tmp_path):
         assert process.returncode == 0
 
         # the stack must end up empty
-        assert f"stack: []".encode("utf-8") in process.stdout
+        assert b"stack: []" in process.stdout
 
 
 def test_equality_nulls(tmp_path):
@@ -244,4 +244,4 @@ def test_equality_nulls(tmp_path):
     assert process.returncode == 0
 
     # the stack must end up empty
-    assert f"stack: []".encode("utf-8") in process.stdout
+    assert b"stack: []" in process.stdout
