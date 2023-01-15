@@ -20,19 +20,19 @@ def test_equality_global(tmp_path, x, y):
     )
     input_file = tmp_path / "input.vnm"
     input_file.write_text(source)
-    
+
     process = subprocess.run(
         VALGRIND_CMD + [input_file],
         capture_output=True,
     )
 
-    expected = 'true' if eval(f"{x} == {y}") else 'false'
+    expected = "true" if eval(f"{x} == {y}") else "false"
 
-    assert f"dbg print :: {expected}\n".encode('utf-8') in process.stdout
+    assert f"dbg print :: {expected}\n".encode("utf-8") in process.stdout
     assert process.returncode == 0
 
     # the stack must end up empty because we're not in a func
-    assert f"stack: []".encode('utf-8') in process.stdout
+    assert f"stack: []".encode("utf-8") in process.stdout
 
 
 @pytest.mark.parametrize(
@@ -47,34 +47,54 @@ def test_equality_func(tmp_path, x, y):
             let y = %d;
             print x == y;
         }
-        main();""" % (x, y)
+        main();"""
+        % (x, y)
     )
 
     input_file = tmp_path / "input.vnm"
     input_file.write_text(source)
-    
+
     process = subprocess.run(
         VALGRIND_CMD + [input_file],
         capture_output=True,
     )
 
-    expected = 'true' if eval(f"{x} == {y}") else 'false'
+    expected = "true" if eval(f"{x} == {y}") else "false"
 
-    assert f"dbg print :: {expected}\n".encode('utf-8') in process.stdout
+    assert f"dbg print :: {expected}\n".encode("utf-8") in process.stdout
     assert process.returncode == 0
-    
+
     # null must remain on the stack because it's a void func
-    assert f"stack: [null]".encode('utf-8') in process.stdout
+    assert f"stack: [null]".encode("utf-8") in process.stdout
 
 
 def test_equality_two_structs(tmp_path):
+    class Struct:
+        def __init__(self, name, **kwargs):
+            self.name = name
+            self.properties = kwargs
+
+        def __str__(self):
+            return "%s { %s }" % (
+                self.name,
+                ", ".join(f"{k}: {str(v)}" for k, v in self.properties.items()),
+            )
+        
+        def __eq__(self, other):
+            return self.name == other.name and self.properties == other.properties
+
+        def definition(self):
+            return textwrap.dedent(
+                """
+                struct %s {
+                    %s
+                }
+                """
+                % (self.name, "".join(f"{k};" for k in self.properties.keys()))
+            )
+
     source = textwrap.dedent(
         """
-        struct spam {
-            x;
-            y;
-        }
-
         fn main() {
             let a = %s;
             let b = %s;
@@ -85,34 +105,83 @@ def test_equality_two_structs(tmp_path):
     )
 
     structs = [
-        ("spam { x: 5, y: 10 }", "spam { x: 5, y: 10 }", True),
-        ("spam { x: 5, y: 10 }", "spam { x: 5, y: 0 }", False),
-        ('spam { x: 5, y: "Hello, world!" }', 'spam { x: 5, y: "Hello, world!" }', True),
-        ('spam { x: 5, y: "Hello, world!" }', 'spam { x: 5, y: "Bye there!" }', False),
-        ("spam { x: null, y: null }", "spam { x: null, y: null }", True),
-        ("spam { x: true, y: false }", "spam { x: true, y: false }", True),
-        ("spam { x: true, y: null }", "spam { x: true, y: false }", False),
-        ('spam { x: 5, y: spam { x: 3, y: 6 } }', 'spam { x: 5, y: spam { x: 3, y: 6 } }', True),
-        ('spam { x: 5, y: spam { x: 3, y: 6 } }', 'spam { x: 5, y: spam { x: 12, y: 6 } }', False),
-        ("spam { x: 5, y: 10 }", 'spam { x: "Hello, world!", y: 10 }', False),
+        # Two structs of the same type and the same values.
+        (Struct(name="spam", x=5, y=10),
+         Struct(name="spam", x=5, y=10)),
+
+        # Two structs of the same type and one different value.
+        (Struct(name="spam", x=5, y=10),
+        Struct(name="spam", x=3, y=10)),
+
+        # Two structs of the same type with one boolean.
+        (Struct(name="spam", x="true", y=10),
+         Struct(name="spam", x="true", y=10)),
+
+        (Struct(name="spam", x="true", y=10),
+         Struct(name="spam", x="false", y=10)),
+
+        # Two structs of the same type with one null.
+        (Struct(name="spam", x=5, y="null"),
+        Struct(name="spam", x=5, y="null")),
+
+        (Struct(name="spam", x=5, y="null"),
+         Struct(name="spam", x=5, y="false")),
+
+        # Two structs with different types but same values.
+        (Struct(name="spam", x=5, y=10),
+        Struct(name="egg", x=5, y=10)),
+
+        # Two structs with same types containing nested structs.
+        (Struct(name="spam", x=5, y=Struct(name="spam", x=32, y=64)),
+         Struct(name="spam", x=5, y=Struct(name="spam", x=32, y=64))),
+
+        (Struct(
+            name="spam",
+            x=5,
+            y=Struct(
+                name="spam",
+                x=Struct(
+                    name="spam", x=128, y=3.14
+                ),
+                y=64)
+            ),
+        Struct(
+            name="spam",
+            x=5,
+            y=Struct(
+                name="spam",
+                x=Struct(
+                    name="spam", x=128, y=3.14
+                ),
+                y=64)
+            ),
+        ),
     ]
 
-    for a, b, is_equal in structs:
+    for a, b in structs:
+        current_source = ""
+        if a.name == b.name:
+            current_source = a.definition() + source
+        else:
+            current_source = a.definition() + b.definition() + source
+
         input_file = tmp_path / "input.vnm"
-        input_file.write_text(source % (a, b))
-        
+        input_file.write_text(current_source % (a, b))
+
+        print(input_file.read_text())
+
         process = subprocess.run(
             VALGRIND_CMD + [input_file],
             capture_output=True,
         )
 
-        expected = 'true' if is_equal else 'false'
+        expected = 'true' if a == b else 'false'
 
-        assert f"dbg print :: {expected}\n".encode('utf-8') in process.stdout
+        assert f"dbg print :: {expected}\n".encode("utf-8") in process.stdout
         assert process.returncode == 0
-        
+
         # null must remain on the stack because it's a void func
-        assert f"stack: [null]".encode('utf-8') in process.stdout
+        assert f"stack: [null]".encode("utf-8") in process.stdout
 
 
 def test_equality_booleans(tmp_path):
@@ -137,19 +206,19 @@ def test_equality_booleans(tmp_path):
     for a, b, is_equal in pairs:
         input_file = tmp_path / "input.vnm"
         input_file.write_text(source % (a, b))
-        
+
         process = subprocess.run(
             VALGRIND_CMD + [input_file],
             capture_output=True,
         )
 
-        expected = 'true' if is_equal else 'false'
+        expected = "true" if is_equal else "false"
 
-        assert f"dbg print :: {expected}\n".encode('utf-8') in process.stdout
+        assert f"dbg print :: {expected}\n".encode("utf-8") in process.stdout
         assert process.returncode == 0
-        
+
         # null must remain on the stack because it's a void func
-        assert f"stack: [null]".encode('utf-8') in process.stdout
+        assert f"stack: [null]".encode("utf-8") in process.stdout
 
 
 def test_equality_nulls(tmp_path):
@@ -166,16 +235,16 @@ def test_equality_nulls(tmp_path):
 
     input_file = tmp_path / "input.vnm"
     input_file.write_text(source)
-    
+
     process = subprocess.run(
         VALGRIND_CMD + [input_file],
         capture_output=True,
     )
 
-    expected = 'true'
+    expected = "true"
 
-    assert f"dbg print :: {expected}\n".encode('utf-8') in process.stdout
+    assert f"dbg print :: {expected}\n".encode("utf-8") in process.stdout
     assert process.returncode == 0
-    
+
     # null must remain on the stack because it's a void func
-    assert f"stack: [null]".encode('utf-8') in process.stdout
+    assert f"stack: [null]".encode("utf-8") in process.stdout
