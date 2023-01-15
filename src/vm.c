@@ -255,30 +255,54 @@ static inline int handle_op_mod(VM *vm, BytecodeChunk *chunk, uint8_t **ip) {
     return 0;
 }
 
-static inline bool check_equality(VM *vm, Object *a, Object *b) {
-    if (a->type != b->type) {
+static inline bool check_equality(VM *vm, Object *left, Object *right) {
+    /* Return false if the objects are of different type. */
+    if (left->type != right->type) {
         return false;
     }
-    if (IS_BOOL(*a) && IS_BOOL(*b)) {
-        return TO_BOOL(*a) == TO_BOOL(*b);
-    }
-    if (IS_NULL(*a) && IS_NULL(*b)) {
+
+    /* Return true if both objects are nulls. */
+    if (IS_NULL(*left) && IS_NULL(*right)) {
         return true;
     }
-    if (IS_NUM(*a) && IS_NUM(*b)) {
-        return TO_DOUBLE(*a) == TO_DOUBLE(*b);
-    } else if (IS_STRING(*a) && IS_STRING(*b)) {
-        return strcmp(TO_STR(*a), TO_STR(*b)) == 0;
-    } else if (IS_BOOL(*a) && IS_BOOL(*b)) {
-        return TO_BOOL(*a) == TO_BOOL(*b);      
-    } else if (IS_STRUCT(*a) && IS_STRUCT(*b)) {
+
+    /* If both objects are booleans, compare them. */
+    if (IS_BOOL(*left) && IS_BOOL(*right)) {
+        return TO_BOOL(*left) == TO_BOOL(*right);
+    }
+
+    /* If both objects are numbers, compare them. */
+    if (IS_NUM(*left) && IS_NUM(*right)) {
+        return TO_DOUBLE(*left) == TO_DOUBLE(*right);
+    }
+    
+    /* If both objects are strings, compare them. */
+    if (IS_STRING(*left) && IS_STRING(*right)) {
+        return strcmp(TO_STR(*left), TO_STR(*right)) == 0;
+    } 
+    
+    /* If both objects are structs, compare them. */
+    if (IS_STRUCT(*left) && IS_STRUCT(*right)) {
+        Struct *a = TO_STRUCT(*left);
+        Struct *b = TO_STRUCT(*right);
+
+        /* Return false if the structs are of different types. */
+        if (strcmp(a->name, b->name) != 0) {
+            return false;
+        }
+
+        /* If they are the same type, iterate over the
+         * 'properties' Table in struct 'a', and for each
+         * property that is not NULL, run the func recursively
+         * comparing that property with the corresponding
+         * property in struct 'b'. */
         for (size_t i = 0; i < 1024; i++) {
-            if (TO_STRUCT(*a)->properties->data[i] == NULL) continue;
-            char *key = TO_STRUCT(*a)->properties->data[i]->key;
+            if (a->properties->data[i] == NULL) continue;
+            char *key = a->properties->data[i]->key;
             if (!check_equality(
                 vm,
-                table_get(TO_STRUCT(*a)->properties, key),
-                table_get(TO_STRUCT(*b)->properties, key)
+                table_get(a->properties, key),
+                table_get(b->properties, key)
             )) {
                 return false;
             }

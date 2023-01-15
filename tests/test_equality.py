@@ -31,7 +31,7 @@ def test_equality_global(tmp_path, x, y):
     assert f"dbg print :: {expected}\n".encode("utf-8") in process.stdout
     assert process.returncode == 0
 
-    # the stack must end up empty because we're not in a func
+    # the stack must end up empty
     assert f"stack: []".encode("utf-8") in process.stdout
 
 
@@ -43,9 +43,9 @@ def test_equality_func(tmp_path, x, y):
     source = textwrap.dedent(
         """
         fn main() {
-            let x = %d;
-            let y = %d;
-            print x == y;
+          let x = %d;
+          let y = %d;
+          print x == y;
         }
         main();"""
         % (x, y)
@@ -64,8 +64,8 @@ def test_equality_func(tmp_path, x, y):
     assert f"dbg print :: {expected}\n".encode("utf-8") in process.stdout
     assert process.returncode == 0
 
-    # null must remain on the stack because it's a void func
-    assert f"stack: [null]".encode("utf-8") in process.stdout
+    # the stack must end up empty
+    assert f"stack: []".encode("utf-8") in process.stdout
 
 
 def test_equality_two_structs(tmp_path):
@@ -96,11 +96,10 @@ def test_equality_two_structs(tmp_path):
     source = textwrap.dedent(
         """
         fn main() {
-            let a = %s;
-            let b = %s;
-            print a == b;
+          let a = %s;
+          let b = %s;
+          print a == b;
         }
-        
         main();"""
     )
 
@@ -180,19 +179,18 @@ def test_equality_two_structs(tmp_path):
         assert f"dbg print :: {expected}\n".encode("utf-8") in process.stdout
         assert process.returncode == 0
 
-        # null must remain on the stack because it's a void func
-        assert f"stack: [null]".encode("utf-8") in process.stdout
+        # the stack must end up empty
+        assert f"stack: []".encode("utf-8") in process.stdout
 
 
 def test_equality_booleans(tmp_path):
     source = textwrap.dedent(
         """
         fn main() {
-            let a = %s;
-            let b = %s;
-            print a == b;
+          let a = %s;
+          let b = %s;
+          print a == b;
         }
-        
         main();"""
     )
 
@@ -217,19 +215,18 @@ def test_equality_booleans(tmp_path):
         assert f"dbg print :: {expected}\n".encode("utf-8") in process.stdout
         assert process.returncode == 0
 
-        # null must remain on the stack because it's a void func
-        assert f"stack: [null]".encode("utf-8") in process.stdout
+        # the stack must end up empty
+        assert f"stack: []".encode("utf-8") in process.stdout
 
 
 def test_equality_nulls(tmp_path):
     source = textwrap.dedent(
         """
         fn main() {
-            let a = null;
-            let b = null;
-            print a == b;
-        }
-        
+          let a = null;
+          let b = null;
+          print a == b;
+        }       
         main();"""
     )
 
@@ -246,5 +243,5 @@ def test_equality_nulls(tmp_path):
     assert f"dbg print :: {expected}\n".encode("utf-8") in process.stdout
     assert process.returncode == 0
 
-    # null must remain on the stack because it's a void func
-    assert f"stack: [null]".encode("utf-8") in process.stdout
+    # the stack must end up empty
+    assert f"stack: []".encode("utf-8") in process.stdout
