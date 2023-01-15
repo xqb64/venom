@@ -85,3 +85,90 @@ def test_block_undefined_var(tmp_path):
 
     assert f"Compiler error: Variable 'z' is not defined.\n".encode('utf-8') in process.stderr
     assert process.returncode == 1
+
+
+def test_block_return_value_remains_on_stack(tmp_path):
+    source = textwrap.dedent(
+        """
+        fn main(x) {
+            let z = 3;
+            print x+z;
+        }
+
+        let spam = main(4);
+        print spam;
+        """
+    )
+    
+    input_file = tmp_path / "input.vnm"
+    input_file.write_text(source)
+
+    process = subprocess.run(
+        VALGRIND_CMD + [input_file],
+        capture_output=True,
+    )
+
+    output = process.stdout.decode('utf-8')
+
+    asserts = [
+        "dbg print :: 7.00\n",
+        "dbg print :: null\n",
+    ]
+
+    for _assert in asserts:
+        assert _assert in output
+        output = output[output.index(_assert) + len(_assert):]
+
+    assert process.returncode == 0
+
+    # the stack must end up empty because we're consuimg the return value
+    assert f"stack: []" in output
+
+
+def test_block_return_value_gets_popped(tmp_path):
+    source = textwrap.dedent(
+        """
+        fn main(x) {
+          let z = 3;
+          print x+z;
+        }
+
+        main(4);
+
+        let egg = 0;
+        while (egg < 5) {
+          let wut = "Hello, world!";
+          egg = egg+1;
+          print wut;
+        }
+        """
+    )
+    
+    input_file = tmp_path / "input.vnm"
+    input_file.write_text(source)
+
+    process = subprocess.run(
+        VALGRIND_CMD + [input_file],
+        capture_output=True,
+    )
+
+    output = process.stdout.decode('utf-8')
+
+    asserts = [
+        "dbg print :: 7.00\n",
+        "dbg print :: Hello, world!\n",
+        "dbg print :: Hello, world!\n",
+        "dbg print :: Hello, world!\n",
+        "dbg print :: Hello, world!\n",
+        "dbg print :: Hello, world!\n",
+    ]
+
+    for _assert in asserts:
+        assert _assert in output
+        output = output[output.index(_assert) + len(_assert):]
+
+    assert process.returncode == 0
+
+    # the stack must end up empty because we're consuimg the
+    # boolean value in the while condition
+    assert f"stack: []" in output

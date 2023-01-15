@@ -625,7 +625,17 @@ static void handle_compile_statement_let(BytecodeChunk *chunk, Statement stmt) {
 }
 
 static void handle_compile_statement_expr(BytecodeChunk *chunk, Statement stmt) {
-    compile_expression(chunk, TO_STMT_EXPR(stmt).exp);
+    ExpressionStatement e = TO_STMT_EXPR(stmt);
+    compile_expression(chunk, e.exp);
+    /* If the expression statement was just a call, like:
+     * ...
+     * main(4);
+     * ...
+     * Pop the return value off the stack so it does not
+     * interfere with later execution. */
+    if (e.exp.kind == EXP_CALL) {
+        emit_byte(chunk, OP_POP);
+    }
 }
 
 static void handle_compile_statement_block(BytecodeChunk *chunk, Statement stmt) {

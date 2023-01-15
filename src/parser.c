@@ -501,69 +501,8 @@ static Expression primary(Parser *parser, Tokenizer *tokenizer) {
     }
 }
 
-#ifdef venom_debug
-static void print_expression(Expression e) {
-    printf("(");
-    switch (e.kind) {
-        case EXP_LITERAL: {
-            printf("%f", TO_EXPR_LITERAL(e).dval);
-            break;
-        }
-        case EXP_VARIABLE: {
-            printf("%s", TO_EXPR_VARIABLE(e).name);
-            break;
-        }
-        case EXP_UNARY: {
-            printf("-");
-            print_expression(*TO_EXPR_UNARY(e).exp);
-            break;
-        }
-        case EXP_BINARY: {
-            print_expression(*TO_EXPR_BINARY(e).lhs);
-            printf(" %s ", TO_EXPR_BINARY(e).operator);
-            print_expression(*TO_EXPR_BINARY(e).rhs);
-            break;
-        }
-        case EXP_CALL: {
-            printf("%s", TO_EXPR_CALL(e).var.name);
-            for (size_t i = 0; i < TO_EXPR_CALL(e).arguments.count; i++) {
-                print_expression(TO_EXPR_CALL(e).arguments.data[i]);
-            }
-            printf("()");
-            break;
-        }
-        case EXP_STRING: {
-            printf("%s", TO_EXPR_STRING(e).str);
-            break;
-        }
-        case EXP_STRUCT: {
-            printf("%s", TO_EXPR_STRUCT(e).name);
-            for (size_t i = 0; i < TO_EXPR_STRUCT(e).initializers.count; i++) {
-                print_expression(TO_EXPR_STRUCT(e).initializers.data[i]);
-            }
-            break;
-        }
-        case EXP_STRUCT_INIT: {
-            // print_expression(e.as.expr_struct_init->property);
-            // printf(": ");
-            // print_expression(e.as.expr_struct_init->value);
-            break;
-        }
-        case EXPR_GET: {
-            break;
-        }
-        default: assert(0);
-    }
-    printf(")");
-}
-#endif
-
 static Statement print_statement(Parser *parser, Tokenizer *tokenizer) {
     Expression exp = expression(parser, tokenizer);
-#ifdef venom_debug
-    print_expression(exp);
-    printf("\n");
-#endif
     consume(
         parser, tokenizer,
         TOKEN_SEMICOLON,
@@ -584,10 +523,6 @@ static Statement let_statement(Parser *parser, Tokenizer *tokenizer) {
     if (match(parser, tokenizer, 1, TOKEN_EQUAL)) {
         initializer = expression(parser, tokenizer);
     }
-#ifdef venom_debug
-    print_expression(initializer);
-    printf("\n");
-#endif
     consume(
         parser, tokenizer,
         TOKEN_SEMICOLON,
