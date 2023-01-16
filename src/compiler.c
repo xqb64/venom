@@ -318,6 +318,12 @@ static void handle_compile_expression_call(BytecodeChunk *chunk, Expression exp)
     }
     emit_byte(chunk, OP_INC_FPCOUNT);
     Object *func = resolve_func(e.var.name);
+    if (func == NULL) {
+        COMPILER_ERROR(
+            "Function '%s' is not defined.",
+            e.var.name
+        );
+    }
     int16_t jump = -(chunk->code.count - TO_FUNC(*func)->location) - 3;
     emit_bytes(chunk, 3, OP_JMP, (jump >> 8) & 0xFF, jump & 0xFF);
     patch_placeholder(chunk, ip);
