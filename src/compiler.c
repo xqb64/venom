@@ -304,20 +304,53 @@ static void handle_compile_expression_binary(BytecodeChunk *chunk, Expression ex
 
 static void handle_compile_expression_call(BytecodeChunk *chunk, Expression exp) {
     CallExpression e = TO_EXPR_CALL(exp);
-    int ip = emit_placeholder(chunk, OP_IP);
-    for (size_t i = 0; i < e.arguments.count; i++) {
-        compile_expression(chunk, e.arguments.data[i]);
-    }
-    emit_byte(chunk, OP_INC_FPCOUNT);
-    Object *func = table_get(&compiler.functions, e.var.name);
-    if (func == NULL) {
+    
+    /* Error out at compile time if the function is not defined. */
+    Object *funcobj = table_get(&compiler.functions, e.var.name);
+    if (funcobj == NULL) {
         COMPILER_ERROR(
             "Function '%s' is not defined.",
             e.var.name
         );
     }
-    int16_t jump = -(chunk->code.count - TO_FUNC(*func)->location) - 3;
+
+    /* Function is defined. */
+    Function *func = TO_FUNC(*funcobj);
+
+    /* The function call dance goes like this:
+     * - emit OP_IP with a placeholder that will need to be patched
+     *   because the length of the bytecode that evalues the arguments
+     *   is not known yet
+     * - compile the arguments
+     * - only now emit OP_INC_FPCOUNT, because OP_DEEPGET/OP_DEEPSET in
+     *   the previous step want to use the old frame pointer
+     * - emit a direct OP_JMP to the function's location
+     * - patch the emitted OP_IP, so that when the vm executes it,
+     *   it will push the address of the instruction that comes after
+     *   the dance on the stack */
+
+    /* Emit OP_IP first. */
+    int ip = emit_placeholder(chunk, OP_IP);
+    
+    /* Then compile the arguments */
+    for (size_t i = 0; i < e.arguments.count; i++) {
+        compile_expression(chunk, e.arguments.data[i]);
+    }
+
+    /* Then emit OP_INC_FPCOUNT. */
+    emit_byte(chunk, OP_INC_FPCOUNT);
+
+    /* Emit a direct OP_JMP to the function's location.
+     * The length of the jump sequence (OP_JMP + 2-byte offset,
+     * which is 3), needs to be taken into the account, because
+     * by the time the VM executes this jump, it will have read
+     * both the jump and the offset, which means that, effectively,
+     * we'll not be jumping from the current location, but three
+     * slots after it. */
+    int16_t jump = -(chunk->code.count + 3 - func->location);
     emit_bytes(chunk, 3, OP_JMP, (jump >> 8) & 0xFF, jump & 0xFF);
+
+    /* Patch OP_IP. */
     patch_placeholder(chunk, ip);
 }
 

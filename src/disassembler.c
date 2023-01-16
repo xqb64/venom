@@ -81,6 +81,18 @@ void disassemble(BytecodeChunk *chunk) {
                         printf(" (value: %s)", chunk->sp.data[str_index]);
                         break;
                     }
+                    case OP_DEEPGET:
+                    case OP_DEEPSET: {
+                        uint32_t index = READ_UINT32();
+                        printf(" (index: %d)", index);
+                        break;
+                    }
+                    case OP_GET_GLOBAL:
+                    case OP_SET_GLOBAL: {
+                        uint32_t name_index = READ_UINT32();
+                        printf(" (value: %s)", chunk->sp.data[name_index]);
+                        break;
+                    }
                     default: break;
                 }
                 break;
