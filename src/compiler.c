@@ -221,14 +221,6 @@ static int resolve_local(char *name) {
     return -1;
 }
 
-static Object *resolve_func(char *name) {
-    return table_get(&compiler.functions, name);
-}
-
-static Object *resolve_struct(char *name) {
-    return table_get(&compiler.structs, name);
-}
-
 static void compile_expression(BytecodeChunk *chunk, Expression exp);
 
 static void handle_compile_expression_literal(BytecodeChunk *chunk, Expression exp) {
@@ -317,7 +309,7 @@ static void handle_compile_expression_call(BytecodeChunk *chunk, Expression exp)
         compile_expression(chunk, e.arguments.data[i]);
     }
     emit_byte(chunk, OP_INC_FPCOUNT);
-    Object *func = resolve_func(e.var.name);
+    Object *func = table_get(&compiler.functions, e.var.name);
     if (func == NULL) {
         COMPILER_ERROR(
             "Function '%s' is not defined.",
@@ -431,7 +423,7 @@ static void handle_compile_expression_logical(BytecodeChunk *chunk, Expression e
 
 static void handle_compile_expression_struct(BytecodeChunk *chunk, Expression exp) {
     StructExpression e = TO_EXPR_STRUCT(exp);
-    Object *blueprintobj = resolve_struct(e.name);
+    Object *blueprintobj = table_get(&compiler.structs, e.name);
     if (blueprintobj == NULL) {
         COMPILER_ERROR("struct '%s' is not defined.\n", e.name);
     }
