@@ -44,7 +44,7 @@ void init_chunk(BytecodeChunk *chunk) {
 
 void free_chunk(BytecodeChunk *chunk) {
     dynarray_free(&chunk->code);
-    for (int i = 0; i < chunk->sp.count; i++) 
+    for (size_t i = 0; i < chunk->sp.count; i++)
         free(chunk->sp.data[i]);
     dynarray_free(&chunk->sp);
     dynarray_free(&chunk->cp);
@@ -699,7 +699,7 @@ static void handle_compile_statement_return(BytecodeChunk *chunk, Statement stmt
     ReturnStatement s = TO_STMT_RETURN(stmt);
     compile_expression(chunk, s.returnval);
     int deepset_no = compiler.locals.count;
-    for (int i = 0; i < compiler.locals.count; i++) {
+    for (size_t i = 0; i < compiler.locals.count; i++) {
         emit_byte(chunk, OP_DEEPSET);
         emit_uint32(chunk, deepset_no--);
     }
