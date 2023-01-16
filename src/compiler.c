@@ -457,17 +457,10 @@ static void handle_compile_expression_struct(BytecodeChunk *chunk, Expression ex
             }
         }
         if (!found) {
-            int msg_len = 0;
-            for (size_t k = 0; k < sb->properties.count; k++) {
-                msg_len += strlen(sb->properties.data[k]);                
-            }
-            /* (sb->properties.count - 1) * 2 is the length of comma, space pairs */
-            char *properties_str = malloc(msg_len + (sb->properties.count - 1) * 2 + 1);
-            strcpy(properties_str, sb->properties.data[0]);
-            for (size_t k = 1; k < sb->properties.count; k++) {
-                strcat(properties_str, ", ");                      
-                strcat(properties_str, sb->properties.data[k]);
-            }
+            /* This call returns a malloc'd pointer, but since we
+             * are immediately calling the COMPILER_ERROR macro,
+             * we rely on the OS to free up the resources. */
+            char *properties_str = strcat_dynarray(sb->properties);
             COMPILER_ERROR(
                 "struct '%s' requires properties: [%s]", sb->name, properties_str
             );

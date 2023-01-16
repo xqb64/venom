@@ -10,8 +10,6 @@ typedef struct HeapObject HeapObject;
 
 void table_print(Table *table);
 
-typedef DynArray(char *) DynArray_char_ptr;
-
 typedef enum {
     OBJ_NUMBER,
     OBJ_BOOLEAN,

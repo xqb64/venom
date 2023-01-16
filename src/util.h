@@ -4,8 +4,11 @@
 #include <string.h>
 #include <stdlib.h>
 
+#include "dynarray.h"
+
 char *own_string(const char *string);
 char *own_string_n(const char *string, int n);
+char *strcat_dynarray(DynArray_char_ptr array);
 
 #define ALLOC(obj) (memcpy(malloc(sizeof((obj))), &(obj), sizeof((obj))))
 
