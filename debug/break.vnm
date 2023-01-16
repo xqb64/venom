@@ -1,0 +1,13 @@
+let x = 0;
+
+while (x < 5) { 
+  let y = x+1;
+  print y;
+  if (y == 3) { 
+    let z = "Hello, world!";
+    print z;
+  }
+  x=x+1;
+}
+
+print y;

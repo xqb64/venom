@@ -1,0 +1,11 @@
+struct spam {
+  x;
+  y;
+}
+
+fn main() {
+  let x = spam { x: 0, z: 3};
+  print x;
+}
+
+main();

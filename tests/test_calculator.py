@@ -25,7 +25,7 @@ def test_calculator(tmp_path, a, b):
         assert process.returncode == 0
 
         # the stack must end up empty
-        assert f"stack: []".encode('utf-8') in process.stdout
+        assert process.stdout.endswith(b"stack: []\n")
 
 
 @pytest.mark.parametrize(
@@ -46,4 +46,4 @@ def test_calculator_grouping(tmp_path, a, b, c):
         assert process.returncode == 0
 
         # the stack must end up empty
-        assert f"stack: []".encode('utf-8') in process.stdout
+        assert process.stdout.endswith(b"stack: []\n")

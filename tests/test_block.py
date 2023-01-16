@@ -29,7 +29,7 @@ def test_block_func_param_inherited(tmp_path):
     assert process.returncode == 0
 
     # the stack must end up empty
-    assert b"stack: []" in process.stdout
+    assert process.stdout.endswith(b"stack: []\n")
 
 def test_block_local_var_inherited(tmp_path):
     source = textwrap.dedent(
@@ -56,7 +56,7 @@ def test_block_local_var_inherited(tmp_path):
     assert process.returncode == 0
 
     # the stack must end up empty
-    assert b"stack: []" in process.stdout
+    assert process.stdout.endswith(b"stack: []\n")
 
 
 def test_block_undefined_var(tmp_path):
@@ -118,8 +118,8 @@ def test_block_return_value_remains_on_stack(tmp_path):
 
     assert process.returncode == 0
 
-    # the stack must end up empty because we're consuimg the return value
-    assert "stack: []" in output
+    # the stack must end up empty because we're consuming the return value
+    assert output.endswith("stack: []\n")
 
 
 def test_block_return_value_gets_popped(tmp_path):
@@ -164,6 +164,6 @@ def test_block_return_value_gets_popped(tmp_path):
 
     assert process.returncode == 0
 
-    # the stack must end up empty because we're consuimg the
+    # the stack must end up empty because we're consuming the
     # boolean value in the while condition
-    assert "stack: []" in output
+    assert output.endswith("stack: []\n")

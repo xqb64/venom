@@ -68,7 +68,7 @@ def test_negate_func(tmp_path, x):
         assert process.returncode == 0
     
         # the stack must end up empty
-        assert b"stack: []" in process.stdout
+        assert process.stdout.endswith(b"stack: []\n")
 
 
 def test_negate_variable(tmp_path):
@@ -93,4 +93,4 @@ def test_negate_variable(tmp_path):
     assert process.returncode == 0 
 
     # the stack must end up empty
-    assert b"stack: []" in process.stdout
+    assert process.stdout.endswith(b"stack: []\n")

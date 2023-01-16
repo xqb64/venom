@@ -1,0 +1,11 @@
+fn main(m) {
+  let x = 0;
+  while (x < 3) {
+    let y = 3;
+    print "Hello, world!";
+    x = x + 1;
+  }
+}
+
+let egg = main(1);
+print egg;

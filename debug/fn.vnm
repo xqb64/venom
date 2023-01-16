@@ -1,0 +1,16 @@
+fn main(n) {
+  let a = 16;
+  let b = 32;
+  let c = 64;
+  if (n == 0) {
+    let x = 1024;
+    let y = 2048;
+    let z = 4096;
+    let w = 8192;
+    if (y == 2048) {
+        print w;
+    }
+  }
+  print a;
+}
+main(0);

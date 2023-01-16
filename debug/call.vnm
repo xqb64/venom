@@ -1,0 +1,7 @@
+fn main(x) {
+  let z = 3;
+  print x+z;
+}
+
+let spam = main(4);
+print spam;

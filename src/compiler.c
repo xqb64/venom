@@ -29,13 +29,13 @@ void init_compiler() {
     memset(&compiler, 0, sizeof(Compiler));
 }
 
-void free_compiler(Compiler *compiler) {
-    dynarray_free(&compiler->globals);
-    dynarray_free(&compiler->locals);
-    dynarray_free(&compiler->breaks);
-    dynarray_free(&compiler->continues);
-    table_free(&compiler->structs);
-    table_free(&compiler->functions);
+void free_compiler() {
+    dynarray_free(&compiler.globals);
+    dynarray_free(&compiler.locals);
+    dynarray_free(&compiler.breaks);
+    dynarray_free(&compiler.continues);
+    table_free(&compiler.structs);
+    table_free(&compiler.functions);
 }
 
 void init_chunk(BytecodeChunk *chunk) {
@@ -459,16 +459,17 @@ static void handle_compile_expression_struct(BytecodeChunk *chunk, Expression ex
         if (!found) {
             int msg_len = 0;
             for (size_t k = 0; k < sb->properties.count; k++) {
-                msg_len += strlen(sb->properties.data[k]) + 2; // 2 = len(", ")                       
+                msg_len += strlen(sb->properties.data[k]);                
             }
-            char properties[msg_len+1];
-            for (size_t k = 0; k < sb->properties.count; k++) {
-                strcat(properties, sb->properties.data[k]);
-                strcat(properties, ", ");                      
+            /* (sb->properties.count - 1) * 2 is the length of comma, space pairs */
+            char *properties_str = malloc(msg_len + (sb->properties.count - 1) * 2 + 1);
+            strcpy(properties_str, sb->properties.data[0]);
+            for (size_t k = 1; k < sb->properties.count; k++) {
+                strcat(properties_str, ", ");                      
+                strcat(properties_str, sb->properties.data[k]);
             }
-            properties[msg_len] = '\0';
             COMPILER_ERROR(
-                "struct '%s' requires properties: [%s]", sb->name, properties
+                "struct '%s' requires properties: [%s]", sb->name, properties_str
             );
         }
     }
@@ -556,7 +557,6 @@ static void begin_scope() {
 }
 
 static void end_scope() {
-    printf("ending scope at depth: %d, popping %d variables\n", compiler.depth, compiler.pops[compiler.depth]);
     for (int i = 0; i < compiler.pops[compiler.depth]; i++) {
         dynarray_pop(&compiler.locals);
     }

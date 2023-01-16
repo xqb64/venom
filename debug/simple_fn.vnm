@@ -1,0 +1,7 @@
+fn main(x, y) {
+  let z = 3;
+  let w = 4;
+  print x + y + z + w;
+}
+
+main(1, 2);

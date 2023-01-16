@@ -33,7 +33,7 @@ def test_comparison_global(tmp_path, x, y):
         assert process.returncode == 0
 
         # the stack must end up empty
-        assert b"stack: []" in process.stdout
+        assert process.stdout.endswith(b"stack: []\n")
 
 
 @pytest.mark.parametrize(
@@ -66,4 +66,4 @@ def test_comparison_func(tmp_path, x, y):
         assert process.returncode == 0
         
         # the stack must end up empty
-        assert b"stack: []" in process.stdout
+        assert process.stdout.endswith(b"stack: []\n")

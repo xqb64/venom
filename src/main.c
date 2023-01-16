@@ -52,6 +52,7 @@ void run_file(char *file) {
     for (size_t i = 0; i < stmts.count; i++) {
         compile(&chunk, stmts.data[i]);
     }
+    free_compiler();
 
     VM vm;
     init_vm(&vm);

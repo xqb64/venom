@@ -32,7 +32,7 @@ def test_declarations(tmp_path, value):
     assert process.returncode == 0
 
     # the stack must end up empty
-    assert b"stack: []\n" in process.stdout
+    assert process.stdout.endswith(b"stack: []\n")
 
 
 @pytest.mark.parametrize(
@@ -60,7 +60,7 @@ def test_printing_declared_variable(tmp_path, value):
     assert process.returncode == 0
 
     # the stack must end up empty
-    assert b"stack: []\n" in process.stdout
+    assert process.stdout.endswith(b"stack: []\n")
 
 
 @pytest.mark.parametrize(
@@ -90,7 +90,7 @@ def test_printing_declared_variables(tmp_path, x, y):
         assert process.returncode == 0
 
         # the stack must end up empty
-        assert b"stack: []\n" in process.stdout
+        assert process.stdout.endswith(b"stack: []\n")
 
 
 @pytest.mark.parametrize(
@@ -118,7 +118,7 @@ def test_declarations_with_expressions(tmp_path, a, b):
         assert process.returncode == 0
 
         # the stack must end up empty
-        assert b"stack: []\n" in process.stdout
+        assert process.stdout.endswith(b"stack: []\n")
 
 
 @pytest.mark.parametrize(
@@ -149,4 +149,4 @@ def test_reuse_declaration(tmp_path, a, b):
         assert process.returncode == 0
 
         # the stack must end up empty
-        assert b"stack: []\n" in process.stdout
+        assert process.stdout.endswith(b"stack: []\n")

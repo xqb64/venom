@@ -31,7 +31,7 @@ def test_assignment_global(tmp_path, a, b):
         assert process.returncode == 0
 
     # the stack must end up empty
-    assert b"stack: []" in process.stdout
+    assert process.stdout.endswith(b"stack: []\n")
 
 
 @pytest.mark.parametrize(
@@ -62,4 +62,4 @@ def test_assignment_func(tmp_path, a, b):
         assert process.returncode == 0
     
     # the stack must end up empty
-    assert b"stack: []" in process.stdout
+    assert process.stdout.endswith(b"stack: []\n")

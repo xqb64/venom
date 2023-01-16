@@ -1,0 +1,14 @@
+fn main() {
+  let i = 0;
+  while (i < 2) {
+    i = i + 1;
+    print "Printing i... ";
+    print i;
+    if (i == 2) {
+      let x = 1024;
+      break;
+    }
+  }
+}
+
+main();

@@ -1,0 +1,23 @@
+fn main() {
+  let i = 0;
+  while (i < 5) {
+    i = i + 1;
+    if (i == 2) {
+      let j = 0;
+      while (j < 5) {
+        j = j + 1;
+        print "Hello, world!";
+        if (j == 3) {
+          continue;
+        }
+      }
+      continue;
+    }
+    if (i == 4) {
+      break;
+    }
+    print i;
+  }
+}
+
+main();

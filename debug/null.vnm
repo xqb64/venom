@@ -1,0 +1,7 @@
+  fn main() {
+      let a = null;
+      let b = null;
+      print a == b;
+  }
+  
+  main();
