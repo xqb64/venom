@@ -222,19 +222,11 @@ static int resolve_local(char *name) {
 }
 
 static Object *resolve_func(char *name) {
-    Object *func = table_get(&compiler.functions, name);
-    if (func != NULL) {
-        return func;
-    }
-    return NULL;
+    return table_get(&compiler.functions, name);
 }
 
 static Object *resolve_struct(char *name) {
-    Object *blueprint = table_get(&compiler.structs, name);
-    if (blueprint != NULL) {
-        return blueprint;
-    }
-    return NULL;
+    return table_get(&compiler.structs, name);
 }
 
 static void compile_expression(BytecodeChunk *chunk, Expression exp);
