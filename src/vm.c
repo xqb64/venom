@@ -320,7 +320,12 @@ static inline int handle_op_eq(VM *vm, BytecodeChunk *chunk, uint8_t **ip) {
 }
 
 static inline int handle_op_jz(VM *vm, BytecodeChunk *chunk, uint8_t **ip) {
-    /* Jump if zero. */
+    /* OP_JZ reads a signed 2-byte offset, pops an object
+     * off the stack, and increments the instruction pointer
+     * by that amount it read from the bytecode if the popped
+     * value was falsey.
+     *
+     * NOTE: the offset could be negative. */
     int16_t offset = READ_INT16();
     Object obj = pop(vm);
     if (!TO_BOOL(obj)) {
@@ -330,12 +335,21 @@ static inline int handle_op_jz(VM *vm, BytecodeChunk *chunk, uint8_t **ip) {
 }
 
 static inline int handle_op_jmp(VM *vm, BytecodeChunk *chunk, uint8_t **ip) {
+    /* OP_JMP reads a signed 2-byte offset and increments
+     * the instruction pointer by that amount.
+     *
+     * Unlike OP_JZ which is a conditional jump, OP_JMP
+     * jumps unconditionally.
+     *
+     * NOTE: the offset could be negative. */
     int16_t offset = READ_INT16();
     *ip += offset;
     return 0;
 }
 
 static inline int handle_op_neg(VM *vm, BytecodeChunk *chunk, uint8_t **ip) {
+    /* OP_NEGATE pops an object off the stack, negates
+     * it and pushes the negative  back on the stack. */
     Object original = pop(vm);
     Object negated = AS_DOUBLE(-TO_DOUBLE(original));
     push(vm, negated);
@@ -343,12 +357,24 @@ static inline int handle_op_neg(VM *vm, BytecodeChunk *chunk, uint8_t **ip) {
 }
 
 static inline int handle_op_not(VM *vm, BytecodeChunk *chunk, uint8_t **ip) {
+    /* OP_NOT pops an object off the stack
+     * and pushes its inverse back on the stack. */
     Object obj = pop(vm);
     push(vm, AS_BOOL(TO_BOOL(obj) ^ 1));
     return 0;
 }
 
 static inline int handle_op_ip(VM *vm, BytecodeChunk *chunk, uint8_t **ip) {
+    /* OP_IP reads a signed 2-byte offset from
+     * the bytecode, builds a pointer object that
+     * points to the instruction that comes after
+     * the function call dance, updates vm->fp_stack
+     * and pushes the pointer on the main vm stack..
+     *
+     * NOTE: vm->fp_stack should be updated first
+     * before pushing the pointer on the stack,
+     * because OP_DEEPGET/OP_DEEPSET expect frame
+     * pointer indexing to be zero-based. */
     int16_t offset = READ_INT16();
     Object ip_obj = AS_POINTER(*(ip)+offset);
     vm->fp_stack[vm->fp_count] = vm->tos;
@@ -357,6 +383,8 @@ static inline int handle_op_ip(VM *vm, BytecodeChunk *chunk, uint8_t **ip) {
 }
 
 static inline int handle_op_inc_fpcount(VM *vm, BytecodeChunk *chunk, uint8_t **ip) {
+    /* OP_INC_FPCOUNT increments vm->fp_count, effectively
+     * putting an end to the function call dance. */
     vm->fp_count++;
     return 0;
 }
@@ -368,6 +396,7 @@ static inline int handle_op_ret(VM *vm, BytecodeChunk *chunk, uint8_t **ip) {
     Object returnvalue = pop(vm);
     Object returnaddr = pop(vm);
 
+    /* Don't forget to decrement vm->fp_count. */
     --vm->fp_count;
 
     /* Then, we push the return value back on the stack.  */
@@ -379,22 +408,42 @@ static inline int handle_op_ret(VM *vm, BytecodeChunk *chunk, uint8_t **ip) {
 }
 
 static inline int handle_op_true(VM *vm, BytecodeChunk *chunk, uint8_t **ip) {
+    /* OP_TRUE pushes a boolean object
+     * with value 'true' on the stack. */
     push(vm, AS_BOOL(true));
     return 0;
 }
 
 static inline int handle_op_null(VM *vm, BytecodeChunk *chunk, uint8_t **ip) {
+    /* OP_NULL pushes a null object on the stack. */
     push(vm, AS_NULL());
     return 0;
 }
 
 static inline int handle_op_pop(VM *vm, BytecodeChunk *chunk, uint8_t **ip) {
+    /* OP_POP pops an object off the stack
+     * and decrements the refcount for it. */
     Object obj = pop(vm);
     OBJECT_DECREF(obj);
     return 0;
 }
 
 static inline int handle_op_struct(VM *vm, BytecodeChunk *chunk, uint8_t **ip) {
+    /* At this point, ip points to OP_STRUCT.
+     *
+     * After the opcode, there are two 4-byte
+     * indexes: the first is the index of the
+     * struct name (type) in the chunk's string
+     * constant pool, and the second is the index
+     * of property count in the chunk's constant
+     * pool.
+     *
+     * This instruction builds a struct object
+     * with the type name and property count it
+     * read from the bytecode, and with refcount
+     * set to 1. while making sure to initialize
+     * the 'properties' table properly. Then, it
+     * malloc's it and pushes it on the stack. */
     uint32_t structname = READ_UINT32();
     uint32_t propertycount = READ_UINT32();
 
