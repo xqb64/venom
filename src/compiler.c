@@ -106,13 +106,13 @@ static void emit_uint32(BytecodeChunk *chunk, uint32_t index) {
 static int emit_placeholder(BytecodeChunk *chunk, Opcode op) {
     emit_bytes(chunk, 3, op, 0xFF, 0xFF);
     /* The opcode, followed by its 2-byte offset is the last
-     * emitted instruction. 
+     * emitted instruction.
      *
      * e.g. if `chunk->code.data` is:
-     * 
+     *
      * [OP_CONST, operand,
      *  OP_CONST, operand,
-     *  OP_EQ, 
+     *  OP_EQ,
      *  OP_JZ, operand, operand]
      *                            ^-- `chunk->code.count`
      *
@@ -133,9 +133,9 @@ static void patch_placeholder(BytecodeChunk *chunk, int op) {
      *
      * [OP_CONST, operand,
      *  OP_CONST, operand,
-     *  OP_EQ, 
+     *  OP_EQ,
      *  OP_JZ, operand, operand,
-     *  OP_STR, operand, 
+     *  OP_STR, operand,
      *  OP_PRINT]
      *             ^-- `chunk->code.count`
      *
@@ -153,7 +153,7 @@ static void patch_placeholder(BytecodeChunk *chunk, int op) {
 }
 
 static void emit_loop(BytecodeChunk *chunk, int loop_start) {
-    /* 
+    /*
      * For example, consider the following bytecode for the program
      * on the side:
      *
@@ -280,7 +280,7 @@ static void handle_compile_expression_binary(BytecodeChunk *chunk, Expression ex
     if (strcmp(e.operator, "+") == 0) {
         emit_byte(chunk, OP_ADD);
     } else if (strcmp(e.operator, "-") == 0) {
-        emit_byte(chunk, OP_SUB);                
+        emit_byte(chunk, OP_SUB);
     } else if (strcmp(e.operator, "*") == 0) {
         emit_byte(chunk, OP_MUL);
     } else if (strcmp(e.operator, "/") == 0) {
@@ -304,7 +304,7 @@ static void handle_compile_expression_binary(BytecodeChunk *chunk, Expression ex
 
 static void handle_compile_expression_call(BytecodeChunk *chunk, Expression exp) {
     CallExpression e = TO_EXPR_CALL(exp);
-    
+
     /* Error out at compile time if the function is not defined. */
     Object *funcobj = table_get(&compiler.functions, e.var.name);
     if (funcobj == NULL) {
@@ -331,7 +331,7 @@ static void handle_compile_expression_call(BytecodeChunk *chunk, Expression exp)
 
     /* Emit OP_IP first. */
     int ip = emit_placeholder(chunk, OP_IP);
-    
+
     /* Then compile the arguments */
     for (size_t i = 0; i < e.arguments.count; i++) {
         compile_expression(chunk, e.arguments.data[i]);
@@ -577,7 +577,7 @@ static void end_scope() {
         dynarray_pop(&compiler.locals);
     }
     compiler.pops[compiler.depth] = 0;
-    compiler.depth--;    
+    compiler.depth--;
 }
 
 static void handle_compile_statement_block(BytecodeChunk *chunk, Statement stmt) {
@@ -607,9 +607,9 @@ static void handle_compile_statement_if(BytecodeChunk *chunk, Statement stmt) {
      * first, we emit 0xFFFF as the relative jump offset which acts as
      * a placeholder for the real jump offset that will be known only
      * after we compile the 'then' branch because at that point the
-     * size of the 'then' branch is known. */ 
+     * size of the 'then' branch is known. */
     int then_jump = emit_placeholder(chunk, OP_JZ);
-    
+
     compile(chunk, *s.then_branch);
 
     int else_jump = emit_placeholder(chunk, OP_JMP);
@@ -648,9 +648,9 @@ static void handle_compile_statement_while(BytecodeChunk *chunk, Statement stmt)
      * backpatching: first, we emit 0xFFFF as the relative jump offset
      * which acts as a placeholder for the real jump offset that will
      * be known only after we compile the body of the 'while' loop,
-     * because at that point its size is known. */ 
+     * because at that point its size is known. */
     int exit_jump = emit_placeholder(chunk, OP_JZ);
-    
+
     /* Then, we compile the body of the loop. */
     compile(chunk, *s.body);
 
@@ -704,7 +704,7 @@ static void handle_compile_statement_fn(BytecodeChunk *chunk, Statement stmt) {
      * some return value to be on the stack. */
     emit_byte(chunk, OP_NULL);
     emit_byte(chunk, OP_RET);
- 
+
     /* Finally, patch the jump. */
     patch_placeholder(chunk, jump);
 }

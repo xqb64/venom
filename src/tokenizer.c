@@ -78,7 +78,7 @@ static Token number(Tokenizer *tokenizer) {
     if (peek(tokenizer, 0) == '.' && is_digit(peek(tokenizer, 1))) {
         advance(tokenizer);
         ++length;
- 
+
         while (is_digit(peek(tokenizer, 0))) {
             advance(tokenizer);
             ++length;

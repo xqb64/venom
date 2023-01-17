@@ -22,9 +22,9 @@ static void list_insert(Bucket **head, char *key, Object item) {
         while (current->next != NULL) {
             current = current->next;
         }
-    
+
         /* Store the new node at the end. */
-        current->next = new_node; 
+        current->next = new_node;
     }
 }
 

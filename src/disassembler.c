@@ -57,7 +57,7 @@ void disassemble(BytecodeChunk *chunk) {
 
 
     for (
-        uint8_t *ip = chunk->code.data;    
+        uint8_t *ip = chunk->code.data;
         ip < &chunk->code.data[chunk->code.count];  /* ip < addr of just beyond the last instruction */
         ip++
     ) {

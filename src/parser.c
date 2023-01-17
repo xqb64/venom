@@ -486,7 +486,7 @@ static Expression primary(Parser *parser, Tokenizer *tokenizer) {
     } else if (match(parser, tokenizer, 1, TOKEN_IDENTIFIER)) {
         if (check(parser, TOKEN_LEFT_BRACE)) {
             return struct_initializer(parser, tokenizer);
-        } 
+        }
         return variable(parser);
     } else if (match(parser, tokenizer, 1, TOKEN_LEFT_PAREN)) {
         return grouping(parser, tokenizer);
@@ -684,7 +684,7 @@ static Statement struct_statement(Parser *parser, Tokenizer *tokenizer) {
         parser, tokenizer,
         TOKEN_IDENTIFIER,
         "Expected identifier after 'struct'."
-    ); 
+    );
     consume(
         parser, tokenizer,
         TOKEN_LEFT_BRACE,

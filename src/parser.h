@@ -44,7 +44,7 @@ typedef struct UnaryExpression {
 
 typedef struct BinaryExpression {
     Expression *lhs;
-    Expression *rhs;    
+    Expression *rhs;
     char *operator;
 } BinaryExpression;
 
@@ -65,7 +65,7 @@ typedef struct AssignExpression {
 
 typedef struct LogicalExpression {
     Expression *lhs;
-    Expression *rhs;    
+    Expression *rhs;
     char *operator;
 } LogicalExpression;
 

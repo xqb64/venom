@@ -98,12 +98,12 @@ static inline bool check_equality(Object *left, Object *right) {
     if (IS_NUM(*left) && IS_NUM(*right)) {
         return TO_DOUBLE(*left) == TO_DOUBLE(*right);
     }
-    
+
     /* If both objects are strings, compare them. */
     if (IS_STRING(*left) && IS_STRING(*right)) {
         return strcmp(TO_STR(*left), TO_STR(*right)) == 0;
-    } 
-    
+    }
+
     /* If both objects are structs, compare them. */
     if (IS_STRUCT(*left) && IS_STRUCT(*right)) {
         Struct *a = TO_STRUCT(*left);
@@ -129,7 +129,7 @@ static inline bool check_equality(Object *left, Object *right) {
                 return false;
             }
         }
-        /* We haven't returned false while iterating over 
+        /* We haven't returned false while iterating over
          * the table, which means the properties are equal,
          * and so are the two structs. */
         return true;
@@ -220,7 +220,7 @@ static inline int handle_op_deepset(VM *vm, BytecodeChunk *chunk, uint8_t **ip) 
      * and since indexes are 1-based, to set the third item
      * on the stack (located at index 2), we need to subtract
      * 1 from the index.
-     * 
+     *
      * We also need to make sure to adjust the refcount of the
      * object being set. */
     uint32_t index = READ_UINT32();
@@ -241,8 +241,8 @@ static inline int handle_op_deepget(VM *vm, BytecodeChunk *chunk, uint8_t **ip) 
      * However, if there are no frame pointers on the stack,
      * and since indexes are 1-based, to get the third item
      * on the stack (located at index 2), we need to subtract
-     * 1 from the index. 
-     * 
+     * 1 from the index.
+     *
      * We also need to make sure to adjust the refcount of the
      * object that we get. */
     uint32_t index = READ_UINT32();
