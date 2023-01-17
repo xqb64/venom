@@ -6,7 +6,6 @@
 #include "dynarray.h"
 
 typedef struct Table Table;
-typedef struct HeapObject HeapObject;
 
 typedef enum {
     OBJ_NUMBER,
