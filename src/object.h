@@ -10,12 +10,12 @@ typedef struct Table Table;
 typedef enum {
     OBJ_NUMBER,
     OBJ_BOOLEAN,
-    OBJ_FUNCTION,
     OBJ_POINTER,
     OBJ_STRING,
     OBJ_STRUCT,
-    OBJ_STRUCT_BLUEPRINT,
     OBJ_NULL,
+    OBJ_FUNCTION,
+    OBJ_STRUCT_BLUEPRINT,
 } __attribute__ ((__packed__)) ObjectType;
 
 typedef struct {
