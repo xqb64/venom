@@ -150,13 +150,10 @@ static inline int handle_op_print(VM *vm, BytecodeChunk *chunk, uint8_t **ip) {
 
 static inline int handle_op_const(VM *vm, BytecodeChunk *chunk, uint8_t **ip) {
     /* At this point, ip points to OP_CONST.
-    * Since this is a 2-byte instruction with an
-    * immediate operand (the index of the double
-    * constant in the constant pool), we want to
-    * increment the ip to point to the index of
-    * the constant in the constant pool that comes
-    * after the opcode, and push the constant on
-    * the stack. */
+     * After the opcode, there is a 4-byte index
+     * of the string in the chunk's constant pool.
+     * We take that constant (a double), build an
+     * object, and push it on the stack. */
     uint32_t index = READ_UINT32();
     Object obj = AS_DOUBLE(chunk->cp.data[index]);
     push(vm, obj);
@@ -165,15 +162,13 @@ static inline int handle_op_const(VM *vm, BytecodeChunk *chunk, uint8_t **ip) {
 
 static inline int handle_op_get_global(VM *vm, BytecodeChunk *chunk, uint8_t **ip) {
     /* At this point, ip points to OP_GET_GLOBAL.
-    * Since this is a 2-byte instruction with an
-    * immediate operand (the index of the name of
-    * the looked up variable in the string constant
-    * pool), we want to increment the ip so it points
-    * to the /index/ of the string in the string
-    * constant pool that comes after the opcode.
-    * We then look up the variable and push its value
-    * on the stack. If we can't find the variable,
-    * we bail out. */
+     * After the opcode, there is a 4-byte index
+     * of the variable name in the chunk's string
+     * constant pool. This instruction looks up the
+     * object under that name in in the vm's globals
+     * table and pushes it on the stack. Since the
+     * object is now present in yet another location,
+     * we need to make sure to increment the refcount. */
     uint32_t name_index = READ_UINT32();
     Object *obj = table_get(&vm->globals, chunk->sp.data[name_index]);
     push(vm, *obj);
@@ -183,27 +178,24 @@ static inline int handle_op_get_global(VM *vm, BytecodeChunk *chunk, uint8_t **i
 
 static inline int handle_op_set_global(VM *vm, BytecodeChunk *chunk, uint8_t **ip) {
     /* At this point, ip points to OP_SET_GLOBAL.
-    * This is a single-byte instruction that expects
-    * two things to already be on the stack: the index
-    * of the variable name in the string constant pool,
-    * and the value of the double constant that the name
-    * refers to. We pop these two and add the variable
-    * to the globals table. */
+     * After the opcode, there is a 4-byte index
+     * of the variable name in the chunk's string
+     * constant pool. This instruction expects an
+     * object to already be on the stack, which it
+     * then pops and inserts into the vm's globals
+     * table. */
     uint32_t name_index = READ_UINT32();
-    Object constant = pop(vm);
-    table_insert(&vm->globals, chunk->sp.data[name_index], constant);
+    Object obj = pop(vm);
+    table_insert(&vm->globals, chunk->sp.data[name_index], obj);
     return 0;
 }
 
 static inline int handle_op_str(VM *vm, BytecodeChunk *chunk, uint8_t **ip) {
-    /* At this point, ip points to OP_CONST.
-    * Since this is a 2-byte instruction with an
-    * immediate operand (the index of the double
-    * constant in the constant pool), we want to
-    * increment the ip to point to the index of
-    * the constant in the constant pool that comes
-    * after the opcode, and push the constant on
-    * the stack. */
+    /* At this point, ip points to OP_STR.
+     * After the opcode, there is a 4-byte index
+     * of the string in the chunk's string constant
+     * pool. We take that string, build an object,
+     * and push it on the stack. */
     uint32_t index = READ_UINT32();
     Object obj = AS_STR(chunk->sp.data[index]);
     push(vm, obj);
