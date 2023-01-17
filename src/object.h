@@ -12,11 +12,9 @@ typedef enum {
     OBJ_BOOLEAN,
     OBJ_FUNCTION,
     OBJ_POINTER,
-    OBJ_HEAP,
     OBJ_STRING,
     OBJ_STRUCT,
     OBJ_STRUCT_BLUEPRINT,
-    OBJ_PROPERTY,
     OBJ_NULL,
 } __attribute__ ((__packed__)) ObjectType;
 
