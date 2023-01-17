@@ -8,8 +8,6 @@
 typedef struct Table Table;
 typedef struct HeapObject HeapObject;
 
-void table_print(Table *table);
-
 typedef enum {
     OBJ_NUMBER,
     OBJ_BOOLEAN,
