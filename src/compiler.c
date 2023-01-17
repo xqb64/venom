@@ -387,7 +387,7 @@ static void handle_compile_expression_assign(BytecodeChunk *chunk, Expression ex
         emit_byte(chunk, OP_SETATTR);
         emit_uint32(chunk, index);
     } else {
-        COMPILER_ERROR("invalid assignment.\n");
+        COMPILER_ERROR("Invalid assignment.");
     }
 }
 

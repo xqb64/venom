@@ -63,3 +63,26 @@ def test_assignment_func(tmp_path, a, b):
     
     # the stack must end up empty
     assert process.stdout.endswith(b"stack: []\n")
+
+
+def test_invalid_assignment(tmp_path):
+    source = textwrap.dedent(
+        """
+        fn main() {
+            let x = 3;
+            1 = x;
+        }
+        main();
+        """
+    )
+
+    input_file = tmp_path / "input.vnm"
+    input_file.write_text(source)
+
+    process = subprocess.run(
+        VALGRIND_CMD + [input_file],
+        capture_output=True,
+    )
+
+    assert b"Compiler error: Invalid assignment.\n" in process.stderr
+    assert process.returncode == 1
