@@ -176,12 +176,6 @@ static inline int handle_op_get_global(VM *vm, BytecodeChunk *chunk, uint8_t **i
     * we bail out. */
     uint32_t name_index = READ_UINT32();
     Object *obj = table_get(&vm->globals, chunk->sp.data[name_index]);
-    if (obj == NULL) {
-        RUNTIME_ERROR(
-            "Variable '%s' is not defined",
-            chunk->sp.data[name_index]
-        );
-    }
     push(vm, *obj);
     OBJECT_INCREF(*obj);
     return 0;
