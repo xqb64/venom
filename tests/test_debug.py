@@ -8,7 +8,7 @@ from tests.util import VALGRIND_CMD
 RESULTS = {
     "assignment.vnm": {
         'debug_prints': [],
-        'ends_with': 'Compiler error: invalid assignment.',
+        'ends_with': 'Compiler error: Invalid assignment.',
         'return_code': 1,
     },
     "big.vnm": {
