@@ -214,7 +214,8 @@ static bool resolve_global(char *name) {
 }
 
 static int resolve_local(char *name) {
-    /* Check if 'name' is present in the locals dynarray. */
+    /* Check if 'name' is present in the locals dynarray.
+     * If it is, return the index, otherwise return -1. */
     for (size_t i = 0; i < compiler.locals.count; i++) {
         if (strcmp(compiler.locals.data[i], name) == 0) {
             return i;
