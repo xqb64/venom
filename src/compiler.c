@@ -364,10 +364,17 @@ static void handle_compile_expression_call(BytecodeChunk *chunk, Expression exp)
 
 static void handle_compile_expression_get(BytecodeChunk *chunk, Expression exp) {
     GetExpression e = TO_EXPR_GET(exp);
+    
+    /* Compile the part that comes before
+     * the member access operator. */
     compile_expression(chunk, *e.exp);
-    uint32_t index = add_string(chunk, e.property_name);
+
+    /* Add the 'property_name' string to the
+     * chunk's sp, and emit OP_GETATTR with
+     * the index. */
+    uint32_t property_name_index = add_string(chunk, e.property_name);
     emit_byte(chunk, OP_GETATTR);
-    emit_uint32(chunk, index);
+    emit_uint32(chunk, property_name_index);
 }
 
 static void handle_compile_expression_assign(BytecodeChunk *chunk, Expression exp) {
