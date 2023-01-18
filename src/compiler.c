@@ -747,7 +747,7 @@ static void handle_compile_statement_fn(BytecodeChunk *chunk, Statement stmt) {
         .paramcount = s.parameters.count,
         .location = chunk->code.count + 3,
     };
-    table_insert(&compiler.functions, func.name, AS_FUNC(func));
+    table_insert(&compiler.functions, func.name, AS_FUNC(ALLOC(func)));
     compiler.pops[1] += s.parameters.count;
 
     /* Copy the function parameters into the current
@@ -786,7 +786,7 @@ static void handle_compile_statement_struct(BytecodeChunk *chunk, Statement stmt
         .name = own_string(s.name),
         .properties = properties
     };
-    table_insert(&compiler.structs, blueprint.name, AS_STRUCT_BLUEPRINT(blueprint));
+    table_insert(&compiler.structs, blueprint.name, AS_STRUCT_BLUEPRINT(ALLOC(blueprint)));
 }
 
 static void handle_compile_statement_return(BytecodeChunk *chunk, Statement stmt) {
