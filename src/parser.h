@@ -14,7 +14,7 @@ typedef enum {
     EXP_UNARY,
     EXP_BINARY,
     EXP_CALL,
-    EXPR_GET,
+    EXP_GET,
     EXP_ASSIGN,
     EXP_LOGICAL,
     EXP_STRUCT,
@@ -116,7 +116,7 @@ typedef struct Expression {
 #define AS_EXPR_UNARY(exp) ((Expression){ .kind = EXP_UNARY, .as.expr_unary = (exp)})
 #define AS_EXPR_BINARY(exp) ((Expression){ .kind = EXP_BINARY, .as.expr_binary = (exp)})
 #define AS_EXPR_CALL(exp) ((Expression){ .kind = EXP_CALL, .as.expr_call = (exp)})
-#define AS_EXPR_GET(exp) ((Expression){ .kind = EXPR_GET, .as.expr_get = (exp)})
+#define AS_EXPR_GET(exp) ((Expression){ .kind = EXP_GET, .as.expr_get = (exp)})
 #define AS_EXPR_ASSIGN(exp) ((Expression){ .kind = EXP_ASSIGN, .as.expr_assign = (exp)})
 #define AS_EXPR_LOGICAL(exp) ((Expression){ .kind = EXP_LOGICAL, .as.expr_logical = (exp)})
 #define AS_EXPR_STRUCT(exp) ((Expression){ .kind = EXP_STRUCT, .as.expr_struct = (exp)})

@@ -405,7 +405,7 @@ static void handle_compile_expression_assign(BytecodeChunk *chunk, Expression ex
                 COMPILER_ERROR("Variable '%s' is not defined.", var.name);
             }
         }
-    } else if (e.lhs->kind == EXPR_GET) {
+    } else if (e.lhs->kind == EXP_GET) {
         /* If the left-hand side is a get expression (like 'egg.x') */
         GetExpression getexp = TO_EXPR_GET(*e.lhs);
 
@@ -585,7 +585,7 @@ CompileExpressionHandler expression_handler[] = {
     [EXP_UNARY] = { .fn = handle_compile_expression_unary, .name = "EXP_UNARY" },
     [EXP_BINARY] = { .fn = handle_compile_expression_binary, .name = "EXP_BINARY" },
     [EXP_CALL] = { .fn = handle_compile_expression_call, .name = "EXP_CALL" },
-    [EXPR_GET] = { .fn = handle_compile_expression_get, .name = "EXP_GET" },
+    [EXP_GET] = { .fn = handle_compile_expression_get, .name = "EXP_GET" },
     [EXP_ASSIGN] = { .fn = handle_compile_expression_assign, .name = "EXP_ASSIGN" },
     [EXP_LOGICAL] = { .fn = handle_compile_expression_logical, .name = "EXP_LOGICAL" },
     [EXP_STRUCT] = { .fn = handle_compile_expression_struct, .name = "EXP_STRUCT" },

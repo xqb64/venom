@@ -148,7 +148,7 @@ void free_expression(Expression e) {
             free(TO_EXPR_STRUCT_INIT(e).property);
             break;
         }
-        case EXPR_GET: {
+        case EXP_GET: {
             free_expression(*TO_EXPR_GET(e).exp);
             free(TO_EXPR_GET(e).property_name);
             free(TO_EXPR_GET(e).exp);
