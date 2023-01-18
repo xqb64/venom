@@ -244,9 +244,9 @@ static void handle_compile_expression_literal(BytecodeChunk *chunk, Expression e
 
 static void handle_compile_expression_string(BytecodeChunk *chunk, Expression exp) {
     StringExpression e = TO_EXPR_STRING(exp);
-    uint32_t const_index = add_string(chunk, e.str);
+    uint32_t str_index = add_string(chunk, e.str);
     emit_byte(chunk, OP_STR);
-    emit_uint32(chunk, const_index);
+    emit_uint32(chunk, str_index);
 }
 
 static void handle_compile_expression_variable(BytecodeChunk *chunk, Expression exp) {
