@@ -42,10 +42,10 @@ def test_assignment_func(tmp_path, a, b):
     source = textwrap.dedent(
         """
         fn main() {
-            let x = %d;
-            print x;
-            x = %d;
-            print x;
+          let x = %d;
+          print x;
+          x = %d;
+          print x;
         }
         main();""" % (a, b)
     )
@@ -69,8 +69,8 @@ def test_invalid_assignment(tmp_path):
     source = textwrap.dedent(
         """
         fn main() {
-            let x = 3;
-            1 = x;
+          let x = 3;
+          1 = x;
         }
         main();
         """
@@ -86,3 +86,77 @@ def test_invalid_assignment(tmp_path):
 
     assert b"Compiler error: Invalid assignment.\n" in process.stderr
     assert process.returncode == 1
+
+
+def test_struct_property_assignment(tmp_path):
+    source = textwrap.dedent(
+        """
+        struct spam {
+          x;
+          y;
+        }
+        fn main() {
+          let egg = spam { x: 0, y: 0 };
+          egg.x = 3;
+          print egg.x;
+        }
+        main();
+        """
+    )
+
+    input_file = tmp_path / "input.vnm"
+    input_file.write_text(source)
+
+    process = subprocess.run(
+        VALGRIND_CMD + [input_file],
+        capture_output=True,
+    )
+
+    output = process.stdout.decode('utf-8')
+
+    assert "dbg print :: 3.00\n" in output
+    assert output.endswith("stack: []\n")
+
+    assert process.returncode == 0
+
+
+def test_struct_property_assignment_nested(tmp_path):
+    source = textwrap.dedent(
+        """
+        struct spam {
+          x;
+          y;
+        }
+        fn main() {
+          let egg = spam {
+            x: 0,
+            y: spam {
+                x: 0,
+                y: spam {
+                    x: 0,
+                    y: 0
+                }
+            }
+          };
+          egg.y.y.x = "Hello, world!";
+          print egg.y.y.x;
+        }
+        main();
+        """
+    )
+
+    input_file = tmp_path / "input.vnm"
+    input_file.write_text(source)
+
+    process = subprocess.run(
+        VALGRIND_CMD + [input_file],
+        capture_output=True,
+    )
+
+    output = process.stdout.decode('utf-8')
+
+    assert "dbg print :: Hello, world!\n" in output
+    assert output.endswith("stack: []\n")
+
+    assert process.returncode == 0
+

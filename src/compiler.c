@@ -249,17 +249,22 @@ static void handle_compile_expression_string(BytecodeChunk *chunk, Expression ex
 
 static void handle_compile_expression_variable(BytecodeChunk *chunk, Expression exp) {
     VariableExpression e = TO_EXPR_VARIABLE(exp);
+    /* First try to resolve the variable as local. */
     int index = resolve_local(e.name);
     if (index != -1) {
+        /* If it is found, emit OP_DEEPGET. */
         emit_byte(chunk, OP_DEEPGET);
         emit_uint32(chunk, index+1);
     } else {
+        /* Otherwise, try to resolve it as global. */
         bool is_defined = resolve_global(e.name);
         if (is_defined) {
+            /* If it is found, emit OP_GET_GLOBAL. */
             uint32_t name_index = add_string(chunk, e.name);
             emit_byte(chunk, OP_GET_GLOBAL);
             emit_uint32(chunk, name_index);
         } else {
+            /* Otherwise, the variable is not defined, so bail out. */
             COMPILER_ERROR("Variable '%s' is not defined.", e.name);
         }
     }
@@ -364,29 +369,55 @@ static void handle_compile_expression_get(BytecodeChunk *chunk, Expression exp) 
 
 static void handle_compile_expression_assign(BytecodeChunk *chunk, Expression exp) {
     AssignExpression e = TO_EXPR_ASSIGN(exp);
-    compile_expression(chunk, *e.rhs);
+
+    /* If the left-hand side is a variable (as opposed to a get expression) */
     if (e.lhs->kind == EXP_VARIABLE) {
+        /* First compile the right-hand side of the assigment. */
+        compile_expression(chunk, *e.rhs);
+
         VariableExpression var = TO_EXPR_VARIABLE(*e.lhs);
+        /* Try to resolve it as a local. */
         int index = resolve_local(var.name);
         if (index != -1) {
+            /* If it is found in locals, emit OP_DEEPSET. */
             emit_byte(chunk, OP_DEEPSET);
             emit_uint32(chunk, index+1);
         } else {
+            /* If it is not found in locals, try to resolve it as global. */
             bool is_defined = resolve_global(var.name);
             if (is_defined) {
+                /* If it is found in globals, emit OP_SET_GLOBAL. */
                 uint32_t name_index = add_string(chunk, var.name);
                 emit_byte(chunk, OP_SET_GLOBAL);
                 emit_uint32(chunk, name_index);
             } else {
+                /* If it is not found in globals, bail out. */
                 COMPILER_ERROR("Variable '%s' is not defined.", var.name);
             }
         }
     } else if (e.lhs->kind == EXPR_GET) {
-        compile_expression(chunk, *TO_EXPR_GET(*e.lhs).exp);
-        uint32_t index = add_string(chunk, TO_EXPR_GET(*e.lhs).property_name);
+        /* If the left-hand side is a get expression (like 'egg.x') */
+        GetExpression getexp = TO_EXPR_GET(*e.lhs);
+
+        /* Compile the part before the member access operator ('egg'),
+         * because OP_SETATTR expects the struct to be on the stack. */
+        compile_expression(chunk, *getexp.exp);
+
+        /* Then compile the right-hand side of the assigment. */
+        compile_expression(chunk, *e.rhs);
+
+        /* Emit OP_SETATTR which will pop the value, pop the struct,
+         * and set the struct's property to the popped value.*/
+        uint32_t property_name_index = add_string(chunk, getexp.property_name);
         emit_byte(chunk, OP_SETATTR);
-        emit_uint32(chunk, index);
+        emit_uint32(chunk, property_name_index);
+
+        /* Since OP_SETATTR will leave the struct on the stack,
+         * don't forget to pop it off. */
+        emit_byte(chunk, OP_POP);
     } else {
+        /* If the left-hand side is neither a variable expression
+         * nor a get expression, bail out. */
         COMPILER_ERROR("Invalid assignment.");
     }
 }
