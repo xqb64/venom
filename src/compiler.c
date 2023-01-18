@@ -497,11 +497,20 @@ static void handle_compile_expression_logical(BytecodeChunk *chunk, Expression e
 
 static void handle_compile_expression_struct(BytecodeChunk *chunk, Expression exp) {
     StructExpression e = TO_EXPR_STRUCT(exp);
+
+    /* Look up the struct with that name in compiler's structs table. */
     Object *blueprintobj = table_get(&compiler.structs, e.name);
-    if (blueprintobj == NULL) {
+
+    /* If it is not found, bail out. */
+    if (!blueprintobj) {
         COMPILER_ERROR("struct '%s' is not defined.\n", e.name);
     }
+
+    /* The struct has been defined. */
     StructBlueprint *sb = TO_STRUCT_BLUEPRINT(*blueprintobj);
+    
+    /* If the number of properties in the struct blueprint
+     * doesn't match the number of provided initializers, bail out. */
     if (sb->properties.count != e.initializers.count) {
         COMPILER_ERROR(
             "struct '%s' requires %ld initializers.\n",
@@ -509,6 +518,8 @@ static void handle_compile_expression_struct(BytecodeChunk *chunk, Expression ex
             sb->properties.count
         );
     }
+
+    /* Check if the initializer names match the property names. */
     for (size_t i = 0; i < sb->properties.count; i++) {
         char *property = sb->properties.data[i];
         bool found = false;
@@ -530,10 +541,15 @@ static void handle_compile_expression_struct(BytecodeChunk *chunk, Expression ex
             );
         }
     }
+
+    /* Everything is okay, so we emit OP_STRUCT followed by struct's
+     * name index in the chunk's sp, and the count of initializers. */
     uint32_t name_index = add_string(chunk, sb->name);
     emit_byte(chunk, OP_STRUCT);
     emit_uint32(chunk, name_index);
     emit_uint32(chunk, e.initializers.count);
+
+    /* Finally, we compile the initializers. */
     for (size_t i = 0; i < e.initializers.count; i++) {
         compile_expression(chunk, e.initializers.data[i]);
     }
@@ -541,9 +557,16 @@ static void handle_compile_expression_struct(BytecodeChunk *chunk, Expression ex
 
 static void handle_compile_expression_struct_init(BytecodeChunk *chunk, Expression exp) {
     StructInitializerExpression e = TO_EXPR_STRUCT_INIT(exp);
+    
+    /* First, we compile the value of the initializer, since
+     * OP_SETATTR expects the value to already be on the stack. */
     compile_expression(chunk, *e.value);
-    VariableExpression key = TO_EXPR_VARIABLE(*e.property);
-    uint32_t property_name_index = add_string(chunk, key.name);
+
+    /* Then, we add the property name string into the chunk's sp. */
+    VariableExpression property = TO_EXPR_VARIABLE(*e.property);
+    uint32_t property_name_index = add_string(chunk, property.name);
+
+    /* Finally, we emit OP_SETATTR with the returned index. */
     emit_byte(chunk, OP_SETATTR);
     emit_uint32(chunk, property_name_index);
 }
