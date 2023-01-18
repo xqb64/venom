@@ -204,7 +204,8 @@ static void emit_stack_cleanup(BytecodeChunk *chunk) {
 }
 
 static bool resolve_global(char *name) {
-    for (int i = compiler.globals.count - 1; i >= 0; i--) {
+    /* Check if 'name' is present in the globals dynarray. */
+    for (size_t i = 0; i < compiler.globals.count; i++) {
         if (strcmp(compiler.globals.data[i], name) == 0) {
             return true;
         }
@@ -213,7 +214,8 @@ static bool resolve_global(char *name) {
 }
 
 static int resolve_local(char *name) {
-    for (int i = compiler.locals.count - 1; i >= 0; i--) {
+    /* Check if 'name' is present in the locals dynarray. */
+    for (size_t i = 0; i < compiler.locals.count; i++) {
         if (strcmp(compiler.locals.data[i], name) == 0) {
             return i;
         }
