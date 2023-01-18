@@ -790,14 +790,34 @@ static void handle_compile_statement_struct(BytecodeChunk *chunk, Statement stmt
 }
 
 static void handle_compile_statement_return(BytecodeChunk *chunk, Statement stmt) {
-    /* Compile the return value and emit OP_RET. */
     ReturnStatement s = TO_STMT_RETURN(stmt);
+
+    /* Compile the return value. */
     compile_expression(chunk, s.returnval);
+
+    /* We need to perform the stack cleanup, but
+     * the return value must not be lost, we'll
+     * (ab)use OP_DEEPSET for this job.
+     * 
+     * For example, if the stack is:
+     * 
+     * [ptr, 1, 2, 3, <return value>]
+     * 
+     * The cleanup will look like this:
+     * 
+     * [ptr, 1, 2, 3, <return value>]
+     * [ptr, 1, 2, <return value>]
+     * [ptr, 1, <return value>]
+     * [ptr, <return value>]
+     * 
+     * Which is the exact state of the stack that OP_RET expects. */
     int deepset_no = compiler.locals.count;
     for (size_t i = 0; i < compiler.locals.count; i++) {
         emit_byte(chunk, OP_DEEPSET);
         emit_uint32(chunk, deepset_no--);
     }
+
+    /* Finally, emit OP_RET. */
     emit_byte(chunk, OP_RET);
 }
 
