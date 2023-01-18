@@ -227,7 +227,7 @@ static void compile_expression(BytecodeChunk *chunk, Expression exp);
 
 static void handle_compile_expression_literal(BytecodeChunk *chunk, Expression exp) {
     LiteralExpression e = TO_EXPR_LITERAL(exp);
-    if (e.specval == NULL) {
+    if (!e.specval) {
         uint32_t const_index = add_constant(chunk, e.dval);
         emit_byte(chunk, OP_CONST);
         emit_uint32(chunk, const_index);
