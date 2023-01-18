@@ -137,7 +137,6 @@ void print_token(Token token) {
         case TOKEN_STRUCT: printf("TOKEN_STRUCT"); break;
         case TOKEN_RETURN: printf("TOKEN_RETURN"); break;
         case TOKEN_EOF: printf("TOKEN_EOF"); break;
-        case TOKEN_ERROR: printf("TOKEN_ERROR"); break;
         default: break;
     }
 
