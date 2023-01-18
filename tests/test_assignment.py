@@ -131,11 +131,11 @@ def test_struct_property_assignment_nested(tmp_path):
           let egg = spam {
             x: 0,
             y: spam {
+              x: 0,
+              y: spam {
                 x: 0,
-                y: spam {
-                    x: 0,
-                    y: 0
-                }
+                y: 0
+              }
             }
           };
           egg.y.y.x = "Hello, world!";
