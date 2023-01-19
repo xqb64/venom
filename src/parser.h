@@ -4,7 +4,6 @@
 #include <stdlib.h>
 #include "dynarray.h"
 #include "tokenizer.h"
-#include "object.h"
 
 typedef enum {
     EXP_LITERAL,
