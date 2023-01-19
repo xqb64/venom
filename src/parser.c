@@ -13,78 +13,6 @@ void init_parser(Parser *parser) {
     memset(parser, 0, sizeof(Parser));
 }
 
-void free_stmt(Statement stmt) {
-    switch (stmt.kind) {
-        case STMT_PRINT: {
-            free_expression(TO_STMT_PRINT(stmt).exp);
-            break;
-        }
-        case STMT_LET: {
-            free_expression(TO_STMT_LET(stmt).initializer);
-            free(stmt.as.stmt_let.name);
-            break;
-        }
-        case STMT_BLOCK: {
-            for (size_t i = 0; i < TO_STMT_BLOCK(&stmt).stmts.count; i++) {
-                free_stmt(TO_STMT_BLOCK(&stmt).stmts.data[i]);
-            }
-            dynarray_free(&TO_STMT_BLOCK(&stmt).stmts);
-            break;
-        }
-        case STMT_IF: {
-            free_expression(TO_STMT_IF(stmt).condition);
-
-            free_stmt(*TO_STMT_IF(stmt).then_branch);
-            free(TO_STMT_IF(stmt).then_branch);
-
-            if (TO_STMT_IF(stmt).else_branch != NULL) {
-                free_stmt(*TO_STMT_IF(stmt).else_branch);
-                free(TO_STMT_IF(stmt).else_branch);
-            }
-
-            break;
-        }
-        case STMT_WHILE: {
-            free_expression(TO_STMT_WHILE(stmt).condition);
-            for (size_t i = 0; i < TO_STMT_BLOCK(TO_STMT_WHILE(stmt).body).stmts.count; i++) {
-                free_stmt(TO_STMT_BLOCK(TO_STMT_WHILE(stmt).body).stmts.data[i]);
-            }
-            dynarray_free(&TO_STMT_BLOCK(TO_STMT_WHILE(stmt).body).stmts);
-            free(TO_STMT_WHILE(stmt).body);
-            break;
-        }
-        case STMT_RETURN: {
-            free_expression(TO_STMT_RETURN(stmt).returnval);
-            break;
-        }
-        case STMT_EXPR: {
-            free_expression(TO_STMT_EXPR(stmt).exp);
-            break;
-        }
-        case STMT_FN: {
-            free(TO_STMT_FN(stmt).name);
-            for (size_t i = 0; i < TO_STMT_FN(stmt).parameters.count; i++) {
-                free(TO_STMT_FN(stmt).parameters.data[i]);
-            }
-            dynarray_free(&TO_STMT_FN(stmt).parameters);
-            for (size_t i = 0; i < TO_STMT_BLOCK(TO_STMT_FN(stmt).body).stmts.count; i++) {
-                free_stmt(TO_STMT_BLOCK(TO_STMT_FN(stmt).body).stmts.data[i]);
-            }
-            dynarray_free(&TO_STMT_BLOCK(TO_STMT_FN(stmt).body).stmts);
-            free(TO_STMT_FN(stmt).body);
-            break;
-        }
-        case STMT_STRUCT: {
-            free(TO_STMT_STRUCT(stmt).name);
-            for (size_t i = 0; i < TO_STMT_STRUCT(stmt).properties.count; i++) {
-                free(TO_STMT_STRUCT(stmt).properties.data[i]);
-            }
-            dynarray_free(&TO_STMT_STRUCT(stmt).properties);
-        }
-        default: break;
-    }
-}
-
 void free_expression(Expression e) {
     switch (e.kind) {
         case EXP_LITERAL: {
@@ -154,6 +82,78 @@ void free_expression(Expression e) {
             free(TO_EXPR_GET(e).exp);
             break;
         }
+    }
+}
+
+void free_stmt(Statement stmt) {
+    switch (stmt.kind) {
+        case STMT_PRINT: {
+            free_expression(TO_STMT_PRINT(stmt).exp);
+            break;
+        }
+        case STMT_LET: {
+            free_expression(TO_STMT_LET(stmt).initializer);
+            free(stmt.as.stmt_let.name);
+            break;
+        }
+        case STMT_BLOCK: {
+            for (size_t i = 0; i < TO_STMT_BLOCK(&stmt).stmts.count; i++) {
+                free_stmt(TO_STMT_BLOCK(&stmt).stmts.data[i]);
+            }
+            dynarray_free(&TO_STMT_BLOCK(&stmt).stmts);
+            break;
+        }
+        case STMT_IF: {
+            free_expression(TO_STMT_IF(stmt).condition);
+
+            free_stmt(*TO_STMT_IF(stmt).then_branch);
+            free(TO_STMT_IF(stmt).then_branch);
+
+            if (TO_STMT_IF(stmt).else_branch != NULL) {
+                free_stmt(*TO_STMT_IF(stmt).else_branch);
+                free(TO_STMT_IF(stmt).else_branch);
+            }
+
+            break;
+        }
+        case STMT_WHILE: {
+            free_expression(TO_STMT_WHILE(stmt).condition);
+            for (size_t i = 0; i < TO_STMT_BLOCK(TO_STMT_WHILE(stmt).body).stmts.count; i++) {
+                free_stmt(TO_STMT_BLOCK(TO_STMT_WHILE(stmt).body).stmts.data[i]);
+            }
+            dynarray_free(&TO_STMT_BLOCK(TO_STMT_WHILE(stmt).body).stmts);
+            free(TO_STMT_WHILE(stmt).body);
+            break;
+        }
+        case STMT_RETURN: {
+            free_expression(TO_STMT_RETURN(stmt).returnval);
+            break;
+        }
+        case STMT_EXPR: {
+            free_expression(TO_STMT_EXPR(stmt).exp);
+            break;
+        }
+        case STMT_FN: {
+            free(TO_STMT_FN(stmt).name);
+            for (size_t i = 0; i < TO_STMT_FN(stmt).parameters.count; i++) {
+                free(TO_STMT_FN(stmt).parameters.data[i]);
+            }
+            dynarray_free(&TO_STMT_FN(stmt).parameters);
+            for (size_t i = 0; i < TO_STMT_BLOCK(TO_STMT_FN(stmt).body).stmts.count; i++) {
+                free_stmt(TO_STMT_BLOCK(TO_STMT_FN(stmt).body).stmts.data[i]);
+            }
+            dynarray_free(&TO_STMT_BLOCK(TO_STMT_FN(stmt).body).stmts);
+            free(TO_STMT_FN(stmt).body);
+            break;
+        }
+        case STMT_STRUCT: {
+            free(TO_STMT_STRUCT(stmt).name);
+            for (size_t i = 0; i < TO_STMT_STRUCT(stmt).properties.count; i++) {
+                free(TO_STMT_STRUCT(stmt).properties.data[i]);
+            }
+            dynarray_free(&TO_STMT_STRUCT(stmt).properties);
+        }
+        default: break;
     }
 }
 
