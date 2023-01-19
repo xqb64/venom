@@ -1,7 +1,7 @@
 #ifndef venom_compiler_h
 #define venom_compiler_h
 
-#define POOL_MAX 256
+#define POPS_MAX 256
 
 #include <stdint.h>
 #include "dynarray.h"
@@ -56,7 +56,7 @@ typedef struct Compiler {
     DynArray_int breaks;
     DynArray_int continues;
     int depth;
-    int pops[256];
+    int pops[POPS_MAX];
 } Compiler;
 
 void init_chunk(BytecodeChunk *chunk);
