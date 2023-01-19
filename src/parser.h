@@ -110,17 +110,17 @@ typedef struct Expression {
 #define TO_EXPR_STRUCT(exp) ((exp).as.expr_struct)
 #define TO_EXPR_STRUCT_INIT(exp) ((exp).as.expr_struct_init)
 
-#define AS_EXPR_LITERAL(exp) ((Expression){ .kind = EXP_LITERAL, .as.expr_literal = (exp)})
-#define AS_EXPR_STRING(exp) ((Expression){ .kind = EXP_STRING, .as.expr_string = (exp)})
-#define AS_EXPR_VARIABLE(exp) ((Expression){ .kind = EXP_VARIABLE, .as.expr_variable = (exp)})
-#define AS_EXPR_UNARY(exp) ((Expression){ .kind = EXP_UNARY, .as.expr_unary = (exp)})
-#define AS_EXPR_BINARY(exp) ((Expression){ .kind = EXP_BINARY, .as.expr_binary = (exp)})
-#define AS_EXPR_CALL(exp) ((Expression){ .kind = EXP_CALL, .as.expr_call = (exp)})
-#define AS_EXPR_GET(exp) ((Expression){ .kind = EXP_GET, .as.expr_get = (exp)})
-#define AS_EXPR_ASSIGN(exp) ((Expression){ .kind = EXP_ASSIGN, .as.expr_assign = (exp)})
-#define AS_EXPR_LOGICAL(exp) ((Expression){ .kind = EXP_LOGICAL, .as.expr_logical = (exp)})
-#define AS_EXPR_STRUCT(exp) ((Expression){ .kind = EXP_STRUCT, .as.expr_struct = (exp)})
-#define AS_EXPR_STRUCT_INIT(exp) ((Expression){ .kind = EXP_STRUCT_INIT, .as.expr_struct_init = (exp)})
+#define AS_EXPR_LITERAL(exp) ((Expression){ .kind = EXP_LITERAL, .as.expr_literal = (exp) })
+#define AS_EXPR_STRING(exp) ((Expression){ .kind = EXP_STRING, .as.expr_string = (exp) })
+#define AS_EXPR_VARIABLE(exp) ((Expression){ .kind = EXP_VARIABLE, .as.expr_variable = (exp) })
+#define AS_EXPR_UNARY(exp) ((Expression){ .kind = EXP_UNARY, .as.expr_unary = (exp) })
+#define AS_EXPR_BINARY(exp) ((Expression){ .kind = EXP_BINARY, .as.expr_binary = (exp) })
+#define AS_EXPR_CALL(exp) ((Expression){ .kind = EXP_CALL, .as.expr_call = (exp) })
+#define AS_EXPR_GET(exp) ((Expression){ .kind = EXP_GET, .as.expr_get = (exp) })
+#define AS_EXPR_ASSIGN(exp) ((Expression){ .kind = EXP_ASSIGN, .as.expr_assign = (exp) })
+#define AS_EXPR_LOGICAL(exp) ((Expression){ .kind = EXP_LOGICAL, .as.expr_logical = (exp) })
+#define AS_EXPR_STRUCT(exp) ((Expression){ .kind = EXP_STRUCT, .as.expr_struct = (exp) })
+#define AS_EXPR_STRUCT_INIT(exp) ((Expression){ .kind = EXP_STRUCT_INIT, .as.expr_struct_init = (exp) })
 
 typedef enum {
     STMT_LET,
