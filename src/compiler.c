@@ -2,7 +2,6 @@
 #include <stdio.h>
 #include <string.h>
 #include "compiler.h"
-#include "vm.h"
 #include "util.h"
 
 #define COMPILER_ERROR(...) \
