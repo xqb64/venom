@@ -1,6 +1,5 @@
 #include <stdarg.h>
 #include <stdio.h>
-#include <stdint.h>
 #include <string.h>
 #include "compiler.h"
 #include "vm.h"
