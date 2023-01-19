@@ -4,7 +4,6 @@
 #define STACK_MAX 1024
 
 #include "compiler.h"
-#include "dynarray.h"
 #include "object.h"
 #include "table.h"
 
@@ -15,8 +14,6 @@ typedef struct {
     int fp_stack[STACK_MAX]; /* a stack for frame pointers */
     size_t fp_count;
 } VM;
-
-typedef struct BytecodeChunk BytecodeChunk;
 
 void init_vm(VM *vm);
 void free_vm(VM *vm);
