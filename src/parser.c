@@ -740,9 +740,11 @@ static Statement statement(Parser *parser, Tokenizer *tokenizer) {
     }
 }
 
-void parse(Parser *parser, Tokenizer *tokenizer, DynArray_Statement *stmts) {
+DynArray_Statement parse(Parser *parser, Tokenizer *tokenizer) {
+    DynArray_Statement stmts = {0};
     advance(parser, tokenizer);
     while (parser->current.type != TOKEN_EOF) {
-        dynarray_insert(stmts, statement(parser, tokenizer));
+        dynarray_insert(&stmts, statement(parser, tokenizer));
     }
+    return stmts;
 }

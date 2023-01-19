@@ -232,7 +232,7 @@ typedef struct {
     size_t depth;
 } Parser;
 
-void parse(Parser *parser, Tokenizer *tokenizer, DynArray_Statement *stmts);
+DynArray_Statement parse(Parser *parser, Tokenizer *tokenizer);
 void free_expression(Expression e);
 void free_stmt(Statement stmt);
 void init_parser(Parser *parser);

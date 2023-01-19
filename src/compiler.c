@@ -7,8 +7,6 @@
 #include "vm.h"
 #include "util.h"
 
-Compiler compiler;
-
 #define COMPILER_ERROR(...) \
 do { \
     fprintf(stderr, "Compiler error: "); \
@@ -24,18 +22,18 @@ do { \
     } \
 } while (0)
 
-void init_compiler() {
+void init_compiler(Compiler *compiler) {
     /* Zero-initialize the compiler. */
-    memset(&compiler, 0, sizeof(Compiler));
+    memset(compiler, 0, sizeof(Compiler));
 }
 
-void free_compiler() {
-    dynarray_free(&compiler.globals);
-    dynarray_free(&compiler.locals);
-    dynarray_free(&compiler.breaks);
-    dynarray_free(&compiler.continues);
-    table_free(&compiler.structs);
-    table_free(&compiler.functions);
+void free_compiler(Compiler *compiler) {
+    dynarray_free(&compiler->globals);
+    dynarray_free(&compiler->locals);
+    dynarray_free(&compiler->breaks);
+    dynarray_free(&compiler->continues);
+    table_free(&compiler->structs);
+    table_free(&compiler->functions);
 }
 
 void init_chunk(BytecodeChunk *chunk) {
@@ -196,37 +194,37 @@ static void emit_loop(BytecodeChunk *chunk, int loop_start) {
     emit_byte(chunk, offset & 0xFF);
 }
 
-static void emit_stack_cleanup(BytecodeChunk *chunk) {
-    int pop_count = compiler.pops[compiler.depth];
+static void emit_stack_cleanup(Compiler *compiler, BytecodeChunk *chunk) {
+    int pop_count = compiler->pops[compiler->depth];
     for (int i = 0; i < pop_count; i++) {
         emit_byte(chunk, OP_POP);
     }
 }
 
-static bool resolve_global(char *name) {
+static bool resolve_global(Compiler *compiler, char *name) {
     /* Check if 'name' is present in the globals dynarray. */
-    for (size_t i = 0; i < compiler.globals.count; i++) {
-        if (strcmp(compiler.globals.data[i], name) == 0) {
+    for (size_t i = 0; i < compiler->globals.count; i++) {
+        if (strcmp(compiler->globals.data[i], name) == 0) {
             return true;
         }
     }
     return false;
 }
 
-static int resolve_local(char *name) {
+static int resolve_local(Compiler *compiler, char *name) {
     /* Check if 'name' is present in the locals dynarray.
      * If it is, return the index, otherwise return -1. */
-    for (size_t i = 0; i < compiler.locals.count; i++) {
-        if (strcmp(compiler.locals.data[i], name) == 0) {
+    for (size_t i = 0; i < compiler->locals.count; i++) {
+        if (strcmp(compiler->locals.data[i], name) == 0) {
             return i;
         }
     }
     return -1;
 }
 
-static void compile_expression(BytecodeChunk *chunk, Expression exp);
+static void compile_expression(Compiler *compiler, BytecodeChunk *chunk, Expression exp);
 
-static void handle_compile_expression_literal(BytecodeChunk *chunk, Expression exp) {
+static void handle_compile_expression_literal(Compiler *compiler, BytecodeChunk *chunk, Expression exp) {
     LiteralExpression e = TO_EXPR_LITERAL(exp);
     if (!e.specval) {
         uint32_t const_index = add_constant(chunk, e.dval);
@@ -243,24 +241,24 @@ static void handle_compile_expression_literal(BytecodeChunk *chunk, Expression e
     }
 }
 
-static void handle_compile_expression_string(BytecodeChunk *chunk, Expression exp) {
+static void handle_compile_expression_string(Compiler *compiler, BytecodeChunk *chunk, Expression exp) {
     StringExpression e = TO_EXPR_STRING(exp);
     uint32_t str_index = add_string(chunk, e.str);
     emit_byte(chunk, OP_STR);
     emit_uint32(chunk, str_index);
 }
 
-static void handle_compile_expression_variable(BytecodeChunk *chunk, Expression exp) {
+static void handle_compile_expression_variable(Compiler *compiler, BytecodeChunk *chunk, Expression exp) {
     VariableExpression e = TO_EXPR_VARIABLE(exp);
     /* First try to resolve the variable as local. */
-    int index = resolve_local(e.name);
+    int index = resolve_local(compiler, e.name);
     if (index != -1) {
         /* If it is found, emit OP_DEEPGET. */
         emit_byte(chunk, OP_DEEPGET);
         emit_uint32(chunk, index+1);
     } else {
         /* Otherwise, try to resolve it as global. */
-        bool is_defined = resolve_global(e.name);
+        bool is_defined = resolve_global(compiler, e.name);
         if (is_defined) {
             /* If it is found, emit OP_GET_GLOBAL. */
             uint32_t name_index = add_string(chunk, e.name);
@@ -273,17 +271,17 @@ static void handle_compile_expression_variable(BytecodeChunk *chunk, Expression 
     }
 }
 
-static void handle_compile_expression_unary(BytecodeChunk *chunk, Expression exp) {
+static void handle_compile_expression_unary(Compiler *compiler, BytecodeChunk *chunk, Expression exp) {
     UnaryExpression e = TO_EXPR_UNARY(exp);
-    compile_expression(chunk, *e.exp);
+    compile_expression(compiler, chunk, *e.exp);
     emit_byte(chunk, OP_NEG);
 }
 
-static void handle_compile_expression_binary(BytecodeChunk *chunk, Expression exp) {
+static void handle_compile_expression_binary(Compiler *compiler, BytecodeChunk *chunk, Expression exp) {
     BinaryExpression e = TO_EXPR_BINARY(exp);
 
-    compile_expression(chunk, *e.lhs);
-    compile_expression(chunk, *e.rhs);
+    compile_expression(compiler, chunk, *e.lhs);
+    compile_expression(compiler, chunk, *e.rhs);
 
     if (strcmp(e.operator, "+") == 0) {
         emit_byte(chunk, OP_ADD);
@@ -310,11 +308,11 @@ static void handle_compile_expression_binary(BytecodeChunk *chunk, Expression ex
     }
 }
 
-static void handle_compile_expression_call(BytecodeChunk *chunk, Expression exp) {
+static void handle_compile_expression_call(Compiler *compiler, BytecodeChunk *chunk, Expression exp) {
     CallExpression e = TO_EXPR_CALL(exp);
 
     /* Error out at compile time if the function is not defined. */
-    Object *funcobj = table_get(&compiler.functions, e.var.name);
+    Object *funcobj = table_get(&compiler->functions, e.var.name);
     if (funcobj == NULL) {
         COMPILER_ERROR(
             "Function '%s' is not defined.",
@@ -342,7 +340,7 @@ static void handle_compile_expression_call(BytecodeChunk *chunk, Expression exp)
 
     /* Then compile the arguments */
     for (size_t i = 0; i < e.arguments.count; i++) {
-        compile_expression(chunk, e.arguments.data[i]);
+        compile_expression(compiler, chunk, e.arguments.data[i]);
     }
 
     /* Then emit OP_INC_FPCOUNT. */
@@ -362,12 +360,12 @@ static void handle_compile_expression_call(BytecodeChunk *chunk, Expression exp)
     patch_placeholder(chunk, ip);
 }
 
-static void handle_compile_expression_get(BytecodeChunk *chunk, Expression exp) {
+static void handle_compile_expression_get(Compiler *compiler, BytecodeChunk *chunk, Expression exp) {
     GetExpression e = TO_EXPR_GET(exp);
     
     /* Compile the part that comes before
      * the member access operator. */
-    compile_expression(chunk, *e.exp);
+    compile_expression(compiler, chunk, *e.exp);
 
     /* Add the 'property_name' string to the
      * chunk's sp, and emit OP_GETATTR with
@@ -377,24 +375,24 @@ static void handle_compile_expression_get(BytecodeChunk *chunk, Expression exp) 
     emit_uint32(chunk, property_name_index);
 }
 
-static void handle_compile_expression_assign(BytecodeChunk *chunk, Expression exp) {
+static void handle_compile_expression_assign(Compiler *compiler, BytecodeChunk *chunk, Expression exp) {
     AssignExpression e = TO_EXPR_ASSIGN(exp);
 
     /* If the left-hand side is a variable (as opposed to a get expression) */
     if (e.lhs->kind == EXP_VARIABLE) {
         /* First compile the right-hand side of the assigment. */
-        compile_expression(chunk, *e.rhs);
+        compile_expression(compiler, chunk, *e.rhs);
 
         VariableExpression var = TO_EXPR_VARIABLE(*e.lhs);
         /* Try to resolve it as a local. */
-        int index = resolve_local(var.name);
+        int index = resolve_local(compiler, var.name);
         if (index != -1) {
             /* If it is found in locals, emit OP_DEEPSET. */
             emit_byte(chunk, OP_DEEPSET);
             emit_uint32(chunk, index+1);
         } else {
             /* If it is not found in locals, try to resolve it as global. */
-            bool is_defined = resolve_global(var.name);
+            bool is_defined = resolve_global(compiler, var.name);
             if (is_defined) {
                 /* If it is found in globals, emit OP_SET_GLOBAL. */
                 uint32_t name_index = add_string(chunk, var.name);
@@ -411,10 +409,10 @@ static void handle_compile_expression_assign(BytecodeChunk *chunk, Expression ex
 
         /* Compile the part before the member access operator ('egg'),
          * because OP_SETATTR expects the struct to be on the stack. */
-        compile_expression(chunk, *getexp.exp);
+        compile_expression(compiler, chunk, *getexp.exp);
 
         /* Then compile the right-hand side of the assigment. */
-        compile_expression(chunk, *e.rhs);
+        compile_expression(compiler, chunk, *e.rhs);
 
         /* Emit OP_SETATTR which will pop the value, pop the struct,
          * and set the struct's property to the popped value.*/
@@ -432,10 +430,10 @@ static void handle_compile_expression_assign(BytecodeChunk *chunk, Expression ex
     }
 }
 
-static void handle_compile_expression_logical(BytecodeChunk *chunk, Expression exp) {
+static void handle_compile_expression_logical(Compiler *compiler, BytecodeChunk *chunk, Expression exp) {
     LogicalExpression e = TO_EXPR_LOGICAL(exp);
     /* We first compile the left-hand side of the expression. */
-    compile_expression(chunk, *e.lhs);
+    compile_expression(compiler, chunk, *e.lhs);
     if (strcmp(e.operator, "&&") == 0) {
         /* For logical AND, we need to short-circuit when the left-hand side is falsey.
          *
@@ -459,7 +457,7 @@ static void handle_compile_expression_logical(BytecodeChunk *chunk, Expression e
          * and skip over pushing 'false' on the stack.
          */
         int end_jump = emit_placeholder(chunk, OP_JZ);
-        compile_expression(chunk, *e.rhs);
+        compile_expression(compiler, chunk, *e.rhs);
         int false_jump = emit_placeholder(chunk, OP_JMP);
         patch_placeholder(chunk, end_jump);
         emit_bytes(chunk, 2, OP_TRUE, OP_NOT);
@@ -490,16 +488,16 @@ static void handle_compile_expression_logical(BytecodeChunk *chunk, Expression e
         emit_byte(chunk, OP_TRUE);
         int end_jump = emit_placeholder(chunk, OP_JMP);
         patch_placeholder(chunk, true_jump);
-        compile_expression(chunk, *e.rhs);
+        compile_expression(compiler, chunk, *e.rhs);
         patch_placeholder(chunk, end_jump);
     }
 }
 
-static void handle_compile_expression_struct(BytecodeChunk *chunk, Expression exp) {
+static void handle_compile_expression_struct(Compiler *compiler, BytecodeChunk *chunk, Expression exp) {
     StructExpression e = TO_EXPR_STRUCT(exp);
 
     /* Look up the struct with that name in compiler's structs table. */
-    Object *blueprintobj = table_get(&compiler.structs, e.name);
+    Object *blueprintobj = table_get(&compiler->structs, e.name);
 
     /* If it is not found, bail out. */
     if (!blueprintobj) {
@@ -551,16 +549,16 @@ static void handle_compile_expression_struct(BytecodeChunk *chunk, Expression ex
 
     /* Finally, we compile the initializers. */
     for (size_t i = 0; i < e.initializers.count; i++) {
-        compile_expression(chunk, e.initializers.data[i]);
+        compile_expression(compiler, chunk, e.initializers.data[i]);
     }
 }
 
-static void handle_compile_expression_struct_init(BytecodeChunk *chunk, Expression exp) {
+static void handle_compile_expression_struct_init(Compiler *compiler, BytecodeChunk *chunk, Expression exp) {
     StructInitializerExpression e = TO_EXPR_STRUCT_INIT(exp);
     
     /* First, we compile the value of the initializer, since
      * OP_SETATTR expects the value to already be on the stack. */
-    compile_expression(chunk, *e.value);
+    compile_expression(compiler, chunk, *e.value);
 
     /* Then, we add the property name string into the chunk's sp. */
     VariableExpression property = TO_EXPR_VARIABLE(*e.property);
@@ -571,7 +569,7 @@ static void handle_compile_expression_struct_init(BytecodeChunk *chunk, Expressi
     emit_uint32(chunk, property_name_index);
 }
 
-typedef void (*CompileExpressionHandlerFn)(BytecodeChunk *chunk, Expression exp);
+typedef void (*CompileExpressionHandlerFn)(Compiler *compiler, BytecodeChunk *chunk, Expression exp);
 
 typedef struct {
     CompileExpressionHandlerFn fn;
@@ -592,35 +590,35 @@ CompileExpressionHandler expression_handler[] = {
     [EXP_STRUCT_INIT] = { .fn = handle_compile_expression_struct_init, .name = "EXP_STRUCT_INIT" },
 };
 
-static void compile_expression(BytecodeChunk *chunk, Expression exp) {
-    expression_handler[exp.kind].fn(chunk, exp);
+static void compile_expression(Compiler *compiler, BytecodeChunk *chunk, Expression exp) {
+    expression_handler[exp.kind].fn(compiler, chunk, exp);
 }
 
-void compile(BytecodeChunk *chunk, Statement stmt);
+void compile(Compiler *compiler, BytecodeChunk *chunk, Statement stmt);
 
-static void handle_compile_statement_print(BytecodeChunk *chunk, Statement stmt) {
+static void handle_compile_statement_print(Compiler *compiler, BytecodeChunk *chunk, Statement stmt) {
     PrintStatement s = TO_STMT_PRINT(stmt);
-    compile_expression(chunk, s.exp);
+    compile_expression(compiler, chunk, s.exp);
     emit_byte(chunk, OP_PRINT);
 }
 
-static void handle_compile_statement_let(BytecodeChunk *chunk, Statement stmt) {
+static void handle_compile_statement_let(Compiler *compiler, BytecodeChunk *chunk, Statement stmt) {
     LetStatement s = TO_STMT_LET(stmt);
-    compile_expression(chunk, s.initializer);
+    compile_expression(compiler, chunk, s.initializer);
     uint32_t name_index = add_string(chunk, s.name);
-    if (compiler.depth == 0) {
-        dynarray_insert(&compiler.globals, s.name);
+    if (compiler->depth == 0) {
+        dynarray_insert(&compiler->globals, s.name);
         emit_byte(chunk, OP_SET_GLOBAL);
         emit_uint32(chunk, name_index);
     } else {
-        dynarray_insert(&compiler.locals, chunk->sp.data[name_index]);
-        compiler.pops[compiler.depth]++;
+        dynarray_insert(&compiler->locals, chunk->sp.data[name_index]);
+        compiler->pops[compiler->depth]++;
     }
 }
 
-static void handle_compile_statement_expr(BytecodeChunk *chunk, Statement stmt) {
+static void handle_compile_statement_expr(Compiler *compiler, BytecodeChunk *chunk, Statement stmt) {
     ExpressionStatement e = TO_STMT_EXPR(stmt);
-    compile_expression(chunk, e.exp);
+    compile_expression(compiler, chunk, e.exp);
     /* If the expression statement was just a call, like:
      * ...
      * main(4);
@@ -632,38 +630,38 @@ static void handle_compile_statement_expr(BytecodeChunk *chunk, Statement stmt) 
     }
 }
 
-static void begin_scope() {
-    compiler.depth++;
+static void begin_scope(Compiler *compiler) {
+    compiler->depth++;
 }
 
-static void end_scope() {
-    for (int i = 0; i < compiler.pops[compiler.depth]; i++) {
-        dynarray_pop(&compiler.locals);
+static void end_scope(Compiler *compiler) {
+    for (int i = 0; i < compiler->pops[compiler->depth]; i++) {
+        dynarray_pop(&compiler->locals);
     }
-    compiler.pops[compiler.depth] = 0;
-    compiler.depth--;
+    compiler->pops[compiler->depth] = 0;
+    compiler->depth--;
 }
 
-static void handle_compile_statement_block(BytecodeChunk *chunk, Statement stmt) {
-    begin_scope();
+static void handle_compile_statement_block(Compiler *compiler, BytecodeChunk *chunk, Statement stmt) {
+    begin_scope(compiler);
     BlockStatement s = TO_STMT_BLOCK(&stmt);
 
     /* Compile the body of the black. */
     for (size_t i = 0; i < s.stmts.count; i++) {
-        compile(chunk, s.stmts.data[i]);
+        compile(compiler, chunk, s.stmts.data[i]);
     }
 
-    emit_stack_cleanup(chunk);
-    end_scope();
+    emit_stack_cleanup(compiler, chunk);
+    end_scope(compiler);
 }
 
-static void handle_compile_statement_if(BytecodeChunk *chunk, Statement stmt) {
+static void handle_compile_statement_if(Compiler *compiler, BytecodeChunk *chunk, Statement stmt) {
     /* We first compile the conditional expression because the VM
     .* expects something like OP_EQ to have already been executed
      * and a boolean placed on the stack by the time it encounters
      * an instruction like OP_JZ. */
     IfStatement s = TO_STMT_IF(stmt);
-    compile_expression(chunk, s.condition);
+    compile_expression(compiler, chunk, s.condition);
 
     /* Then, we emit an OP_JZ which jumps to the else clause if the
      * condition is falsey. Because we do not know the size of the
@@ -674,7 +672,7 @@ static void handle_compile_statement_if(BytecodeChunk *chunk, Statement stmt) {
      * size of the 'then' branch is known. */
     int then_jump = emit_placeholder(chunk, OP_JZ);
 
-    compile(chunk, *s.then_branch);
+    compile(compiler, chunk, *s.then_branch);
 
     int else_jump = emit_placeholder(chunk, OP_JMP);
 
@@ -682,7 +680,7 @@ static void handle_compile_statement_if(BytecodeChunk *chunk, Statement stmt) {
     patch_placeholder(chunk, then_jump);
 
     if (s.else_branch != NULL) {
-        compile(chunk, *s.else_branch);
+        compile(compiler, chunk, *s.else_branch);
     }
 
     /* Finally, we patch the 'else' jump. If the 'else' branch
@@ -690,21 +688,21 @@ static void handle_compile_statement_if(BytecodeChunk *chunk, Statement stmt) {
     patch_placeholder(chunk, else_jump);
 }
 
-static void handle_compile_statement_while(BytecodeChunk *chunk, Statement stmt) {
+static void handle_compile_statement_while(Compiler *compiler, BytecodeChunk *chunk, Statement stmt) {
     /* We need to mark the beginning of the loop before we compile
      * the conditional expression, so that we know where to return
      * after the body of the loop is executed. */
     WhileStatement s = TO_STMT_WHILE(stmt);
 
     int loop_start = chunk->code.count;
-    dynarray_insert(&compiler.continues, loop_start);
-    size_t loop_start_count = compiler.continues.count;
+    dynarray_insert(&compiler->continues, loop_start);
+    size_t loop_start_count = compiler->continues.count;
 
     /* We then compile the conditional expression because the VM
     .* expects something like OP_EQ to have already been executed
      * and a boolean placed on the stack by the time it encounters
      * an instruction like OP_JZ. */
-    compile_expression(chunk, s.condition);
+    compile_expression(compiler, chunk, s.condition);
 
     /* Then, we emit an OP_JZ which jumps to the else clause if the
      * condition is falsey. Because we do not know the size of the
@@ -716,26 +714,26 @@ static void handle_compile_statement_while(BytecodeChunk *chunk, Statement stmt)
     int exit_jump = emit_placeholder(chunk, OP_JZ);
 
     /* Then, we compile the body of the loop. */
-    compile(chunk, *s.body);
+    compile(compiler, chunk, *s.body);
 
     /* Then, we emit OP_JMP with a negative offset. */
     emit_loop(chunk, loop_start);
 
-    if (compiler.breaks.count > 0) {
-        int break_jump = dynarray_pop(&compiler.breaks);
+    if (compiler->breaks.count > 0) {
+        int break_jump = dynarray_pop(&compiler->breaks);
         patch_placeholder(chunk, break_jump);
     }
 
     /* If a 'continue' wasn't popped off the backjmp stack, pop it. */
-    if (compiler.continues.count == loop_start_count) {
-        dynarray_pop(&compiler.continues);
+    if (compiler->continues.count == loop_start_count) {
+        dynarray_pop(&compiler->continues);
     }
 
     /* Finally, we patch the jump. */
     patch_placeholder(chunk, exit_jump);
 }
 
-static void handle_compile_statement_fn(BytecodeChunk *chunk, Statement stmt) {
+static void handle_compile_statement_fn(Compiler *compiler, BytecodeChunk *chunk, Statement stmt) {
     FunctionStatement s = TO_STMT_FN(stmt);
 
     /* Create a new Function object and insert it
@@ -747,19 +745,19 @@ static void handle_compile_statement_fn(BytecodeChunk *chunk, Statement stmt) {
         .paramcount = s.parameters.count,
         .location = chunk->code.count + 3,
     };
-    table_insert(&compiler.functions, func.name, AS_FUNC(ALLOC(func)));
-    compiler.pops[1] += s.parameters.count;
+    table_insert(&compiler->functions, func.name, AS_FUNC(ALLOC(func)));
+    compiler->pops[1] += s.parameters.count;
 
     /* Copy the function parameters into the current
      * compiler's locals array. */
-    COPY_DYNARRAY(&compiler.locals, &s.parameters);
+    COPY_DYNARRAY(&compiler->locals, &s.parameters);
 
     /* Emit the jump because we don't want to execute
      * the code the first time we encounter it. */
     int jump = emit_placeholder(chunk, OP_JMP);
 
     /* Compile the function body. */
-    compile(chunk, *s.body);
+    compile(compiler, chunk, *s.body);
 
     /* If the function does not have a return statement,
      * clean the stack up here (because statement_block()
@@ -773,7 +771,7 @@ static void handle_compile_statement_fn(BytecodeChunk *chunk, Statement stmt) {
     patch_placeholder(chunk, jump);
 }
 
-static void handle_compile_statement_struct(BytecodeChunk *chunk, Statement stmt) {
+static void handle_compile_statement_struct(Compiler *compiler, BytecodeChunk *chunk, Statement stmt) {
     StructStatement s = TO_STMT_STRUCT(stmt);
     DynArray_char_ptr properties = {0};
     for (size_t i = 0; i < s.properties.count; i++) {
@@ -786,14 +784,14 @@ static void handle_compile_statement_struct(BytecodeChunk *chunk, Statement stmt
         .name = own_string(s.name),
         .properties = properties
     };
-    table_insert(&compiler.structs, blueprint.name, AS_STRUCT_BLUEPRINT(ALLOC(blueprint)));
+    table_insert(&compiler->structs, blueprint.name, AS_STRUCT_BLUEPRINT(ALLOC(blueprint)));
 }
 
-static void handle_compile_statement_return(BytecodeChunk *chunk, Statement stmt) {
+static void handle_compile_statement_return(Compiler *compiler, BytecodeChunk *chunk, Statement stmt) {
     ReturnStatement s = TO_STMT_RETURN(stmt);
 
     /* Compile the return value. */
-    compile_expression(chunk, s.returnval);
+    compile_expression(compiler, chunk, s.returnval);
 
     /* We need to perform the stack cleanup, but
      * the return value must not be lost, we'll
@@ -811,8 +809,8 @@ static void handle_compile_statement_return(BytecodeChunk *chunk, Statement stmt
      * [ptr, <return value>]
      * 
      * Which is the exact state of the stack that OP_RET expects. */
-    int deepset_no = compiler.locals.count;
-    for (size_t i = 0; i < compiler.locals.count; i++) {
+    int deepset_no = compiler->locals.count;
+    for (size_t i = 0; i < compiler->locals.count; i++) {
         emit_byte(chunk, OP_DEEPSET);
         emit_uint32(chunk, deepset_no--);
     }
@@ -821,19 +819,19 @@ static void handle_compile_statement_return(BytecodeChunk *chunk, Statement stmt
     emit_byte(chunk, OP_RET);
 }
 
-static void handle_compile_statement_break(BytecodeChunk *chunk, Statement stmt) {
-    emit_stack_cleanup(chunk);
+static void handle_compile_statement_break(Compiler *compiler, BytecodeChunk *chunk, Statement stmt) {
+    emit_stack_cleanup(compiler, chunk);
     int break_jump = emit_placeholder(chunk, OP_JMP);
-    dynarray_insert(&compiler.breaks, break_jump);
+    dynarray_insert(&compiler->breaks, break_jump);
 }
 
-static void handle_compile_statement_continue(BytecodeChunk *chunk, Statement stmt) {
-    int loop_start = dynarray_pop(&compiler.continues);
-    emit_stack_cleanup(chunk);
+static void handle_compile_statement_continue(Compiler *compiler, BytecodeChunk *chunk, Statement stmt) {
+    int loop_start = dynarray_pop(&compiler->continues);
+    emit_stack_cleanup(compiler, chunk);
     emit_loop(chunk, loop_start);
 }
 
-typedef void (*CompileHandlerFn)(BytecodeChunk *chunk, Statement stmt);
+typedef void (*CompileHandlerFn)(Compiler *compiler, BytecodeChunk *chunk, Statement stmt);
 
 typedef struct {
     CompileHandlerFn fn;
@@ -854,6 +852,6 @@ CompileHandler handler[] = {
     [STMT_CONTINUE] = { .fn = handle_compile_statement_continue, .name = "STMT_CONTINUE" },
 };
 
-void compile(BytecodeChunk *chunk, Statement stmt) {
-    handler[stmt.kind].fn(chunk, stmt);
+void compile(Compiler *compiler, BytecodeChunk *chunk, Statement stmt) {
+    handler[stmt.kind].fn(compiler, chunk, stmt);
 }

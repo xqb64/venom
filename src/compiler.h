@@ -61,9 +61,9 @@ typedef struct Compiler {
 
 void init_chunk(BytecodeChunk *chunk);
 void free_chunk(BytecodeChunk *chunk);
-void compile(BytecodeChunk *chunk, Statement stmt);
+void compile(Compiler *compiler, BytecodeChunk *chunk, Statement stmt);
 void disassemble(BytecodeChunk *chunk);
-void init_compiler();
-void free_compiler();
+void init_compiler(Compiler *compiler);
+void free_compiler(Compiler *compiler);
 
 #endif
