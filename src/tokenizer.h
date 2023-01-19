@@ -30,9 +30,9 @@ typedef enum {
     TOKEN_EQUAL,
     TOKEN_DOUBLE_EQUAL,
     TOKEN_BANG_EQUAL,
-    TOKEN_AMPERSAND,
+    TOKEN_AMPERSAND,        /* reserved for bitwise AND */
     TOKEN_DOUBLE_AMPERSAND,
-    TOKEN_PIPE,
+    TOKEN_PIPE,             /* reserved for bitwise OR */
     TOKEN_DOUBLE_PIPE,
     TOKEN_IF,
     TOKEN_ELSE,
@@ -59,8 +59,7 @@ typedef struct {
 } Tokenizer;
 
 void init_tokenizer(Tokenizer *tokenizer, char *source);
-Token get_token(Tokenizer *tokenizer);
-
 void print_token(Token token);
+Token get_token(Tokenizer *tokenizer);
 
 #endif
