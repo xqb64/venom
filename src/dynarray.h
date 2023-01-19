@@ -1,8 +1,6 @@
 #ifndef venom_dynarray_h
 #define venom_dynarray_h
 
-#include <stddef.h>
-
 #define DynArray(T) struct { \
     T *data; \
     size_t count; \
