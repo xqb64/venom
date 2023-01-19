@@ -247,6 +247,16 @@ static inline int handle_op_deepget(VM *vm, BytecodeChunk *chunk, uint8_t **ip) 
 }
 
 static inline int handle_op_getattr(VM *vm, BytecodeChunk *chunk, uint8_t **ip) {
+    /* At this point, ip points to OP_GETATTR.
+     * After the opcode, there is a 4-byte index
+     * of the property name in the chunk's string
+     * constant pool. This instruction expects an
+     * object on which the property is accessed to
+     * already be on the stack. It pops the object
+     * and looks up the property with that name in
+     * the object's properties Table. If it finds
+     * the property, it pushes it on the stack.
+     * Otherwise, a runtime error is raised. */
     uint32_t property_name_index = READ_UINT32();
     Object obj = pop(vm);
     Object *property = table_get(TO_STRUCT(obj)->properties, chunk->sp.data[property_name_index]);
@@ -264,6 +274,15 @@ static inline int handle_op_getattr(VM *vm, BytecodeChunk *chunk, uint8_t **ip) 
 }
 
 static inline int handle_op_setattr(VM *vm, BytecodeChunk *chunk, uint8_t **ip) {
+    /* At this point, ip points to OP_SETATTR.
+     * After the opcode, there is a 4-byte index
+     * of the property name in the chunk's string
+     * constant pool. This instruction expects both
+     * the value and the object on which the property
+     * is modified to already be on the stack. It pops
+     * the value, pops the object, and inserts the value
+     * in the object's properties table. Then it pushes
+     * the object back on the stack. */
     uint32_t property_name_index = READ_UINT32();
     Object value = pop(vm);
     Object structobj = pop(vm);
