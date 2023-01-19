@@ -91,6 +91,12 @@ void disassemble(BytecodeChunk *chunk) {
                         printf(" (value: %s)", chunk->sp.data[name_index]);
                         break;
                     }
+                    case OP_GETATTR:
+                    case OP_SETATTR: {
+                        uint32_t property_name_index = READ_UINT32();
+                        printf(" (property: %s)", chunk->sp.data[property_name_index]);
+                        break;
+                    }
                     default: break;
                 }
                 break;
