@@ -38,8 +38,6 @@ DisassembleHandler disassemble_handler[] = {
 };
 
 void disassemble(BytecodeChunk *chunk) {
-#define READ_UINT8() (*++ip)
-
 #define READ_INT16() \
     /* ip points to one of the jump instructions and there \
      * is a 2-byte operand (offset) that comes after the jump \
@@ -100,8 +98,8 @@ void disassemble(BytecodeChunk *chunk) {
             case 8: {
                 switch (*ip) {
                     case OP_STRUCT: {
-                        uint8_t name_index = READ_UINT8();
-                        uint8_t propertycount = READ_UINT8();
+                        uint32_t name_index = READ_UINT32();
+                        uint32_t propertycount = READ_UINT32();
                         printf(" (name: %s, propertycount: %d)", chunk->sp.data[name_index], propertycount);
                         break;
                     }
@@ -113,4 +111,6 @@ void disassemble(BytecodeChunk *chunk) {
         }
         printf("\n");
     }
+#undef READ_INT16
+#undef READ_UINT32
 }
