@@ -1,6 +1,8 @@
 #ifndef venom_table_h
 #define venom_table_h
 
+#define TABLE_MAX 1024
+
 #include "object.h"
 
 typedef struct Bucket {
@@ -10,7 +12,7 @@ typedef struct Bucket {
 } Bucket;
 
 typedef struct Table {
-    Bucket *data[1024];
+    Bucket *data[TABLE_MAX];
 } Table;
 
 void table_free(const Table *table);

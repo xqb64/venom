@@ -119,7 +119,7 @@ static inline bool check_equality(Object *left, Object *right) {
          * property that is not NULL, run the func recursively
          * comparing that property with the corresponding
          * property in struct 'b'. */
-        for (size_t i = 0; i < 1024; i++) {
+        for (size_t i = 0; i < TABLE_MAX; i++) {
             if (a->properties->data[i] == NULL) continue;
             char *key = a->properties->data[i]->key;
             if (!check_equality(
