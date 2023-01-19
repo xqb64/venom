@@ -46,13 +46,6 @@ do { \
     (int16_t)(((*ip)[-1] << 8) | (*ip)[0]))
 
 #define READ_UINT32() \
-    /* ip points to one of the jump instructions and there \
-     * is a 2-byte operand (offset) that comes after the jump \
-     * instruction. We want to increment the ip so it points \
-     * to the last of the two operands, and construct a 16-bit \
-     * offset from the two bytes. Then ip is incremented in \
-     * the loop again so it points to the next instruction \
-     * (as opposed to pointing somewhere in the middle). */ \
     (*ip += 4, \
     (uint32_t)(((*ip)[-3] << 24) | ((*ip)[-2] << 16) | ((*ip)[-1] << 8) | (*ip)[0]))
 
