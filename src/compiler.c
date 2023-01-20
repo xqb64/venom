@@ -535,7 +535,6 @@ static void handle_compile_expression_struct(Compiler *compiler, BytecodeChunk *
     uint32_t name_idx = add_string(chunk, sb->name);
     emit_byte(chunk, OP_STRUCT);
     emit_uint32(chunk, name_idx);
-    emit_uint32(chunk, e.initializers.count);
 
     /* Finally, we compile the initializers. */
     for (size_t i = 0; i < e.initializers.count; i++) {

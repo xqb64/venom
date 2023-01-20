@@ -27,7 +27,6 @@ typedef struct {
 typedef struct {
     int refcount;
     Table *properties;
-    int propertycount;
     char *name;
 } Struct;
 

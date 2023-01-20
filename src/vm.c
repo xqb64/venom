@@ -418,18 +418,14 @@ static inline int handle_op_pop(VM *vm, BytecodeChunk *chunk, uint8_t **ip) {
 }
 
 static inline int handle_op_struct(VM *vm, BytecodeChunk *chunk, uint8_t **ip) {
-    /* OP_STRUCT reads two 4-byte indexes (the first is the index
-     * of the struct name in the chunk's sp, and the second is the
-     * index of property count in the chunk's cp), builds a struct
-     * object with that name and property count and with refcount
-     * set to 1 (while making sure to initialize the 'properties'
-     * table properly), and pushes it on the stack. */
+    /* OP_STRUCT reads a 4-byte index of the struct name in the
+     * chunk's sp, builds a struct object with that name and with
+     * refcount set to 1 (while making sure to initialize the pr-
+     * operties table properly), and pushes it on the stack. */
     uint32_t structname = READ_UINT32();
-    uint32_t propertycount = READ_UINT32();
 
     Struct s = {
         .name = chunk->sp.data[structname],
-        .propertycount = propertycount,
         .properties = malloc(sizeof(Table)),
         .refcount = 1,
     };
