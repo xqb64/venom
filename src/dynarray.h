@@ -23,7 +23,10 @@ do { \
 
 #define dynarray_pop(array) ((array)->data[--(array)->count])
 
-typedef DynArray(int) DynArray_int;
 typedef DynArray(char *) DynArray_char_ptr;
+
+char *strcat_dynarray(DynArray_char_ptr array);
+
+typedef DynArray(int) DynArray_int;
 
 #endif
