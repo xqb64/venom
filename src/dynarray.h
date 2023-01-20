@@ -24,9 +24,15 @@ do { \
 #define dynarray_pop(array) ((array)->data[--(array)->count])
 
 typedef DynArray(char *) DynArray_char_ptr;
+typedef DynArray(int) DynArray_int;
 
 char *strcat_dynarray(DynArray_char_ptr array);
 
-typedef DynArray(int) DynArray_int;
+#define COPY_DYNARRAY(dest, src) \
+do { \
+    for (size_t i = 0; i < (src)->count; i++) { \
+        dynarray_insert((dest), (src)->data[i]); \
+    } \
+} while (0)
 
 #endif

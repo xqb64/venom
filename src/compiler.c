@@ -12,13 +12,6 @@ do { \
     exit(1); \
 } while (0)
 
-#define COPY_DYNARRAY(dest, src) \
-do { \
-    for (size_t i = 0; i < (src)->count; i++) { \
-        dynarray_insert((dest), (src)->data[i]); \
-    } \
-} while (0)
-
 void init_compiler(Compiler *compiler) {
     /* Zero-initialize the compiler. */
     memset(compiler, 0, sizeof(Compiler));
