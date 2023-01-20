@@ -147,8 +147,8 @@ static inline int handle_op_const(VM *vm, BytecodeChunk *chunk, uint8_t **ip) {
      * chunk's cp, constructs an object with that value and
      * pushes it on the stack. Since constants are not ref-
      * counted, incrementing the refcount is not needed. */
-    uint32_t index = READ_UINT32();
-    Object obj = AS_DOUBLE(chunk->cp.data[index]);
+    uint32_t idx = READ_UINT32();
+    Object obj = AS_DOUBLE(chunk->cp.data[idx]);
     push(vm, obj);
     return 0;
 }
@@ -159,8 +159,8 @@ static inline int handle_op_get_global(VM *vm, BytecodeChunk *chunk, uint8_t **i
      * in the vm's globals tablem and pushes it on the stack.
      * Since the object will be present in yet another location,
      * the refcount must be incremented. */
-    uint32_t name_index = READ_UINT32();
-    Object *obj = table_get(&vm->globals, chunk->sp.data[name_index]);
+    uint32_t name_idx = READ_UINT32();
+    Object *obj = table_get(&vm->globals, chunk->sp.data[name_idx]);
     push(vm, *obj);
     OBJECT_INCREF(*obj);
     return 0;
@@ -170,9 +170,9 @@ static inline int handle_op_set_global(VM *vm, BytecodeChunk *chunk, uint8_t **i
     /* OP_SET_GLOBAL reads a 4-byte index of the variable name
      * in the chunk's sp, pops an object off the stack and in-
      * serts it into the vm's globals table under that name. */
-    uint32_t name_index = READ_UINT32();
+    uint32_t name_idx = READ_UINT32();
     Object obj = pop(vm);
-    table_insert(&vm->globals, chunk->sp.data[name_index], obj);
+    table_insert(&vm->globals, chunk->sp.data[name_idx], obj);
     return 0;
 }
 
@@ -180,8 +180,8 @@ static inline int handle_op_str(VM *vm, BytecodeChunk *chunk, uint8_t **ip) {
     /* OP_STR reads a 4-byte index of the string in the chunk's
      * sp, constructs an object with that value and pushes it on
      * the stack. */
-    uint32_t index = READ_UINT32();
-    Object obj = AS_STR(chunk->sp.data[index]);
+    uint32_t idx = READ_UINT32();
+    Object obj = AS_STR(chunk->sp.data[idx]);
     push(vm, obj);
     return 0;
 }
@@ -200,12 +200,12 @@ static inline int handle_op_deepset(VM *vm, BytecodeChunk *chunk, uint8_t **ip) 
      * Since the object being set will be overwritten, its refcount
      * must be decremented before placing the popped object into
      * that position. */
-    uint32_t index = READ_UINT32();
+    uint32_t idx = READ_UINT32();
     Object obj = pop(vm);
     int fp = vm->fp_stack[vm->fp_count-1];
     int adjustment = vm->fp_count == 0 ? -1 : 0;
-    OBJECT_DECREF(vm->stack[fp+index+adjustment]);
-    vm->stack[fp+index+adjustment] = obj;
+    OBJECT_DECREF(vm->stack[fp+idx+adjustment]);
+    vm->stack[fp+idx+adjustment] = obj;
     return 0;
 }
 
@@ -221,10 +221,10 @@ static inline int handle_op_deepget(VM *vm, BytecodeChunk *chunk, uint8_t **ip) 
      *
      * Since the object being accessed will be present in yet
      * another location, its refcount must be incremented. */
-    uint32_t index = READ_UINT32();
+    uint32_t idx = READ_UINT32();
     int fp = vm->fp_stack[vm->fp_count-1];
     int adjustment = vm->fp_count == 0 ? -1 : 0;
-    Object obj = vm->stack[fp+index+adjustment];
+    Object obj = vm->stack[fp+idx+adjustment];
     push(vm, obj);
     OBJECT_INCREF(obj);
     return 0;
@@ -236,13 +236,13 @@ static inline int handle_op_getattr(VM *vm, BytecodeChunk *chunk, uint8_t **ip) 
      * the property with that name in the popped object's prope-
      * rties Table. If the property is found, it is pushed on the
      * stack. Otherwise, a runtime error is raised. */
-    uint32_t property_name_index = READ_UINT32();
+    uint32_t property_name_idx = READ_UINT32();
     Object obj = pop(vm);
-    Object *property = table_get(TO_STRUCT(obj)->properties, chunk->sp.data[property_name_index]);
+    Object *property = table_get(TO_STRUCT(obj)->properties, chunk->sp.data[property_name_idx]);
     if (property == NULL) {
         RUNTIME_ERROR(
             "Property '%s' is not defined on object '%s'",
-            chunk->sp.data[property_name_index],
+            chunk->sp.data[property_name_idx],
             TO_STRUCT(obj)->name
         );
     }
@@ -258,10 +258,10 @@ static inline int handle_op_setattr(VM *vm, BytecodeChunk *chunk, uint8_t **ip) 
      * of the property, and the object being modified itself),
      * and inserts the value into the object's properties Table.
      * Then it pushes the modified object back on the stack. */
-    uint32_t property_name_index = READ_UINT32();
+    uint32_t property_name_idx = READ_UINT32();
     Object value = pop(vm);
     Object structobj = pop(vm);
-    table_insert(TO_STRUCT(structobj)->properties, chunk->sp.data[property_name_index], value);
+    table_insert(TO_STRUCT(structobj)->properties, chunk->sp.data[property_name_idx], value);
     push(vm, structobj);
     return 0;
 }

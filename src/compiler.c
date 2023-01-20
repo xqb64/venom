@@ -40,10 +40,10 @@ void free_chunk(BytecodeChunk *chunk) {
 
 static uint32_t add_string(BytecodeChunk *chunk, const char *string) {
     /* Check if the string is already present in the pool. */
-    for (size_t i = 0; i < chunk->sp.count; i++) {
+    for (size_t idx = 0; idx < chunk->sp.count; idx++) {
         /* If it is, return the index. */
-        if (strcmp(chunk->sp.data[i], string) == 0) {
-            return i;
+        if (strcmp(chunk->sp.data[idx], string) == 0) {
+            return idx;
         }
     }
     /* Otherwise, own the string, insert it into the pool
@@ -55,10 +55,10 @@ static uint32_t add_string(BytecodeChunk *chunk, const char *string) {
 
 static uint32_t add_constant(BytecodeChunk *chunk, double constant) {
     /* Check if the constant is already present in the pool. */
-    for (size_t i = 0; i < chunk->cp.count; i++) {
+    for (size_t idx = 0; idx < chunk->cp.count; idx++) {
         /* If it is, return the index. */
-        if (chunk->cp.data[i] == constant) {
-            return i;
+        if (chunk->cp.data[idx] == constant) {
+            return idx;
         }
     }
     /* Otherwise, insert the constant into the pool
@@ -81,13 +81,13 @@ static void emit_bytes(BytecodeChunk *chunk, uint8_t n, ...) {
     va_end(ap);
 }
 
-static void emit_uint32(BytecodeChunk *chunk, uint32_t index) {
+static void emit_uint32(BytecodeChunk *chunk, uint32_t idx) {
     emit_bytes(
         chunk, 4,
-        (index >> 24) & 0xFF,
-        (index >> 16) & 0xFF,
-        (index >> 8) & 0xFF,
-        index & 0xFF
+        (idx >> 24) & 0xFF,
+        (idx >> 16) & 0xFF,
+        (idx >> 8) & 0xFF,
+        idx & 0xFF
     );
 }
 
@@ -193,8 +193,8 @@ static void emit_stack_cleanup(Compiler *compiler, BytecodeChunk *chunk) {
 
 static bool resolve_global(Compiler *compiler, char *name) {
     /* Check if 'name' is present in the globals dynarray. */
-    for (size_t i = 0; i < compiler->globals.count; i++) {
-        if (strcmp(compiler->globals.data[i], name) == 0) {
+    for (size_t idx = 0; idx < compiler->globals.count; idx++) {
+        if (strcmp(compiler->globals.data[idx], name) == 0) {
             return true;
         }
     }
@@ -204,9 +204,9 @@ static bool resolve_global(Compiler *compiler, char *name) {
 static int resolve_local(Compiler *compiler, char *name) {
     /* Check if 'name' is present in the locals dynarray.
      * If it is, return the index, otherwise return -1. */
-    for (size_t i = 0; i < compiler->locals.count; i++) {
-        if (strcmp(compiler->locals.data[i], name) == 0) {
-            return i;
+    for (size_t idx = 0; idx < compiler->locals.count; idx++) {
+        if (strcmp(compiler->locals.data[idx], name) == 0) {
+            return idx;
         }
     }
     return -1;
@@ -217,9 +217,9 @@ static void compile_expression(Compiler *compiler, BytecodeChunk *chunk, Express
 static void handle_compile_expression_literal(Compiler *compiler, BytecodeChunk *chunk, Expression exp) {
     LiteralExpression e = TO_EXPR_LITERAL(exp);
     if (!e.specval) {
-        uint32_t const_index = add_constant(chunk, e.dval);
+        uint32_t const_idx = add_constant(chunk, e.dval);
         emit_byte(chunk, OP_CONST);
-        emit_uint32(chunk, const_index);
+        emit_uint32(chunk, const_idx);
     } else {
         if (strcmp(e.specval, "true") == 0) {
             emit_byte(chunk, OP_TRUE);
@@ -233,27 +233,27 @@ static void handle_compile_expression_literal(Compiler *compiler, BytecodeChunk 
 
 static void handle_compile_expression_string(Compiler *compiler, BytecodeChunk *chunk, Expression exp) {
     StringExpression e = TO_EXPR_STRING(exp);
-    uint32_t str_index = add_string(chunk, e.str);
+    uint32_t str_idx = add_string(chunk, e.str);
     emit_byte(chunk, OP_STR);
-    emit_uint32(chunk, str_index);
+    emit_uint32(chunk, str_idx);
 }
 
 static void handle_compile_expression_variable(Compiler *compiler, BytecodeChunk *chunk, Expression exp) {
     VariableExpression e = TO_EXPR_VARIABLE(exp);
     /* First try to resolve the variable as local. */
-    int index = resolve_local(compiler, e.name);
-    if (index != -1) {
+    int idx = resolve_local(compiler, e.name);
+    if (idx != -1) {
         /* If it is found, emit OP_DEEPGET. */
         emit_byte(chunk, OP_DEEPGET);
-        emit_uint32(chunk, index+1);
+        emit_uint32(chunk, idx+1);
     } else {
         /* Otherwise, try to resolve it as global. */
         bool is_defined = resolve_global(compiler, e.name);
         if (is_defined) {
             /* If it is found, emit OP_GET_GLOBAL. */
-            uint32_t name_index = add_string(chunk, e.name);
+            uint32_t name_idx = add_string(chunk, e.name);
             emit_byte(chunk, OP_GET_GLOBAL);
-            emit_uint32(chunk, name_index);
+            emit_uint32(chunk, name_idx);
         } else {
             /* Otherwise, the variable is not defined, so bail out. */
             COMPILER_ERROR("Variable '%s' is not defined.", e.name);
@@ -360,9 +360,9 @@ static void handle_compile_expression_get(Compiler *compiler, BytecodeChunk *chu
     /* Add the 'property_name' string to the
      * chunk's sp, and emit OP_GETATTR with
      * the index. */
-    uint32_t property_name_index = add_string(chunk, e.property_name);
+    uint32_t property_name_idx = add_string(chunk, e.property_name);
     emit_byte(chunk, OP_GETATTR);
-    emit_uint32(chunk, property_name_index);
+    emit_uint32(chunk, property_name_idx);
 }
 
 static void handle_compile_expression_assign(Compiler *compiler, BytecodeChunk *chunk, Expression exp) {
@@ -375,19 +375,19 @@ static void handle_compile_expression_assign(Compiler *compiler, BytecodeChunk *
 
         VariableExpression var = TO_EXPR_VARIABLE(*e.lhs);
         /* Try to resolve it as a local. */
-        int index = resolve_local(compiler, var.name);
-        if (index != -1) {
+        int idx = resolve_local(compiler, var.name);
+        if (idx != -1) {
             /* If it is found in locals, emit OP_DEEPSET. */
             emit_byte(chunk, OP_DEEPSET);
-            emit_uint32(chunk, index+1);
+            emit_uint32(chunk, idx+1);
         } else {
             /* If it is not found in locals, try to resolve it as global. */
             bool is_defined = resolve_global(compiler, var.name);
             if (is_defined) {
                 /* If it is found in globals, emit OP_SET_GLOBAL. */
-                uint32_t name_index = add_string(chunk, var.name);
+                uint32_t name_idx = add_string(chunk, var.name);
                 emit_byte(chunk, OP_SET_GLOBAL);
-                emit_uint32(chunk, name_index);
+                emit_uint32(chunk, name_idx);
             } else {
                 /* If it is not found in globals, bail out. */
                 COMPILER_ERROR("Variable '%s' is not defined.", var.name);
@@ -406,9 +406,9 @@ static void handle_compile_expression_assign(Compiler *compiler, BytecodeChunk *
 
         /* Emit OP_SETATTR which will pop the value, pop the struct,
          * and set the struct's property to the popped value.*/
-        uint32_t property_name_index = add_string(chunk, getexp.property_name);
+        uint32_t property_name_idx = add_string(chunk, getexp.property_name);
         emit_byte(chunk, OP_SETATTR);
-        emit_uint32(chunk, property_name_index);
+        emit_uint32(chunk, property_name_idx);
 
         /* Since OP_SETATTR will leave the struct on the stack,
          * don't forget to pop it off. */
@@ -532,9 +532,9 @@ static void handle_compile_expression_struct(Compiler *compiler, BytecodeChunk *
 
     /* Everything is okay, so we emit OP_STRUCT followed by struct's
      * name index in the chunk's sp, and the count of initializers. */
-    uint32_t name_index = add_string(chunk, sb->name);
+    uint32_t name_idx = add_string(chunk, sb->name);
     emit_byte(chunk, OP_STRUCT);
-    emit_uint32(chunk, name_index);
+    emit_uint32(chunk, name_idx);
     emit_uint32(chunk, e.initializers.count);
 
     /* Finally, we compile the initializers. */
@@ -552,11 +552,11 @@ static void handle_compile_expression_struct_init(Compiler *compiler, BytecodeCh
 
     /* Then, we add the property name string into the chunk's sp. */
     VariableExpression property = TO_EXPR_VARIABLE(*e.property);
-    uint32_t property_name_index = add_string(chunk, property.name);
+    uint32_t property_name_idx = add_string(chunk, property.name);
 
     /* Finally, we emit OP_SETATTR with the returned index. */
     emit_byte(chunk, OP_SETATTR);
-    emit_uint32(chunk, property_name_index);
+    emit_uint32(chunk, property_name_idx);
 }
 
 typedef void (*CompileExpressionHandlerFn)(Compiler *compiler, BytecodeChunk *chunk, Expression exp);
@@ -595,13 +595,13 @@ static void handle_compile_statement_print(Compiler *compiler, BytecodeChunk *ch
 static void handle_compile_statement_let(Compiler *compiler, BytecodeChunk *chunk, Statement stmt) {
     LetStatement s = TO_STMT_LET(stmt);
     compile_expression(compiler, chunk, s.initializer);
-    uint32_t name_index = add_string(chunk, s.name);
+    uint32_t name_idx = add_string(chunk, s.name);
     if (compiler->depth == 0) {
         dynarray_insert(&compiler->globals, s.name);
         emit_byte(chunk, OP_SET_GLOBAL);
-        emit_uint32(chunk, name_index);
+        emit_uint32(chunk, name_idx);
     } else {
-        dynarray_insert(&compiler->locals, chunk->sp.data[name_index]);
+        dynarray_insert(&compiler->locals, chunk->sp.data[name_idx]);
         compiler->pops[compiler->depth]++;
     }
 }

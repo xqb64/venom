@@ -72,15 +72,15 @@ static uint32_t hash(const char *key, int length) {
 
 void table_insert(Table *table, const char *key, Object obj) {
     char *k = own_string(key);
-    int index = hash(k, strlen(k)) % 1024;
-    if (list_find(table->data[index], k) == NULL) {
-        list_insert(&table->data[index], k, obj);
+    int idx = hash(k, strlen(k)) % 1024;
+    if (list_find(table->data[idx], k) == NULL) {
+        list_insert(&table->data[idx], k, obj);
     } else {
         /* If the key is already in the list, change its value. */
-        Bucket *head = table->data[index];
+        Bucket *head = table->data[idx];
         while (head != NULL) {
             if (strcmp(head->key, k) == 0) {
-                table->data[index]->obj = obj;
+                table->data[idx]->obj = obj;
             }
             head = head->next;
         }
@@ -89,8 +89,8 @@ void table_insert(Table *table, const char *key, Object obj) {
 }
 
 Object *table_get(const Table *table, const char *key) {
-    int index = hash(key, strlen(key)) % 1024;
-    return list_find(table->data[index], key);
+    int idx = hash(key, strlen(key)) % 1024;
+    return list_find(table->data[idx], key);
 }
 
 void table_free(const Table *table) {

@@ -39,13 +39,6 @@ DisassembleHandler disassemble_handler[] = {
 
 void disassemble(BytecodeChunk *chunk) {
 #define READ_INT16() \
-    /* ip points to one of the jump instructions and there \
-     * is a 2-byte operand (offset) that comes after the jump \
-     * instruction. We want to increment the ip so it points \
-     * to the last of the two operands, and construct a 16-bit \
-     * offset from the two bytes. Then ip is incremented in \
-     * the loop again so it points to the next instruction \
-     * (as opposed to pointing somewhere in the middle). */ \
     (ip += 2, \
     (int16_t)((ip[-1] << 8) | ip[0]))
 
@@ -70,31 +63,31 @@ void disassemble(BytecodeChunk *chunk) {
             case 4: {
                 switch (*ip) {
                     case OP_CONST: {
-                        uint32_t const_index = READ_UINT32();
-                        printf(" (value: %f)", chunk->cp.data[const_index]);
+                        uint32_t const_idx = READ_UINT32();
+                        printf(" (value: %f)", chunk->cp.data[const_idx]);
                         break;
                     }
                     case OP_STR: {
-                        uint32_t str_index = READ_UINT32();
-                        printf(" (value: %s)", chunk->sp.data[str_index]);
+                        uint32_t str_idx = READ_UINT32();
+                        printf(" (value: %s)", chunk->sp.data[str_idx]);
                         break;
                     }
                     case OP_DEEPGET:
                     case OP_DEEPSET: {
-                        uint32_t index = READ_UINT32();
-                        printf(" (index: %d)", index);
+                        uint32_t idx = READ_UINT32();
+                        printf(" (index: %d)", idx);
                         break;
                     }
                     case OP_GET_GLOBAL:
                     case OP_SET_GLOBAL: {
-                        uint32_t name_index = READ_UINT32();
-                        printf(" (value: %s)", chunk->sp.data[name_index]);
+                        uint32_t name_idx = READ_UINT32();
+                        printf(" (value: %s)", chunk->sp.data[name_idx]);
                         break;
                     }
                     case OP_GETATTR:
                     case OP_SETATTR: {
-                        uint32_t property_name_index = READ_UINT32();
-                        printf(" (property: %s)", chunk->sp.data[property_name_index]);
+                        uint32_t property_name_idx = READ_UINT32();
+                        printf(" (property: %s)", chunk->sp.data[property_name_idx]);
                         break;
                     }
                     default: break;
@@ -104,9 +97,9 @@ void disassemble(BytecodeChunk *chunk) {
             case 8: {
                 switch (*ip) {
                     case OP_STRUCT: {
-                        uint32_t name_index = READ_UINT32();
+                        uint32_t name_idx = READ_UINT32();
                         uint32_t propertycount = READ_UINT32();
-                        printf(" (name: %s, propertycount: %d)", chunk->sp.data[name_index], propertycount);
+                        printf(" (name: %s, propertycount: %d)", chunk->sp.data[name_idx], propertycount);
                         break;
                     }
                     default: break;
