@@ -9,10 +9,10 @@ char *own_string_n(const char *string, int n);
 char *read_file(const char *path);
 
 /* The purpose of the ALLOC macro is to take an
- * existing object, put it on the heap and return
- * a pointer to the newly allocated object.
- * This is accomplished by (ab)using memcpy's
- * return value which is the pointer to dest. */
+ * existing object, put it on the heap and ret-
+ * urn a pointer to the newly allocated object.
+ * This is accomplished by (ab)using the return
+ * value of memcpy which is the pointer to dest. */
 #define ALLOC(obj) (memcpy(malloc(sizeof((obj))), &(obj), sizeof((obj))))
 
 #endif
