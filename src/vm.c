@@ -34,6 +34,8 @@ do { \
     push(vm, obj); \
 } while (0)
 
+#define READ_UINT8() (*++(*ip))
+
 #define READ_INT16() \
     /* ip points to one of the jump instructions and there \
      * is a 2-byte operand (offset) that comes after the jump \
@@ -176,6 +178,22 @@ static inline int handle_op_set_global(VM *vm, BytecodeChunk *chunk, uint8_t **i
     return 0;
 }
 
+static inline int handle_op_set_global_deref(VM *vm, BytecodeChunk *chunk, uint8_t **ip) {
+    /* OP_SET_GLOBAL reads a 4-byte index of the variable name
+     * in the chunk's sp, pops an object off the stack and in-
+     * serts it into the vm's globals table under that name. */
+    uint8_t deref_count = READ_UINT8();
+    uint32_t name_idx = READ_UINT32();
+    Object obj = pop(vm);
+    Object *target = table_get(&vm->globals, chunk->sp.data[name_idx]);
+    for (int i = 0; i < deref_count; i++) {
+        target = target->as.ptr;
+    }
+    *target = obj;
+    return 0;
+}
+
+
 static inline int handle_op_str(VM *vm, BytecodeChunk *chunk, uint8_t **ip) {
     /* OP_STR reads a 4-byte index of the string in the chunk's
      * sp, constructs an object with that value and pushes it on
@@ -209,18 +227,45 @@ static inline int handle_op_deepset(VM *vm, BytecodeChunk *chunk, uint8_t **ip) 
     return 0;
 }
 
+static inline int handle_op_deepset_deref(VM *vm, BytecodeChunk *chunk, uint8_t **ip) {
+    /* OP_DEEPSET_DEREF reads a 1-byte dereference count and
+     * a 4-byte index (1-based) of the object being modified
+     * (which must be a pointer). To access the pointer, the
+     * 4-byte index is adjusted to be relative to the curre-
+     * nt frame pointer ('adjustment' takes care of the case
+     * where there are no frame pointers on the stack). Then
+     * the pointer is followed (and dereferenced on the way)
+     * 'deref_count' times and its value set to the previou-
+     * sly popped object.
+     *
+     * Considering that the object being set will be overwr-
+     * itten, its reference count must be decremented before
+     * putting the popped object into that position. */
+    uint8_t deref_count = READ_UINT8();
+    uint32_t idx = READ_UINT32();
+    Object obj = pop(vm);
+    int fp = vm->fp_stack[vm->fp_count-1];
+    int adjustment = vm->fp_count == 0 ? -1 : 0;
+    Object *target = &vm->stack[fp+idx+adjustment];
+    for (int i = 0; i < deref_count; i++) {
+        target = target->as.ptr;
+    }
+    OBJECT_DECREF(*target);
+    *target = obj;
+    return 0;
+}
+
 static inline int handle_op_deepget(VM *vm, BytecodeChunk *chunk, uint8_t **ip) {
-    /* OP_DEEPGET reads a 4-byte index (1-based) of the object
-     * being accessed, fetches the current frame pointer from
-     * the frame pointer stack, gets index'th item after the
-     * frame pointer and pushes it on the stack.
+    /* OP_DEEPGET reads a 4-byte index (1-based) of the obj-
+     * ect being accessed, which is then adjusted to be rel-
+     * ative to the current frame pointer ('adjustment' tak-
+     * es care of the case where there are no frame pointers
+     * on the stack). Then it uses the adjusted index to get
+     * the object in that position and push it on the stack.
      *
-     * However, since indexes are 1-based, the index needs to be
-     * adjusted by subtracting 1 if there are no frame pointers
-     * on the stack.
-     *
-     * Since the object being accessed will be present in yet
-     * another location, its refcount must be incremented. */
+     * Since the object being accessed will now be available
+     * in yet another location, its refcount must be increm-
+     * ented. */
     uint32_t idx = READ_UINT32();
     int fp = vm->fp_stack[vm->fp_count-1];
     int adjustment = vm->fp_count == 0 ? -1 : 0;
@@ -231,11 +276,17 @@ static inline int handle_op_deepget(VM *vm, BytecodeChunk *chunk, uint8_t **ip) 
 }
 
 static inline int handle_op_getattr(VM *vm, BytecodeChunk *chunk, uint8_t **ip) {
-    /* OP_GETATTR reads a 4-byte index of the property name in
-     * the chunk's sp, pops an object off the stack and looks up
-     * the property with that name in the popped object's prope-
-     * rties Table. If the property is found, it is pushed on the
-     * stack. Otherwise, a runtime error is raised. */
+    /* OP_GETATTR reads a 1-byte number (effectively a boolean
+     * value) that determines whether to push a pointer to the
+     * property (or the property itself) on the stack. Besides
+     * this number, it also reads a 4-byte index of the prope-
+     * rty name in the chunk's sp. Then, it pops an object off
+     * the stack and uses it to look up the property under th-
+     * at name in the object's properties Table. If the prope-
+     * rty is found, depending on the previously read bool va-
+     * lue, it (or the pointer that points to it) is pushed on
+     * the stack. Otherwise, a runtime error is raised. */
+    bool ptr = !!READ_UINT8();
     uint32_t property_name_idx = READ_UINT32();
     Object obj = pop(vm);
     Object *property = table_get(TO_STRUCT(obj)->properties, chunk->sp.data[property_name_idx]);
@@ -246,9 +297,13 @@ static inline int handle_op_getattr(VM *vm, BytecodeChunk *chunk, uint8_t **ip) 
             TO_STRUCT(obj)->name
         );
     }
-    push(vm, *property);
+    if (ptr) {
+        push(vm, AS_PTR(property));
+    } else {
+        push(vm, *property);
+        OBJECT_INCREF(*property);
+    }
     OBJECT_DECREF(obj);
-    OBJECT_INCREF(*property);
     return 0;
 }
 
@@ -370,7 +425,7 @@ static inline int handle_op_ip(VM *vm, BytecodeChunk *chunk, uint8_t **ip) {
      * the pointer on the stack, because OP_DEEPGET/OP_DEEPSET
      * expect frame pointer indexing to be zero-based. */
     int16_t offset = READ_INT16();
-    Object ip_obj = AS_POINTER(*(ip)+offset);
+    Object ip_obj = AS_BCPTR(*(ip)+offset);
     vm->fp_stack[vm->fp_count] = vm->tos;
     push(vm, ip_obj);
     return 0;
@@ -392,7 +447,7 @@ static inline int handle_op_ret(VM *vm, BytecodeChunk *chunk, uint8_t **ip) {
     Object returnaddr = pop(vm);
     --vm->fp_count;
     push(vm, returnvalue);
-    *ip = returnaddr.as.ptr;
+    *ip = returnaddr.as.bcptr;
     return 0;
 }
 
@@ -436,6 +491,28 @@ static inline int handle_op_struct(VM *vm, BytecodeChunk *chunk, uint8_t **ip) {
     return 0;
 }
 
+static inline int handle_op_addr(VM *vm, BytecodeChunk *chunk, uint8_t **ip) {
+    uint32_t idx = READ_UINT32();
+    int fp = vm->fp_stack[vm->fp_count-1];
+    int adjustment = vm->fp_count == 0 ? -1 : 0;
+    push(vm, AS_PTR(&vm->stack[fp+adjustment+idx]));
+    return 0;
+}
+
+static inline int handle_op_addr_global(VM *vm, BytecodeChunk *chunk, uint8_t **ip) {
+    uint32_t name_idx = READ_UINT32();
+    Object *obj = table_get(&vm->globals, chunk->sp.data[name_idx]);
+    push(vm, AS_PTR(obj));
+    return 0;
+}
+
+static inline int handle_op_deref(VM *vm, BytecodeChunk *chunk, uint8_t **ip) {
+    Object ptr = pop(vm);
+    push(vm, *ptr.as.ptr);
+    OBJECT_INCREF(*ptr.as.ptr);
+    return 0;
+}
+
 typedef int (*HandlerFn)(VM *vm, BytecodeChunk *chunk, uint8_t **ip);
 typedef struct {
     HandlerFn fn;
@@ -447,9 +524,11 @@ Handler dispatcher[] = {
     [OP_CONST] = { .fn = handle_op_const, .opcode = "OP_CONST" },
     [OP_GET_GLOBAL] = { .fn = handle_op_get_global, .opcode = "OP_GET_GLOBAL" },
     [OP_SET_GLOBAL] = { .fn = handle_op_set_global, .opcode = "OP_SET_GLOBAL" },
+    [OP_SET_GLOBAL_DEREF] = { .fn = handle_op_set_global_deref, .opcode = "OP_SET_GLOBAL_DEREF" },
     [OP_STR] = { .fn = handle_op_str, .opcode = "OP_STR" },
     [OP_DEEPGET] = { .fn = handle_op_deepget, .opcode = "OP_DEEPGET" },
     [OP_DEEPSET] = { .fn = handle_op_deepset, .opcode = "OP_DEEPSET" },
+    [OP_DEEPSET_DEREF] = { .fn = handle_op_deepset_deref, .opcode = "OP_DEEPSET_DEREF" },
     [OP_GETATTR] = { .fn = handle_op_getattr, .opcode = "OP_GETATTR" },
     [OP_SETATTR] = { .fn = handle_op_setattr, .opcode = "OP_SETATTR" },
     [OP_ADD] = { .fn = handle_op_add, .opcode = "OP_ADD" },
@@ -471,6 +550,9 @@ Handler dispatcher[] = {
     [OP_IP] = { .fn = handle_op_ip, .opcode = "OP_IP" },
     [OP_INC_FPCOUNT] = { .fn = handle_op_inc_fpcount, .opcode = "OP_INC_FPCOUNT" },
     [OP_POP] = { .fn = handle_op_pop, .opcode = "OP_POP" },
+    [OP_ADDR] = { .fn = handle_op_addr, .opcode = "OP_ADDR" },
+    [OP_ADDR_GLOBAL] = { .fn = handle_op_addr_global, .opcode = "OP_ADDR_GLOBAL" },
+    [OP_DEREF] = { .fn = handle_op_deref, .opcode = "OP_DEREF" },
 };
 
 void print_current_instruction(uint8_t *ip) {

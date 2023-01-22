@@ -29,14 +29,19 @@ typedef enum {
     OP_TRUE,
     OP_NULL,
     OP_SET_GLOBAL,
+    OP_SET_GLOBAL_DEREF,
     OP_GET_GLOBAL,
     OP_DEEPSET,
+    OP_DEEPSET_DEREF,
     OP_DEEPGET,
     OP_GETATTR,
     OP_SETATTR,
     OP_IP,
     OP_INC_FPCOUNT,
     OP_POP,
+    OP_ADDR,
+    OP_ADDR_GLOBAL,
+    OP_DEREF,
 } Opcode;
 
 typedef DynArray(uint8_t) DynArray_uint8_t;

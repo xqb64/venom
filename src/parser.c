@@ -29,6 +29,7 @@ void free_expression(Expression e) {
         case EXP_UNARY: {
             free_expression(*TO_EXPR_UNARY(e).exp);
             free(TO_EXPR_UNARY(e).exp);
+            free(TO_EXPR_UNARY(e).operator);
             break;
         }
         case EXP_BINARY: {
@@ -80,6 +81,7 @@ void free_expression(Expression e) {
             free_expression(*TO_EXPR_GET(e).exp);
             free(TO_EXPR_GET(e).property_name);
             free(TO_EXPR_GET(e).exp);
+            free(TO_EXPR_GET(e).operator);
             break;
         }
     }
@@ -277,7 +279,8 @@ static Expression call(Parser *parser, Tokenizer *tokenizer) {
     for (;;) {
         if (match(parser, tokenizer, 1, TOKEN_LEFT_PAREN)) {
             expr = finish_call(parser, tokenizer, expr);
-        } else if (match(parser, tokenizer, 1, TOKEN_DOT)) {
+        } else if (match(parser, tokenizer, 2, TOKEN_DOT, TOKEN_ARROW)) {
+            char *op = own_string_n(parser->previous.start, parser->previous.length);
             Token property_name = consume(parser, tokenizer, TOKEN_IDENTIFIER, "Expected property name after '.'");
 
             GetExpression get_expr = {
@@ -286,6 +289,7 @@ static Expression call(Parser *parser, Tokenizer *tokenizer) {
                     property_name.start,
                     property_name.length
                 ),
+                .operator = op,
             };
 
             expr = AS_EXPR_GET(get_expr);
@@ -297,9 +301,10 @@ static Expression call(Parser *parser, Tokenizer *tokenizer) {
 }
 
 static Expression unary(Parser *parser, Tokenizer *tokenizer) {
-    if (match(parser, tokenizer, 1, TOKEN_MINUS)) {
+    if (match(parser, tokenizer, 3, TOKEN_MINUS, TOKEN_AMPERSAND, TOKEN_STAR)) {
+        char *op = own_string_n(parser->previous.start, parser->previous.length);
         Expression right = unary(parser, tokenizer);
-        UnaryExpression e = { .exp = ALLOC(right) };
+        UnaryExpression e = { .exp = ALLOC(right), .operator = op };
         return AS_EXPR_UNARY(e);
     }
     return call(parser, tokenizer);
@@ -459,7 +464,7 @@ static Expression struct_initializer(Parser *parser, Tokenizer *tokenizer) {
             TOKEN_COLON,
             "Expected ':' after property name."
         );
-        Expression value = primary(parser, tokenizer);
+        Expression value = expression(parser, tokenizer);
         StructInitializerExpression structinitexp = {
             .property = ALLOC(property),
             .value = ALLOC(value),

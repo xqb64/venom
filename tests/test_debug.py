@@ -168,7 +168,7 @@ def test_debug():
             for debug_print in info['debug_prints']:
                 assert debug_print in output
                 output = output[output.index(debug_print) + len(debug_print):]
-                assert output.endswith(info['ends_with'] + '\n')
+            assert output.endswith(info['ends_with'] + '\n')
         elif info['return_code'] == 1:
             assert (info['ends_with'] + '\n').encode('utf-8') in process.stderr 
         

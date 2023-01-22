@@ -263,8 +263,56 @@ static void handle_compile_expression_variable(Compiler *compiler, BytecodeChunk
 
 static void handle_compile_expression_unary(Compiler *compiler, BytecodeChunk *chunk, Expression exp) {
     UnaryExpression e = TO_EXPR_UNARY(exp);
-    compile_expression(compiler, chunk, *e.exp);
-    emit_byte(chunk, OP_NEG);
+    if (strcmp(e.operator, "-") == 0) {
+        compile_expression(compiler, chunk, *e.exp);
+        emit_byte(chunk, OP_NEG);
+    } else if (strcmp(e.operator, "*") == 0) {
+        compile_expression(compiler, chunk, *e.exp);
+        emit_byte(chunk, OP_DEREF);
+    } else if (strcmp(e.operator, "&") == 0) {
+        switch (e.exp->kind) {
+            case EXP_VARIABLE: {
+                VariableExpression var = TO_EXPR_VARIABLE(*e.exp);
+                /* Try to resolve the variable as local. */
+                int idx = resolve_local(compiler, var.name);
+                if (idx != -1) {
+                    /* If it is found, push its address on the stack. */
+                    emit_byte(chunk, OP_ADDR);
+                    emit_uint32(chunk, idx+1);
+                } else {
+                    /* Otherwise, try to resolve it as global. */
+                    bool is_defined = resolve_global(compiler, var.name);
+                    if (is_defined) {
+                        /* If it is found, emit OP_GET_GLOBAL. */
+                        uint32_t name_idx = add_string(chunk, var.name);
+                        emit_byte(chunk, OP_ADDR_GLOBAL);
+                        emit_uint32(chunk, name_idx);
+                    } else {
+                        /* Otherwise, the variable is not defined, so bail out. */
+                        COMPILER_ERROR("Variable '%s' is not defined.", var.name);
+                    }
+                }
+                break;
+            }
+            case EXP_GET: {
+                GetExpression getexp = TO_EXPR_GET(*e.exp);
+                /* Compile the part that comes be-
+                 * fore the member access operator. */
+                compile_expression(compiler, chunk, *getexp.exp);
+                /* Deref if the operator is '->'. */
+                if (strcmp(getexp.operator, "->") == 0) {
+                    emit_byte(chunk, OP_DEREF);
+                }
+                /* Add the 'property_name' string to the
+                 * chunk's sp, and emit OP_GETATTR_PTR. */
+                uint32_t property_name_idx = add_string(chunk, getexp.property_name);
+                emit_bytes(chunk, 2, OP_GETATTR, 1);
+                emit_uint32(chunk, property_name_idx);
+                break;
+            }
+            default: break;
+        }
+    }
 }
 
 static void handle_compile_expression_binary(Compiler *compiler, BytecodeChunk *chunk, Expression exp) {
@@ -352,16 +400,20 @@ static void handle_compile_expression_call(Compiler *compiler, BytecodeChunk *ch
 
 static void handle_compile_expression_get(Compiler *compiler, BytecodeChunk *chunk, Expression exp) {
     GetExpression e = TO_EXPR_GET(exp);
-    
+
     /* Compile the part that comes before
      * the member access operator. */
     compile_expression(compiler, chunk, *e.exp);
+
+    if (strcmp(e.operator, "->") == 0) {
+        emit_byte(chunk, OP_DEREF);
+    }
 
     /* Add the 'property_name' string to the
      * chunk's sp, and emit OP_GETATTR with
      * the index. */
     uint32_t property_name_idx = add_string(chunk, e.property_name);
-    emit_byte(chunk, OP_GETATTR);
+    emit_bytes(chunk, 2, OP_GETATTR, 0);
     emit_uint32(chunk, property_name_idx);
 }
 
@@ -400,6 +452,9 @@ static void handle_compile_expression_assign(Compiler *compiler, BytecodeChunk *
         /* Compile the part before the member access operator ('egg'),
          * because OP_SETATTR expects the struct to be on the stack. */
         compile_expression(compiler, chunk, *getexp.exp);
+        if (strcmp(getexp.operator, "->") == 0) {
+            emit_byte(chunk, OP_DEREF);
+        }
 
         /* Then compile the right-hand side of the assigment. */
         compile_expression(compiler, chunk, *e.rhs);
@@ -413,6 +468,40 @@ static void handle_compile_expression_assign(Compiler *compiler, BytecodeChunk *
         /* Since OP_SETATTR will leave the struct on the stack,
          * don't forget to pop it off. */
         emit_byte(chunk, OP_POP);
+    } else if (e.lhs->kind == EXP_UNARY) {
+        /* First compile the right-hand side of the assigment. */
+        compile_expression(compiler, chunk, *e.rhs);
+
+        /* Find the variable that is being dereferenced, as well
+         * as the number of dereferences. */
+        Expression *current = e.lhs;
+        int deref_count = 0;
+        while (current->kind == EXP_UNARY) {
+            current = current->as.expr_unary.exp;
+            deref_count++;
+        }
+
+        /* Variable found. */
+        VariableExpression var = TO_EXPR_VARIABLE(*current);
+
+        /* Try to resolve it as a local. */
+        int idx = resolve_local(compiler, var.name);
+        if (idx != -1) {
+            emit_bytes(chunk, 2, OP_DEEPSET_DEREF, deref_count);
+            emit_uint32(chunk, idx+1);
+        } else {
+            /* If it is not found in locals, try to resolve it as global. */
+            bool is_defined = resolve_global(compiler, var.name);
+            if (is_defined) {
+                /* If it is found in globals, emit OP_SET_GLOBAL. */
+                uint32_t name_idx = add_string(chunk, var.name);
+                emit_bytes(chunk, 2, OP_SET_GLOBAL_DEREF, deref_count);
+                emit_uint32(chunk, name_idx);
+            } else {
+                /* If it is not found in globals, bail out. */
+                COMPILER_ERROR("Variable '%s' is not defined.", var.name);
+            }
+        }
     } else {
         /* If the left-hand side is neither a variable expression
          * nor a get expression, bail out. */
@@ -496,7 +585,7 @@ static void handle_compile_expression_struct(Compiler *compiler, BytecodeChunk *
 
     /* The struct has been defined. */
     StructBlueprint *sb = TO_STRUCT_BLUEPRINT(*blueprintobj);
-    
+
     /* If the number of properties in the struct blueprint
      * doesn't match the number of provided initializers, bail out. */
     if (sb->properties.count != e.initializers.count) {
@@ -544,7 +633,7 @@ static void handle_compile_expression_struct(Compiler *compiler, BytecodeChunk *
 
 static void handle_compile_expression_struct_init(Compiler *compiler, BytecodeChunk *chunk, Expression exp) {
     StructInitializerExpression e = TO_EXPR_STRUCT_INIT(exp);
-    
+
     /* First, we compile the value of the initializer, since
      * OP_SETATTR expects the value to already be on the stack. */
     compile_expression(compiler, chunk, *e.value);
@@ -785,18 +874,18 @@ static void handle_compile_statement_return(Compiler *compiler, BytecodeChunk *c
     /* We need to perform the stack cleanup, but
      * the return value must not be lost, we'll
      * (ab)use OP_DEEPSET for this job.
-     * 
+     *
      * For example, if the stack is:
-     * 
+     *
      * [ptr, 1, 2, 3, <return value>]
-     * 
+     *
      * The cleanup will look like this:
-     * 
+     *
      * [ptr, 1, 2, 3, <return value>]
      * [ptr, 1, 2, <return value>]
      * [ptr, 1, <return value>]
      * [ptr, <return value>]
-     * 
+     *
      * Which is the exact state of the stack that OP_RET expects. */
     int deepset_no = compiler->locals.count;
     for (size_t i = 0; i < compiler->locals.count; i++) {

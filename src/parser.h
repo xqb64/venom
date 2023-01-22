@@ -37,6 +37,7 @@ typedef struct StringExpression {
 
 typedef struct UnaryExpression {
     Expression *exp;
+    char *operator;
 } UnaryExpression;
 
 typedef struct BinaryExpression {
@@ -53,6 +54,7 @@ typedef struct CallExpression {
 typedef struct GetExpression {
     Expression *exp;
     char *property_name;
+    char *operator;
 } GetExpression;
 
 typedef struct AssignExpression {
