@@ -57,7 +57,6 @@ typedef struct Object {
 #define IS_STRING(object) ((object).type == OBJ_STRING)
 #define IS_STRUCT(object) ((object).type == OBJ_STRUCT)
 #define IS_STRUCT_BLUEPRINT(object) ((object).type == OBJ_STRUCT_BLUEPRINT)
-#define IS_PROP(object) ((object).type == OBJ_PROPERTY)
 
 #define DEALLOC_OBJ(object) \
 do { \
@@ -90,7 +89,6 @@ do { \
 #define AS_POINTER(thing) ((Object){ .type = OBJ_POINTER, .as.ptr = (thing) })
 #define AS_STR(thing) ((Object){ .type = OBJ_STRING, .as.str = (thing) })
 #define AS_NULL() ((Object){ .type = OBJ_NULL })
-#define AS_PROP(thing) ((Object){ .type = OBJ_PROPERTY, .as.prop = (thing) })
 #define AS_STRUCT(thing) ((Object){ .type = OBJ_STRUCT, .as.struct_ = (thing) })
 #define AS_STRUCT_BLUEPRINT(thing) ((Object){ .type = OBJ_STRUCT_BLUEPRINT, .as.struct_blueprint = (thing) })
 
@@ -98,7 +96,6 @@ do { \
 #define TO_BOOL(object) ((object).as.bval)
 #define TO_STRUCT(object) ((object).as.struct_)
 #define TO_FUNC(object) ((object).as.func)
-#define TO_PROP(object) ((object).as.prop)
 #define TO_STRUCT_BLUEPRINT(object) ((object).as.struct_blueprint)
 #define TO_PTR(object) ((object).as.ptr)
 #define TO_STR(object) ((object).as.str)
