@@ -144,6 +144,84 @@ static inline int handle_op_print(VM *vm, BytecodeChunk *chunk, uint8_t **ip) {
     return 0;
 }
 
+static inline int handle_op_add(VM *vm, BytecodeChunk *chunk, uint8_t **ip) {
+    BINARY_OP(+, AS_DOUBLE);
+    return 0;
+}
+
+static inline int handle_op_sub(VM *vm, BytecodeChunk *chunk, uint8_t **ip) {
+    BINARY_OP(-, AS_DOUBLE);
+    return 0;
+}
+
+static inline int handle_op_mul(VM *vm, BytecodeChunk *chunk, uint8_t **ip) {
+    BINARY_OP(*, AS_DOUBLE);
+    return 0;
+}
+
+static inline int handle_op_div(VM *vm, BytecodeChunk *chunk, uint8_t **ip) {
+    BINARY_OP(/, AS_DOUBLE);
+    return 0;
+}
+
+static inline int handle_op_mod(VM *vm, BytecodeChunk *chunk, uint8_t **ip) {
+    Object b = pop(vm);
+    Object a = pop(vm);
+    Object obj = AS_DOUBLE(fmod(TO_DOUBLE(a), TO_DOUBLE(b)));
+    push(vm, obj);
+    return 0;
+}
+
+static inline int handle_op_eq(VM *vm, BytecodeChunk *chunk, uint8_t **ip) {
+    Object b = pop(vm);
+    Object a = pop(vm);
+    /* Since the two objects might be refcounted,
+     * the reference count must be decremented. */
+    OBJECT_DECREF(a);
+    OBJECT_DECREF(b);
+    push(vm, AS_BOOL(check_equality(&a, &b)));
+    return 0;
+}
+
+static inline int handle_op_gt(VM *vm, BytecodeChunk *chunk, uint8_t **ip) {
+    BINARY_OP(>, AS_BOOL);
+    return 0;
+}
+
+static inline int handle_op_lt(VM *vm, BytecodeChunk *chunk, uint8_t **ip) {
+    BINARY_OP(<, AS_BOOL);
+    return 0;
+}
+
+static inline int handle_op_not(VM *vm, BytecodeChunk *chunk, uint8_t **ip) {
+    /* OP_NOT pops an object off the stack and pushes
+     * its inverse back on the stack. */
+    Object obj = pop(vm);
+    push(vm, AS_BOOL(TO_BOOL(obj) ^ 1));
+    return 0;
+}
+
+static inline int handle_op_neg(VM *vm, BytecodeChunk *chunk, uint8_t **ip) {
+    /* OP_NEGATE pops an object off the stack, negates
+     * it and pushes the negative back on the stack. */
+    Object original = pop(vm);
+    Object negated = AS_DOUBLE(-TO_DOUBLE(original));
+    push(vm, negated);
+    return 0;
+}
+
+static inline int handle_op_true(VM *vm, BytecodeChunk *chunk, uint8_t **ip) {
+    /* OP_TRUE pushes a boolean object ('true') on the stack. */
+    push(vm, AS_BOOL(true));
+    return 0;
+}
+
+static inline int handle_op_null(VM *vm, BytecodeChunk *chunk, uint8_t **ip) {
+    /* OP_NULL pushes a null object on the stack. */
+    push(vm, AS_NULL());
+    return 0;
+}
+
 static inline int handle_op_const(VM *vm, BytecodeChunk *chunk, uint8_t **ip) {
     /* OP_CONST reads a 4-byte index of the constant in the
      * chunk's cp, constructs an object with that value and
@@ -155,16 +233,40 @@ static inline int handle_op_const(VM *vm, BytecodeChunk *chunk, uint8_t **ip) {
     return 0;
 }
 
-static inline int handle_op_get_global(VM *vm, BytecodeChunk *chunk, uint8_t **ip) {
-    /* OP_GET_GLOBAL reads a 4-byte index of the variable name
-     * in the chunk's sp, looks up the object with that name in
-     * in the vm's globals tablem and pushes it on the stack.
-     * Since the object will be present in yet another location,
-     * the refcount must be incremented. */
-    uint32_t name_idx = READ_UINT32();
-    Object *obj = table_get(&vm->globals, chunk->sp.data[name_idx]);
-    push(vm, *obj);
-    OBJECT_INCREF(*obj);
+static inline int handle_op_str(VM *vm, BytecodeChunk *chunk, uint8_t **ip) {
+    /* OP_STR reads a 4-byte index of the string in the chunk's
+     * sp, constructs an object with that value and pushes it on
+     * the stack. */
+    uint32_t idx = READ_UINT32();
+    Object obj = AS_STR(chunk->sp.data[idx]);
+    push(vm, obj);
+    return 0;
+}
+
+static inline int handle_op_jz(VM *vm, BytecodeChunk *chunk, uint8_t **ip) {
+    /* OP_JZ reads a signed 2-byte offset, pops an object off
+     * the stack, and increments the instruction pointer by the
+     * offset if the popped value was falsey.
+     *
+     * NOTE: the offset could be negative. */
+    int16_t offset = READ_INT16();
+    Object obj = pop(vm);
+    if (!TO_BOOL(obj)) {
+        *ip += offset;
+    }
+    return 0;
+}
+
+static inline int handle_op_jmp(VM *vm, BytecodeChunk *chunk, uint8_t **ip) {
+    /* OP_JMP reads a signed 2-byte offset and increments
+     * the instruction pointer by that amount.
+     *
+     * Unlike OP_JZ which is a conditional jump, OP_JMP
+     * jumps unconditionally.
+     *
+     * NOTE: the offset could be negative. */
+    int16_t offset = READ_INT16();
+    *ip += offset;
     return 0;
 }
 
@@ -179,9 +281,12 @@ static inline int handle_op_set_global(VM *vm, BytecodeChunk *chunk, uint8_t **i
 }
 
 static inline int handle_op_set_global_deref(VM *vm, BytecodeChunk *chunk, uint8_t **ip) {
-    /* OP_SET_GLOBAL reads a 4-byte index of the variable name
-     * in the chunk's sp, pops an object off the stack and in-
-     * serts it into the vm's globals table under that name. */
+    /* OP_SET_GLOBAL_DEREF reads a 1-byte dereference count and a
+     * 4-byte index of the variable name in the chunk's sp. Then
+     * it gets the object with that name from the vm's globals tab-
+     * le and follows the returned pointer (dereferencing it on the
+     * way) 'deref_count' times, and finally setting its value to
+     * the previously popped object. */
     uint8_t deref_count = READ_UINT8();
     uint32_t name_idx = READ_UINT32();
     Object obj = pop(vm);
@@ -193,14 +298,27 @@ static inline int handle_op_set_global_deref(VM *vm, BytecodeChunk *chunk, uint8
     return 0;
 }
 
+static inline int handle_op_get_global(VM *vm, BytecodeChunk *chunk, uint8_t **ip) {
+    /* OP_GET_GLOBAL reads a 4-byte index of the variable name
+     * in the chunk's sp, looks up the object with that name in
+     * in the vm's globals table, and pushes it on the stack.
+     * Since the object will be present in yet another location,
+     * the refcount must be incremented. */
+    uint32_t name_idx = READ_UINT32();
+    Object *obj = table_get(&vm->globals, chunk->sp.data[name_idx]);
+    push(vm, *obj);
+    OBJECT_INCREF(*obj);
+    return 0;
+}
 
-static inline int handle_op_str(VM *vm, BytecodeChunk *chunk, uint8_t **ip) {
-    /* OP_STR reads a 4-byte index of the string in the chunk's
-     * sp, constructs an object with that value and pushes it on
-     * the stack. */
-    uint32_t idx = READ_UINT32();
-    Object obj = AS_STR(chunk->sp.data[idx]);
-    push(vm, obj);
+static inline int handle_op_get_global_ptr(VM *vm, BytecodeChunk *chunk, uint8_t **ip) {
+    /* OP_GET_GLOBAL_PTR reads a 4-byte index of the variable
+     * name in the chunk's sp, looks up the object with that
+     * name in in the vm's globals table and pushes its address
+     * on the stack. */
+    uint32_t name_idx = READ_UINT32();
+    Object *obj = table_get(&vm->globals, chunk->sp.data[name_idx]);
+    push(vm, AS_PTR(obj));
     return 0;
 }
 
@@ -275,6 +393,34 @@ static inline int handle_op_deepget(VM *vm, BytecodeChunk *chunk, uint8_t **ip) 
     return 0;
 }
 
+static inline int handle_op_deepget_ptr(VM *vm, BytecodeChunk *chunk, uint8_t **ip) {
+    /* OP_DEEPGET_PTR reads a 4-byte index (1-based) of the obj-
+     * ect being accessed, which is then adjusted to be relative
+     * to the current frame pointer ('adjustment' takes care of
+     * the case where there are no frame pointers on the stack).
+     * Then it uses the adjusted index to get the object in that
+     * position and push its address on the stack. */
+    uint32_t idx = READ_UINT32();
+    int fp = vm->fp_stack[vm->fp_count-1];
+    int adjustment = vm->fp_count == 0 ? -1 : 0;
+    push(vm, AS_PTR(&vm->stack[fp+adjustment+idx]));
+    return 0;
+}
+
+static inline int handle_op_setattr(VM *vm, BytecodeChunk *chunk, uint8_t **ip) {
+    /* OP_SETATTR reads a 4-byte index of the property name in
+     * the chunk's sp, pops two objects off the stack (a value
+     * of the property, and the object being modified itself),
+     * and inserts the value into the object's properties Table.
+     * Then it pushes the modified object back on the stack. */
+    uint32_t property_name_idx = READ_UINT32();
+    Object value = pop(vm);
+    Object structobj = pop(vm);
+    table_insert(TO_STRUCT(structobj)->properties, chunk->sp.data[property_name_idx], value);
+    push(vm, structobj);
+    return 0;
+}
+
 static inline int handle_op_getattr(VM *vm, BytecodeChunk *chunk, uint8_t **ip) {
     /* OP_GETATTR reads a 1-byte number (effectively a boolean
      * value) that determines whether to push a pointer to the
@@ -307,110 +453,22 @@ static inline int handle_op_getattr(VM *vm, BytecodeChunk *chunk, uint8_t **ip) 
     return 0;
 }
 
-static inline int handle_op_setattr(VM *vm, BytecodeChunk *chunk, uint8_t **ip) {
-    /* OP_SETATTR reads a 4-byte index of the property name in
-     * the chunk's sp, pops two objects off the stack (a value
-     * of the property, and the object being modified itself),
-     * and inserts the value into the object's properties Table.
-     * Then it pushes the modified object back on the stack. */
-    uint32_t property_name_idx = READ_UINT32();
-    Object value = pop(vm);
-    Object structobj = pop(vm);
-    table_insert(TO_STRUCT(structobj)->properties, chunk->sp.data[property_name_idx], value);
-    push(vm, structobj);
-    return 0;
-}
+static inline int handle_op_struct(VM *vm, BytecodeChunk *chunk, uint8_t **ip) {
+    /* OP_STRUCT reads a 4-byte index of the struct name in the
+     * chunk's sp, builds a struct object with that name and with
+     * refcount set to 1 (while making sure to initialize the pr-
+     * operties table properly), and pushes it on the stack. */
+    uint32_t structname = READ_UINT32();
 
-static inline int handle_op_add(VM *vm, BytecodeChunk *chunk, uint8_t **ip) {
-    BINARY_OP(+, AS_DOUBLE);
-    return 0;
-}
+    Struct s = {
+        .name = chunk->sp.data[structname],
+        .properties = malloc(sizeof(Table)),
+        .refcount = 1,
+    };
 
-static inline int handle_op_sub(VM *vm, BytecodeChunk *chunk, uint8_t **ip) {
-    BINARY_OP(-, AS_DOUBLE);
-    return 0;
-}
+    memset(s.properties, 0, sizeof(Table));
 
-static inline int handle_op_mul(VM *vm, BytecodeChunk *chunk, uint8_t **ip) {
-    BINARY_OP(*, AS_DOUBLE);
-    return 0;
-}
-
-static inline int handle_op_div(VM *vm, BytecodeChunk *chunk, uint8_t **ip) {
-    BINARY_OP(/, AS_DOUBLE);
-    return 0;
-}
-
-static inline int handle_op_mod(VM *vm, BytecodeChunk *chunk, uint8_t **ip) {
-    Object b = pop(vm);
-    Object a = pop(vm);
-    Object obj = AS_DOUBLE(fmod(TO_DOUBLE(a), TO_DOUBLE(b)));
-    push(vm, obj);
-    return 0;
-}
-
-static inline int handle_op_gt(VM *vm, BytecodeChunk *chunk, uint8_t **ip) {
-    BINARY_OP(>, AS_BOOL);
-    return 0;
-}
-
-static inline int handle_op_lt(VM *vm, BytecodeChunk *chunk, uint8_t **ip) {
-    BINARY_OP(<, AS_BOOL);
-    return 0;
-}
-
-static inline int handle_op_eq(VM *vm, BytecodeChunk *chunk, uint8_t **ip) {
-    Object b = pop(vm);
-    Object a = pop(vm);
-    /* Since the two objects might be refcounted,
-     * the reference count must be decremented. */
-    OBJECT_DECREF(a);
-    OBJECT_DECREF(b);
-    push(vm, AS_BOOL(check_equality(&a, &b)));
-    return 0;
-}
-
-static inline int handle_op_jz(VM *vm, BytecodeChunk *chunk, uint8_t **ip) {
-    /* OP_JZ reads a signed 2-byte offset, pops an object off
-     * the stack, and increments the instruction pointer by the
-     * offset if the popped value was falsey.
-     *
-     * NOTE: the offset could be negative. */
-    int16_t offset = READ_INT16();
-    Object obj = pop(vm);
-    if (!TO_BOOL(obj)) {
-        *ip += offset;
-    }
-    return 0;
-}
-
-static inline int handle_op_jmp(VM *vm, BytecodeChunk *chunk, uint8_t **ip) {
-    /* OP_JMP reads a signed 2-byte offset and increments
-     * the instruction pointer by that amount.
-     *
-     * Unlike OP_JZ which is a conditional jump, OP_JMP
-     * jumps unconditionally.
-     *
-     * NOTE: the offset could be negative. */
-    int16_t offset = READ_INT16();
-    *ip += offset;
-    return 0;
-}
-
-static inline int handle_op_neg(VM *vm, BytecodeChunk *chunk, uint8_t **ip) {
-    /* OP_NEGATE pops an object off the stack, negates
-     * it and pushes the negative back on the stack. */
-    Object original = pop(vm);
-    Object negated = AS_DOUBLE(-TO_DOUBLE(original));
-    push(vm, negated);
-    return 0;
-}
-
-static inline int handle_op_not(VM *vm, BytecodeChunk *chunk, uint8_t **ip) {
-    /* OP_NOT pops an object off the stack and pushes
-     * its inverse back on the stack. */
-    Object obj = pop(vm);
-    push(vm, AS_BOOL(TO_BOOL(obj) ^ 1));
+    push(vm, AS_STRUCT(ALLOC(s)));
     return 0;
 }
 
@@ -451,18 +509,6 @@ static inline int handle_op_ret(VM *vm, BytecodeChunk *chunk, uint8_t **ip) {
     return 0;
 }
 
-static inline int handle_op_true(VM *vm, BytecodeChunk *chunk, uint8_t **ip) {
-    /* OP_TRUE pushes a boolean object ('true') on the stack. */
-    push(vm, AS_BOOL(true));
-    return 0;
-}
-
-static inline int handle_op_null(VM *vm, BytecodeChunk *chunk, uint8_t **ip) {
-    /* OP_NULL pushes a null object on the stack. */
-    push(vm, AS_NULL());
-    return 0;
-}
-
 static inline int handle_op_pop(VM *vm, BytecodeChunk *chunk, uint8_t **ip) {
     /* OP_POP pops an object off the stack. Since the popped
      * object might be refcounted, the reference count must
@@ -472,41 +518,12 @@ static inline int handle_op_pop(VM *vm, BytecodeChunk *chunk, uint8_t **ip) {
     return 0;
 }
 
-static inline int handle_op_struct(VM *vm, BytecodeChunk *chunk, uint8_t **ip) {
-    /* OP_STRUCT reads a 4-byte index of the struct name in the
-     * chunk's sp, builds a struct object with that name and with
-     * refcount set to 1 (while making sure to initialize the pr-
-     * operties table properly), and pushes it on the stack. */
-    uint32_t structname = READ_UINT32();
-
-    Struct s = {
-        .name = chunk->sp.data[structname],
-        .properties = malloc(sizeof(Table)),
-        .refcount = 1,
-    };
-
-    memset(s.properties, 0, sizeof(Table));
-
-    push(vm, AS_STRUCT(ALLOC(s)));
-    return 0;
-}
-
-static inline int handle_op_addr(VM *vm, BytecodeChunk *chunk, uint8_t **ip) {
-    uint32_t idx = READ_UINT32();
-    int fp = vm->fp_stack[vm->fp_count-1];
-    int adjustment = vm->fp_count == 0 ? -1 : 0;
-    push(vm, AS_PTR(&vm->stack[fp+adjustment+idx]));
-    return 0;
-}
-
-static inline int handle_op_addr_global(VM *vm, BytecodeChunk *chunk, uint8_t **ip) {
-    uint32_t name_idx = READ_UINT32();
-    Object *obj = table_get(&vm->globals, chunk->sp.data[name_idx]);
-    push(vm, AS_PTR(obj));
-    return 0;
-}
-
 static inline int handle_op_deref(VM *vm, BytecodeChunk *chunk, uint8_t **ip) {
+    /* OP_DEREF pops an object off the stack, dereferences it
+     * and pushes the result back on the stack.
+     *
+     * Since the object will now be present in yet another
+     * location, the refcount must be incremented.*/
     Object ptr = pop(vm);
     push(vm, *ptr.as.ptr);
     OBJECT_INCREF(*ptr.as.ptr);
@@ -521,37 +538,37 @@ typedef struct {
 
 Handler dispatcher[] = {
     [OP_PRINT] = { .fn = handle_op_print, .opcode = "OP_PRINT" },
-    [OP_CONST] = { .fn = handle_op_const, .opcode = "OP_CONST" },
-    [OP_GET_GLOBAL] = { .fn = handle_op_get_global, .opcode = "OP_GET_GLOBAL" },
-    [OP_SET_GLOBAL] = { .fn = handle_op_set_global, .opcode = "OP_SET_GLOBAL" },
-    [OP_SET_GLOBAL_DEREF] = { .fn = handle_op_set_global_deref, .opcode = "OP_SET_GLOBAL_DEREF" },
-    [OP_STR] = { .fn = handle_op_str, .opcode = "OP_STR" },
-    [OP_DEEPGET] = { .fn = handle_op_deepget, .opcode = "OP_DEEPGET" },
-    [OP_DEEPSET] = { .fn = handle_op_deepset, .opcode = "OP_DEEPSET" },
-    [OP_DEEPSET_DEREF] = { .fn = handle_op_deepset_deref, .opcode = "OP_DEEPSET_DEREF" },
-    [OP_GETATTR] = { .fn = handle_op_getattr, .opcode = "OP_GETATTR" },
-    [OP_SETATTR] = { .fn = handle_op_setattr, .opcode = "OP_SETATTR" },
     [OP_ADD] = { .fn = handle_op_add, .opcode = "OP_ADD" },
     [OP_SUB] = { .fn = handle_op_sub, .opcode = "OP_SUB" },
     [OP_MUL] = { .fn = handle_op_mul, .opcode = "OP_MUL" },
     [OP_DIV] = { .fn = handle_op_div, .opcode = "OP_DIV" },
     [OP_MOD] = { .fn = handle_op_mod, .opcode = "OP_MOD" },
+    [OP_EQ] = { .fn = handle_op_eq, .opcode = "OP_EQ" },
     [OP_GT] = { .fn = handle_op_gt, .opcode = "OP_GT" },
     [OP_LT] = { .fn = handle_op_lt, .opcode = "OP_LT" },
-    [OP_EQ] = { .fn = handle_op_eq, .opcode = "OP_EQ" },
-    [OP_JZ] = { .fn = handle_op_jz, .opcode = "OP_JZ" },
-    [OP_JMP] = { .fn = handle_op_jmp, .opcode = "OP_JMP" },
-    [OP_NEG] = { .fn = handle_op_neg, .opcode = "OP_NEG" },
     [OP_NOT] = { .fn = handle_op_not, .opcode = "OP_NOT" },
-    [OP_RET] = { .fn = handle_op_ret, .opcode = "OP_RET" },
+    [OP_NEG] = { .fn = handle_op_neg, .opcode = "OP_NEG" },
     [OP_TRUE] = { .fn = handle_op_true, .opcode = "OP_TRUE" },
     [OP_NULL] = { .fn = handle_op_null, .opcode = "OP_NULL" },
+    [OP_CONST] = { .fn = handle_op_const, .opcode = "OP_CONST" },
+    [OP_STR] = { .fn = handle_op_str, .opcode = "OP_STR" },
+    [OP_JZ] = { .fn = handle_op_jz, .opcode = "OP_JZ" },
+    [OP_JMP] = { .fn = handle_op_jmp, .opcode = "OP_JMP" },
+    [OP_SET_GLOBAL] = { .fn = handle_op_set_global, .opcode = "OP_SET_GLOBAL" },
+    [OP_SET_GLOBAL_DEREF] = { .fn = handle_op_set_global_deref, .opcode = "OP_SET_GLOBAL_DEREF" },
+    [OP_GET_GLOBAL] = { .fn = handle_op_get_global, .opcode = "OP_GET_GLOBAL" },
+    [OP_GET_GLOBAL_PTR] = { .fn = handle_op_get_global_ptr, .opcode = "OP_GET_GLOBAL_PTR" },
+    [OP_DEEPSET] = { .fn = handle_op_deepset, .opcode = "OP_DEEPSET" },
+    [OP_DEEPSET_DEREF] = { .fn = handle_op_deepset_deref, .opcode = "OP_DEEPSET_DEREF" },
+    [OP_DEEPGET] = { .fn = handle_op_deepget, .opcode = "OP_DEEPGET" },
+    [OP_DEEPGET_PTR] = { .fn = handle_op_deepget_ptr, .opcode = "OP_DEEPGET_PTR" },
+    [OP_SETATTR] = { .fn = handle_op_setattr, .opcode = "OP_SETATTR" },
+    [OP_GETATTR] = { .fn = handle_op_getattr, .opcode = "OP_GETATTR" },
     [OP_STRUCT] = { .fn = handle_op_struct, .opcode = "OP_STRUCT" },
     [OP_IP] = { .fn = handle_op_ip, .opcode = "OP_IP" },
     [OP_INC_FPCOUNT] = { .fn = handle_op_inc_fpcount, .opcode = "OP_INC_FPCOUNT" },
+    [OP_RET] = { .fn = handle_op_ret, .opcode = "OP_RET" },
     [OP_POP] = { .fn = handle_op_pop, .opcode = "OP_POP" },
-    [OP_ADDR] = { .fn = handle_op_addr, .opcode = "OP_ADDR" },
-    [OP_ADDR_GLOBAL] = { .fn = handle_op_addr_global, .opcode = "OP_ADDR_GLOBAL" },
     [OP_DEREF] = { .fn = handle_op_deref, .opcode = "OP_DEREF" },
 };
 

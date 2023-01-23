@@ -277,7 +277,7 @@ static void handle_compile_expression_unary(Compiler *compiler, BytecodeChunk *c
                 int idx = resolve_local(compiler, var.name);
                 if (idx != -1) {
                     /* If it is found, push its address on the stack. */
-                    emit_byte(chunk, OP_ADDR);
+                    emit_byte(chunk, OP_DEEPGET_PTR);
                     emit_uint32(chunk, idx+1);
                 } else {
                     /* Otherwise, try to resolve it as global. */
@@ -285,7 +285,7 @@ static void handle_compile_expression_unary(Compiler *compiler, BytecodeChunk *c
                     if (is_defined) {
                         /* If it is found, emit OP_GET_GLOBAL. */
                         uint32_t name_idx = add_string(chunk, var.name);
-                        emit_byte(chunk, OP_ADDR_GLOBAL);
+                        emit_byte(chunk, OP_GET_GLOBAL_PTR);
                         emit_uint32(chunk, name_idx);
                     } else {
                         /* Otherwise, the variable is not defined, so bail out. */
