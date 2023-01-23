@@ -114,11 +114,16 @@ void disassemble(BytecodeChunk *chunk) {
                         printf(" (property: %s, ptr: %s)", chunk->sp.data[property_name_idx], ptr ? "true" : "false");
                         break;
                     }
-                    case OP_DEEPSET_DEREF:
-                    case OP_SET_GLOBAL_DEREF: {
+                    case OP_DEEPSET_DEREF: {
                         uint8_t deref_count = READ_UINT8();
                         uint32_t idx = READ_UINT32();
                         printf(" (index: %d, deref_count: %d)", idx, deref_count);
+                        break;
+                    }
+                    case OP_SET_GLOBAL_DEREF: {
+                        uint8_t deref_count = READ_UINT8();
+                        uint32_t name_idx = READ_UINT32();
+                        printf(" (value: %d, deref_count: %d)", chunk->sp.data[name_idx], deref_count);
                         break;
                     }
                     default: break;
