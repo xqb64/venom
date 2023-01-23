@@ -10,11 +10,15 @@ DisassembleHandler disassemble_handler[] = {
     [OP_PRINT] = { .opcode = "OP_PRINT", .operands = 0 },
     [OP_CONST] = { .opcode = "OP_CONST", .operands = 4 },
     [OP_GET_GLOBAL] = { .opcode = "OP_GET_GLOBAL", .operands = 4 },
+    [OP_GET_GLOBAL_PTR] = { .opcode = "OP_GET_GLOBAL_PTR", .operands = 4 },
     [OP_SET_GLOBAL] = { .opcode = "OP_SET_GLOBAL", .operands = 4 },
+    [OP_SET_GLOBAL_DEREF] = { .opcode = "OP_SET_GLOBAL_DEREF", .operands = 5 },
     [OP_STR] = { .opcode = "OP_STR", .operands = 4 },
     [OP_DEEPGET] = { .opcode = "OP_DEEPGET", .operands = 4 },
+    [OP_DEEPGET_PTR] = { .opcode = "OP_DEEPGET_PTR", .operands = 4 },
     [OP_DEEPSET] = { .opcode = "OP_DEEPSET", .operands = 4 },
-    [OP_GETATTR] = { .opcode = "OP_GETATTR", .operands = 4 },
+    [OP_DEEPSET_DEREF] = { .opcode = "OP_DEEPSET_DEREF", .operands = 5 },
+    [OP_GETATTR] = { .opcode = "OP_GETATTR", .operands = 5 },
     [OP_SETATTR] = { .opcode = "OP_SETATTR", .operands = 4 },
     [OP_ADD] = { .opcode = "OP_ADD", .operands = 0 },
     [OP_SUB] = { .opcode = "OP_SUB", .operands = 0 },
@@ -31,13 +35,15 @@ DisassembleHandler disassemble_handler[] = {
     [OP_RET] = { .opcode = "OP_RET", .operands = 0 },
     [OP_TRUE] = { .opcode = "OP_TRUE", .operands = 0 },
     [OP_NULL] = { .opcode = "OP_NULL", .operands = 0 },
-    [OP_STRUCT] = { .opcode = "OP_STRUCT", .operands = 8 },
+    [OP_STRUCT] = { .opcode = "OP_STRUCT", .operands = 4 },
     [OP_IP] = { .opcode = "OP_IP", .operands = 2 },
     [OP_INC_FPCOUNT] = { .opcode = "OP_INC_FPCOUNT", .operands = 0 },
     [OP_POP] = { .opcode = "OP_POP", .operands = 0 },
+    [OP_DEREF] = { .opcode = "OP_DEREF", .operands = 0 },
 };
 
 void disassemble(BytecodeChunk *chunk) {
+#define READ_UINT8() (*++ip)
 #define READ_INT16() \
     (ip += 2, \
     (int16_t)((ip[-1] << 8) | ip[0]))
@@ -73,33 +79,46 @@ void disassemble(BytecodeChunk *chunk) {
                         break;
                     }
                     case OP_DEEPGET:
-                    case OP_DEEPSET: {
+                    case OP_DEEPGET_PTR:
+                    case OP_DEEPSET:{
                         uint32_t idx = READ_UINT32();
                         printf(" (index: %d)", idx);
                         break;
                     }
                     case OP_GET_GLOBAL:
+                    case OP_GET_GLOBAL_PTR:
                     case OP_SET_GLOBAL: {
                         uint32_t name_idx = READ_UINT32();
                         printf(" (value: %s)", chunk->sp.data[name_idx]);
                         break;
                     }
-                    case OP_GETATTR:
                     case OP_SETATTR: {
                         uint32_t property_name_idx = READ_UINT32();
                         printf(" (property: %s)", chunk->sp.data[property_name_idx]);
+                        break;
+                    }
+                    case OP_STRUCT: {
+                        uint32_t name_idx = READ_UINT32();
+                        printf(" (name: %s)", chunk->sp.data[name_idx]);
                         break;
                     }
                     default: break;
                 }
                 break;
             }
-            case 8: {
+            case 5: {
                 switch (*ip) {
-                    case OP_STRUCT: {
-                        uint32_t name_idx = READ_UINT32();
-                        uint32_t propertycount = READ_UINT32();
-                        printf(" (name: %s, propertycount: %d)", chunk->sp.data[name_idx], propertycount);
+                    case OP_GETATTR: {
+                        bool ptr = !!READ_UINT8();
+                        uint32_t property_name_idx = READ_UINT32();
+                        printf(" (property: %s, ptr: %s)", chunk->sp.data[property_name_idx], ptr ? "true" : "false");
+                        break;
+                    }
+                    case OP_DEEPSET_DEREF:
+                    case OP_SET_GLOBAL_DEREF: {
+                        uint8_t deref_count = READ_UINT8();
+                        uint32_t idx = READ_UINT32();
+                        printf(" (index: %d, deref_count: %d)", idx, deref_count);
                         break;
                     }
                     default: break;
@@ -110,6 +129,7 @@ void disassemble(BytecodeChunk *chunk) {
         }
         printf("\n");
     }
+#undef READ_UINT8
 #undef READ_INT16
 #undef READ_UINT32
 }

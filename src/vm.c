@@ -3,6 +3,7 @@
 #include <stdio.h>
 #include <string.h>
 #include "math.h"
+#include "disassembler.h"
 #include "compiler.h"
 #include "object.h"
 #include "util.h"
