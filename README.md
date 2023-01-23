@@ -2,17 +2,15 @@
 
 A handcrafted virtual stack machine capable of executing a reduced instruction set consisting of only 27 microinstructions. The programs for the VM are written in a minimal, dynamically-typed, Turing-complete programming language featuring basic data types, functions, structures, and flow control. Besides the VM, the system includes an on-demand tokenizer, a recursive-descent parser, and a bytecode compiler.
 
-Status: usable, but needs thorough testing (coming soon).
-
 ## Examples
 
 Fibonacci:
 
 ```rust
 fn fib(n) { 
-    if (n == 0) return 0;
-    if (n == 1) return 1;
-    return fib(n-1) + fib(n-2);
+  if (n == 0) return 0;
+  if (n == 1) return 1;
+  return fib(n-1) + fib(n-2);
 }
 
 print fib(40);
@@ -39,6 +37,45 @@ print fib(40);
     ```
 
     ...which is as fast as Python! To be fair, Python could execute this code in a blink of an eye with `@functools.lru_cache()`.
+
+Linked list:
+```rust
+struct node {
+  next;
+  value;
+}
+
+fn list_print(list) {
+  let current = *list;
+  while (current != null) {
+    print current.value;
+    current = current.next;
+  }
+}
+
+fn list_insert(list, item) {
+  let new_node = node { next: null, value: item };
+  if (*list == null) {
+    *list = new_node;
+  } else {
+    let current = list;
+    while (current->next != null) {
+      current = &current->next;
+    }
+    current->next = new_node;
+  }
+}
+
+fn main() {
+  let list = null;
+  list_insert(&list, 3.14);
+  list_insert(&list, false);
+  list_insert(&list, "Hello, world!");
+  list_print(&list);
+}
+
+main();
+```
 
 ## Compiling
 
