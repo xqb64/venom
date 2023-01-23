@@ -2,42 +2,42 @@
 #include "disassembler.h"
 
 typedef struct {
-  char *opcode;
-  size_t operands;
+    char *opcode;
+    size_t operands;
 } DisassembleHandler;
 
 DisassembleHandler disassemble_handler[] = {
     [OP_PRINT] = { .opcode = "OP_PRINT", .operands = 0 },
-    [OP_CONST] = { .opcode = "OP_CONST", .operands = 4 },
-    [OP_GET_GLOBAL] = { .opcode = "OP_GET_GLOBAL", .operands = 4 },
-    [OP_GET_GLOBAL_PTR] = { .opcode = "OP_GET_GLOBAL_PTR", .operands = 4 },
-    [OP_SET_GLOBAL] = { .opcode = "OP_SET_GLOBAL", .operands = 4 },
-    [OP_SET_GLOBAL_DEREF] = { .opcode = "OP_SET_GLOBAL_DEREF", .operands = 5 },
-    [OP_STR] = { .opcode = "OP_STR", .operands = 4 },
-    [OP_DEEPGET] = { .opcode = "OP_DEEPGET", .operands = 4 },
-    [OP_DEEPGET_PTR] = { .opcode = "OP_DEEPGET_PTR", .operands = 4 },
-    [OP_DEEPSET] = { .opcode = "OP_DEEPSET", .operands = 4 },
-    [OP_DEEPSET_DEREF] = { .opcode = "OP_DEEPSET_DEREF", .operands = 5 },
-    [OP_GETATTR] = { .opcode = "OP_GETATTR", .operands = 5 },
-    [OP_SETATTR] = { .opcode = "OP_SETATTR", .operands = 4 },
     [OP_ADD] = { .opcode = "OP_ADD", .operands = 0 },
     [OP_SUB] = { .opcode = "OP_SUB", .operands = 0 },
     [OP_MUL] = { .opcode = "OP_MUL", .operands = 0 },
     [OP_DIV] = { .opcode = "OP_DIV", .operands = 0 },
     [OP_MOD] = { .opcode = "OP_MOD", .operands = 0 },
+    [OP_EQ] = { .opcode = "OP_EQ", .operands = 0 },
     [OP_GT] = { .opcode = "OP_GT", .operands = 0 },
     [OP_LT] = { .opcode = "OP_LT", .operands = 0 },
-    [OP_EQ] = { .opcode = "OP_EQ", .operands = 0 },
-    [OP_JZ] = { .opcode = "OP_JZ", .operands = 2 },
-    [OP_JMP] = { .opcode = "OP_JMP", .operands = 2 },
-    [OP_NEG] = { .opcode = "OP_NEG", .operands = 0 },
     [OP_NOT] = { .opcode = "OP_NOT", .operands = 0 },
-    [OP_RET] = { .opcode = "OP_RET", .operands = 0 },
+    [OP_NEG] = { .opcode = "OP_NEG", .operands = 0 },
     [OP_TRUE] = { .opcode = "OP_TRUE", .operands = 0 },
     [OP_NULL] = { .opcode = "OP_NULL", .operands = 0 },
+    [OP_CONST] = { .opcode = "OP_CONST", .operands = 4 },
+    [OP_STR] = { .opcode = "OP_STR", .operands = 4 },
+    [OP_JZ] = { .opcode = "OP_JZ", .operands = 2 },
+    [OP_JMP] = { .opcode = "OP_JMP", .operands = 2 },
+    [OP_SET_GLOBAL] = { .opcode = "OP_SET_GLOBAL", .operands = 4 },
+    [OP_SET_GLOBAL_DEREF] = { .opcode = "OP_SET_GLOBAL_DEREF", .operands = 5 },
+    [OP_GET_GLOBAL] = { .opcode = "OP_GET_GLOBAL", .operands = 4 },
+    [OP_GET_GLOBAL_PTR] = { .opcode = "OP_GET_GLOBAL_PTR", .operands = 4 },
+    [OP_DEEPSET] = { .opcode = "OP_DEEPSET", .operands = 4 },
+    [OP_DEEPSET_DEREF] = { .opcode = "OP_DEEPSET_DEREF", .operands = 5 },
+    [OP_DEEPGET] = { .opcode = "OP_DEEPGET", .operands = 4 },
+    [OP_DEEPGET_PTR] = { .opcode = "OP_DEEPGET_PTR", .operands = 4 },
+    [OP_SETATTR] = { .opcode = "OP_SETATTR", .operands = 4 },
+    [OP_GETATTR] = { .opcode = "OP_GETATTR", .operands = 5 },
     [OP_STRUCT] = { .opcode = "OP_STRUCT", .operands = 4 },
     [OP_IP] = { .opcode = "OP_IP", .operands = 2 },
     [OP_INC_FPCOUNT] = { .opcode = "OP_INC_FPCOUNT", .operands = 0 },
+    [OP_RET] = { .opcode = "OP_RET", .operands = 0 },
     [OP_POP] = { .opcode = "OP_POP", .operands = 0 },
     [OP_DEREF] = { .opcode = "OP_DEREF", .operands = 0 },
 };
