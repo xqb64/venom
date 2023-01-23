@@ -1,0 +1,35 @@
+struct node {
+  next;
+  value;
+}
+
+fn list_print(list) {
+  let current = *list;
+  while (current != null) {
+    print current.value;
+    current = current.next;
+  }
+}
+
+fn list_insert(list, item) {
+  let new_node = node { next: null, value: item };
+  if (*list == null) {
+    *list = new_node;
+  } else {
+    let current = list;
+    while (current->next != null) {
+      current = &current->next;
+    }
+    current->next = new_node;
+  }
+}
+
+fn main() {
+  let list = null;
+  list_insert(&list, 3.14);
+  list_insert(&list, false);
+  list_insert(&list, "Hello, world!");
+  list_print(&list);
+}
+
+main();
