@@ -14,7 +14,6 @@ void init_vm(VM *vm) {
 }
 
 void free_vm(VM* vm) {
-    /* Free the globals table and its strings. */
     table_free(&vm->globals);
 }
 
@@ -28,7 +27,6 @@ static inline Object pop(VM *vm) {
 
 #define BINARY_OP(op, wrapper) \
 do { \
-    /* Operands are already on the stack. */ \
     Object b = pop(vm); \
     Object a = pop(vm); \
     Object obj = wrapper(TO_DOUBLE(a) op TO_DOUBLE(b)); \
@@ -38,13 +36,15 @@ do { \
 #define READ_UINT8() (*++(*ip))
 
 #define READ_INT16() \
-    /* ip points to one of the jump instructions and there \
-     * is a 2-byte operand (offset) that comes after the jump \
-     * instruction. We want to increment the ip so it points \
-     * to the last of the two operands, and construct a 16-bit \
-     * offset from the two bytes. Then ip is incremented in \
-     * the loop again so it points to the next instruction \
-     * (as opposed to pointing somewhere in the middle). */ \
+    /* ip points to one of the jump instructions and \
+     * there is a 2-byte operand (offset) that comes \
+     * after the opcode. The instruction pointer ne- \
+     * eds to be incremented to point to the last of \
+     * the two operands, and a 16-bit offset constr- \
+     * ucted from the two bytes. Then the instructi- \
+     * on pointer will be incremented in by the main \
+     * loop again and will point to the next instru- \
+     * ction that comes after the jump. */           \
     (*ip += 2, \
     (int16_t)(((*ip)[-1] << 8) | (*ip)[0]))
 
@@ -388,12 +388,13 @@ static inline int handle_op_deepget(VM *vm, BytecodeChunk *chunk, uint8_t **ip) 
 }
 
 static inline int handle_op_deepget_ptr(VM *vm, BytecodeChunk *chunk, uint8_t **ip) {
-    /* OP_DEEPGET_PTR reads a 4-byte index (1-based) of the obj-
-     * ect being accessed, which is then adjusted to be relative
-     * to the current frame pointer ('adjustment' takes care of
-     * the case where there are no frame pointers on the stack).
-     * Then it uses the adjusted index to get the object in that
-     * position and push its address on the stack. */
+    /* OP_DEEPGET_PTR reads a 4-byte index (1-based) of the
+     * object being accessed, which is adjusted to be rela-
+     * tive to the current frame pointer ('adjustment' tak-
+     * es care of the case where there are no frame pointe-
+     * rs on the stack). The adjusted index is used to acc-
+     * ess the object in that position and push its address
+     * on the stack. */
     uint32_t idx = READ_UINT32();
     int fp = vm->fp_stack[vm->fp_count-1];
     int adjustment = vm->fp_count == 0 ? -1 : 0;
@@ -417,10 +418,10 @@ static inline int handle_op_setattr(VM *vm, BytecodeChunk *chunk, uint8_t **ip) 
 
 static inline int handle_op_getattr(VM *vm, BytecodeChunk *chunk, uint8_t **ip) {
     /* OP_GETATTR reads a 4-byte index of the property name in
-     * the chunk's sp. Then, it pops the object off the stack,
-     * and looks up the property with that name in its proper-
-     * ties Table. If the property is found, it will be pushed
-     * on the stack. Otherwise, a runtime error is raised. */
+     * the sp. Then, it pops an object off the stack, and loo-
+     * ks up the property with that name in its properties Ta-
+     * ble. If the property is found, it will be pushed on the
+     * stack. Otherwise, a runtime error is raised. */
     uint32_t property_name_idx = READ_UINT32();
     Object obj = pop(vm);
     Object *property = table_get(TO_STRUCT(obj)->properties, chunk->sp.data[property_name_idx]);
@@ -461,9 +462,9 @@ static inline int handle_op_getattr_ptr(VM *vm, BytecodeChunk *chunk, uint8_t **
 
 static inline int handle_op_struct(VM *vm, BytecodeChunk *chunk, uint8_t **ip) {
     /* OP_STRUCT reads a 4-byte index of the struct name in the
-     * chunk's sp, builds a struct object with that name and with
-     * refcount set to 1 (while making sure to initialize the pr-
-     * operties table properly), and pushes it on the stack. */
+     * sp, constructs a struct object with that name and refco-
+     * unt set to 1 (while making sure to initialize the prope-
+     * rties table properly), and pushes it on the stack. */
     uint32_t structname = READ_UINT32();
 
     Struct s = {
@@ -521,8 +522,8 @@ static inline int handle_op_ret(VM *vm, BytecodeChunk *chunk, uint8_t **ip) {
 
 static inline int handle_op_pop(VM *vm, BytecodeChunk *chunk, uint8_t **ip) {
     /* OP_POP pops an object off the stack. Since the popped
-     * object might be refcounted, the reference count must
-     * be decremented. */
+     * object might be refcounted, its refcount must be dec-
+     * remented. */
     Object obj = pop(vm);
     OBJECT_DECREF(obj);
     return 0;
@@ -530,10 +531,9 @@ static inline int handle_op_pop(VM *vm, BytecodeChunk *chunk, uint8_t **ip) {
 
 static inline int handle_op_deref(VM *vm, BytecodeChunk *chunk, uint8_t **ip) {
     /* OP_DEREF pops an object off the stack, dereferences it
-     * and pushes the result back on the stack.
-     *
-     * Since the object will now be present in yet another
-     * location, the refcount must be incremented.*/
+     * and pushes it back on the stack. Since the object will
+     * be present in one more another location, its reference
+     * count must be incremented.*/
     Object ptr = pop(vm);
     push(vm, *ptr.as.ptr);
     OBJECT_INCREF(*ptr.as.ptr);
