@@ -423,17 +423,11 @@ static inline int handle_op_setattr(VM *vm, BytecodeChunk *chunk, uint8_t **ip) 
 }
 
 static inline int handle_op_getattr(VM *vm, BytecodeChunk *chunk, uint8_t **ip) {
-    /* OP_GETATTR reads a 1-byte number (effectively a boolean
-     * value) that determines whether to push a pointer to the
-     * property (or the property itself) on the stack. Besides
-     * this number, it also reads a 4-byte index of the prope-
-     * rty name in the chunk's sp. Then, it pops an object off
-     * the stack and uses it to look up the property under th-
-     * at name in the object's properties Table. If the prope-
-     * rty is found, depending on the previously read bool va-
-     * lue, it (or the pointer that points to it) is pushed on
-     * the stack. Otherwise, a runtime error is raised. */
-    bool ptr = !!READ_UINT8();
+    /* OP_GETATTR reads a 4-byte index of the property name in the
+     * chunk's sp. Then, it pops an object off the stack and looks
+     * up the property with that name in the object's properties
+     * Table. If the property is found, it is pushed on the stack.
+     * Otherwise, a runtime error is raised. */
     uint32_t property_name_idx = READ_UINT32();
     Object obj = pop(vm);
     Object *property = table_get(TO_STRUCT(obj)->properties, chunk->sp.data[property_name_idx]);
@@ -444,12 +438,30 @@ static inline int handle_op_getattr(VM *vm, BytecodeChunk *chunk, uint8_t **ip) 
             TO_STRUCT(obj)->name
         );
     }
-    if (ptr) {
-        push(vm, AS_PTR(property));
-    } else {
-        push(vm, *property);
-        OBJECT_INCREF(*property);
+    push(vm, *property);
+    OBJECT_INCREF(*property);
+    OBJECT_DECREF(obj);
+    return 0;
+}
+
+static inline int handle_op_getattr_ptr(VM *vm, BytecodeChunk *chunk, uint8_t **ip) {
+    /* OP_GETATTR_PTR reads a 4-byte index of the property name
+     * in the chunk's sp. Then, it pops an object off the stack
+     * and looks up the property with that name in the object's
+     * properties Table. If the property is found, a pointer to
+     * it is pushed on the stack. Otherwise, a runtime error is
+     * raised. */
+    uint32_t property_name_idx = READ_UINT32();
+    Object obj = pop(vm);
+    Object *property = table_get(TO_STRUCT(obj)->properties, chunk->sp.data[property_name_idx]);
+    if (property == NULL) {
+        RUNTIME_ERROR(
+            "Property '%s' is not defined on object '%s'",
+            chunk->sp.data[property_name_idx],
+            TO_STRUCT(obj)->name
+        );
     }
+    push(vm, AS_PTR(property));
     OBJECT_DECREF(obj);
     return 0;
 }
@@ -565,6 +577,7 @@ Handler dispatcher[] = {
     [OP_DEEPGET_PTR] = { .fn = handle_op_deepget_ptr, .opcode = "OP_DEEPGET_PTR" },
     [OP_SETATTR] = { .fn = handle_op_setattr, .opcode = "OP_SETATTR" },
     [OP_GETATTR] = { .fn = handle_op_getattr, .opcode = "OP_GETATTR" },
+    [OP_GETATTR_PTR] = { .fn = handle_op_getattr_ptr, .opcode = "OP_GETATTR_PTR" },
     [OP_STRUCT] = { .fn = handle_op_struct, .opcode = "OP_STRUCT" },
     [OP_IP] = { .fn = handle_op_ip, .opcode = "OP_IP" },
     [OP_INC_FPCOUNT] = { .fn = handle_op_inc_fpcount, .opcode = "OP_INC_FPCOUNT" },

@@ -36,6 +36,7 @@ typedef enum {
     OP_DEEPGET_PTR,
     OP_SETATTR,
     OP_GETATTR,
+    OP_GETATTR_PTR,
     OP_STRUCT,
     OP_IP,
     OP_INC_FPCOUNT,

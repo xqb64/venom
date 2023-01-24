@@ -92,6 +92,7 @@ void disassemble(BytecodeChunk *chunk) {
                         printf(" (value: %s)", chunk->sp.data[name_idx]);
                         break;
                     }
+                    case OP_GETATTR:
                     case OP_SETATTR: {
                         uint32_t property_name_idx = READ_UINT32();
                         printf(" (property: %s)", chunk->sp.data[property_name_idx]);
@@ -108,12 +109,6 @@ void disassemble(BytecodeChunk *chunk) {
             }
             case 5: {
                 switch (*ip) {
-                    case OP_GETATTR: {
-                        bool ptr = !!READ_UINT8();
-                        uint32_t property_name_idx = READ_UINT32();
-                        printf(" (property: %s, ptr: %s)", chunk->sp.data[property_name_idx], ptr ? "true" : "false");
-                        break;
-                    }
                     case OP_DEEPSET_DEREF: {
                         uint8_t deref_count = READ_UINT8();
                         uint32_t idx = READ_UINT32();
@@ -123,7 +118,7 @@ void disassemble(BytecodeChunk *chunk) {
                     case OP_SET_GLOBAL_DEREF: {
                         uint8_t deref_count = READ_UINT8();
                         uint32_t name_idx = READ_UINT32();
-                        printf(" (value: %d, deref_count: %d)", chunk->sp.data[name_idx], deref_count);
+                        printf(" (value: %s, deref_count: %d)", chunk->sp.data[name_idx], deref_count);
                         break;
                     }
                     default: break;

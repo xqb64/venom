@@ -304,9 +304,9 @@ static void handle_compile_expression_unary(Compiler *compiler, BytecodeChunk *c
                     emit_byte(chunk, OP_DEREF);
                 }
                 /* Add the 'property_name' string to the
-                 * chunk's sp, and emit OP_GETATTR. */
+                 * chunk's sp, and emit OP_GETATTR_PTR. */
                 uint32_t property_name_idx = add_string(chunk, getexp.property_name);
-                emit_bytes(chunk, 2, OP_GETATTR, 1);
+                emit_byte(chunk, OP_GETATTR_PTR);
                 emit_uint32(chunk, property_name_idx);
                 break;
             }
@@ -413,7 +413,7 @@ static void handle_compile_expression_get(Compiler *compiler, BytecodeChunk *chu
      * chunk's sp, and emit OP_GETATTR with
      * the index. */
     uint32_t property_name_idx = add_string(chunk, e.property_name);
-    emit_bytes(chunk, 2, OP_GETATTR, 0);
+    emit_byte(chunk, OP_GETATTR);
     emit_uint32(chunk, property_name_idx);
 }
 
