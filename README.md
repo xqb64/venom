@@ -47,7 +47,7 @@ struct node {
 
 fn list_print(list) {
   let current = list;
-  while (current != null) {
+  while (*current != null) {
     print current->value;
     current = &current->next;
   }
