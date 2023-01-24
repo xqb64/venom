@@ -235,9 +235,9 @@ static inline int handle_op_const(VM *vm, BytecodeChunk *chunk, uint8_t **ip) {
 }
 
 static inline int handle_op_str(VM *vm, BytecodeChunk *chunk, uint8_t **ip) {
-    /* OP_STR reads a 4-byte index of the string in the chunk's
-     * sp, constructs an object with that value and pushes it on
-     * the stack. */
+    /* OP_STR reads a 4-byte index of the string in the ch-
+     * unk's sp, constructs a string object with that value
+     * and pushes it on the stack. */
     uint32_t idx = READ_UINT32();
     Object obj = AS_STR(chunk->sp.data[idx]);
     push(vm, obj);
@@ -245,11 +245,10 @@ static inline int handle_op_str(VM *vm, BytecodeChunk *chunk, uint8_t **ip) {
 }
 
 static inline int handle_op_jz(VM *vm, BytecodeChunk *chunk, uint8_t **ip) {
-    /* OP_JZ reads a signed 2-byte offset, pops an object off
-     * the stack, and increments the instruction pointer by the
-     * offset if the popped value was falsey.
-     *
-     * NOTE: the offset could be negative. */
+    /* OP_JZ reads a signed 2-byte offset (that could be ne-
+     * gative), pops an object off the stack, and increments
+     * the instruction pointer by the offset, if and only if
+     * the popped object was 'false'. */
     int16_t offset = READ_INT16();
     Object obj = pop(vm);
     if (!TO_BOOL(obj)) {
@@ -259,13 +258,10 @@ static inline int handle_op_jz(VM *vm, BytecodeChunk *chunk, uint8_t **ip) {
 }
 
 static inline int handle_op_jmp(VM *vm, BytecodeChunk *chunk, uint8_t **ip) {
-    /* OP_JMP reads a signed 2-byte offset and increments
-     * the instruction pointer by that amount.
-     *
-     * Unlike OP_JZ which is a conditional
-     * jump, OP_JMP jumps unconditionally.
-     *
-     * NOTE: the offset could be negative. */
+    /* OP_JMP reads a signed 2-byte offset (that could be ne-
+     * gative), and increments the instruction pointer by the
+     * offset. Unlike OP_JZ, which is a conditional jump, the
+     * OP_JMP instruction takes the jump unconditionally. */
     int16_t offset = READ_INT16();
     *ip += offset;
     return 0;
@@ -282,12 +278,12 @@ static inline int handle_op_set_global(VM *vm, BytecodeChunk *chunk, uint8_t **i
 }
 
 static inline int handle_op_set_global_deref(VM *vm, BytecodeChunk *chunk, uint8_t **ip) {
-    /* OP_SET_GLOBAL_DEREF reads a 1-byte dereference count and a
-     * 4-byte index of the variable name in the chunk's sp. Then
-     * it gets the object with that name from the vm's globals tab-
-     * le and follows the returned pointer (dereferencing it on the
-     * way) 'deref_count' times, and finally setting its value to
-     * the previously popped object. */
+    /* OP_SET_GLOBAL_DEREF reads a 1-byte dereference count,
+     * and a 4-byte index of the variable name in the sp. It
+     * then gets the object with that name from the vm's gl-
+     * obals table and follows the returned pointer (derefe-
+     * rencing it on theway) 'deref_count' times, and final-
+     * ly setting its value to the previously popped object. */
     uint8_t deref_count = READ_UINT8();
     uint32_t name_idx = READ_UINT32();
     Object obj = pop(vm);
@@ -301,9 +297,9 @@ static inline int handle_op_set_global_deref(VM *vm, BytecodeChunk *chunk, uint8
 
 static inline int handle_op_get_global(VM *vm, BytecodeChunk *chunk, uint8_t **ip) {
     /* OP_GET_GLOBAL reads a 4-byte index of the variable name
-     * in the chunk's sp, looks up the object with that name in
-     * in the vm's globals table, and pushes it on the stack.
-     * Since the object will be present in yet another location,
+     * in the chunk's sp, looks up an object with that name in
+     * the vm's globals table, and pushes it on the stack. Si-
+     * nce the object will be present in yet another location,
      * the refcount must be incremented. */
     uint32_t name_idx = READ_UINT32();
     Object *obj = table_get(&vm->globals, chunk->sp.data[name_idx]);
@@ -314,9 +310,9 @@ static inline int handle_op_get_global(VM *vm, BytecodeChunk *chunk, uint8_t **i
 
 static inline int handle_op_get_global_ptr(VM *vm, BytecodeChunk *chunk, uint8_t **ip) {
     /* OP_GET_GLOBAL_PTR reads a 4-byte index of the variable
-     * name in the chunk's sp, looks up the object with that
-     * name in in the vm's globals table and pushes its address
-     * on the stack. */
+     * name in the chunk's sp, looks up the object under that
+     * name in in the vm's globals table, and pushes its add-
+     * ress on the stack. */
     uint32_t name_idx = READ_UINT32();
     Object *obj = table_get(&vm->globals, chunk->sp.data[name_idx]);
     push(vm, AS_PTR(obj));
@@ -408,9 +404,9 @@ static inline int handle_op_deepget_ptr(VM *vm, BytecodeChunk *chunk, uint8_t **
 static inline int handle_op_setattr(VM *vm, BytecodeChunk *chunk, uint8_t **ip) {
     /* OP_SETATTR reads a 4-byte index of the property name in
      * the chunk's sp, pops two objects off the stack (a value
-     * of the property, and the object being modified itself),
-     * and inserts the value into the object's properties Table.
-     * Then it pushes the modified object back on the stack. */
+     * of the property, and the object being modified) and in-
+     * serts the value into the object's properties Table. Th-
+     * en it pushes the modified object back on the stack. */
     uint32_t property_name_idx = READ_UINT32();
     Object value = pop(vm);
     Object structobj = pop(vm);
@@ -420,11 +416,11 @@ static inline int handle_op_setattr(VM *vm, BytecodeChunk *chunk, uint8_t **ip) 
 }
 
 static inline int handle_op_getattr(VM *vm, BytecodeChunk *chunk, uint8_t **ip) {
-    /* OP_GETATTR reads a 4-byte index of the property name in the
-     * chunk's sp. Then, it pops an object off the stack and looks
-     * up the property with that name in the object's properties
-     * Table. If the property is found, it is pushed on the stack.
-     * Otherwise, a runtime error is raised. */
+    /* OP_GETATTR reads a 4-byte index of the property name in
+     * the chunk's sp. Then, it pops the object off the stack,
+     * and looks up the property with that name in its proper-
+     * ties Table. If the property is found, it will be pushed
+     * on the stack. Otherwise, a runtime error is raised. */
     uint32_t property_name_idx = READ_UINT32();
     Object obj = pop(vm);
     Object *property = table_get(TO_STRUCT(obj)->properties, chunk->sp.data[property_name_idx]);
@@ -483,15 +479,16 @@ static inline int handle_op_struct(VM *vm, BytecodeChunk *chunk, uint8_t **ip) {
 }
 
 static inline int handle_op_ip(VM *vm, BytecodeChunk *chunk, uint8_t **ip) {
-    /* OP_IP reads a signed 2-byte offset from the bytecode,
-     * builds a pointer object that points to the instruction
-     * that comes after the function call dance, updates the
-     * frame pointer stack and pushes the pointer on the main
-     * vm stack.
+    /* OP_IP reads a signed 2-byte offset and constructs a by-
+     * tecode pointer object which points to the next instruc-
+     * tion that comes after the function call dance, and pus-
+     * hes it on the stack. Besides this, it updates the frame
+     * pointer stack.
      *
-     * NOTE: vm->fp_stack should be updated first before pushing
-     * the pointer on the stack, because OP_DEEPGET/OP_DEEPSET
-     * expect frame pointer indexing to be zero-based. */
+     * NOTE: vm->fp_stack should be updated first before push-
+     * ing the bytecode pointer on the stack, because the ins-
+     * tructions that base their indexing off of frame pointe-
+     * rs expect the indexes to be zero-based. */
     int16_t offset = READ_INT16();
     Object ip_obj = AS_BCPTR(*(ip)+offset);
     vm->fp_stack[vm->fp_count] = vm->tos;
@@ -500,17 +497,20 @@ static inline int handle_op_ip(VM *vm, BytecodeChunk *chunk, uint8_t **ip) {
 }
 
 static inline int handle_op_inc_fpcount(VM *vm, BytecodeChunk *chunk, uint8_t **ip) {
-    /* OP_INC_FPCOUNT increments vm->fp_count, effectively
-     * putting an end to the function call dance. */
+    /* OP_INC_FPCOUNT increments vm->fp_count, effectively co-
+     * mpleting the entire function call dance. */
     vm->fp_count++;
     return 0;
 }
 
 static inline int handle_op_ret(VM *vm, BytecodeChunk *chunk, uint8_t **ip) {
     /* OP_RET pops the return value and the return address off
-     * the stack, decrements vm->fp_count, pushes the return
-     * value back on the stack, and modifies the instruction
-     * pointer to point to the return address. */
+     * the stack (because the return address, which is what is
+     * actually needed, is located beneath the return value on
+     * the stack), and modifies the instruction pointer to po-
+     * int to the return address. Besides, it ends the functi-
+     * on call by decrementing vm->fp_count and making sure to
+     * put the return value back on the stack.   */
     Object returnvalue = pop(vm);
     Object returnaddr = pop(vm);
     --vm->fp_count;
