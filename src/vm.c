@@ -324,19 +324,16 @@ static inline int handle_op_get_global_ptr(VM *vm, BytecodeChunk *chunk, uint8_t
 }
 
 static inline int handle_op_deepset(VM *vm, BytecodeChunk *chunk, uint8_t **ip) {
-    /* OP_DEEPSET reads a 4-byte index (1-based) of the object
-     * being modified, pops an object off the stack, fetches
-     * the current frame pointer from the frame pointer stack,
-     * and setting index'th item after the frame pointer to the
-     * popped object.
+    /* OP_DEEPSET reads a 4-byte index (1-based) of the obj-
+     * ect being modified, which is then adjusted to be rel-
+     * ative to the current frame pointer ('adjustment' tak-
+     * es care of the case where there are no frame pointers
+     * on the stack). Then it uses the adjusted index to set
+     * the object in that position to the popped object.
      *
-     * However, since indexes are 1-based, the index needs to be
-     * adjusted by subtracting 1 if there are no frame pointers
-     * on the stack.
-     * 
-     * Since the object being set will be overwritten, its refcount
-     * must be decremented before placing the popped object into
-     * that position. */
+     * Considering that the object being set will be overwr-
+     * itten, its reference count must be decremented before
+     * putting the popped object into that position. */
     uint32_t idx = READ_UINT32();
     Object obj = pop(vm);
     int fp = vm->fp_stack[vm->fp_count-1];
