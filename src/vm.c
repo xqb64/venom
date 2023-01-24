@@ -262,8 +262,8 @@ static inline int handle_op_jmp(VM *vm, BytecodeChunk *chunk, uint8_t **ip) {
     /* OP_JMP reads a signed 2-byte offset and increments
      * the instruction pointer by that amount.
      *
-     * Unlike OP_JZ which is a conditional jump, OP_JMP
-     * jumps unconditionally.
+     * Unlike OP_JZ which is a conditional
+     * jump, OP_JMP jumps unconditionally.
      *
      * NOTE: the offset could be negative. */
     int16_t offset = READ_INT16();
