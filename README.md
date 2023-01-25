@@ -8,8 +8,7 @@ Fibonacci:
 
 ```rust
 fn fib(n) { 
-  if (n == 0) return 0;
-  if (n == 1) return 1;
+  if (n < 2) return n;
   return fib(n-1) + fib(n-2);
 }
 
@@ -20,23 +19,23 @@ print fib(40);
 
     ```
     ❯ time ./venom benchmarks/fib40.vnm
-    { 102334155.00 }
+    102334155.00
 
-    real	0m28,325s
-    user	0m28,242s
-    sys	0m0,008s
+    real	0m19,768s
+    user	0m19,761s
+    sys	0m0,004s
     ```
 
     ```
     ❯ time python3 fib.py
     102334155
 
-    real	0m28,893s
-    user	0m28,666s
-    sys	0m0,052s
+    real	0m24,585s
+    user	0m24,550s
+    sys	0m0,035s
     ```
 
-    ...which is as fast as Python! To be fair, Python could execute this code in a blink of an eye with `@functools.lru_cache()`.
+    ...which is faster than Python! To be fair, Python could execute this code in a blink of an eye with `@functools.lru_cache()`.
 
 Linked list:
 ```rust
