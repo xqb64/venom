@@ -329,7 +329,22 @@ static inline int handle_op_deepset(VM *vm, BytecodeChunk *chunk, uint8_t **ip) 
      *
      * Considering that the object being set will be overwr-
      * itten, its reference count must be decremented before
-     * putting the popped object into that position. */
+     * putting the popped object into that position.
+     * 
+     * For example, if there is a variable 'thing', which is
+     * a number object with value 2:
+     * 
+     *      [fp, 1, 2, 3, ..., 8]
+     * 
+     * ...and if the user sets it to, let's say, 8, by doing
+     * 
+     *      thing = 8;
+     * 
+     * ...the stack will look like below:
+     * 
+     *      [fp, 1, 8, 3, ...]
+     *
+     */ 
     uint32_t idx = READ_UINT32();
     Object obj = pop(vm);
     int fp = vm->fp_stack[vm->fp_count-1];
