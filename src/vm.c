@@ -352,7 +352,27 @@ static inline int handle_op_deepset_deref(VM *vm, BytecodeChunk *chunk, uint8_t 
      *
      * Considering that the object being set will be overwr-
      * itten, its reference count must be decremented before
-     * putting the popped object into that position. */
+     * putting the popped object into that position.
+     * 
+     * For example, if we have a variable named 'thing', wh-
+     * ich is a pointer to pointer to pointer to some varia-
+     * ble (e.g. a boolean, false):
+     * 
+     *      [ptr, ...]
+     *        ↓
+     *       ptr
+     *        ↓
+     *       ptr
+     *        ↓
+     *      false
+     * 
+     * ...and we do:
+     * 
+     *      ***thing = true;
+     * 
+     * ...it will follow the first ptr on the stack until it
+     * reaches the last ptr (the one that points to 'false')
+     * and change its value to 'true'. */
     uint8_t deref_count = READ_UINT8();
     uint32_t idx = READ_UINT32();
     Object obj = pop(vm);
