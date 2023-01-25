@@ -1,6 +1,5 @@
 import subprocess
 import pytest
-import textwrap
 from pathlib import Path
 
 from tests.util import VALGRIND_CMD

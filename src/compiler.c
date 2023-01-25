@@ -361,6 +361,14 @@ static void handle_compile_expression_call(Compiler *compiler, BytecodeChunk *ch
     /* Function is defined. */
     Function *func = TO_FUNC(*funcobj);
 
+    if (func->paramcount != e.arguments.count) {
+        COMPILER_ERROR(
+            "Function '%s' requires %ld arguments.",
+            e.var.name,
+            func->paramcount
+        );
+    }
+
     /* The function call dance goes like this:
      * - emit OP_IP with a placeholder that will need to be patched
      *   because the length of the bytecode that evalues the arguments
