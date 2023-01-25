@@ -354,11 +354,11 @@ static inline int handle_op_deepset_deref(VM *vm, BytecodeChunk *chunk, uint8_t 
      * itten, its reference count must be decremented before
      * putting the popped object into that position.
      * 
-     * For example, if we have a variable named 'thing', wh-
-     * ich is a pointer to pointer to pointer to some varia-
-     * ble (e.g. a boolean, false):
+     * For example, if there is a variable 'thing', which is
+     * a pointer to pointer to pointer to some variable (e.g.
+     * a boolean, false):
      * 
-     *      [ptr, ...]
+     *      [ptr, ..., true]
      *        ↓
      *       ptr
      *        ↓
@@ -366,13 +366,22 @@ static inline int handle_op_deepset_deref(VM *vm, BytecodeChunk *chunk, uint8_t 
      *        ↓
      *      false
      * 
-     * ...and we do:
+     * ...and the user does:
      * 
      *      ***thing = true;
      * 
      * ...it will follow the first ptr on the stack until it
      * reaches the last ptr (the one that points to 'false')
-     * and change its value to 'true'. */
+     * and change its value to 'true':
+     * 
+     *      [ptr, ...]
+     *        ↓
+     *       ptr
+     *        ↓
+     *       ptr
+     *        ↓
+     *      true
+     */
     uint8_t deref_count = READ_UINT8();
     uint32_t idx = READ_UINT32();
     Object obj = pop(vm);
@@ -397,7 +406,19 @@ static inline int handle_op_deepget(VM *vm, BytecodeChunk *chunk, uint8_t **ip) 
      *
      * Since the object being accessed will now be available
      * in yet another location, its refcount must be increm-
-     * ented. */
+     * ented.
+     * 
+     * For example, if there is a variable 'thing', which is
+     * a number object with value 2:
+     * 
+     *      [fp, 1, 2, 3, ...]
+     * 
+     * ...and if the user references 'thing' in an expressi-
+     * on, the stack will look like below:
+     * 
+     *      [fp, 1, 2, 3, ..., 2]
+     *
+     */   
     uint32_t idx = READ_UINT32();
     int fp = vm->fp_stack[vm->fp_count-1];
     int adjustment = vm->fp_count == 0 ? -1 : 0;
