@@ -343,7 +343,6 @@ static inline int handle_op_deepset(VM *vm, BytecodeChunk *chunk, uint8_t **ip) 
      * ...the stack will look like below:
      * 
      *      [fp, 1, 8, 3, ...]
-     *
      */ 
     uint32_t idx = READ_UINT32();
     Object obj = pop(vm);
@@ -387,16 +386,7 @@ static inline int handle_op_deepset_deref(VM *vm, BytecodeChunk *chunk, uint8_t 
      * 
      * ...it will follow the first ptr on the stack until it
      * reaches the last ptr (the one that points to 'false')
-     * and change its value to 'true':
-     * 
-     *      [ptr, ...]
-     *        ↓
-     *       ptr
-     *        ↓
-     *       ptr
-     *        ↓
-     *      true
-     */
+     * and change its value to 'true'. */
     uint8_t deref_count = READ_UINT8();
     uint32_t idx = READ_UINT32();
     Object obj = pop(vm);
@@ -432,7 +422,6 @@ static inline int handle_op_deepget(VM *vm, BytecodeChunk *chunk, uint8_t **ip) 
      * on, the stack will look like below:
      * 
      *      [fp, 1, 2, 3, ..., 2]
-     *
      */   
     uint32_t idx = READ_UINT32();
     int fp = vm->fp_stack[vm->fp_count-1];
@@ -499,8 +488,8 @@ static inline int handle_op_getattr_ptr(VM *vm, BytecodeChunk *chunk, uint8_t **
      * in the chunk's sp. Then, it pops an object off the stack
      * and looks up the property with that name in the object's
      * properties Table. If the property is found, a pointer to
-     * it is pushed on the stack. Otherwise, a runtime error is
-     * raised. */
+     * it is pushed on the stack (conveniently, table_get() re-
+     * turns a pointer). Otherwise, a runtime error is raised. */
     uint32_t property_name_idx = READ_UINT32();
     Object obj = pop(vm);
     Object *property = table_get(TO_STRUCT(obj)->properties, chunk->sp.data[property_name_idx]);
