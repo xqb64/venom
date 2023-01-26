@@ -131,6 +131,19 @@ static inline bool check_equality(Object *left, Object *right) {
     assert(0);
 }
 
+static inline uint32_t adjust_idx(VM *vm, uint32_t idx) {
+    int fp = vm->fp_stack[vm->fp_count-1];
+    int adjustment = vm->fp_count == 0 ? -1 : 0;
+    return fp+adjustment+idx;
+}
+
+static inline Object *follow_ptr(Object *target, uint8_t deref_count) {
+    for (int i = 0; i < deref_count; i++) {
+        target = target->as.ptr;
+    }
+    return target;
+}
+
 static inline int handle_op_print(VM *vm, BytecodeChunk *chunk, uint8_t **ip) {
     /* OP_PRINT pops an object off the stack and prints it.
      * Since the popped object might be refcounted, the re-
@@ -287,10 +300,7 @@ static inline int handle_op_set_global_deref(VM *vm, BytecodeChunk *chunk, uint8
     uint8_t deref_count = READ_UINT8();
     uint32_t name_idx = READ_UINT32();
     Object obj = pop(vm);
-    Object *target = table_get(&vm->globals, chunk->sp.data[name_idx]);
-    for (int i = 0; i < deref_count; i++) {
-        target = target->as.ptr;
-    }
+    Object *target = follow_ptr(table_get(&vm->globals, chunk->sp.data[name_idx]), deref_count);
     *target = obj;
     return 0;
 }
@@ -345,11 +355,10 @@ static inline int handle_op_deepset(VM *vm, BytecodeChunk *chunk, uint8_t **ip) 
      *      [fp, 1, 8, 3, ...]
      */ 
     uint32_t idx = READ_UINT32();
+    uint32_t adjusted_idx = adjust_idx(vm, idx);
     Object obj = pop(vm);
-    int fp = vm->fp_stack[vm->fp_count-1];
-    int adjustment = vm->fp_count == 0 ? -1 : 0;
-    OBJECT_DECREF(vm->stack[fp+idx+adjustment]);
-    vm->stack[fp+idx+adjustment] = obj;
+    OBJECT_DECREF(vm->stack[adjusted_idx]);
+    vm->stack[adjusted_idx] = obj;
     return 0;
 }
 
@@ -389,13 +398,9 @@ static inline int handle_op_deepset_deref(VM *vm, BytecodeChunk *chunk, uint8_t 
      * and change its value to 'true'. */
     uint8_t deref_count = READ_UINT8();
     uint32_t idx = READ_UINT32();
+    uint32_t adjusted_idx = adjust_idx(vm, idx);
     Object obj = pop(vm);
-    int fp = vm->fp_stack[vm->fp_count-1];
-    int adjustment = vm->fp_count == 0 ? -1 : 0;
-    Object *target = &vm->stack[fp+idx+adjustment];
-    for (int i = 0; i < deref_count; i++) {
-        target = target->as.ptr;
-    }
+    Object *target = follow_ptr(&vm->stack[adjusted_idx], deref_count);
     OBJECT_DECREF(*target);
     *target = obj;
     return 0;
@@ -424,9 +429,8 @@ static inline int handle_op_deepget(VM *vm, BytecodeChunk *chunk, uint8_t **ip) 
      *      [fp, 1, 2, 3, ..., 2]
      */   
     uint32_t idx = READ_UINT32();
-    int fp = vm->fp_stack[vm->fp_count-1];
-    int adjustment = vm->fp_count == 0 ? -1 : 0;
-    Object obj = vm->stack[fp+idx+adjustment];
+    uint32_t adjusted_idx = adjust_idx(vm, idx);
+    Object obj = vm->stack[adjusted_idx];
     push(vm, obj);
     OBJECT_INCREF(obj);
     return 0;
@@ -441,9 +445,8 @@ static inline int handle_op_deepget_ptr(VM *vm, BytecodeChunk *chunk, uint8_t **
      * ess the object in that position and push its address
      * on the stack. */
     uint32_t idx = READ_UINT32();
-    int fp = vm->fp_stack[vm->fp_count-1];
-    int adjustment = vm->fp_count == 0 ? -1 : 0;
-    push(vm, AS_PTR(&vm->stack[fp+adjustment+idx]));
+    uint32_t adjusted_idx = adjust_idx(vm, idx);
+    push(vm, AS_PTR(&vm->stack[adjusted_idx]));
     return 0;
 }
 
