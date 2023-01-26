@@ -132,12 +132,17 @@ static inline bool check_equality(Object *left, Object *right) {
 }
 
 static inline uint32_t adjust_idx(VM *vm, uint32_t idx) {
+    /* 'idx' is adjusted to be relative to the
+     * current frame pointer ('adjustment' ta-
+     * kes care of the case where there are no
+     * frame pointers on the stack). */
     int fp = vm->fp_stack[vm->fp_count-1];
     int adjustment = vm->fp_count == 0 ? -1 : 0;
     return fp+adjustment+idx;
 }
 
 static inline Object *follow_ptr(Object *target, uint8_t deref_count) {
+    /* 'target' is followed (and dereferenced) 'deref_count' times. */
     for (int i = 0; i < deref_count; i++) {
         target = target->as.ptr;
     }
@@ -331,10 +336,7 @@ static inline int handle_op_get_global_ptr(VM *vm, BytecodeChunk *chunk, uint8_t
 
 static inline int handle_op_deepset(VM *vm, BytecodeChunk *chunk, uint8_t **ip) {
     /* OP_DEEPSET reads a 4-byte index (1-based) of the obj-
-     * ect being modified, which is then adjusted to be rel-
-     * ative to the current frame pointer ('adjustment' tak-
-     * es care of the case where there are no frame pointers
-     * on the stack). Then it uses the adjusted index to set
+     * ect being modified, which is adjusted and used to set
      * the object in that position to the popped object.
      *
      * Considering that the object being set will be overwr-
@@ -365,13 +367,9 @@ static inline int handle_op_deepset(VM *vm, BytecodeChunk *chunk, uint8_t **ip) 
 static inline int handle_op_deepset_deref(VM *vm, BytecodeChunk *chunk, uint8_t **ip) {
     /* OP_DEEPSET_DEREF reads a 1-byte dereference count and
      * a 4-byte index (1-based) of the object being modified
-     * (which must be a pointer). To access the pointer, the
-     * 4-byte index is adjusted to be relative to the curre-
-     * nt frame pointer ('adjustment' takes care of the case
-     * where there are no frame pointers on the stack). Then
-     * the pointer is followed (and dereferenced on the way)
-     * 'deref_count' times and its value set to the previou-
-     * sly popped object.
+     * (which must be a pointer). The adjusted index is used
+     * to follow the pointer in that position, and set it to
+     * the previously popped object.
      *
      * Considering that the object being set will be overwr-
      * itten, its reference count must be decremented before
@@ -408,10 +406,7 @@ static inline int handle_op_deepset_deref(VM *vm, BytecodeChunk *chunk, uint8_t 
 
 static inline int handle_op_deepget(VM *vm, BytecodeChunk *chunk, uint8_t **ip) {
     /* OP_DEEPGET reads a 4-byte index (1-based) of the obj-
-     * ect being accessed, which is then adjusted to be rel-
-     * ative to the current frame pointer ('adjustment' tak-
-     * es care of the case where there are no frame pointers
-     * on the stack). Then it uses the adjusted index to get
+     * ect being accessed, which is adjusted and used to get
      * the object in that position and push it on the stack.
      *
      * Since the object being accessed will now be available
@@ -438,12 +433,9 @@ static inline int handle_op_deepget(VM *vm, BytecodeChunk *chunk, uint8_t **ip) 
 
 static inline int handle_op_deepget_ptr(VM *vm, BytecodeChunk *chunk, uint8_t **ip) {
     /* OP_DEEPGET_PTR reads a 4-byte index (1-based) of the
-     * object being accessed, which is adjusted to be rela-
-     * tive to the current frame pointer ('adjustment' tak-
-     * es care of the case where there are no frame pointe-
-     * rs on the stack). The adjusted index is used to acc-
-     * ess the object in that position and push its address
-     * on the stack. */
+     * object being accessed, which is adjusted and used to
+     * access the object in that position and push its add-
+     * ress on the stack. */
     uint32_t idx = READ_UINT32();
     uint32_t adjusted_idx = adjust_idx(vm, idx);
     push(vm, AS_PTR(&vm->stack[adjusted_idx]));
