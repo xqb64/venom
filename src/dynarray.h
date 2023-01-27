@@ -22,6 +22,7 @@ do { \
 } while (0)
 
 #define dynarray_pop(array) ((array)->data[--(array)->count])
+#define dynarray_peek(array) ((array)->data[(array)->count-1])
 
 typedef DynArray(char *) DynArray_char_ptr;
 typedef DynArray(int) DynArray_int;

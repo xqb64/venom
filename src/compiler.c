@@ -782,7 +782,6 @@ static void handle_compile_statement_while(Compiler *compiler, BytecodeChunk *ch
 
     int loop_start = chunk->code.count;
     dynarray_insert(&compiler->continues, loop_start);
-    size_t loop_start_count = compiler->continues.count;
 
     /* We then compile the conditional expression because the VM
     .* expects something like OP_EQ to have already been executed
@@ -810,10 +809,7 @@ static void handle_compile_statement_while(Compiler *compiler, BytecodeChunk *ch
         patch_placeholder(chunk, break_jump);
     }
 
-    /* If a 'continue' wasn't popped off the backjmp stack, pop it. */
-    if (compiler->continues.count == loop_start_count) {
-        dynarray_pop(&compiler->continues);
-    }
+    dynarray_pop(&compiler->continues);
 
     /* Finally, we patch the jump. */
     patch_placeholder(chunk, exit_jump);
@@ -906,15 +902,26 @@ static void handle_compile_statement_return(Compiler *compiler, BytecodeChunk *c
 }
 
 static void handle_compile_statement_break(Compiler *compiler, BytecodeChunk *chunk, Statement stmt) {
-    emit_stack_cleanup(compiler, chunk);
-    int break_jump = emit_placeholder(chunk, OP_JMP);
-    dynarray_insert(&compiler->breaks, break_jump);
+    /* (Ab)use 'compiler->continues' to check if there
+     * is any loop_start inserted. If there is, it me-
+     * ans that we are in the loop. */
+    if (compiler->continues.count > 0) {
+        emit_stack_cleanup(compiler, chunk);
+        int break_jump = emit_placeholder(chunk, OP_JMP);
+        dynarray_insert(&compiler->breaks, break_jump);
+    } else {
+        COMPILER_ERROR("'break' outside of loop.");
+    }
 }
 
 static void handle_compile_statement_continue(Compiler *compiler, BytecodeChunk *chunk, Statement stmt) {
-    int loop_start = dynarray_pop(&compiler->continues);
-    emit_stack_cleanup(compiler, chunk);
-    emit_loop(chunk, loop_start);
+    if (compiler->continues.count > 0) {
+        int loop_start = dynarray_peek(&compiler->continues);
+        emit_stack_cleanup(compiler, chunk);
+        emit_loop(chunk, loop_start);
+    } else {
+        COMPILER_ERROR("'continue' outside of loop.");
+    }
 }
 
 typedef void (*CompileHandlerFn)(Compiler *compiler, BytecodeChunk *chunk, Statement stmt);
