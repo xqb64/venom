@@ -782,6 +782,7 @@ static void handle_compile_statement_while(Compiler *compiler, BytecodeChunk *ch
 
     int loop_start = chunk->code.count;
     dynarray_insert(&compiler->continues, loop_start);
+    size_t breakcount = compiler->breaks.count;
 
     /* We then compile the conditional expression because the VM
     .* expects something like OP_EQ to have already been executed
@@ -804,7 +805,8 @@ static void handle_compile_statement_while(Compiler *compiler, BytecodeChunk *ch
     /* Then, we emit OP_JMP with a negative offset. */
     emit_loop(chunk, loop_start);
 
-    if (compiler->breaks.count > 0) {
+    int to_pop = compiler->breaks.count - breakcount;
+    for (int i = 0; i < to_pop; i++) {
         int break_jump = dynarray_pop(&compiler->breaks);
         patch_placeholder(chunk, break_jump);
     }
