@@ -1,3 +1,4 @@
+#include <assert.h>
 #include <stdarg.h>
 #include <stdio.h>
 #include <string.h>
@@ -815,6 +816,11 @@ static void handle_compile_statement_while(Compiler *compiler, BytecodeChunk *ch
 
     /* Finally, we patch the jump. */
     patch_placeholder(chunk, exit_jump);
+
+    if (compiler->depth == 0) {
+        assert(compiler->breaks.count == 0);
+        assert(compiler->continues.count == 0);
+    }
 }
 
 static void handle_compile_statement_fn(Compiler *compiler, BytecodeChunk *chunk, Statement stmt) {
@@ -853,6 +859,9 @@ static void handle_compile_statement_fn(Compiler *compiler, BytecodeChunk *chunk
 
     /* Finally, patch the jump. */
     patch_placeholder(chunk, jump);
+
+    assert(compiler->breaks.count == 0);
+    assert(compiler->continues.count == 0);
 }
 
 static void handle_compile_statement_struct(Compiler *compiler, BytecodeChunk *chunk, Statement stmt) {

@@ -1,6 +1,8 @@
 #ifndef venom_dynarray_h
 #define venom_dynarray_h
 
+#include <assert.h>
+
 #define DynArray(T) struct { \
     T *data; \
     size_t count; \
@@ -21,7 +23,9 @@ do { \
     free((array)->data); \
 } while (0)
 
-#define dynarray_pop(array) ((array)->data[--(array)->count])
+#define dynarray_pop(array) \
+    (assert((array)->count > 0), (array)->data[--(array)->count])
+
 #define dynarray_peek(array) ((array)->data[(array)->count-1])
 
 typedef DynArray(char *) DynArray_char_ptr;
