@@ -862,6 +862,8 @@ static void handle_compile_statement_fn(Compiler *compiler, BytecodeChunk *chunk
 
     assert(compiler->breaks.count == 0);
     assert(compiler->continues.count == 0);
+    assert(compiler->locals.count == 0);
+    assert(compiler->pops[1] == 0);
 }
 
 static void handle_compile_statement_struct(Compiler *compiler, BytecodeChunk *chunk, Statement stmt) {
