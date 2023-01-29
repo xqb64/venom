@@ -38,6 +38,18 @@ void free_chunk(BytecodeChunk *chunk) {
     dynarray_free(&chunk->cp);
 }
 
+static void begin_scope(Compiler *compiler) {
+    compiler->depth++;
+}
+
+static void end_scope(Compiler *compiler) {
+    for (int i = 0; i < compiler->pops[compiler->depth]; i++) {
+        dynarray_pop(&compiler->locals);
+    }
+    compiler->pops[compiler->depth] = 0;
+    compiler->depth--;
+}
+
 static uint32_t add_string(BytecodeChunk *chunk, const char *string) {
     /* Check if the string is already present in the pool. */
     for (size_t idx = 0; idx < chunk->sp.count; idx++) {
@@ -714,18 +726,6 @@ static void handle_compile_statement_expr(Compiler *compiler, BytecodeChunk *chu
     if (e.exp.kind == EXP_CALL) {
         emit_byte(chunk, OP_POP);
     }
-}
-
-static void begin_scope(Compiler *compiler) {
-    compiler->depth++;
-}
-
-static void end_scope(Compiler *compiler) {
-    for (int i = 0; i < compiler->pops[compiler->depth]; i++) {
-        dynarray_pop(&compiler->locals);
-    }
-    compiler->pops[compiler->depth] = 0;
-    compiler->depth--;
 }
 
 static void handle_compile_statement_block(Compiler *compiler, BytecodeChunk *chunk, Statement stmt) {
