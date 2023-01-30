@@ -125,9 +125,10 @@ static int emit_placeholder(BytecodeChunk *chunk, Opcode op) {
 }
 
 static void patch_placeholder(BytecodeChunk *chunk, int op) {
-    /* We are given the 0-based index of the opcode, and we want
-     * to patch the offset that follows with the number of emitted
-     * instructions after the opcode and the placeholder.
+    /* This function takes a zero-based index of the opcode,
+     * 'op', and patches the following offset with the numb-
+     * er of emitted instructions that come after the opcode
+     * and the placeholder.
      *
      * For example, if we have:
      *
@@ -139,14 +140,14 @@ static void patch_placeholder(BytecodeChunk *chunk, int op) {
      *  OP_PRINT]
      *             ^-- `chunk->code.count`
      *
-     * `op` will be 5. To get the number of emitted instructions,
-     * we first adjust for zero-based indexing by subtracting 1
-     * (such that count points to the last element. Then we take
-     * the index of the opcode (OP_JZ, i.e., 5 in this case) and add
-     * 2 because we need to adjust for the operands. The result of
-     * the subtraction of these two is the number of emitted bytes
-     * we need, and we use it to build a signed 16-bit offset to
-     * patch the placeholder. */
+     * 'op' will be 5. To get the number of emitted instruc-
+     * tions, the count is adjusted by subtracting 1 (so th-
+     * at it points to the last element). Then, two is added
+     * to the index to account for the two-byte operand that
+     * comes after the opcode. The result of the subtraction
+     * of these two is the number of emitted bytes, which is
+     * used to build a signed 16-bit offset to patch the pl-
+     * aceholder. */
     int16_t bytes_emitted = (chunk->code.count - 1) - (op + 2);
     chunk->code.data[op+1] = (bytes_emitted >> 8) & 0xFF;
     chunk->code.data[op+2] = bytes_emitted & 0xFF;
