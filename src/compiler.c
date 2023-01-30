@@ -14,7 +14,6 @@ do { \
 } while (0)
 
 void init_compiler(Compiler *compiler) {
-    /* Zero-initialize the compiler. */
     memset(compiler, 0, sizeof(Compiler));
 }
 
