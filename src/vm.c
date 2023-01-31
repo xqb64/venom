@@ -221,7 +221,7 @@ static inline int handle_op_not(VM *vm, BytecodeChunk *chunk, uint8_t **ip) {
 }
 
 static inline int handle_op_neg(VM *vm, BytecodeChunk *chunk, uint8_t **ip) {
-    /* OP_NEGATE pops an object off the stack, negates
+    /* OP_NEG pops an object off the stack, negates
      * it and pushes the negative back on the stack. */
     Object original = pop(vm);
     Object negated = AS_DOUBLE(-TO_DOUBLE(original));
