@@ -214,7 +214,8 @@ static inline int handle_op_lt(VM *vm, BytecodeChunk *chunk, uint8_t **ip) {
 
 static inline int handle_op_not(VM *vm, BytecodeChunk *chunk, uint8_t **ip) {
     /* OP_NOT pops an object off the stack and pushes
-     * its inverse back on the stack. */
+     * its inverse back on the stack. The popped obj-
+     * ect must be a boolean.  */
     Object obj = pop(vm);
     push(vm, AS_BOOL(TO_BOOL(obj) ^ 1));
     return 0;
