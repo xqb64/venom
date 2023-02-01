@@ -108,11 +108,10 @@ static inline bool check_equality(Object *left, Object *right) {
             return false;
         }
 
-        /* If they are the same type, iterate over the
-         * 'properties' Table in struct 'a', and for each
-         * property that is not NULL, run the func recursively
-         * comparing that property with the corresponding
-         * property in struct 'b'. */
+        /* If they have the same type, for each non-NULL
+         * property in struct 'a', run the func recursi-
+         * vely comparing that property with the corres-
+         * ponding property in struct 'b'. */
         for (size_t i = 0; i < TABLE_MAX; i++) {
             if (a->properties->data[i] == NULL) continue;
             char *key = a->properties->data[i]->key;
@@ -123,9 +122,8 @@ static inline bool check_equality(Object *left, Object *right) {
                 return false;
             }
         }
-        /* We haven't returned false while iterating over
-         * the table, which means the properties are equal,
-         * and so are the two structs. */
+        /* Comparing the properties didn't return false,
+         * which means that the two structs are equal. */
         return true;
     }
     assert(0);
