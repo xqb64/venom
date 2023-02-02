@@ -916,8 +916,8 @@ static void handle_compile_statement_return(Compiler *compiler, BytecodeChunk *c
 
 static void handle_compile_statement_break(Compiler *compiler, BytecodeChunk *chunk, Statement stmt) {
     /* (Ab)use 'compiler->loop_starts' to check if there
-     * is any loop_start inserted. If there is, it me-
-     * ans that we are in the loop. */
+     * is any loop_start inserted. If there is, it means
+     * that we are in the loop. */
     if (compiler->loop_starts.count > 0) {
         emit_stack_cleanup(compiler, chunk);
         int break_jump = emit_placeholder(chunk, OP_JMP);
