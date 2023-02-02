@@ -21,7 +21,7 @@ void free_compiler(Compiler *compiler) {
     dynarray_free(&compiler->globals);
     dynarray_free(&compiler->locals);
     dynarray_free(&compiler->breaks);
-    dynarray_free(&compiler->continues);
+    dynarray_free(&compiler->loop_starts);
     table_free(&compiler->structs);
     table_free(&compiler->functions);
 }
@@ -782,7 +782,7 @@ static void handle_compile_statement_while(Compiler *compiler, BytecodeChunk *ch
     WhileStatement s = TO_STMT_WHILE(stmt);
 
     int loop_start = chunk->code.count;
-    dynarray_insert(&compiler->continues, loop_start);
+    dynarray_insert(&compiler->loop_starts, loop_start);
     size_t breakcount = compiler->breaks.count;
 
     /* We then compile the conditional expression because the VM
@@ -812,14 +812,14 @@ static void handle_compile_statement_while(Compiler *compiler, BytecodeChunk *ch
         patch_placeholder(chunk, break_jump);
     }
 
-    dynarray_pop(&compiler->continues);
+    dynarray_pop(&compiler->loop_starts);
 
     /* Finally, we patch the jump. */
     patch_placeholder(chunk, exit_jump);
 
     if (compiler->depth == 0) {
         assert(compiler->breaks.count == 0);
-        assert(compiler->continues.count == 0);
+        assert(compiler->loop_starts.count == 0);
     }
 }
 
@@ -861,7 +861,7 @@ static void handle_compile_statement_fn(Compiler *compiler, BytecodeChunk *chunk
     patch_placeholder(chunk, jump);
 
     assert(compiler->breaks.count == 0);
-    assert(compiler->continues.count == 0);
+    assert(compiler->loop_starts.count == 0);
     assert(compiler->locals.count == 0);
     assert(compiler->pops[1] == 0);
 }
@@ -915,10 +915,10 @@ static void handle_compile_statement_return(Compiler *compiler, BytecodeChunk *c
 }
 
 static void handle_compile_statement_break(Compiler *compiler, BytecodeChunk *chunk, Statement stmt) {
-    /* (Ab)use 'compiler->continues' to check if there
+    /* (Ab)use 'compiler->loop_starts' to check if there
      * is any loop_start inserted. If there is, it me-
      * ans that we are in the loop. */
-    if (compiler->continues.count > 0) {
+    if (compiler->loop_starts.count > 0) {
         emit_stack_cleanup(compiler, chunk);
         int break_jump = emit_placeholder(chunk, OP_JMP);
         dynarray_insert(&compiler->breaks, break_jump);
@@ -928,8 +928,8 @@ static void handle_compile_statement_break(Compiler *compiler, BytecodeChunk *ch
 }
 
 static void handle_compile_statement_continue(Compiler *compiler, BytecodeChunk *chunk, Statement stmt) {
-    if (compiler->continues.count > 0) {
-        int loop_start = dynarray_peek(&compiler->continues);
+    if (compiler->loop_starts.count > 0) {
+        int loop_start = dynarray_peek(&compiler->loop_starts);
         emit_stack_cleanup(compiler, chunk);
         emit_loop(chunk, loop_start);
     } else {

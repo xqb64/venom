@@ -60,7 +60,7 @@ typedef struct Compiler {
     DynArray_char_ptr globals;
     DynArray_char_ptr locals;
     DynArray_int breaks;
-    DynArray_int continues;
+    DynArray_int loop_starts;
     int depth;
     int pops[POPS_MAX];
 } Compiler;
