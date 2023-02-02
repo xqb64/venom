@@ -124,8 +124,6 @@ def test_equality(tmp_path, a, b):
     input_file = tmp_path / "input.vnm"
     input_file.write_text(current_source % (a, b))
 
-    print(input_file.read_text())
-
     process = subprocess.run(
         VALGRIND_CMD + [input_file],
         capture_output=True,
