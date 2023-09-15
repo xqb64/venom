@@ -101,7 +101,7 @@ void table_free(const Table *table) {
     }
 }
 
-void table_print(Table *table) {
+void table_print(const Table *table) {
     for (size_t i = 0; i < TABLE_MAX; i++) {
         if (table->data[i] != NULL) {
             printf(" %s: ", table->data[i]->key);
