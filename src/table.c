@@ -76,7 +76,7 @@ static uint32_t hash(const char *key, int length) {
 
 void table_insert(Table *table, const char *key, Object obj) {
     char *k = own_string(key);
-    int idx = hash(k, strlen(k)) % 1024;
+    int idx = hash(k, strlen(k)) % TABLE_MAX;
     if (list_find(table->data[idx], k) == NULL) {
         list_insert(&table->data[idx], k, obj);
     } else {
@@ -93,7 +93,7 @@ void table_insert(Table *table, const char *key, Object obj) {
 }
 
 Object *table_get(const Table *table, const char *key) {
-    int idx = hash(key, strlen(key)) % 1024;
+    int idx = hash(key, strlen(key)) % TABLE_MAX;
     return list_find(table->data[idx], key);
 }
 
