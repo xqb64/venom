@@ -55,3 +55,20 @@ graph.gv: callgrind.out
 
 graph.png: graph.gv
 	dot -Tpng $< -o $@
+
+
+ifndef VIRTUAL_ENV
+HAS_VENV := no
+else
+HAS_VENV := yes
+endif
+
+.PHONY: test
+
+test:
+	@if [ "$(HAS_VENV)" = "yes" ]; then \
+		python -m pytest -n$$(nproc); \
+	else \
+		echo "Error: Virtual environment is not active. Activate it using 'source <your_env>/bin/activate' and then run 'make test'"; \
+		exit 1; \
+	fi
