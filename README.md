@@ -104,6 +104,10 @@ make graph.png
 
 ## Tests
 
+The tests are written in Python and venom's behavior is tested externally.
+
+To run the tests, run the command below, but make sure you have `pytest-xdist` installed because it's a time-consuming process.
+
 ```
 make test
 ```
