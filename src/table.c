@@ -94,7 +94,7 @@ Object *table_get(const Table *table, const char *key) {
 }
 
 void table_free(const Table *table) {
-    for (size_t i = 0; i < sizeof(table->data) / sizeof(table->data[0]); i++) {
+    for (size_t i = 0; i < TABLE_MAX; i++) {
         if (table->data[i] != NULL) {
             list_free(table->data[i]);
         }
@@ -102,7 +102,7 @@ void table_free(const Table *table) {
 }
 
 void table_print(Table *table) {
-    for (size_t i = 0; i < sizeof(table->data) / sizeof(table->data[0]); i++) {
+    for (size_t i = 0; i < TABLE_MAX; i++) {
         if (table->data[i] != NULL) {
             printf(" %s: ", table->data[i]->key);
             PRINT_OBJECT(table->data[i]->obj);
