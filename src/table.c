@@ -33,21 +33,25 @@ static void list_free(Bucket *head) {
     while (head != NULL) {
         tmp = head;
         head = head->next;
-        free(tmp->key);
+
         if (IS_STRUCT(tmp->obj)) {
             OBJECT_DECREF(tmp->obj);
         } else if (IS_STRUCT_BLUEPRINT(tmp->obj)) {
             StructBlueprint *blueprint = TO_STRUCT_BLUEPRINT(tmp->obj);
             free(blueprint->name);
+
             for (size_t i = 0; i < blueprint->properties.count; i++) {
                 free(blueprint->properties.data[i]);
             }
+
             dynarray_free(&blueprint->properties);
             free(blueprint);
         } else if (IS_FUNC(tmp->obj)) {
             Function *funcobj = TO_FUNC(tmp->obj);
             free(funcobj);
         }
+
+        free(tmp->key);
         free(tmp);
     }
 }
