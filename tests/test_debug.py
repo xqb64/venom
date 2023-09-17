@@ -135,16 +135,7 @@ RESULTS = {
     "strcat.vnm": {
         'debug_prints': [
             "dbg print :: Hello, world!12345",
-            "dbg print :: Hello, world!12345",
-            "dbg print :: Hello, world!12345",
-            "dbg print :: Hello, world!12345",
-            "dbg print :: Hello, world!12345",
-            "dbg print :: Hello, world!12345",
-            "dbg print :: Hello, world!12345",
-            "dbg print :: Hello, world!12345",
-            "dbg print :: Hello, world!12345",
-            "dbg print :: Hello, world!12345",
-        ],
+        ] * 10,
         'ends_with': 'stack: []',
         'return_code': 0,
     },
