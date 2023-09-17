@@ -108,6 +108,11 @@ The tests are written in Python and venom's behavior is tested externally.
 
 The test suite relies on venom being compiled with `debug=vm` (because of the prefix in debug prints). To run the tests, execute the command below, but make sure you have `pytest-xdist` installed because it's a time-consuming process.
 
+# Design notes
+
+- The design of the entire system is the balance between performance and RISC-alikeness. For example, when string concatenation was introduced into the language, I decided to reuse the current `OP_ADD` opcode (as opposed to a separate opcode for string concatenation, e.g. `OP_STRCAT`) at the expense of performance and slightly more complexity in the virtual machine, so that the instruction count remains as low as possible.
+- Structures and strings can get arbitrarily large and we do not know their size ahead of time, which required implementing them both underneath as pointers whose size is known. This introduced the whole memory management issue. There were two pathways from here since these pointers need to be freed: either let the venom users explicitly free() their instances, or introduce automatic memory management. I opted for automatic memory management via refcounting because, frankly, I thought I'd have a lot of fun implementing refcounting, but I have to admit that chasing down INCREF/DECREF bugs led to me letting fly a great deal of profanity. ;-)
+
 ```
 make test
 ```
