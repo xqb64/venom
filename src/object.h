@@ -45,6 +45,21 @@ typedef struct Object {
         struct Object *ptr;
         Function *func;
         uint8_t *bcptr;
+
+        /* Structs can get arbitrarily large, so we need
+         * a pointer, at which point (no pun intended) it
+         * grows into a memory management issue because the
+         * venom users would need to worry about free()-ing
+         * their instances manually.
+         *
+         * In short, we need refcounting or some other form
+         * of garbage collection. We choose refcounting because
+         * it's simple.
+         *
+         * It corresponds to having a variable on the stack.
+         * e.g. if one of the instructions takes a variable
+         * from somewhere and pushes it on the stack, now we
+         * have it at two places, and we need to INCREF. */
         Struct *struct_;
         StructBlueprint *struct_blueprint;
 
