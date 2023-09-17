@@ -14,7 +14,7 @@ typedef enum {
     OBJ_STRING,
     OBJ_STRUCT,
     OBJ_PTR,
-    OBJ_BCPTR,
+    OBJ_BCPTR, /* bytecode pointer */
     OBJ_FUNCTION,
     OBJ_STRUCT_BLUEPRINT,
 } __attribute__ ((__packed__)) ObjectType;
@@ -36,10 +36,15 @@ typedef struct {
     DynArray_char_ptr properties;
 } StructBlueprint;
 
+typedef struct {
+    int refcount;
+    char *value;
+} String;
+
 typedef struct Object {
     ObjectType type;
     union {
-        char *str;
+        String *str;
         double dval;
         bool bval;
         struct Object *ptr;
@@ -63,17 +68,14 @@ typedef struct Object {
         Struct *struct_;
         StructBlueprint *struct_blueprint;
 
-        /* Since we will ultimately have two refcounted
-         * objects when string concatenation gets impl-
-         * emented (Struct and String), we are going to
-         * need a handy way to access their refcounts.
+        /* Since we have two refcounted objects (Struct and String),
+         * we need a handy way to access their refcounts.
          *
-         * For example, when one of these two refcounted
-         * objects (a Struct or a String) is at some address,
-         * we will (ab)use the fact that the first member of
-         * those (int refcount;) will also be lying at the
-         * same address, and choose to interpret the object
-         * at that address as an int pointer, effectively
+         * For example, when one of these two types of refcounted
+         * objects is at some address, we will (ab)use the fact that
+         * the first member of those (int refcount;) will also be
+         * lying at the same address, and choose to interpret the
+         * object at that address as an int pointer, effectively
          * accessing their refcounts. */
         int *refcount;
     } as;
@@ -96,18 +98,22 @@ do { \
         free((object).as.struct_->properties); \
         free((object).as.struct_); \
     } \
+    if (IS_STRING((object))) { \
+        free((object).as.str->value); \
+        free((object).as.str); \
+    } \
 } while(0)
 
 #define OBJECT_INCREF(object) \
 do { \
-    if (IS_STRUCT((object))) { \
+    if (IS_STRUCT((object)) || IS_STRING((object))) { \
         ++*(object).as.refcount; \
     } \
 } while (0)
 
 #define OBJECT_DECREF(object) \
 do { \
-    if (IS_STRUCT((object))) { \
+    if (IS_STRUCT((object)) || IS_STRING((object))) { \
         if (--*(object).as.refcount == 0) { \
             DEALLOC_OBJ((object)); \
         } \
@@ -146,7 +152,7 @@ do { \
     } else if IS_NULL(object) { \
         printf("null"); \
     } else if IS_STRING(object) { \
-        printf("%s", TO_STR(object)); \
+        printf("%s", TO_STR(object)->value); \
     } else if (IS_STRUCT(object)) { \
         printf("{ "); \
         printf("%s", TO_STRUCT(object)->name); \
@@ -156,5 +162,17 @@ do { \
         printf(" }"); \
     } \
 } while (0)
+
+#define GET_OBJTYPE(type) \
+    ((type) == OBJ_BOOLEAN ? "boolean" : \
+     (type) == OBJ_NUMBER ? "number" : \
+     (type) == OBJ_PTR ? "pointer" : \
+     (type) == OBJ_BCPTR ? "bytecode pointer" : \
+     (type) == OBJ_NULL ? "null" : \
+     (type) == OBJ_FUNCTION ? "function" : \
+     (type) == OBJ_STRING ? "string" : \
+     (type) == OBJ_STRUCT ? "struct" : \
+     (type) == OBJ_STRUCT_BLUEPRINT ? "struct blueprint" : \
+     "unknown")
 
 #endif

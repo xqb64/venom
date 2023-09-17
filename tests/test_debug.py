@@ -132,6 +132,22 @@ RESULTS = {
         'ends_with': 'stack: []',
         'return_code': 0,        
     },
+    "strcat.vnm": {
+        'debug_prints': [
+            "dbg print :: Hello, world!12345",
+            "dbg print :: Hello, world!12345",
+            "dbg print :: Hello, world!12345",
+            "dbg print :: Hello, world!12345",
+            "dbg print :: Hello, world!12345",
+            "dbg print :: Hello, world!12345",
+            "dbg print :: Hello, world!12345",
+            "dbg print :: Hello, world!12345",
+            "dbg print :: Hello, world!12345",
+            "dbg print :: Hello, world!12345",
+        ],
+        'ends_with': 'stack: []',
+        'return_code': 0,
+    },
     "try_this.vnm": {
         'debug_prints': [],
         'ends_with': "Compiler error: Variable 'x' is not defined.",

@@ -95,7 +95,7 @@ static inline bool check_equality(Object *left, Object *right) {
 
     /* If both objects are strings, compare them. */
     if (IS_STRING(*left) && IS_STRING(*right)) {
-        return strcmp(TO_STR(*left), TO_STR(*right)) == 0;
+        return strcmp(TO_STR(*left)->value, TO_STR(*right)->value) == 0;
     }
 
     /* If both objects are structs, compare them. */
@@ -147,6 +147,16 @@ static inline Object *follow_ptr(Object *target, uint8_t deref_count) {
     return target;
 }
 
+static inline String concatenate_strings(char *a, char *b) {
+    int len_a = strlen(a);
+    int len_b = strlen(b);
+    int total_len = len_a + len_b + 1;
+    char *result = malloc(total_len);
+    strcpy(result, a);
+    strcat(result, b);
+    return (String){ .refcount = 0, .value = result };
+}
+
 static inline int handle_op_print(VM *vm, BytecodeChunk *chunk, uint8_t **ip) {
     /* OP_PRINT pops an object off the stack and prints it.
      * Since the popped object might be refcounted, the re-
@@ -162,7 +172,26 @@ static inline int handle_op_print(VM *vm, BytecodeChunk *chunk, uint8_t **ip) {
 }
 
 static inline int handle_op_add(VM *vm, BytecodeChunk *chunk, uint8_t **ip) {
-    BINARY_OP(+, AS_DOUBLE);
+    Object b = pop(vm);
+    Object a = pop(vm);
+    if (a.type != b.type) {
+        RUNTIME_ERROR(
+            "'+' operator used on objects of different types: %s and %s",
+            GET_OBJTYPE(a.type),
+            GET_OBJTYPE(b.type)
+        );
+    }
+    if (a.type == OBJ_NUMBER && b.type == OBJ_NUMBER) {
+        push(vm, AS_DOUBLE(TO_DOUBLE(a) + TO_DOUBLE(b)));
+    }
+    if (a.type == OBJ_STRING && b.type == OBJ_STRING) {
+        String result = concatenate_strings(TO_STR(a)->value, TO_STR(b)->value);
+        Object obj = AS_STR(ALLOC(result));
+        push(vm, obj);
+        OBJECT_INCREF(obj);
+    }
+    OBJECT_DECREF(b);
+    OBJECT_DECREF(a);
     return 0;
 }
 
@@ -256,7 +285,8 @@ static inline int handle_op_str(VM *vm, BytecodeChunk *chunk, uint8_t **ip) {
      * unk's sp, constructs a string object with that value
      * and pushes it on the stack. */
     uint32_t idx = READ_UINT32();
-    Object obj = AS_STR(chunk->sp.data[idx]);
+    String s = { .refcount = 1, .value = own_string(chunk->sp.data[idx]) };
+    Object obj = AS_STR(ALLOC(s));
     push(vm, obj);
     return 0;
 }
