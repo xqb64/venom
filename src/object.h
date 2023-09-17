@@ -47,6 +47,19 @@ typedef struct Object {
         uint8_t *bcptr;
         Struct *struct_;
         StructBlueprint *struct_blueprint;
+
+        /* Since we will ultimately have two refcounted
+         * objects when string concatenation gets impl-
+         * emented (Struct and String), we are going to
+         * need a handy way to access their refcounts.
+         *
+         * For example, when one of these two refcounted
+         * objects (a Struct or a String) is at some address,
+         * we will (ab)use the fact that the first member of
+         * those (int refcount;) will also be lying at the
+         * same address, and choose to interpret the object
+         * at that address as an int pointer, effectively
+         * accessing their refcounts. */
         int *refcount;
     } as;
 } Object;
