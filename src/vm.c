@@ -154,7 +154,7 @@ static inline String concatenate_strings(char *a, char *b) {
     char *result = malloc(total_len);
     strcpy(result, a);
     strcat(result, b);
-    return (String){ .refcount = 0, .value = result };
+    return (String){ .refcount = 1, .value = result };
 }
 
 static inline int handle_op_print(VM *vm, BytecodeChunk *chunk, uint8_t **ip) {
@@ -174,24 +174,21 @@ static inline int handle_op_print(VM *vm, BytecodeChunk *chunk, uint8_t **ip) {
 static inline int handle_op_add(VM *vm, BytecodeChunk *chunk, uint8_t **ip) {
     Object b = pop(vm);
     Object a = pop(vm);
-    if (a.type != b.type) {
+    if (a.type == OBJ_NUMBER && b.type == OBJ_NUMBER) {
+        push(vm, AS_DOUBLE(TO_DOUBLE(a) + TO_DOUBLE(b)));
+    } else if (a.type == OBJ_STRING && b.type == OBJ_STRING) {
+        String result = concatenate_strings(TO_STR(a)->value, TO_STR(b)->value);
+        Object obj = AS_STR(ALLOC(result));
+        push(vm, obj);
+        OBJECT_DECREF(b);
+        OBJECT_DECREF(a);
+    } else {
         RUNTIME_ERROR(
-            "'+' operator used on objects of different types: %s and %s",
+            "'+' operator used on objects of unsupported types: %s and %s",
             GET_OBJTYPE(a.type),
             GET_OBJTYPE(b.type)
         );
     }
-    if (a.type == OBJ_NUMBER && b.type == OBJ_NUMBER) {
-        push(vm, AS_DOUBLE(TO_DOUBLE(a) + TO_DOUBLE(b)));
-    }
-    if (a.type == OBJ_STRING && b.type == OBJ_STRING) {
-        String result = concatenate_strings(TO_STR(a)->value, TO_STR(b)->value);
-        Object obj = AS_STR(ALLOC(result));
-        push(vm, obj);
-        OBJECT_INCREF(obj);
-    }
-    OBJECT_DECREF(b);
-    OBJECT_DECREF(a);
     return 0;
 }
 
