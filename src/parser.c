@@ -301,7 +301,7 @@ static Expression call(Parser *parser, Tokenizer *tokenizer) {
 }
 
 static Expression unary(Parser *parser, Tokenizer *tokenizer) {
-    if (match(parser, tokenizer, 3, TOKEN_MINUS, TOKEN_AMPERSAND, TOKEN_STAR)) {
+    if (match(parser, tokenizer, 4, TOKEN_MINUS, TOKEN_AMPERSAND, TOKEN_STAR, TOKEN_BANG)) {
         char *op = own_string_n(parser->previous.start, parser->previous.length);
         Expression right = unary(parser, tokenizer);
         UnaryExpression e = { .exp = ALLOC(right), .operator = op };

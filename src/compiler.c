@@ -279,6 +279,9 @@ static void handle_compile_expression_unary(Compiler *compiler, BytecodeChunk *c
     if (strcmp(e.operator, "-") == 0) {
         compile_expression(compiler, chunk, *e.exp);
         emit_byte(chunk, OP_NEG);
+    } else if (strcmp(e.operator, "!") == 0) {
+        compile_expression(compiler, chunk, *e.exp);
+        emit_byte(chunk, OP_NOT);
     } else if (strcmp(e.operator, "*") == 0) {
         compile_expression(compiler, chunk, *e.exp);
         emit_byte(chunk, OP_DEREF);
