@@ -63,14 +63,14 @@ void disassemble(BytecodeChunk *chunk) {
         switch (disassemble_handler[*ip].operands) {
             case 0: break;
             case 2: {
-                printf(" (offset: %d)", READ_INT16());
+                printf(" + 2-byte offset: %d", READ_INT16());
                 break;
             }
             case 4: {
                 switch (*ip) {
                     case OP_CONST: {
                         uint32_t const_idx = READ_UINT32();
-                        printf(" (value: %f)", chunk->cp.data[const_idx]);
+                        printf(" (value: %.2f)", chunk->cp.data[const_idx]);
                         break;
                     }
                     case OP_STR: {
@@ -89,7 +89,7 @@ void disassemble(BytecodeChunk *chunk) {
                     case OP_GET_GLOBAL_PTR:
                     case OP_SET_GLOBAL: {
                         uint32_t name_idx = READ_UINT32();
-                        printf(" (value: %s)", chunk->sp.data[name_idx]);
+                        printf(" (name: %s)", chunk->sp.data[name_idx]);
                         break;
                     }
                     case OP_GETATTR:
