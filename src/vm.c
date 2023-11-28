@@ -612,7 +612,7 @@ typedef struct {
     char *opcode;
 } Handler;
 
-Handler dispatcher[] = {
+static Handler dispatcher[] = {
     [OP_PRINT] = { .fn = handle_op_print, .opcode = "OP_PRINT" },
     [OP_ADD] = { .fn = handle_op_add, .opcode = "OP_ADD" },
     [OP_SUB] = { .fn = handle_op_sub, .opcode = "OP_SUB" },
@@ -649,7 +649,7 @@ Handler dispatcher[] = {
     [OP_DEREF] = { .fn = handle_op_deref, .opcode = "OP_DEREF" },
 };
 
-void print_current_instruction(uint8_t *ip) {
+static void print_current_instruction(uint8_t *ip) {
     printf("current instruction: %s\n", dispatcher[*ip].opcode);
 }
 

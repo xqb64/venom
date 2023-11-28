@@ -676,7 +676,7 @@ typedef struct {
     char *name;
 } CompileExpressionHandler;
 
-CompileExpressionHandler expression_handler[] = {
+static CompileExpressionHandler expression_handler[] = {
     [EXP_LITERAL] = { .fn = handle_compile_expression_literal, .name = "EXP_LITERAL" },
     [EXP_STRING] = { .fn = handle_compile_expression_string, .name = "EXP_STRING" },
     [EXP_VARIABLE] = { .fn = handle_compile_expression_variable, .name = "EXP_VARIABLE" },
@@ -945,7 +945,7 @@ typedef struct {
     char *name;
 } CompileHandler;
 
-CompileHandler handler[] = {
+static CompileHandler handler[] = {
     [STMT_PRINT] = { .fn = handle_compile_statement_print, .name = "STMT_PRINT" },
     [STMT_LET] = { .fn = handle_compile_statement_let, .name = "STMT_LET" },
     [STMT_EXPR] = { .fn = handle_compile_statement_expr, .name = "STMT_EXPR" },

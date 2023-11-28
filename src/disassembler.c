@@ -6,7 +6,7 @@ typedef struct {
     size_t operands;
 } DisassembleHandler;
 
-DisassembleHandler disassemble_handler[] = {
+static DisassembleHandler disassemble_handler[] = {
     [OP_PRINT] = { .opcode = "OP_PRINT", .operands = 0 },
     [OP_ADD] = { .opcode = "OP_ADD", .operands = 0 },
     [OP_SUB] = { .opcode = "OP_SUB", .operands = 0 },
