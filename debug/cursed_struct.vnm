@@ -6,6 +6,7 @@ struct spam {
 fn main() {
   let x = spam { x: 0, z: 3};
   print x;
+  return 0;
 }
 
 main();

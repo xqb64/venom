@@ -1,11 +1,12 @@
 fn main() {
-    let x = "Hello, world!";
-    let y = "12345";
-    let i = 0;
-    while (i < 10) {
-        print x + y;
-        i = i + 1;
-    }
+  let x = "Hello, world!";
+  let y = "12345";
+  let i = 0;
+  while (i < 10) {
+    print x + y;
+    i = i + 1;
+  }
+  return 0;
 }
 
 main();

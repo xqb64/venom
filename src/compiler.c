@@ -256,7 +256,7 @@ static void handle_compile_expression_variable(Compiler *compiler, BytecodeChunk
     if (idx != -1) {
         /* If it is found, emit OP_DEEPGET. */
         emit_byte(chunk, OP_DEEPGET);
-        emit_uint32(chunk, idx+1);
+        emit_uint32(chunk, idx);
     } else {
         /* Otherwise, try to resolve it as global. */
         bool is_defined = resolve_global(compiler, e.name);
@@ -292,7 +292,7 @@ static void handle_compile_expression_unary(Compiler *compiler, BytecodeChunk *c
                 if (idx != -1) {
                     /* If it is found, push its address on the stack. */
                     emit_byte(chunk, OP_DEEPGET_PTR);
-                    emit_uint32(chunk, idx+1);
+                    emit_uint32(chunk, idx);
                 } else {
                     /* Otherwise, try to resolve it as global. */
                     bool is_defined = resolve_global(compiler, var.name);
@@ -383,28 +383,10 @@ static void handle_compile_expression_call(Compiler *compiler, BytecodeChunk *ch
         );
     }
 
-    /* The function call dance goes like this:
-     * - emit OP_IP with a placeholder that will need to be patched
-     *   because the length of the bytecode that evalues the arguments
-     *   is not known yet
-     * - compile the arguments
-     * - only now emit OP_INC_FPCOUNT, because OP_DEEPGET/OP_DEEPSET in
-     *   the previous step want to use the old frame pointer
-     * - emit a direct OP_JMP to the function's location
-     * - patch the emitted OP_IP, so that when the vm executes it,
-     *   it will push the address of the instruction that comes after
-     *   the dance on the stack */
-
-    /* Emit OP_IP first. */
-    int ip = emit_placeholder(chunk, OP_IP);
-
     /* Then compile the arguments */
     for (size_t i = 0; i < e.arguments.count; i++) {
         compile_expression(compiler, chunk, e.arguments.data[i]);
     }
-
-    /* Then emit OP_INC_FPCOUNT. */
-    emit_byte(chunk, OP_INC_FPCOUNT);
 
     /* Emit a direct OP_JMP to the function's location.
      * The length of the jump sequence (OP_JMP + 2-byte offset,
@@ -413,11 +395,11 @@ static void handle_compile_expression_call(Compiler *compiler, BytecodeChunk *ch
      * both the jump and the offset, which means that, effectively,
      * we'll not be jumping from the current location, but three
      * slots after it. */
-    int16_t jump = -(chunk->code.count + 3 - func->location);
-    emit_bytes(chunk, 3, OP_JMP, (jump >> 8) & 0xFF, jump & 0xFF);
+    emit_byte(chunk, OP_CALL);
+    emit_uint32(chunk, e.arguments.count);
 
-    /* Patch OP_IP. */
-    patch_placeholder(chunk, ip);
+    int16_t jump = -(chunk->code.count + 3 - func->location);   
+    emit_bytes(chunk, 3, OP_JMP, (jump >> 8) & 0xFF, jump & 0xFF);
 }
 
 static void handle_compile_expression_get(Compiler *compiler, BytecodeChunk *chunk, Expression exp) {
@@ -453,7 +435,7 @@ static void handle_compile_expression_assign(Compiler *compiler, BytecodeChunk *
         if (idx != -1) {
             /* If it is found in locals, emit OP_DEEPSET. */
             emit_byte(chunk, OP_DEEPSET);
-            emit_uint32(chunk, idx+1);
+            emit_uint32(chunk, idx);
         } else {
             /* If it is not found in locals, try to resolve it as global. */
             bool is_defined = resolve_global(compiler, var.name);
@@ -510,7 +492,7 @@ static void handle_compile_expression_assign(Compiler *compiler, BytecodeChunk *
         int idx = resolve_local(compiler, var.name);
         if (idx != -1) {
             emit_bytes(chunk, 2, OP_DEEPSET_DEREF, deref_count);
-            emit_uint32(chunk, idx+1);
+            emit_uint32(chunk, idx);
         } else {
             /* If it is not found in locals, try to resolve it as global. */
             bool is_defined = resolve_global(compiler, var.name);
@@ -850,14 +832,6 @@ static void handle_compile_statement_fn(Compiler *compiler, BytecodeChunk *chunk
     /* Compile the function body. */
     compile(compiler, chunk, *s.body);
 
-    /* If the function does not have a return statement,
-     * clean the stack up here (because statement_block()
-     * does not clean up the stack for scope depths of 1)
-     * and emit OP_NULL because OP_RET that follows expects
-     * some return value to be on the stack. */
-    emit_byte(chunk, OP_NULL);
-    emit_byte(chunk, OP_RET);
-
     /* Finally, patch the jump. */
     patch_placeholder(chunk, jump);
 
@@ -905,7 +879,7 @@ static void handle_compile_statement_return(Compiler *compiler, BytecodeChunk *c
      * [ptr, <return value>]
      *
      * Which is the exact state of the stack that OP_RET expects. */
-    int deepset_no = compiler->locals.count;
+    int deepset_no = compiler->locals.count - 1;
     for (size_t i = 0; i < compiler->locals.count; i++) {
         emit_byte(chunk, OP_DEEPSET);
         emit_uint32(chunk, deepset_no--);

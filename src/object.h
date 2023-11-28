@@ -14,7 +14,6 @@ typedef enum {
     OBJ_STRING,
     OBJ_STRUCT,
     OBJ_PTR,
-    OBJ_BCPTR, /* bytecode pointer */
     OBJ_FUNCTION,
     OBJ_STRUCT_BLUEPRINT,
 } __attribute__ ((__packed__)) ObjectType;
@@ -41,6 +40,11 @@ typedef struct {
     char *value;
 } String;
 
+typedef struct {
+    int location;
+    uint8_t *addr;
+} BytecodePtr;
+
 typedef struct Object {
     ObjectType type;
     union {
@@ -49,7 +53,6 @@ typedef struct Object {
         bool bval;
         struct Object *ptr;
         Function *func;
-        uint8_t *bcptr;
 
         /* Structs can get arbitrarily large, so we need
          * a pointer, at which point (no pun intended) it
@@ -85,7 +88,6 @@ typedef struct Object {
 #define IS_NUM(object) ((object).type == OBJ_NUMBER)
 #define IS_FUNC(object) ((object).type == OBJ_FUNCTION)
 #define IS_PTR(object) ((object).type == OBJ_PTR)
-#define IS_BCPTR(object) ((object).type == OBJ_BCPTR)
 #define IS_NULL(object) ((object).type == OBJ_NULL)
 #define IS_STRING(object) ((object).type == OBJ_STRING)
 #define IS_STRUCT(object) ((object).type == OBJ_STRUCT)
@@ -124,7 +126,6 @@ do { \
 #define AS_BOOL(thing) ((Object){ .type = OBJ_BOOLEAN, .as.bval = (thing) })
 #define AS_FUNC(thing) ((Object){ .type = OBJ_FUNCTION, .as.func = (thing) })
 #define AS_PTR(thing) ((Object){ .type = OBJ_PTR, .as.ptr = (thing) })
-#define AS_BCPTR(thing) ((Object){ .type = OBJ_BCPTR, .as.bcptr = (thing) })
 #define AS_STR(thing) ((Object){ .type = OBJ_STRING, .as.str = (thing) })
 #define AS_NULL() ((Object){ .type = OBJ_NULL })
 #define AS_STRUCT(thing) ((Object){ .type = OBJ_STRUCT, .as.struct_ = (thing) })
@@ -136,7 +137,6 @@ do { \
 #define TO_FUNC(object) ((object).as.func)
 #define TO_STRUCT_BLUEPRINT(object) ((object).as.struct_blueprint)
 #define TO_PTR(object) ((object).as.ptr)
-#define TO_BCPTR(object) ((object).as.bcptr)
 #define TO_STR(object) ((object).as.str)
 
 #define PRINT_OBJECT(object) \
@@ -147,8 +147,6 @@ do { \
         printf("%.2f", TO_DOUBLE(object)); \
     } else if IS_PTR(object) { \
         printf("PTR ('%p')", TO_PTR(object)); \
-    } else if IS_BCPTR(object) { \
-        printf("BC ('%p')", TO_BCPTR(object)); \
     } else if IS_NULL(object) { \
         printf("null"); \
     } else if IS_STRING(object) { \
@@ -167,7 +165,6 @@ do { \
     ((type) == OBJ_BOOLEAN ? "boolean" : \
      (type) == OBJ_NUMBER ? "number" : \
      (type) == OBJ_PTR ? "pointer" : \
-     (type) == OBJ_BCPTR ? "bytecode pointer" : \
      (type) == OBJ_NULL ? "null" : \
      (type) == OBJ_FUNCTION ? "function" : \
      (type) == OBJ_STRING ? "string" : \

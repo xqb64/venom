@@ -1,8 +1,9 @@
 fn main(x) {
-    if (x == 0) {
-        let z = 3;
-        print z;
-    }
+  if (x == 0) {
+    let z = 3;
     print z;
+  }
+  print z;
+  return 0;
 }
 main(0);

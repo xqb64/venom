@@ -2,6 +2,7 @@ fn main(x, y) {
   let z = 3;
   let w = 4;
   print x + y + z + w;
+  return 0;
 }
 
 main(1, 2);

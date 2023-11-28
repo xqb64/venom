@@ -9,6 +9,7 @@ fn main() {
       break;
     }
   }
+  return 0;
 }
 
 main();

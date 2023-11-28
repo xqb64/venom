@@ -3,7 +3,6 @@ import pytest
 import textwrap
 
 from tests.util import VALGRIND_CMD
-from tests.util import TWO_OPERANDS_GROUP
 
 
 class Struct:
@@ -44,16 +43,13 @@ class Struct:
         (-3.14, -3.14),
         (1024, -3.14),
         (1024, 1024),
-
         # Booleans
         ("true", "true"),
         ("true", "false"),
         ("false", "true"),
         ("false", "false"),
-
         # Nulls
         ("null", "null"),
-
         # Mixed
         ("true", "null"),
         ("null", "false"),
@@ -62,7 +58,6 @@ class Struct:
         (3.14, "true"),
         (10, "null"),
         (Struct(name="spam", x=5, y=10), 3.14),
-
         # Two structs of the same type and the same values.
         (Struct(name="spam", x=5, y=10), Struct(name="spam", x=5, y=10)),
         # Two structs of the same type and one different value.
@@ -101,6 +96,7 @@ def test_equality(tmp_path, a, b):
           let a = %s;
           let b = %s;
           print a == b;
+          return 0;
         }
         main();"""
     )
@@ -135,4 +131,4 @@ def test_equality(tmp_path, a, b):
     assert process.returncode == 0
 
     # the stack must end up empty
-    assert f"stack: []".encode("utf-8") in process.stdout
+    assert "stack: []".encode("utf-8") in process.stdout

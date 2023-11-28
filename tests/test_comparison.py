@@ -11,7 +11,7 @@ from tests.util import TWO_OPERANDS_GROUP
     TWO_OPERANDS_GROUP,
 )
 def test_comparison_global(tmp_path, x, y):
-    for op in {'>', '<', '>=', '<='}:
+    for op in {">", "<", ">=", "<="}:
         source = textwrap.dedent(
             f"""\
             let x = {x};
@@ -21,15 +21,15 @@ def test_comparison_global(tmp_path, x, y):
         )
         input_file = tmp_path / "input.vnm"
         input_file.write_text(source)
-        
+
         process = subprocess.run(
             VALGRIND_CMD + [input_file],
             capture_output=True,
         )
 
-        expected = 'true' if eval(f"{x} {op} {y}") else 'false'
+        expected = "true" if eval(f"{x} {op} {y}") else "false"
 
-        assert f"dbg print :: {expected}\n".encode('utf-8') in process.stdout
+        assert f"dbg print :: {expected}\n".encode("utf-8") in process.stdout
         assert process.returncode == 0
 
         # the stack must end up empty
@@ -41,29 +41,31 @@ def test_comparison_global(tmp_path, x, y):
     TWO_OPERANDS_GROUP,
 )
 def test_comparison_func(tmp_path, x, y):
-    for op in {'>', '<', '>=', '<='}:
+    for op in {">", "<", ">=", "<="}:
         source = textwrap.dedent(
             """
             fn main() {
               let x = %d;
               let y = %d;
               print x %s y;
+              return 0;
             }
-            main();""" % (x, y, op)
+            main();"""
+            % (x, y, op)
         )
 
         input_file = tmp_path / "input.vnm"
         input_file.write_text(source)
-        
+
         process = subprocess.run(
             VALGRIND_CMD + [input_file],
             capture_output=True,
         )
 
-        expected = 'true' if eval(f"{x} {op} {y}") else 'false'
+        expected = "true" if eval(f"{x} {op} {y}") else "false"
 
-        assert f"dbg print :: {expected}\n".encode('utf-8') in process.stdout
+        assert f"dbg print :: {expected}\n".encode("utf-8") in process.stdout
         assert process.returncode == 0
-        
+
         # the stack must end up empty
         assert process.stdout.endswith(b"stack: []\n")

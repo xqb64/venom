@@ -36,11 +36,10 @@ static DisassembleHandler disassemble_handler[] = {
     [OP_GETATTR] = { .opcode = "OP_GETATTR", .operands = 4 },
     [OP_GETATTR_PTR] = { .opcode = "OP_GETATTR_PTR", .operands = 4 },
     [OP_STRUCT] = { .opcode = "OP_STRUCT", .operands = 4 },
-    [OP_IP] = { .opcode = "OP_IP", .operands = 2 },
-    [OP_INC_FPCOUNT] = { .opcode = "OP_INC_FPCOUNT", .operands = 0 },
     [OP_RET] = { .opcode = "OP_RET", .operands = 0 },
     [OP_POP] = { .opcode = "OP_POP", .operands = 0 },
     [OP_DEREF] = { .opcode = "OP_DEREF", .operands = 0 },
+    [OP_CALL] = { .opcode = "OP_CALL", .operands = 4 },
 };
 
 void disassemble(BytecodeChunk *chunk) {
@@ -103,6 +102,10 @@ void disassemble(BytecodeChunk *chunk) {
                         uint32_t name_idx = READ_UINT32();
                         printf(" (name: %s)", chunk->sp.data[name_idx]);
                         break;
+                    }
+                    case OP_CALL: {
+                        uint32_t argcount = READ_UINT32();
+                        printf(" (argcount: %d)", argcount);
                     }
                     default: break;
                 }

@@ -263,6 +263,7 @@ fn main() {
   let aqx = 958;
   let aqy = 407;
   let cky = 613;
+  return 0;
 }
 
 main();

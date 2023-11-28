@@ -134,9 +134,12 @@ static inline uint32_t adjust_idx(VM *vm, uint32_t idx) {
      * current frame pointer ('adjustment' ta-
      * kes care of the case where there are no
      * frame pointers on the stack). */
-    int fp = vm->fp_stack[vm->fp_count-1];
-    int adjustment = vm->fp_count == 0 ? -1 : 0;
-    return fp+adjustment+idx;
+    if (vm->fp_count > 0) {
+        BytecodePtr fp = vm->fp_stack[vm->fp_count-1];
+        return fp.location+idx;
+    } else {
+        return idx; 
+    }
 }
 
 static inline Object *follow_ptr(Object *target, uint8_t deref_count) {
@@ -545,7 +548,7 @@ static inline int handle_op_struct(VM *vm, BytecodeChunk *chunk, uint8_t **ip) {
     return 0;
 }
 
-static inline int handle_op_ip(VM *vm, BytecodeChunk *chunk, uint8_t **ip) {
+static inline int handle_op_call(VM *vm, BytecodeChunk *chunk, uint8_t **ip) {
     /* OP_IP reads a signed 2-byte offset and constructs a by-
      * tecode pointer object which points to the next instruc-
      * tion that comes after the function call dance, and pus-
@@ -556,17 +559,9 @@ static inline int handle_op_ip(VM *vm, BytecodeChunk *chunk, uint8_t **ip) {
      * ing the bytecode pointer on the stack, because the ins-
      * tructions that base their indexing off of frame pointe-
      * rs expect the indexes to be zero-based. */
-    int16_t offset = READ_INT16();
-    Object ip_obj = AS_BCPTR(*(ip)+offset);
-    vm->fp_stack[vm->fp_count] = vm->tos;
-    push(vm, ip_obj);
-    return 0;
-}
-
-static inline int handle_op_inc_fpcount(VM *vm, BytecodeChunk *chunk, uint8_t **ip) {
-    /* OP_INC_FPCOUNT increments vm->fp_count, effectively co-
-     * mpleting the entire function call dance. */
-    vm->fp_count++;
+    uint32_t argcount = READ_UINT32();
+    BytecodePtr ip_obj = { .addr = *(ip) + 3, .location = vm->tos - argcount };
+    vm->fp_stack[vm->fp_count++] = ip_obj;
     return 0;
 }
 
@@ -578,11 +573,8 @@ static inline int handle_op_ret(VM *vm, BytecodeChunk *chunk, uint8_t **ip) {
      * int to the return address. Besides, it ends the functi-
      * on call by decrementing vm->fp_count and making sure to
      * put the return value back on the stack.   */
-    Object returnvalue = pop(vm);
-    Object returnaddr = pop(vm);
-    --vm->fp_count;
-    push(vm, returnvalue);
-    *ip = returnaddr.as.bcptr;
+    BytecodePtr retaddr = vm->fp_stack[--vm->fp_count];
+    *ip = retaddr.addr;
     return 0;
 }
 
@@ -642,8 +634,7 @@ static Handler dispatcher[] = {
     [OP_GETATTR] = { .fn = handle_op_getattr, .opcode = "OP_GETATTR" },
     [OP_GETATTR_PTR] = { .fn = handle_op_getattr_ptr, .opcode = "OP_GETATTR_PTR" },
     [OP_STRUCT] = { .fn = handle_op_struct, .opcode = "OP_STRUCT" },
-    [OP_IP] = { .fn = handle_op_ip, .opcode = "OP_IP" },
-    [OP_INC_FPCOUNT] = { .fn = handle_op_inc_fpcount, .opcode = "OP_INC_FPCOUNT" },
+    [OP_CALL] = { .fn = handle_op_call, .opcode = "OP_CALL" },
     [OP_RET] = { .fn = handle_op_ret, .opcode = "OP_RET" },
     [OP_POP] = { .fn = handle_op_pop, .opcode = "OP_POP" },
     [OP_DEREF] = { .fn = handle_op_deref, .opcode = "OP_DEREF" },

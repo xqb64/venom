@@ -12,5 +12,6 @@ fn main(n) {
     }
   }
   print a;
+  return 0;
 }
 main(0);

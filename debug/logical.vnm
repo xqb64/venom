@@ -1,12 +1,13 @@
 fn main() {
-    let x = 0;
-    let y = 1;
-    let z = 3;
-    if (x == 0 || y == 1024 || z == 3) {
-        print "Run!";
-    } else {
-        print "Shouldn't run!"; 
-    }
+  let x = 0;
+  let y = 1;
+  let z = 3;
+  if (x == 0 || y == 1024 || z == 3) {
+    print "Run!";
+  } else {
+    print "Shouldn't run!"; 
+  }
+  return 0;
 }
 
 main();

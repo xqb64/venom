@@ -1,21 +1,23 @@
 let global = 3.14;
 
 fn main(x, y) {
-    let m = "Hello, world!";
-    print m;
-    if (x == 3 && y == 4) {
-        print x;
-        print y;
-        print global;
-    }
-    let n = "Bye there!";
-    print n;
+  let m = "Hello, world!";
+  print m;
+  if (x == 3 && y == 4) {
+    print x;
+    print y;
     print global;
+  }
+  let n = "Bye there!";
+  print n;
+  print global;
+  return 0;
 }
 
 fn main2(m, n) {
-    print x;
-    print y;
+  print x;
+  print y;
+  return 0;
 }
 
 main(3, 4);

@@ -1,5 +1,4 @@
 import subprocess
-import pytest
 import textwrap
 
 from tests.util import VALGRIND_CMD
@@ -12,11 +11,12 @@ def test_block_func_param_inherited(tmp_path):
           if (x == 0) {
             print x;
           }
+          return 0;
         }
         main(0);
         """
     )
-    
+
     input_file = tmp_path / "input.vnm"
     input_file.write_text(source)
 
@@ -25,11 +25,12 @@ def test_block_func_param_inherited(tmp_path):
         capture_output=True,
     )
 
-    assert f"dbg print :: {0:.2f}\n".encode('utf-8') in process.stdout
+    assert f"dbg print :: {0:.2f}\n".encode("utf-8") in process.stdout
     assert process.returncode == 0
 
     # the stack must end up empty
     assert process.stdout.endswith(b"stack: []\n")
+
 
 def test_block_local_var_inherited(tmp_path):
     source = textwrap.dedent(
@@ -39,11 +40,12 @@ def test_block_local_var_inherited(tmp_path):
           if (x == 0) {
             print z;
           }
+          return 0;
         }
         main(0);
         """
     )
-    
+
     input_file = tmp_path / "input.vnm"
     input_file.write_text(source)
 
@@ -52,7 +54,7 @@ def test_block_local_var_inherited(tmp_path):
         capture_output=True,
     )
 
-    assert f"dbg print :: {3:.2f}\n".encode('utf-8') in process.stdout
+    assert f"dbg print :: {3:.2f}\n".encode("utf-8") in process.stdout
     assert process.returncode == 0
 
     # the stack must end up empty
@@ -63,16 +65,17 @@ def test_block_undefined_var(tmp_path):
     source = textwrap.dedent(
         """
         fn main(x) {
-            if (x == 0) {
-                let z = 3;
-                print z;
-            }
+          if (x == 0) {
+            let z = 3;
             print z;
+          }
+          print z;
+          return 0;
         }
         main(0);
         """
     )
-    
+
     input_file = tmp_path / "input.vnm"
     input_file.write_text(source)
 
@@ -81,7 +84,10 @@ def test_block_undefined_var(tmp_path):
         capture_output=True,
     )
 
-    assert f"Compiler error: Variable 'z' is not defined.\n".encode('utf-8') in process.stderr
+    assert (
+        "Compiler error: Variable 'z' is not defined.\n".encode("utf-8")
+        in process.stderr
+    )
     assert process.returncode == 1
 
 
@@ -91,12 +97,13 @@ def test_block_return_value_remains_on_stack(tmp_path):
         fn main(x) {
           let z = 3;
           print x+z;
+          return null;
         }
         let spam = main(4);
         print spam;
         """
     )
-    
+
     input_file = tmp_path / "input.vnm"
     input_file.write_text(source)
 
@@ -105,7 +112,7 @@ def test_block_return_value_remains_on_stack(tmp_path):
         capture_output=True,
     )
 
-    output = process.stdout.decode('utf-8')
+    output = process.stdout.decode("utf-8")
 
     asserts = [
         "dbg print :: 7.00\n",
@@ -114,7 +121,7 @@ def test_block_return_value_remains_on_stack(tmp_path):
 
     for _assert in asserts:
         assert _assert in output
-        output = output[output.index(_assert) + len(_assert):]
+        output = output[output.index(_assert) + len(_assert) :]
 
     assert process.returncode == 0
 
@@ -128,6 +135,7 @@ def test_block_return_value_gets_popped(tmp_path):
         fn main(x) {
           let z = 3;
           print x+z;
+          return 0;
         }
         main(4);
         let egg = 0;
@@ -138,7 +146,7 @@ def test_block_return_value_gets_popped(tmp_path):
         }
         """
     )
-    
+
     input_file = tmp_path / "input.vnm"
     input_file.write_text(source)
 
@@ -147,7 +155,7 @@ def test_block_return_value_gets_popped(tmp_path):
         capture_output=True,
     )
 
-    output = process.stdout.decode('utf-8')
+    output = process.stdout.decode("utf-8")
 
     asserts = [
         "dbg print :: 7.00\n",
@@ -160,7 +168,7 @@ def test_block_return_value_gets_popped(tmp_path):
 
     for _assert in asserts:
         assert _assert in output
-        output = output[output.index(_assert) + len(_assert):]
+        output = output[output.index(_assert) + len(_assert) :]
 
     assert process.returncode == 0
 

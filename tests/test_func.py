@@ -1,14 +1,15 @@
 import subprocess
-import pytest
 import textwrap
 
 from tests.util import VALGRIND_CMD
 
+
 def test_func_undefined(tmp_path):
     source = textwrap.dedent(
-      """
+        """
       fn main(x) {
         print x;
+        return 0;
       }
       amain();
       """
@@ -23,15 +24,16 @@ def test_func_undefined(tmp_path):
         capture_output=True,
     )
 
-    assert f"{expected}\n".encode('utf-8') in process.stderr
+    assert f"{expected}\n".encode("utf-8") in process.stderr
     assert process.returncode == 1
 
 
 def test_func_wrong_argcount(tmp_path):
     source = textwrap.dedent(
-      """
+        """
       fn main(x, y) {
         print x + y;
+        return 0;
       }
       main(1);
       """
@@ -46,5 +48,5 @@ def test_func_wrong_argcount(tmp_path):
         capture_output=True,
     )
 
-    assert f"{expected}\n".encode('utf-8') in process.stderr
+    assert f"{expected}\n".encode("utf-8") in process.stderr
     assert process.returncode == 1

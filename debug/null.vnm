@@ -1,7 +1,8 @@
   fn main() {
-      let a = null;
-      let b = null;
-      print a == b;
+    let a = null;
+    let b = null;
+    print a == b;
+    return 0;
   }
   
   main();

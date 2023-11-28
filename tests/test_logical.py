@@ -13,7 +13,6 @@ from tests.util import VALGRIND_CMD
         (32, 64, 16, "&&", 64, "Shouldn't run!"),
         (32, 64, 32, "&&", 16, "Shouldn't run!"),
         (32, 64, 128, "&&", 256, "Shouldn't run!"),
-
         # Logical OR
         (32, 64, 32, "||", 64, "Run!"),
         (32, 64, 16, "||", 64, "Run!"),
@@ -32,13 +31,14 @@ def test_logical(tmp_path, a, b, if_a_equals, op, if_b_equals, should_print):
           } else {
             print "Shouldn't run!";
           }
+          return 0;
         }
         main();
         """
     )
     input_file = tmp_path / "input.vnm"
     input_file.write_text(source % (a, b, if_a_equals, op, if_b_equals))
-    
+
     process = subprocess.run(
         VALGRIND_CMD + [input_file],
         capture_output=True,
@@ -46,7 +46,7 @@ def test_logical(tmp_path, a, b, if_a_equals, op, if_b_equals, should_print):
 
     expected = should_print
 
-    assert f"dbg print :: {expected}\n".encode('utf-8') in process.stdout
+    assert f"dbg print :: {expected}\n".encode("utf-8") in process.stdout
     assert process.returncode == 0
 
     # the stack must end up empty

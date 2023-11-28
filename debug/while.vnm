@@ -5,6 +5,7 @@ fn main(m) {
     print "Hello, world!";
     x = x + 1;
   }
+  return null;
 }
 
 let egg = main(1);

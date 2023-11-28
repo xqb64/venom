@@ -21,13 +21,13 @@ def test_assignment_global(tmp_path, a, b):
 
     input_file = tmp_path / "input.vnm"
     input_file.write_text(source)
-    
+
     process = subprocess.run(
         VALGRIND_CMD + [input_file],
         capture_output=True,
     )
     for value in [a, b]:
-        assert f"dbg print :: {value:.2f}\n".encode('utf-8') in process.stdout
+        assert f"dbg print :: {value:.2f}\n".encode("utf-8") in process.stdout
         assert process.returncode == 0
 
     # the stack must end up empty
@@ -46,21 +46,23 @@ def test_assignment_func(tmp_path, a, b):
           print x;
           x = %d;
           print x;
+          return 0;
         }
-        main();""" % (a, b)
+        main();"""
+        % (a, b)
     )
 
     input_file = tmp_path / "input.vnm"
     input_file.write_text(source)
-    
+
     process = subprocess.run(
         VALGRIND_CMD + [input_file],
         capture_output=True,
     )
     for value in [a, b]:
-        assert f"dbg print :: {value:.2f}\n".encode('utf-8') in process.stdout
+        assert f"dbg print :: {value:.2f}\n".encode("utf-8") in process.stdout
         assert process.returncode == 0
-    
+
     # the stack must end up empty
     assert process.stdout.endswith(b"stack: []\n")
 
@@ -71,6 +73,7 @@ def test_invalid_assignment(tmp_path):
         fn main() {
           let x = 3;
           1 = x;
+          return 0;
         }
         main();
         """
@@ -99,6 +102,7 @@ def test_struct_property_assignment(tmp_path):
           let egg = spam { x: 0, y: 0 };
           egg.x = 3;
           print egg.x;
+          return 0;
         }
         main();
         """
@@ -112,7 +116,7 @@ def test_struct_property_assignment(tmp_path):
         capture_output=True,
     )
 
-    output = process.stdout.decode('utf-8')
+    output = process.stdout.decode("utf-8")
 
     assert "dbg print :: 3.00\n" in output
     assert output.endswith("stack: []\n")
@@ -140,6 +144,7 @@ def test_struct_property_assignment_nested(tmp_path):
           };
           egg.y.y.x = "Hello, world!";
           print egg.y.y.x;
+          return 0;
         }
         main();
         """
@@ -153,10 +158,9 @@ def test_struct_property_assignment_nested(tmp_path):
         capture_output=True,
     )
 
-    output = process.stdout.decode('utf-8')
+    output = process.stdout.decode("utf-8")
 
     assert "dbg print :: Hello, world!\n" in output
     assert output.endswith("stack: []\n")
 
     assert process.returncode == 0
-
