@@ -32,8 +32,8 @@ void init_chunk(BytecodeChunk *chunk) {
 
 void free_chunk(BytecodeChunk *chunk) {
     dynarray_free(&chunk->code);
-    for (size_t i = 0; i < chunk->sp.count; i++)
-        free(chunk->sp.data[i]);
+    // for (size_t i = 0; i < chunk->sp.count; i++)
+    //     free(chunk->sp.data[i]);
     dynarray_free(&chunk->sp);
     dynarray_free(&chunk->cp);
 }
@@ -50,7 +50,7 @@ static void end_scope(Compiler *compiler) {
     compiler->depth--;
 }
 
-static uint32_t add_string(BytecodeChunk *chunk, const char *string) {
+static uint32_t add_string(BytecodeChunk *chunk, char *string) {
     /* Check if the string is already present in the pool. */
     for (size_t idx = 0; idx < chunk->sp.count; idx++) {
         /* If it is, return the index. */
@@ -58,10 +58,8 @@ static uint32_t add_string(BytecodeChunk *chunk, const char *string) {
             return idx;
         }
     }
-    /* Otherwise, own the string, insert it into the pool
-     * and return the index. */
-    char *s = own_string(string);
-    dynarray_insert(&chunk->sp, s);
+    /* Otherwise, insert it into the pool and return the index. */
+    dynarray_insert(&chunk->sp, string);
     return chunk->sp.count - 1;
 }
 
@@ -875,11 +873,11 @@ static void handle_compile_statement_struct(Compiler *compiler, BytecodeChunk *c
     for (size_t i = 0; i < s.properties.count; i++) {
         dynarray_insert(
             &properties,
-            own_string(s.properties.data[i])
+            s.properties.data[i]
         );
     }
     StructBlueprint blueprint = {
-        .name = own_string(s.name),
+        .name = s.name,
         .properties = properties
     };
     table_insert(&compiler->structs, blueprint.name, AS_STRUCT_BLUEPRINT(ALLOC(blueprint)));
