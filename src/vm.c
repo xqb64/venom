@@ -583,6 +583,12 @@ static inline int handle_op_deref(VM *vm, BytecodeChunk *chunk, uint8_t **ip) {
 }
 
 static inline int handle_op_strcat(VM *vm, BytecodeChunk *chunk, uint8_t **ip) {
+    /* OP_STRCAT pops two objects off the stack, checks if they
+     * are both Strings, and if so, concatenates them and pushes
+     * the resulting string on the stack. Since Strings are ref-
+     * counted objects, the refcount for the popped objects needs
+     * to be decremented. The resulting string is initalized with
+     * the refcount of 1. */
     Object b = pop(vm);
     Object a = pop(vm);
     if (a.type == OBJ_STRING && b.type == OBJ_STRING) {
