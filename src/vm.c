@@ -644,9 +644,11 @@ static Handler dispatcher[] = {
     [OP_STRCAT] = { .fn = handle_op_strcat, .opcode = "OP_STRCAT" },
 };
 
+#ifdef venom_debug_vm
 static void print_current_instruction(uint8_t *ip) {
     printf("current instruction: %s\n", dispatcher[*ip].opcode);
 }
+#endif 
 
 int run(VM *vm, BytecodeChunk *chunk) {
 #ifdef venom_debug_disassembler
