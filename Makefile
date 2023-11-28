@@ -25,6 +25,10 @@ ifeq (parser, $(findstring parser, $(debug)))
 	CFLAGS += -Dvenom_debug_parser
 endif
 
+ifeq (tokenizer, $(findstring tokenizer, $(debug)))
+	CFLAGS += -Dvenom_debug_tokenizer
+endif
+
 ifeq (vm, $(findstring vm, $(debug)))
 	CFLAGS += -Dvenom_debug_vm
 endif

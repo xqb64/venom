@@ -21,8 +21,8 @@ static Token advance(Parser *parser, Tokenizer *tokenizer) {
     parser->previous = parser->current;
     parser->current = get_token(tokenizer);
 
-#ifdef venom_debug_parser
-    print_token(parser->current);
+#ifdef venom_debug_tokenizer
+    print_token(&parser->current);
 #endif
 
     return parser->previous;

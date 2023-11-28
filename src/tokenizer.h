@@ -61,7 +61,7 @@ typedef struct {
 } Tokenizer;
 
 void init_tokenizer(Tokenizer *tokenizer, char *source);
-void print_token(Token token);
+void print_token(Token *token);
 Token get_token(Tokenizer *tokenizer);
 
 #endif

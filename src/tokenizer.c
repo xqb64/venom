@@ -110,37 +110,8 @@ static Token identifier(Tokenizer *tokenizer) {
     return make_token(tokenizer, TOKEN_IDENTIFIER, length + 1);
 }
 
-void print_token(Token token) {
-    printf("current token: Token { .type: ");
-
-    switch (token.type) {
-        case TOKEN_PRINT: printf("TOKEN_PRINT"); break;
-        case TOKEN_LET: printf("TOKEN_LET"); break;
-        case TOKEN_IDENTIFIER: printf("TOKEN_IDENTIFIER"); break;
-        case TOKEN_NUMBER: printf("TOKEN_NUMBER"); break;
-        case TOKEN_LEFT_PAREN: printf("TOKEN_LEFT_PAREN"); break;
-        case TOKEN_RIGHT_PAREN: printf("TOKEN_RIGHT_PAREN"); break;
-        case TOKEN_LEFT_BRACE: printf("TOKEN_LEFT_BRACE"); break;
-        case TOKEN_RIGHT_BRACE: printf("TOKEN_RIGHT_BRACE"); break;
-        case TOKEN_STAR: printf("TOKEN_STAR"); break;
-        case TOKEN_SLASH: printf("TOKEN_SLASH"); break;
-        case TOKEN_PLUS: printf("TOKEN_PLUS"); break;
-        case TOKEN_MINUS: printf("TOKEN_MINUS"); break;
-        case TOKEN_DOT: printf("TOKEN_DOT"); break;
-        case TOKEN_SEMICOLON: printf("TOKEN_SEMICOLON"); break;
-        case TOKEN_EQUAL: printf("TOKEN_EQUAL"); break;
-        case TOKEN_DOUBLE_EQUAL: printf("TOKEN_DOUBLE_EQUAL"); break;
-        case TOKEN_IF: printf("TOKEN_IF"); break;
-        case TOKEN_ELSE: printf("TOKEN_ELSE"); break;
-        case TOKEN_WHILE: printf("TOKEN_WHILE"); break;
-        case TOKEN_FN: printf("TOKEN_FN"); break;
-        case TOKEN_STRUCT: printf("TOKEN_STRUCT"); break;
-        case TOKEN_RETURN: printf("TOKEN_RETURN"); break;
-        case TOKEN_EOF: printf("TOKEN_EOF"); break;
-        default: break;
-    }
-
-    printf(", value: '%.*s' }\n", token.length, token.start);
+void print_token(Token *token) {
+    printf("current token: %.*s\n", token->length, token->start);
 }
 
 Token get_token(Tokenizer *tokenizer) {
