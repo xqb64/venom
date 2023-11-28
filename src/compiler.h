@@ -27,11 +27,9 @@ typedef enum {
     OP_JMP,
     OP_JZ,
     OP_SET_GLOBAL,
-    OP_SET_GLOBAL_DEREF,
     OP_GET_GLOBAL,
     OP_GET_GLOBAL_PTR,
     OP_DEEPSET,
-    OP_DEEPSET_DEREF,
     OP_DEEPGET,
     OP_DEEPGET_PTR,
     OP_SETATTR,
@@ -42,6 +40,7 @@ typedef enum {
     OP_RET,
     OP_POP,
     OP_DEREF,
+    OP_DEREFSET,
     OP_STRCAT,
 } Opcode;
 

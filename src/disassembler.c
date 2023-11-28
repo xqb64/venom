@@ -25,11 +25,9 @@ static DisassembleHandler disassemble_handler[] = {
     [OP_JZ] = { .opcode = "OP_JZ", .operands = 2 },
     [OP_JMP] = { .opcode = "OP_JMP", .operands = 2 },
     [OP_SET_GLOBAL] = { .opcode = "OP_SET_GLOBAL", .operands = 4 },
-    [OP_SET_GLOBAL_DEREF] = { .opcode = "OP_SET_GLOBAL_DEREF", .operands = 5 },
     [OP_GET_GLOBAL] = { .opcode = "OP_GET_GLOBAL", .operands = 4 },
     [OP_GET_GLOBAL_PTR] = { .opcode = "OP_GET_GLOBAL_PTR", .operands = 4 },
     [OP_DEEPSET] = { .opcode = "OP_DEEPSET", .operands = 4 },
-    [OP_DEEPSET_DEREF] = { .opcode = "OP_DEEPSET_DEREF", .operands = 5 },
     [OP_DEEPGET] = { .opcode = "OP_DEEPGET", .operands = 4 },
     [OP_DEEPGET_PTR] = { .opcode = "OP_DEEPGET_PTR", .operands = 4 },
     [OP_SETATTR] = { .opcode = "OP_SETATTR", .operands = 4 },
@@ -106,24 +104,6 @@ void disassemble(BytecodeChunk *chunk) {
                     case OP_CALL: {
                         uint32_t argcount = READ_UINT32();
                         printf(" (argcount: %d)", argcount);
-                    }
-                    default: break;
-                }
-                break;
-            }
-            case 5: {
-                switch (*ip) {
-                    case OP_DEEPSET_DEREF: {
-                        uint8_t deref_count = READ_UINT8();
-                        uint32_t idx = READ_UINT32();
-                        printf(" (index: %d, deref_count: %d)", idx, deref_count);
-                        break;
-                    }
-                    case OP_SET_GLOBAL_DEREF: {
-                        uint8_t deref_count = READ_UINT8();
-                        uint32_t name_idx = READ_UINT32();
-                        printf(" (value: %s, deref_count: %d)", chunk->sp.data[name_idx], deref_count);
-                        break;
                     }
                     default: break;
                 }

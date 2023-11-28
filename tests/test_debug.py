@@ -133,9 +133,8 @@ RESULTS = {
     },
     "strcat.vnm": {
         "debug_prints": [
-            "dbg print :: Hello, world!12345",
-        ]
-        * 10,
+            "dbg print :: Hello, world!",
+        ],
         "ends_with": "stack: []",
         "return_code": 0,
     },

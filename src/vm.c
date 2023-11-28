@@ -142,14 +142,6 @@ static inline uint32_t adjust_idx(VM *vm, uint32_t idx) {
     }
 }
 
-static inline Object *follow_ptr(Object *target, uint8_t deref_count) {
-    /* 'target' is followed (and dereferenced) 'deref_count' times. */
-    for (int i = 0; i < deref_count; i++) {
-        target = target->as.ptr;
-    }
-    return target;
-}
-
 static inline String concatenate_strings(char *a, char *b) {
     int len_a = strlen(a);
     int len_b = strlen(b);
@@ -308,21 +300,6 @@ static inline int handle_op_set_global(VM *vm, BytecodeChunk *chunk, uint8_t **i
     return 0;
 }
 
-static inline int handle_op_set_global_deref(VM *vm, BytecodeChunk *chunk, uint8_t **ip) {
-    /* OP_SET_GLOBAL_DEREF reads a 1-byte dereference count,
-     * and a 4-byte index of the variable name in the sp. It
-     * then gets the object with that name from the vm's gl-
-     * obals table and follows the returned pointer (derefe-
-     * rencing it on theway) 'deref_count' times, and final-
-     * ly setting its value to the previously popped object. */
-    uint8_t deref_count = READ_UINT8();
-    uint32_t name_idx = READ_UINT32();
-    Object obj = pop(vm);
-    Object *target = follow_ptr(table_get(&vm->globals, chunk->sp.data[name_idx]), deref_count);
-    *target = obj;
-    return 0;
-}
-
 static inline int handle_op_get_global(VM *vm, BytecodeChunk *chunk, uint8_t **ip) {
     /* OP_GET_GLOBAL reads a 4-byte index of the variable name
      * in the chunk's sp, looks up an object with that name in
@@ -377,43 +354,12 @@ static inline int handle_op_deepset(VM *vm, BytecodeChunk *chunk, uint8_t **ip) 
     return 0;
 }
 
-static inline int handle_op_deepset_deref(VM *vm, BytecodeChunk *chunk, uint8_t **ip) {
-    /* OP_DEEPSET_DEREF reads a 1-byte dereference count and
-     * a 4-byte index (1-based) of the object being modified
-     * (which must be a pointer). The adjusted index is used
-     * to follow the pointer in that position, and set it to
-     * the previously popped object.
-     *
-     * Considering that the object being set will be overwr-
-     * itten, its reference count must be decremented before
-     * putting the popped object into that position.
-     * 
-     * For example, if there is a variable 'thing', which is
-     * a pointer to pointer to pointer to some variable (e.g.
-     * a boolean, false):
-     * 
-     *      [ptr, ..., true]
-     *        ↓
-     *       ptr
-     *        ↓
-     *       ptr
-     *        ↓
-     *      false
-     * 
-     * ...and the user does:
-     * 
-     *      ***thing = true;
-     * 
-     * ...it will follow the first ptr on the stack until it
-     * reaches the last ptr (the one that points to 'false')
-     * and change its value to 'true'. */
-    uint8_t deref_count = READ_UINT8();
-    uint32_t idx = READ_UINT32();
-    uint32_t adjusted_idx = adjust_idx(vm, idx);
-    Object obj = pop(vm);
-    Object *target = follow_ptr(&vm->stack[adjusted_idx], deref_count);
-    OBJECT_DECREF(*target);
-    *target = obj;
+static inline int handle_op_derefset(VM *vm, BytecodeChunk *chunk, uint8_t **ip) {
+    Object item = pop(vm);
+    Object *ptr = TO_PTR(pop(vm));
+
+    *ptr = item;
+
     return 0;
 }
 
@@ -632,11 +578,9 @@ static Handler dispatcher[] = {
     [OP_JZ] = { .fn = handle_op_jz, .opcode = "OP_JZ" },
     [OP_JMP] = { .fn = handle_op_jmp, .opcode = "OP_JMP" },
     [OP_SET_GLOBAL] = { .fn = handle_op_set_global, .opcode = "OP_SET_GLOBAL" },
-    [OP_SET_GLOBAL_DEREF] = { .fn = handle_op_set_global_deref, .opcode = "OP_SET_GLOBAL_DEREF" },
     [OP_GET_GLOBAL] = { .fn = handle_op_get_global, .opcode = "OP_GET_GLOBAL" },
     [OP_GET_GLOBAL_PTR] = { .fn = handle_op_get_global_ptr, .opcode = "OP_GET_GLOBAL_PTR" },
     [OP_DEEPSET] = { .fn = handle_op_deepset, .opcode = "OP_DEEPSET" },
-    [OP_DEEPSET_DEREF] = { .fn = handle_op_deepset_deref, .opcode = "OP_DEEPSET_DEREF" },
     [OP_DEEPGET] = { .fn = handle_op_deepget, .opcode = "OP_DEEPGET" },
     [OP_DEEPGET_PTR] = { .fn = handle_op_deepget_ptr, .opcode = "OP_DEEPGET_PTR" },
     [OP_SETATTR] = { .fn = handle_op_setattr, .opcode = "OP_SETATTR" },
@@ -647,6 +591,7 @@ static Handler dispatcher[] = {
     [OP_RET] = { .fn = handle_op_ret, .opcode = "OP_RET" },
     [OP_POP] = { .fn = handle_op_pop, .opcode = "OP_POP" },
     [OP_DEREF] = { .fn = handle_op_deref, .opcode = "OP_DEREF" },
+    [OP_DEREFSET] = { .fn = handle_op_derefset, .opcode = "OP_DEREFSET" },
     [OP_STRCAT] = { .fn = handle_op_strcat, .opcode = "OP_STRCAT" },
 };
 

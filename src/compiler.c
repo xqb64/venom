@@ -475,39 +475,15 @@ static void handle_compile_expression_assign(Compiler *compiler, BytecodeChunk *
          * don't forget to pop it off. */
         emit_byte(chunk, OP_POP);
     } else if (e.lhs->kind == EXP_UNARY) {
-        /* First compile the right-hand side of the assigment. */
+        /* First compile the left-hand side of the assigment. */
+        UnaryExpression unary = TO_EXPR_UNARY(*e.lhs);
+        compile_expression(compiler, chunk, *unary.exp);
+
+        /* Then compile the right-hand side. */
         compile_expression(compiler, chunk, *e.rhs);
 
-        /* Find the variable that is being dereferenced, as well
-         * as the number of dereferences. */
-        Expression *current = e.lhs;
-        int deref_count = 0;
-        while (current->kind == EXP_UNARY) {
-            current = current->as.expr_unary.exp;
-            deref_count++;
-        }
-
-        /* Variable found. */
-        VariableExpression var = TO_EXPR_VARIABLE(*current);
-
-        /* Try to resolve it as a local. */
-        int idx = resolve_local(compiler, var.name);
-        if (idx != -1) {
-            emit_bytes(chunk, 2, OP_DEEPSET_DEREF, deref_count);
-            emit_uint32(chunk, idx);
-        } else {
-            /* If it is not found in locals, try to resolve it as global. */
-            bool is_defined = resolve_global(compiler, var.name);
-            if (is_defined) {
-                /* If it is found in globals, emit OP_SET_GLOBAL. */
-                uint32_t name_idx = add_string(chunk, var.name);
-                emit_bytes(chunk, 2, OP_SET_GLOBAL_DEREF, deref_count);
-                emit_uint32(chunk, name_idx);
-            } else {
-                /* If it is not found in globals, bail out. */
-                COMPILER_ERROR("Variable '%s' is not defined.", var.name);
-            }
-        }
+        /* Emit OP_DEREFSET. */
+        emit_byte(chunk, OP_DEREFSET);
     } else {
         /* If the left-hand side is neither a variable expression
          * nor a get expression, bail out. */
