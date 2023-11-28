@@ -152,7 +152,12 @@ Token get_token(Tokenizer *tokenizer) {
 
     if (is_digit(c)) return number(tokenizer);
     switch (c) {
-        case '+': return make_token(tokenizer, TOKEN_PLUS, 1);
+        case '+': {
+            if (lookahead(tokenizer, 1, "+")) {
+                return make_token(tokenizer, TOKEN_PLUSPLUS, 2);
+            }
+            return make_token(tokenizer, TOKEN_PLUS, 1);
+        }
         case '-': {
             if (lookahead(tokenizer, 1, ">")) {
                 return make_token(tokenizer, TOKEN_ARROW, 2);

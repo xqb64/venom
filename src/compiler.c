@@ -357,6 +357,8 @@ static void handle_compile_expression_binary(Compiler *compiler, BytecodeChunk *
         emit_byte(chunk, OP_EQ);
     } else if (strcmp(e.operator, "!=") == 0) {
         emit_bytes(chunk, 2, OP_EQ, OP_NOT);
+    } else if (strcmp(e.operator, "++") == 0) {
+        emit_byte(chunk, OP_STRCAT);
     }
 }
 

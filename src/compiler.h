@@ -42,6 +42,7 @@ typedef enum {
     OP_RET,
     OP_POP,
     OP_DEREF,
+    OP_STRCAT,
 } Opcode;
 
 typedef DynArray(uint8_t) DynArray_uint8_t;

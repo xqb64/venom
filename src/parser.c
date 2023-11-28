@@ -105,6 +105,7 @@ static char *operator(Token token) {
         case TOKEN_GREATER_EQUAL: return ">=";
         case TOKEN_LESS: return "<";
         case TOKEN_LESS_EQUAL: return "<=";
+        case TOKEN_PLUSPLUS: return "++";
         default: assert(0);
      }
 }
@@ -181,7 +182,7 @@ static Expression factor(Parser *parser, Tokenizer *tokenizer) {
 
 static Expression term(Parser *parser, Tokenizer *tokenizer) {
     Expression expr = factor(parser, tokenizer);
-    while (match(parser, tokenizer, 2, TOKEN_PLUS, TOKEN_MINUS)) {
+    while (match(parser, tokenizer, 3, TOKEN_PLUS, TOKEN_MINUS, TOKEN_PLUSPLUS)) {
         char *op = operator(parser->previous);
         Expression right = factor(parser, tokenizer);
         BinaryExpression binexp = {

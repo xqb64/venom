@@ -35,6 +35,7 @@ typedef enum {
     TOKEN_DOUBLE_AMPERSAND,
     TOKEN_PIPE,             /* reserved for bitwise OR */
     TOKEN_DOUBLE_PIPE,
+    TOKEN_PLUSPLUS,
     TOKEN_IF,
     TOKEN_ELSE,
     TOKEN_WHILE,

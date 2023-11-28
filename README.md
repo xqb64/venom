@@ -106,7 +106,7 @@ make graph.png
 
 The tests are written in Python and venom's behavior is tested externally.
 
-The test suite relies on venom being compiled with `debug=vm` (because of the prefix in debug prints). To run the tests, execute the command below, but make sure you have `pytest-xdist` installed because it's a time-consuming process.
+The test suite relies on venom being compiled with `debug=vm` (because of the prefix in debug prints). To run the test suite, execute the command below, but make sure you have `pytest-xdist` installed because it's a time-consuming process.
 
 ```
 make test
@@ -114,6 +114,7 @@ make test
 
 # Design notes
 
-- The design is the balance among performance, RISC-alikeness, and a dynamic type system. For example, when string concatenation was introduced into the language, there was a choice whether to reuse the current `OP_ADD` opcode or have a separate opcode for string concatenation, e.g. `OP_STRCAT`. I decided to reuse `OP_ADD` (and the `+` operator) at the expense of slightly more complexity in the virtual machine which introduced a little performance regression, because the alternative was to start keeping track of the types in the compiler, at which point we would be close to a statically-typed language.
+- The design is the balance among performance, RISC-alikeness, and a dynamic type system. For example, when string concatenation was introduced into the language, there was a choice whether to reuse the current `OP_ADD` opcode or have a separate opcode for string concatenation, e.g. `OP_STRCAT`. At first, I decided to reuse `OP_ADD` (and the `+` operator) at the expense of slightly more complexity in the virtual machine which introduced a little performance regression. Later I rewrote the code to use a separate opcode (and a corresponding operator `++`).
+
 - Structures and strings can get arbitrarily large and we do not know their size ahead of time, which required implementing them both underneath as pointers whose size is known. This introduced the whole memory management issue. There were two pathways from here since these pointers need to be freed: either let the venom users explicitly free() their instances, or introduce automatic memory management. I opted for automatic memory management via refcounting because, frankly, I thought I'd have a lot of fun implementing refcounting, but I have to admit that chasing down INCREF/DECREF bugs led to me letting fly a great deal of profanity. ;-)
 

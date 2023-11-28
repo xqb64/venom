@@ -175,23 +175,7 @@ static inline int handle_op_print(VM *vm, BytecodeChunk *chunk, uint8_t **ip) {
 }
 
 static inline int handle_op_add(VM *vm, BytecodeChunk *chunk, uint8_t **ip) {
-    Object b = pop(vm);
-    Object a = pop(vm);
-    if (a.type == OBJ_NUMBER && b.type == OBJ_NUMBER) {
-        push(vm, AS_DOUBLE(TO_DOUBLE(a) + TO_DOUBLE(b)));
-    } else if (a.type == OBJ_STRING && b.type == OBJ_STRING) {
-        String result = concatenate_strings(TO_STR(a)->value, TO_STR(b)->value);
-        Object obj = AS_STR(ALLOC(result));
-        push(vm, obj);
-        OBJECT_DECREF(b);
-        OBJECT_DECREF(a);
-    } else {
-        RUNTIME_ERROR(
-            "'+' operator used on objects of unsupported types: %s and %s",
-            GET_OBJTYPE(a.type),
-            GET_OBJTYPE(b.type)
-        );
-    }
+    BINARY_OP(+, AS_DOUBLE);
     return 0;
 }
 
@@ -598,6 +582,25 @@ static inline int handle_op_deref(VM *vm, BytecodeChunk *chunk, uint8_t **ip) {
     return 0;
 }
 
+static inline int handle_op_strcat(VM *vm, BytecodeChunk *chunk, uint8_t **ip) {
+    Object b = pop(vm);
+    Object a = pop(vm);
+    if (a.type == OBJ_STRING && b.type == OBJ_STRING) {
+        String result = concatenate_strings(TO_STR(a)->value, TO_STR(b)->value);
+        Object obj = AS_STR(ALLOC(result));
+        push(vm, obj);
+        OBJECT_DECREF(b);
+        OBJECT_DECREF(a);
+    } else {
+        RUNTIME_ERROR(
+            "'++' operator used on objects of unsupported types: %s and %s",
+            GET_OBJTYPE(a.type),
+            GET_OBJTYPE(b.type)
+        );
+    }
+    return 0;
+}
+
 typedef int (*HandlerFn)(VM *vm, BytecodeChunk *chunk, uint8_t **ip);
 typedef struct {
     HandlerFn fn;
@@ -638,6 +641,7 @@ static Handler dispatcher[] = {
     [OP_RET] = { .fn = handle_op_ret, .opcode = "OP_RET" },
     [OP_POP] = { .fn = handle_op_pop, .opcode = "OP_POP" },
     [OP_DEREF] = { .fn = handle_op_deref, .opcode = "OP_DEREF" },
+    [OP_STRCAT] = { .fn = handle_op_strcat, .opcode = "OP_STRCAT" },
 };
 
 static void print_current_instruction(uint8_t *ip) {
