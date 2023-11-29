@@ -1,4 +1,6 @@
-# venom
+<img src="https://raw.githubusercontent.com/xqb64/venom/master/venom.png"  style="display: block; margin-left: auto; margin-right: auto; width: 50%;" alt="venom"/>
+
+<h1 align="center">venom</h1>
 
 A handcrafted virtual stack machine capable of executing a reduced instruction set consisting of only 34 microinstructions. The programs for the VM are written in a minimal, dynamically-typed, Turing-complete programming language featuring basic data types, functions, pointers, structures, and flow control. Besides the VM, the system includes an on-demand tokenizer, a recursive-descent parser, and a bytecode compiler.
 
