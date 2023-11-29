@@ -50,23 +50,23 @@ print fib(40);
 
 The above program has been the go-to benchmark throughout the development cycle. The running time on my system (AMD Ryzen 3 3200G with Radeon Vega Graphics) for this program is...wait for it:
 
-    ```
-    ❯ time ./venom benchmarks/fib40.vnm
-    102334155.00
+```
+❯ time ./venom benchmarks/fib40.vnm
+102334155.00
 
-    real	0m18,116s
-    user	0m18,111s
-    sys	0m0,004s
-    ```
+real	0m18,116s
+user	0m18,111s
+sys	0m0,004s
+```
 
-    ```
-    ❯ time python3 fib.py
-    102334155
+```
+❯ time python3 fib.py
+102334155
 
-    real	0m28,411s
-    user	0m28,410s
-    sys	0m0,001s
-    ```
+real	0m28,411s
+user	0m28,410s
+sys	0m0,001s
+```
 
 ...which is faster than Python! To be fair, besides being orders of magnitude more useful, Python could also execute this code in a blink of an eye with `@functools.lru_cache()`.
 
