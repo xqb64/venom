@@ -1,4 +1,6 @@
-<img src="https://raw.githubusercontent.com/xqb64/venom/master/venom.png"  style="display: block; margin-left: auto; margin-right: auto; width: 50%;" alt="venom"/>
+<p align="center">
+  <img src="https://raw.githubusercontent.com/xqb64/venom/master/venom.png" alt="venom"/>
+</p>
 
 <h1 align="center">venom</h1>
 
