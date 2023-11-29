@@ -183,8 +183,13 @@ typedef struct {
     DynArray_char_ptr properties;
 } StructStatement;
 
-typedef struct {} BreakStatement;
-typedef struct {} ContinueStatement;
+typedef struct {
+    char dummy;
+} BreakStatement;
+
+typedef struct {
+    char dummy;
+} ContinueStatement;
 
 typedef struct Statement {
     StatementKind kind;

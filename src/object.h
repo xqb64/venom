@@ -146,7 +146,7 @@ do { \
     } else if IS_NUM(object) { \
         printf("%.2f", TO_DOUBLE(object)); \
     } else if IS_PTR(object) { \
-        printf("PTR ('%p')", TO_PTR(object)); \
+        printf("PTR ('%p')", (void *)TO_PTR(object)); \
     } else if IS_NULL(object) { \
         printf("null"); \
     } else if IS_STRING(object) { \

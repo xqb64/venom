@@ -525,7 +525,7 @@ static Statement break_statement(Parser *parser, Tokenizer *tokenizer) {
         TOKEN_SEMICOLON,
         "Expected ';' after break."
     );
-    BreakStatement stmt;
+    BreakStatement stmt = { 0 };
     return AS_STMT_BREAK(stmt);
 }
 
@@ -535,7 +535,7 @@ static Statement continue_statement(Parser *parser, Tokenizer *tokenizer) {
         TOKEN_SEMICOLON,
         "Expected ';' after continue."
     );
-    ContinueStatement stmt;
+    ContinueStatement stmt = { 0 };
     return AS_STMT_CONTINUE(stmt);
 }
 
