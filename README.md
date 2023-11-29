@@ -17,7 +17,7 @@ This project is my debut in the realm of programming language design. I had a bl
   - `==`, `!=`, `<`, `>`, `<=`, `>=`
   - `+`, `-`, `*`, `/`, `%`
   - `++` (string concatenation)
-  - `&` and `*` (address of / dereferencing)
+  - `&`, `*`, `->` (for pointers)
 - control flow
   - `if`, `else`
   - `while` (and `break` and `continue`, of course)
