@@ -1,0 +1,20 @@
+#!/bin/sh
+
+# Run tests
+make clean
+make -j$(nproc) debug=vm
+make test
+if [ $? -ne 0 ]; then
+  echo "Tests failed."
+  exit 1
+fi
+
+# Run clang-format
+clang-format src/*.c src/*.h --dry-run
+if [ $? -ne 0 ]; then
+  echo "Error: Code should be formatted with clang-format."
+  exit 1
+fi
+
+echo "All checks passed. Proceeding with the commit."
+exit 0

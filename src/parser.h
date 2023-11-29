@@ -5,96 +5,97 @@
 #include "tokenizer.h"
 
 typedef enum {
-    EXP_LITERAL,
-    EXP_VARIABLE,
-    EXP_STRING,
-    EXP_UNARY,
-    EXP_BINARY,
-    EXP_CALL,
-    EXP_GET,
-    EXP_ASSIGN,
-    EXP_LOGICAL,
-    EXP_STRUCT,
-    EXP_STRUCT_INIT,
-} __attribute__ ((__packed__)) ExpressionKind;
+  EXP_LITERAL,
+  EXP_VARIABLE,
+  EXP_STRING,
+  EXP_UNARY,
+  EXP_BINARY,
+  EXP_CALL,
+  EXP_GET,
+  EXP_ASSIGN,
+  EXP_LOGICAL,
+  EXP_STRUCT,
+  EXP_STRUCT_INIT,
+} __attribute__((__packed__)) ExpressionKind;
 
 typedef struct Expression Expression;
 
 typedef DynArray(Expression) DynArray_Expression;
 
 typedef struct LiteralExpression {
-    double dval;
-    char *specval;
+  double dval;
+  char *specval;
 } LiteralExpression;
 
 typedef struct VariableExpression {
-    char *name;
+  char *name;
 } VariableExpression;
 
 typedef struct StringExpression {
-    char *str;
+  char *str;
 } StringExpression;
 
 typedef struct UnaryExpression {
-    Expression *exp;
-    char *operator;
+  Expression *exp;
+  char *operator;
 } UnaryExpression;
 
 typedef struct BinaryExpression {
-    Expression *lhs;
-    Expression *rhs;
-    char *operator;
+  Expression *lhs;
+  Expression *rhs;
+  char *operator;
 } BinaryExpression;
 
 typedef struct CallExpression {
-    VariableExpression var;
-    DynArray_Expression arguments;
+  VariableExpression var;
+  DynArray_Expression arguments;
 } CallExpression;
 
 typedef struct GetExpression {
-    Expression *exp;
-    char *property_name;
-    char *operator;
+  Expression *exp;
+  char *property_name;
+  char *operator;
 } GetExpression;
 
 typedef struct AssignExpression {
-    Expression *lhs;
-    Expression *rhs;
+  Expression *lhs;
+  Expression *rhs;
 } AssignExpression;
 
 typedef struct LogicalExpression {
-    Expression *lhs;
-    Expression *rhs;
-    char *operator;
+  Expression *lhs;
+  Expression *rhs;
+  char *operator;
 } LogicalExpression;
 
 typedef struct StructExpression {
-    char *name;
-    DynArray_Expression initializers;
+  char *name;
+  DynArray_Expression initializers;
 } StructExpression;
 
 typedef struct StructInitializerExpression {
-    Expression *property;
-    Expression *value;
+  Expression *property;
+  Expression *value;
 } StructInitializerExpression;
 
-typedef DynArray(StructInitializerExpression) DynArray_StructInitializerExpression;
+typedef DynArray(StructInitializerExpression)
+    DynArray_StructInitializerExpression;
 
 typedef struct Expression {
-    ExpressionKind kind;
-    union {
-        LiteralExpression expr_literal;
-        VariableExpression expr_variable;
-        StringExpression expr_string;
-        UnaryExpression expr_unary;
-        BinaryExpression expr_binary;
-        CallExpression expr_call;
-        GetExpression expr_get;
-        AssignExpression expr_assign;
-        LogicalExpression expr_logical;
-        StructExpression expr_struct;
-        StructInitializerExpression expr_struct_init;
-    } as;
+  ExpressionKind kind;
+  union {
+    LiteralExpression expr_literal;
+    VariableExpression expr_variable;
+    StringExpression expr_string;
+    UnaryExpression expr_unary;
+    BinaryExpression expr_binary;
+    CallExpression expr_call;
+    GetExpression expr_get;
+    AssignExpression expr_assign;
+    LogicalExpression expr_logical;
+    StructExpression expr_struct;
+    StructInitializerExpression expr_struct_init;
+  } as;
 } Expression;
 
 #define TO_EXPR_LITERAL(exp) ((exp).as.expr_literal)
@@ -109,103 +110,113 @@ typedef struct Expression {
 #define TO_EXPR_STRUCT(exp) ((exp).as.expr_struct)
 #define TO_EXPR_STRUCT_INIT(exp) ((exp).as.expr_struct_init)
 
-#define AS_EXPR_LITERAL(exp) ((Expression){ .kind = EXP_LITERAL, .as.expr_literal = (exp) })
-#define AS_EXPR_STRING(exp) ((Expression){ .kind = EXP_STRING, .as.expr_string = (exp) })
-#define AS_EXPR_VARIABLE(exp) ((Expression){ .kind = EXP_VARIABLE, .as.expr_variable = (exp) })
-#define AS_EXPR_UNARY(exp) ((Expression){ .kind = EXP_UNARY, .as.expr_unary = (exp) })
-#define AS_EXPR_BINARY(exp) ((Expression){ .kind = EXP_BINARY, .as.expr_binary = (exp) })
-#define AS_EXPR_CALL(exp) ((Expression){ .kind = EXP_CALL, .as.expr_call = (exp) })
-#define AS_EXPR_GET(exp) ((Expression){ .kind = EXP_GET, .as.expr_get = (exp) })
-#define AS_EXPR_ASSIGN(exp) ((Expression){ .kind = EXP_ASSIGN, .as.expr_assign = (exp) })
-#define AS_EXPR_LOGICAL(exp) ((Expression){ .kind = EXP_LOGICAL, .as.expr_logical = (exp) })
-#define AS_EXPR_STRUCT(exp) ((Expression){ .kind = EXP_STRUCT, .as.expr_struct = (exp) })
-#define AS_EXPR_STRUCT_INIT(exp) ((Expression){ .kind = EXP_STRUCT_INIT, .as.expr_struct_init = (exp) })
+#define AS_EXPR_LITERAL(exp)                                                   \
+  ((Expression){.kind = EXP_LITERAL, .as.expr_literal = (exp)})
+#define AS_EXPR_STRING(exp)                                                    \
+  ((Expression){.kind = EXP_STRING, .as.expr_string = (exp)})
+#define AS_EXPR_VARIABLE(exp)                                                  \
+  ((Expression){.kind = EXP_VARIABLE, .as.expr_variable = (exp)})
+#define AS_EXPR_UNARY(exp)                                                     \
+  ((Expression){.kind = EXP_UNARY, .as.expr_unary = (exp)})
+#define AS_EXPR_BINARY(exp)                                                    \
+  ((Expression){.kind = EXP_BINARY, .as.expr_binary = (exp)})
+#define AS_EXPR_CALL(exp)                                                      \
+  ((Expression){.kind = EXP_CALL, .as.expr_call = (exp)})
+#define AS_EXPR_GET(exp) ((Expression){.kind = EXP_GET, .as.expr_get = (exp)})
+#define AS_EXPR_ASSIGN(exp)                                                    \
+  ((Expression){.kind = EXP_ASSIGN, .as.expr_assign = (exp)})
+#define AS_EXPR_LOGICAL(exp)                                                   \
+  ((Expression){.kind = EXP_LOGICAL, .as.expr_logical = (exp)})
+#define AS_EXPR_STRUCT(exp)                                                    \
+  ((Expression){.kind = EXP_STRUCT, .as.expr_struct = (exp)})
+#define AS_EXPR_STRUCT_INIT(exp)                                               \
+  ((Expression){.kind = EXP_STRUCT_INIT, .as.expr_struct_init = (exp)})
 
 typedef enum {
-    STMT_LET,
-    STMT_EXPR,
-    STMT_PRINT,
-    STMT_BLOCK,
-    STMT_IF,
-    STMT_WHILE,
-    STMT_BREAK,
-    STMT_CONTINUE,
-    STMT_FN,
-    STMT_RETURN,
-    STMT_STRUCT,
-} __attribute__ ((__packed__)) StatementKind;
+  STMT_LET,
+  STMT_EXPR,
+  STMT_PRINT,
+  STMT_BLOCK,
+  STMT_IF,
+  STMT_WHILE,
+  STMT_BREAK,
+  STMT_CONTINUE,
+  STMT_FN,
+  STMT_RETURN,
+  STMT_STRUCT,
+} __attribute__((__packed__)) StatementKind;
 
 typedef struct Statement Statement;
 
 typedef DynArray(Statement) DynArray_Statement;
 
 typedef struct {
-    char *name;
-    Expression initializer;
+  char *name;
+  Expression initializer;
 } LetStatement;
 
 typedef struct {
-    Expression exp;
+  Expression exp;
 } PrintStatement;
 
 typedef struct {
-    Expression exp;
+  Expression exp;
 } ExpressionStatement;
 
 typedef struct {
-    DynArray_Statement stmts;
-    size_t depth;
+  DynArray_Statement stmts;
+  size_t depth;
 } BlockStatement;
 
 typedef struct {
-    DynArray_char_ptr parameters;
-    char *name;
-    Statement *body;
+  DynArray_char_ptr parameters;
+  char *name;
+  Statement *body;
 } FunctionStatement;
 
 typedef struct {
-    Expression condition;
-    Statement *then_branch;
-    Statement *else_branch;
+  Expression condition;
+  Statement *then_branch;
+  Statement *else_branch;
 } IfStatement;
 
 typedef struct {
-    Expression condition;
-    Statement *body;
+  Expression condition;
+  Statement *body;
 } WhileStatement;
 
 typedef struct {
-    Expression returnval;
+  Expression returnval;
 } ReturnStatement;
 
 typedef struct {
-    char *name;
-    DynArray_char_ptr properties;
+  char *name;
+  DynArray_char_ptr properties;
 } StructStatement;
 
 typedef struct {
-    char dummy;
+  char dummy;
 } BreakStatement;
 
 typedef struct {
-    char dummy;
+  char dummy;
 } ContinueStatement;
 
 typedef struct Statement {
-    StatementKind kind;
-    union {
-        PrintStatement stmt_print;
-        LetStatement stmt_let;
-        ExpressionStatement stmt_expr;
-        BlockStatement stmt_block;
-        FunctionStatement stmt_fn;
-        IfStatement stmt_if;
-        WhileStatement stmt_while;
-        BreakStatement stmt_break;
-        ContinueStatement stmt_continue;
-        ReturnStatement stmt_return;
-        StructStatement stmt_struct;
-    } as;
+  StatementKind kind;
+  union {
+    PrintStatement stmt_print;
+    LetStatement stmt_let;
+    ExpressionStatement stmt_expr;
+    BlockStatement stmt_block;
+    FunctionStatement stmt_fn;
+    IfStatement stmt_if;
+    WhileStatement stmt_while;
+    BreakStatement stmt_break;
+    ContinueStatement stmt_continue;
+    ReturnStatement stmt_return;
+    StructStatement stmt_struct;
+  } as;
 } Statement;
 
 #define TO_STMT_PRINT(stmt) ((stmt).as.stmt_print)
@@ -218,22 +229,30 @@ typedef struct Statement {
 #define TO_STMT_RETURN(stmt) ((stmt).as.stmt_return)
 #define TO_STMT_STRUCT(stmt) ((stmt).as.stmt_struct)
 
-#define AS_STMT_PRINT(stmt) ((Statement){ .kind = STMT_PRINT, .as.stmt_print = (stmt) })
-#define AS_STMT_LET(stmt) ((Statement){ .kind = STMT_LET, .as.stmt_let = (stmt) })
-#define AS_STMT_EXPR(stmt) ((Statement){ .kind = STMT_EXPR, .as.stmt_expr = (stmt) })
-#define AS_STMT_BLOCK(stmt) ((Statement){ .kind = STMT_BLOCK, .as.stmt_block = (stmt) })
-#define AS_STMT_FN(stmt) ((Statement){ .kind = STMT_FN, .as.stmt_fn = (stmt) })
-#define AS_STMT_IF(stmt) ((Statement){ .kind = STMT_IF, .as.stmt_if = (stmt) })
-#define AS_STMT_WHILE(stmt) ((Statement){ .kind = STMT_WHILE, .as.stmt_while = (stmt) })
-#define AS_STMT_BREAK(stmt) ((Statement){ .kind = STMT_BREAK, .as.stmt_break = (stmt) })
-#define AS_STMT_CONTINUE(stmt) ((Statement){ .kind = STMT_CONTINUE, .as.stmt_continue = (stmt) })
-#define AS_STMT_RETURN(stmt) ((Statement){ .kind = STMT_RETURN, .as.stmt_return = (stmt) })
-#define AS_STMT_STRUCT(stmt) ((Statement){ .kind = STMT_STRUCT, .as.stmt_struct = (stmt) })
+#define AS_STMT_PRINT(stmt)                                                    \
+  ((Statement){.kind = STMT_PRINT, .as.stmt_print = (stmt)})
+#define AS_STMT_LET(stmt) ((Statement){.kind = STMT_LET, .as.stmt_let = (stmt)})
+#define AS_STMT_EXPR(stmt)                                                     \
+  ((Statement){.kind = STMT_EXPR, .as.stmt_expr = (stmt)})
+#define AS_STMT_BLOCK(stmt)                                                    \
+  ((Statement){.kind = STMT_BLOCK, .as.stmt_block = (stmt)})
+#define AS_STMT_FN(stmt) ((Statement){.kind = STMT_FN, .as.stmt_fn = (stmt)})
+#define AS_STMT_IF(stmt) ((Statement){.kind = STMT_IF, .as.stmt_if = (stmt)})
+#define AS_STMT_WHILE(stmt)                                                    \
+  ((Statement){.kind = STMT_WHILE, .as.stmt_while = (stmt)})
+#define AS_STMT_BREAK(stmt)                                                    \
+  ((Statement){.kind = STMT_BREAK, .as.stmt_break = (stmt)})
+#define AS_STMT_CONTINUE(stmt)                                                 \
+  ((Statement){.kind = STMT_CONTINUE, .as.stmt_continue = (stmt)})
+#define AS_STMT_RETURN(stmt)                                                   \
+  ((Statement){.kind = STMT_RETURN, .as.stmt_return = (stmt)})
+#define AS_STMT_STRUCT(stmt)                                                   \
+  ((Statement){.kind = STMT_STRUCT, .as.stmt_struct = (stmt)})
 
 typedef struct {
-    Token current;
-    Token previous;
-    size_t depth;
+  Token current;
+  Token previous;
+  size_t depth;
 } Parser;
 
 DynArray_Statement parse(Parser *parser, Tokenizer *tokenizer);

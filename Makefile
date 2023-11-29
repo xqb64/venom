@@ -4,6 +4,8 @@ CFLAGS += -Wshadow -Wall -Wextra -Wpedantic -Werror
 CFLAGS += -Wswitch-default
 CFLAGS += -Wredundant-decls
 CFLAGS += -Wno-unused-parameter
+CFLAGS += -Wformat-security
+CFLAGS += -Wunreachable-code
 CFLAGS += -O3
 LDLIBS = -lm
 

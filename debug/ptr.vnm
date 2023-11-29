@@ -1,0 +1,15 @@
+fn mutate(thing) {
+  ***thing = true;
+  return 0;
+}
+
+fn main() {
+  let x = null;
+  let y = &x;
+  let z = &y;
+  mutate(&z);
+  print x;
+  return 0;
+}
+
+main();

@@ -8,11 +8,11 @@
 #include "table.h"
 
 typedef struct {
-    Object stack[STACK_MAX];
-    size_t tos; /* top of stack */
-    Table globals;
-    BytecodePtr fp_stack[STACK_MAX]; /* a stack for frame pointers */
-    size_t fp_count;
+  Object stack[STACK_MAX];
+  size_t tos; /* top of stack */
+  Table globals;
+  BytecodePtr fp_stack[STACK_MAX]; /* a stack for frame pointers */
+  size_t fp_count;
 } VM;
 
 void init_vm(VM *vm);
