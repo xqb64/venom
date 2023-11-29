@@ -4,7 +4,7 @@
 
 <h1 align="center">venom</h1>
 
-A handcrafted virtual stack machine capable of executing a reduced instruction set consisting of only 34 microinstructions. The programs for the VM are written in a minimal, dynamically-typed, Turing-complete programming language featuring basic data types, functions, pointers, structures, and flow control. Besides the VM, the system includes an on-demand tokenizer, a recursive-descent parser, and a bytecode compiler.
+A handcrafted virtual stack machine capable of executing a reduced instruction set consisting of only 33 microinstructions. The programs for the VM are written in a minimal, dynamically-typed, Turing-complete programming language featuring basic data types, functions, pointers, structures, and flow control. Besides the VM, the system includes an on-demand tokenizer, a recursive-descent parser, and a bytecode compiler.
 
 ## Examples
 
