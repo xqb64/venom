@@ -4,11 +4,40 @@
 
 <h1 align="center">venom</h1>
 
-A handcrafted virtual stack machine capable of executing a reduced instruction set consisting of only 33 microinstructions. The programs for the VM are written in a minimal, dynamically-typed, Turing-complete programming language featuring basic data types, functions, pointers, structures, and flow control. Besides the VM, the system includes an on-demand tokenizer, a recursive-descent parser, and a bytecode compiler.
+This project is my debut in the realm of programming language design. I had a blast putting it together, and its sole purpose was fun and education, as opposed to implementing a complete enterprise-grade system. As such, I'm sure it has plenty of drawbacks. Despite this, though, I implemented a bunch of useful features, such as:
 
-## Examples
+- basic data types
+  - numbers (double-precision floating point)
+  - booleans
+  - strings
+  - structures
+  - pointers
+  - null
+- operators for the said types
+  - `==`, `!=`, `<`, `>`, `<=`, `>=`
+  - `+`, `-`, `*`, `/`, `%`
+  - `++` (string concatenation)
+  - `&` and `*` (address of / dereferencing)
+- control flow
+  - `if`, `else`
+  - `while` (and `break` and `continue`, of course)
+- functions
+  - `return` is mandatory
+  - recursion!
 
-Fibonacci:
+Global scope is allowed.
+
+The system includes what you would expect from a programming language implementation:
+
+  - tokenizer
+  - recursive-descent parser
+  - bytecode compiler
+  - virtual machine
+  - disassembler
+
+## Let's talk numbers
+
+### Fibonacci:
 
 ```rust
 fn fib(n) { 
@@ -19,7 +48,7 @@ fn fib(n) {
 print fib(40);
 ```
 
-- **NOTE**: The above program has been the go-to benchmark throughout the development cycle. In the early versions of Venom, the running time on my system (AMD Ryzen 3 3200G with Radeon Vega Graphics) used to go as high as 9 minutes (admittedly, with debug prints enabled). The latest Venom version runs `fib(40)` in...wait for it:
+The above program has been the go-to benchmark throughout the development cycle. The running time on my system (AMD Ryzen 3 3200G with Radeon Vega Graphics) for this program is...wait for it:
 
     ```
     ❯ time ./venom benchmarks/fib40.vnm
@@ -39,9 +68,13 @@ print fib(40);
     sys	0m0,001s
     ```
 
-    ...which is faster than Python! To be fair, Python could execute this code in a blink of an eye with `@functools.lru_cache()`.
+...which is faster than Python! To be fair, besides being orders of magnitude more useful, Python could also execute this code in a blink of an eye with `@functools.lru_cache()`.
 
-Linked list:
+But in any case, this is about where I'd draw the line in terms of functionality. As I continue to improve as a programmer, I might come back to it to make it a little faster (at least as fast as the [VM I wrote in Rust](https://github.com/xqb64/synapse)). 
+
+
+### Linked list
+
 ```rust
 struct node {
   next;
@@ -94,6 +127,8 @@ To enable the debug prints for one of the components of the system, run:
 make debug=vm
 ```
 
+(see Makefile for other options).
+
 To enable the debug prints for all system components, run:
 
 ```
@@ -116,9 +151,12 @@ The test suite relies on venom being compiled with `debug=vm` (because of the pr
 make test
 ```
 
-# Design notes
+##  Design notes
 
-- The design is the balance among performance, RISC-alikeness, and a dynamic type system. For example, when string concatenation was introduced into the language, there was a choice whether to reuse the current `OP_ADD` opcode or have a separate opcode for string concatenation, e.g. `OP_STRCAT`. At first, I decided to reuse `OP_ADD` (and the `+` operator) at the expense of slightly more complexity in the virtual machine which introduced a little performance regression. Later I rewrote the code to use a separate opcode (and a corresponding operator `++`).
+- The design is the balance among performance and RISC-alikeness. For example, when string concatenation was introduced into the language, there was a choice whether to reuse the current `OP_ADD` opcode or have a separate opcode for string concatenation, e.g. `OP_STRCAT`. At first, I decided to reuse `OP_ADD` (and the `+` operator) at the expense of slightly more complexity in the virtual machine which introduced a performance regression. Later I rewrote the code to use a separate opcode (and the corresponding `++` operator).
 
 - Structures and strings can get arbitrarily large and we do not know their size ahead of time, which required implementing them both underneath as pointers whose size is known. This introduced the whole memory management issue. There were two pathways from here since these pointers need to be freed: either let the venom users explicitly free() their instances, or introduce automatic memory management. I opted for automatic memory management via refcounting because, frankly, I thought I'd have a lot of fun implementing refcounting, but I have to admit that chasing down INCREF/DECREF bugs led to me letting fly a great deal of profanity. ;-)
 
+## Contributing
+
+Contributors to this project are very welcome -- specifically, suggestions (and PRs) as for how to make the whole system even faster, because I suspect there's still more performance left to be squeezed out.
