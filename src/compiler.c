@@ -654,8 +654,6 @@ static void compile_expression(Compiler *compiler, BytecodeChunk *chunk, Express
     expression_handler[exp.kind].fn(compiler, chunk, exp);
 }
 
-void compile(Compiler *compiler, BytecodeChunk *chunk, Statement stmt);
-
 static void handle_compile_statement_print(Compiler *compiler, BytecodeChunk *chunk, Statement stmt) {
     PrintStatement s = TO_STMT_PRINT(stmt);
     compile_expression(compiler, chunk, s.exp);
