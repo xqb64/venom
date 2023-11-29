@@ -1,36 +1,41 @@
 SRC := $(wildcard src/*.c)
 
-CFLAGS += -g
-CFLAGS += -Wshadow -Wall -Wextra
-CFLAGS += -Wno-unused-parameter -Wno-unused-value
+CFLAGS += -Wshadow -Wall -Wextra -Werror
+CFLAGS += -Wno-unused-parameter
 CFLAGS += -O3
 LDLIBS = -lm
 
 ifeq ($(debug), all)
-	CFLAGS += -Dvenom_debug_compiler
-	CFLAGS += -Dvenom_debug_disassembler
+	CFLAGS += -Dvenom_debug_tokenizer
 	CFLAGS += -Dvenom_debug_parser
+	CFLAGS += -Dvenom_debug_compiler
 	CFLAGS += -Dvenom_debug_vm
-endif
-
-ifeq (compiler, $(findstring compiler, $(debug)))
-	CFLAGS += -Dvenom_debug_compiler
-endif
-
-ifeq (disassembler, $(findstring disassembler, $(debug)))
 	CFLAGS += -Dvenom_debug_disassembler
+	CFLAGS += -g
 endif
 
-ifeq (parser, $(findstring parser, $(debug)))
-	CFLAGS += -Dvenom_debug_parser
+ifeq (sym, $(findstring sym, $(debug)))
+	CFLAGS += -g
 endif
 
 ifeq (tokenizer, $(findstring tokenizer, $(debug)))
 	CFLAGS += -Dvenom_debug_tokenizer
 endif
 
+ifeq (parser, $(findstring parser, $(debug)))
+	CFLAGS += -Dvenom_debug_parser
+endif
+
+ifeq (compiler, $(findstring compiler, $(debug)))
+	CFLAGS += -Dvenom_debug_compiler
+endif
+
 ifeq (vm, $(findstring vm, $(debug)))
 	CFLAGS += -Dvenom_debug_vm
+endif
+
+ifeq (disassembler, $(findstring disassembler, $(debug)))
+	CFLAGS += -Dvenom_debug_disassembler
 endif
 
 obj/%.o: src/%.c $(wildcard src/*.h)
