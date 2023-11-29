@@ -357,7 +357,7 @@ static inline int handle_op_derefset(VM *vm, BytecodeChunk *chunk,
    * - the value that is being assigned
    * - the assignee (a pointer)
    * It then pops those two objects off the stack, and
-   * essentially changes what the pointer points to. 
+   * essentially changes what the pointer points to.
    */
   Object item = pop(vm);
   Object *ptr = TO_PTR(pop(vm));
