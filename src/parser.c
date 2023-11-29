@@ -671,6 +671,7 @@ static void free_expression(Expression e) {
             free(TO_EXPR_GET(e).operator);
             break;
         }
+        default: break;
     }
 }
 
