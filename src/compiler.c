@@ -34,8 +34,6 @@ void init_chunk(BytecodeChunk *chunk) {
 
 void free_chunk(BytecodeChunk *chunk) {
   dynarray_free(&chunk->code);
-  // for (size_t i = 0; i < chunk->sp.count; i++)
-  //     free(chunk->sp.data[i]);
   dynarray_free(&chunk->sp);
   dynarray_free(&chunk->cp);
 }
