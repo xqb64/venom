@@ -5,7 +5,6 @@
 
 #include "compiler.h"
 #include "object.h"
-#include "table.h"
 
 typedef struct {
   Object stack[STACK_MAX];

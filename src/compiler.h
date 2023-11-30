@@ -6,8 +6,8 @@
 #include <stdint.h>
 
 #include "dynarray.h"
+#include "internal_object.h"
 #include "parser.h"
-#include "table.h"
 
 typedef enum {
   OP_PRINT,
@@ -55,8 +55,8 @@ typedef struct BytecodeChunk {
 } BytecodeChunk;
 
 typedef struct Compiler {
-  Table functions;
-  Table structs;
+  InternalTable functions;
+  InternalTable structs;
   DynArray_char_ptr globals;
   DynArray_char_ptr locals;
   DynArray_int breaks;

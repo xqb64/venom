@@ -2,6 +2,7 @@
 
 #include <assert.h>
 #include <stdarg.h>
+#include <stdbool.h>
 #include <stdio.h>
 #include <string.h>
 
@@ -24,8 +25,8 @@ void free_compiler(Compiler *compiler) {
   dynarray_free(&compiler->locals);
   dynarray_free(&compiler->breaks);
   dynarray_free(&compiler->loop_starts);
-  table_free(&compiler->structs);
-  table_free(&compiler->functions);
+  internal_table_free(&compiler->structs);
+  internal_table_free(&compiler->functions);
 }
 
 void init_chunk(BytecodeChunk *chunk) {
@@ -373,7 +374,8 @@ static void handle_compile_expression_call(Compiler *compiler,
   CallExpression e = TO_EXPR_CALL(exp);
 
   /* Error out at compile time if the function is not defined. */
-  Object *funcobj = table_get(&compiler->functions, e.var.name);
+  InternalObject *funcobj =
+      internal_table_get(&compiler->functions, e.var.name);
   if (funcobj == NULL) {
     COMPILER_ERROR("Function '%s' is not defined.", e.var.name);
   }
@@ -571,7 +573,7 @@ static void handle_compile_expression_struct(Compiler *compiler,
   StructExpression e = TO_EXPR_STRUCT(exp);
 
   /* Look up the struct with that name in compiler's structs table. */
-  Object *blueprintobj = table_get(&compiler->structs, e.name);
+  InternalObject *blueprintobj = internal_table_get(&compiler->structs, e.name);
 
   /* If it is not found, bail out. */
   if (!blueprintobj) {
@@ -828,7 +830,7 @@ static void handle_compile_statement_fn(Compiler *compiler,
       .paramcount = s.parameters.count,
       .location = chunk->code.count + 3,
   };
-  table_insert(&compiler->functions, func.name, AS_FUNC(ALLOC(func)));
+  internal_table_insert(&compiler->functions, func.name, AS_FUNC(ALLOC(func)));
   compiler->pops[1] += s.parameters.count;
 
   /* Copy the function parameters into the current
@@ -860,8 +862,8 @@ static void handle_compile_statement_struct(Compiler *compiler,
     dynarray_insert(&properties, s.properties.data[i]);
   }
   StructBlueprint blueprint = {.name = s.name, .properties = properties};
-  table_insert(&compiler->structs, blueprint.name,
-               AS_STRUCT_BLUEPRINT(ALLOC(blueprint)));
+  internal_table_insert(&compiler->structs, blueprint.name,
+                        AS_STRUCT_BLUEPRINT(ALLOC(blueprint)));
 }
 
 static void handle_compile_statement_return(Compiler *compiler,

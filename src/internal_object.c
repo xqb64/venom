@@ -1,15 +1,14 @@
-#include "table.h"
-
 #include <stdint.h>
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
 
+#include "internal_object.h"
 #include "util.h"
 
-static void list_insert(Bucket **head, char *key, Object item) {
+static void list_insert(InternalBucket **head, char *key, InternalObject item) {
   /* Create a new node. */
-  Bucket *new_node = malloc(sizeof(Bucket));
+  InternalBucket *new_node = malloc(sizeof(InternalBucket));
 
   new_node->key = key;
   new_node->obj = item;
@@ -20,7 +19,7 @@ static void list_insert(Bucket **head, char *key, Object item) {
     *head = new_node;
   } else {
     /* Go to the end of the list. */
-    Bucket *current = *head;
+    InternalBucket *current = *head;
     while (current->next != NULL) {
       current = current->next;
     }
@@ -30,15 +29,13 @@ static void list_insert(Bucket **head, char *key, Object item) {
   }
 }
 
-static void list_free(Bucket *head) {
-  Bucket *tmp;
+static void list_free(InternalBucket *head) {
+  InternalBucket *tmp;
   while (head != NULL) {
     tmp = head;
     head = head->next;
 
-    if (IS_STRUCT(tmp->obj) || IS_STRING(tmp->obj)) {
-      OBJECT_DECREF(tmp->obj);
-    } else if (IS_STRUCT_BLUEPRINT(tmp->obj)) {
+    if (IS_STRUCT_BLUEPRINT(tmp->obj)) {
       StructBlueprint *blueprint = TO_STRUCT_BLUEPRINT(tmp->obj);
       dynarray_free(&blueprint->properties);
       free(blueprint);
@@ -52,7 +49,7 @@ static void list_free(Bucket *head) {
   }
 }
 
-static Object *list_find(Bucket *head, const char *item) {
+static InternalObject *list_find(InternalBucket *head, const char *item) {
   while (head != NULL) {
     if (strcmp(head->key, item) == 0)
       return &head->obj;
@@ -71,14 +68,15 @@ static uint32_t hash(const char *key, int length) {
   return hash;
 }
 
-void table_insert(Table *table, const char *key, Object obj) {
+void internal_table_insert(InternalTable *table, const char *key,
+                           InternalObject obj) {
   char *k = own_string(key);
   int idx = hash(k, strlen(k)) % TABLE_MAX;
   if (list_find(table->data[idx], k) == NULL) {
     list_insert(&table->data[idx], k, obj);
   } else {
     /* If the key is already in the list, change its value. */
-    Bucket *head = table->data[idx];
+    InternalBucket *head = table->data[idx];
     while (head != NULL) {
       if (strcmp(head->key, k) == 0) {
         table->data[idx]->obj = obj;
@@ -89,12 +87,13 @@ void table_insert(Table *table, const char *key, Object obj) {
   }
 }
 
-Object *table_get(const Table *table, const char *key) {
+InternalObject *internal_table_get(const InternalTable *table,
+                                   const char *key) {
   int idx = hash(key, strlen(key)) % TABLE_MAX;
   return list_find(table->data[idx], key);
 }
 
-void table_free(const Table *table) {
+void internal_table_free(const InternalTable *table) {
   for (size_t i = 0; i < TABLE_MAX; i++) {
     if (table->data[i] != NULL) {
       list_free(table->data[i]);
@@ -102,11 +101,11 @@ void table_free(const Table *table) {
   }
 }
 
-void table_print(const Table *table) {
+void internal_table_print(const InternalTable *table) {
   for (size_t i = 0; i < TABLE_MAX; i++) {
     if (table->data[i] != NULL) {
       printf(" %s: ", table->data[i]->key);
-      PRINT_OBJECT(table->data[i]->obj);
+      PRINT_INTERNAL_OBJECT(table->data[i]->obj);
       printf(", ");
     }
   }
