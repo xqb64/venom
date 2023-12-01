@@ -3,6 +3,7 @@
 
 #include "dynarray.h"
 #include "tokenizer.h"
+#include <stdbool.h>
 
 typedef enum {
   EXP_LITERAL,
@@ -22,18 +23,25 @@ typedef struct Expression Expression;
 
 typedef DynArray(Expression) DynArray_Expression;
 
+typedef enum {
+  LITERAL_BOOL,
+  LITERAL_NUMBER,
+  LITERAL_STRING,
+  LITERAL_NULL,
+} LiteralKind;
+
 typedef struct LiteralExpression {
-  double dval;
-  char *specval;
+  LiteralKind kind;
+  union {
+    bool bval;
+    double dval;
+    char *sval;
+  } as;
 } LiteralExpression;
 
 typedef struct VariableExpression {
   char *name;
 } VariableExpression;
-
-typedef struct StringExpression {
-  char *str;
-} StringExpression;
 
 typedef struct UnaryExpression {
   Expression *exp;
@@ -86,7 +94,6 @@ typedef struct Expression {
   union {
     LiteralExpression expr_literal;
     VariableExpression expr_variable;
-    StringExpression expr_string;
     UnaryExpression expr_unary;
     BinaryExpression expr_binary;
     CallExpression expr_call;
@@ -99,7 +106,6 @@ typedef struct Expression {
 } Expression;
 
 #define TO_EXPR_LITERAL(exp) ((exp).as.expr_literal)
-#define TO_EXPR_STRING(exp) ((exp).as.expr_string)
 #define TO_EXPR_VARIABLE(exp) ((exp).as.expr_variable)
 #define TO_EXPR_UNARY(exp) ((exp).as.expr_unary)
 #define TO_EXPR_BINARY(exp) ((exp).as.expr_binary)
@@ -112,8 +118,6 @@ typedef struct Expression {
 
 #define AS_EXPR_LITERAL(exp)                                                   \
   ((Expression){.kind = EXP_LITERAL, .as.expr_literal = (exp)})
-#define AS_EXPR_STRING(exp)                                                    \
-  ((Expression){.kind = EXP_STRING, .as.expr_string = (exp)})
 #define AS_EXPR_VARIABLE(exp)                                                  \
   ((Expression){.kind = EXP_VARIABLE, .as.expr_variable = (exp)})
 #define AS_EXPR_UNARY(exp)                                                     \

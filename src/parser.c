@@ -57,19 +57,46 @@ static Token consume(Parser *parser, Tokenizer *tokenizer, TokenType type,
   };
 }
 
+static Expression boolean(Parser *parser) {
+  bool b;
+  switch (parser->previous.type) {
+  case TOKEN_TRUE: {
+    b = true;
+    break;
+  }
+  case TOKEN_FALSE: {
+    b = false;
+    break;
+  }
+  default:
+    assert(0);
+  }
+  LiteralExpression e = {
+      .kind = LITERAL_BOOL,
+      .as.bval = b,
+  };
+  return AS_EXPR_LITERAL(e);
+}
+
+static Expression null(Parser *parser) {
+  return AS_EXPR_LITERAL((LiteralExpression){.kind = LITERAL_NULL});
+}
+
 static Expression number(Parser *parser) {
   LiteralExpression e = {
-      .dval = strtod(parser->previous.start, NULL),
-      .specval = NULL,
+      .kind = LITERAL_NUMBER,
+      .as.dval = strtod(parser->previous.start, NULL),
   };
   return AS_EXPR_LITERAL(e);
 }
 
 static Expression string(Parser *parser) {
-  StringExpression e = {
-      .str = own_string_n(parser->previous.start, parser->previous.length - 1),
+  LiteralExpression e = {
+      .kind = LITERAL_STRING,
+      .as.sval =
+          own_string_n(parser->previous.start, parser->previous.length - 1),
   };
-  return AS_EXPR_STRING(e);
+  return AS_EXPR_LITERAL(e);
 }
 
 static Expression variable(Parser *parser) {
@@ -79,9 +106,20 @@ static Expression variable(Parser *parser) {
   return AS_EXPR_VARIABLE(e);
 }
 
-static Expression special_literal(char *specval) {
-  LiteralExpression e = {.specval = specval};
-  return AS_EXPR_LITERAL(e);
+static Expression literal(Parser *parser) {
+  switch (parser->previous.type) {
+  case TOKEN_NUMBER:
+    return number(parser);
+  case TOKEN_STRING:
+    return string(parser);
+  case TOKEN_TRUE:
+  case TOKEN_FALSE:
+    return boolean(parser);
+  case TOKEN_NULL:
+    return null(parser);
+  default:
+    assert(0);
+  }
 }
 
 static Expression primary();
@@ -329,23 +367,16 @@ static Expression struct_initializer(Parser *parser, Tokenizer *tokenizer) {
 }
 
 static Expression primary(Parser *parser, Tokenizer *tokenizer) {
-  if (match(parser, tokenizer, 1, TOKEN_NUMBER)) {
-    return number(parser);
-  } else if (match(parser, tokenizer, 1, TOKEN_STRING)) {
-    return string(parser);
-  } else if (match(parser, tokenizer, 1, TOKEN_IDENTIFIER)) {
+  if (match(parser, tokenizer, 1, TOKEN_IDENTIFIER)) {
     if (check(parser, TOKEN_LEFT_BRACE)) {
       return struct_initializer(parser, tokenizer);
     }
     return variable(parser);
   } else if (match(parser, tokenizer, 1, TOKEN_LEFT_PAREN)) {
     return grouping(parser, tokenizer);
-  } else if (match(parser, tokenizer, 1, TOKEN_TRUE)) {
-    return special_literal("true");
-  } else if (match(parser, tokenizer, 1, TOKEN_FALSE)) {
-    return special_literal("false");
-  } else if (match(parser, tokenizer, 1, TOKEN_NULL)) {
-    return special_literal("null");
+  } else if (match(parser, tokenizer, 5, TOKEN_TRUE, TOKEN_FALSE, TOKEN_NULL,
+                   TOKEN_NUMBER, TOKEN_STRING)) {
+    return literal(parser);
   } else {
     assert(0);
   }
@@ -514,72 +545,81 @@ static Statement statement(Parser *parser, Tokenizer *tokenizer) {
 static void free_expression(Expression e) {
   switch (e.kind) {
   case EXP_LITERAL: {
+    LiteralExpression litexpr = TO_EXPR_LITERAL(e);
+    if (litexpr.kind == LITERAL_STRING) {
+      free(litexpr.as.sval);
+    }
     break;
   }
   case EXP_VARIABLE: {
-    free(TO_EXPR_VARIABLE(e).name);
-    break;
-  }
-  case EXP_STRING: {
-    free(TO_EXPR_STRING(e).str);
+    VariableExpression varexpr = TO_EXPR_VARIABLE(e);
+    free(varexpr.name);
     break;
   }
   case EXP_UNARY: {
-    free_expression(*TO_EXPR_UNARY(e).exp);
-    free(TO_EXPR_UNARY(e).exp);
-    free(TO_EXPR_UNARY(e).operator);
+    UnaryExpression unaryexpr = TO_EXPR_UNARY(e);
+    free_expression(*unaryexpr.exp);
+    free(unaryexpr.exp);
+    free(unaryexpr.operator);
     break;
   }
   case EXP_BINARY: {
-    free_expression(*TO_EXPR_BINARY(e).lhs);
-    free_expression(*TO_EXPR_BINARY(e).rhs);
-    free(TO_EXPR_BINARY(e).lhs);
-    free(TO_EXPR_BINARY(e).rhs);
+    BinaryExpression binexpr = TO_EXPR_BINARY(e);
+    free_expression(*binexpr.lhs);
+    free_expression(*binexpr.rhs);
+    free(binexpr.lhs);
+    free(binexpr.rhs);
     break;
   }
   case EXP_ASSIGN: {
-    free_expression(*TO_EXPR_ASSIGN(e).lhs);
-    free_expression(*TO_EXPR_ASSIGN(e).rhs);
-    free(TO_EXPR_ASSIGN(e).lhs);
-    free(TO_EXPR_ASSIGN(e).rhs);
+    AssignExpression assignexpr = TO_EXPR_ASSIGN(e);
+    free_expression(*assignexpr.lhs);
+    free_expression(*assignexpr.rhs);
+    free(assignexpr.lhs);
+    free(assignexpr.rhs);
     break;
   }
   case EXP_LOGICAL: {
-    free_expression(*TO_EXPR_LOGICAL(e).lhs);
-    free_expression(*TO_EXPR_LOGICAL(e).rhs);
-    free(TO_EXPR_LOGICAL(e).lhs);
-    free(TO_EXPR_LOGICAL(e).rhs);
-    free(TO_EXPR_LOGICAL(e).operator);
+    LogicalExpression logicexpr = TO_EXPR_LOGICAL(e);
+    free_expression(*logicexpr.lhs);
+    free_expression(*logicexpr.rhs);
+    free(logicexpr.lhs);
+    free(logicexpr.rhs);
+    free(logicexpr.operator);
     break;
   }
   case EXP_CALL: {
-    free(TO_EXPR_CALL(e).var.name);
-    for (size_t i = 0; i < TO_EXPR_CALL(e).arguments.count; i++) {
-      free_expression(TO_EXPR_CALL(e).arguments.data[i]);
+    CallExpression callexpr = TO_EXPR_CALL(e);
+    free(callexpr.var.name);
+    for (size_t i = 0; i < callexpr.arguments.count; i++) {
+      free_expression(callexpr.arguments.data[i]);
     }
-    dynarray_free(&TO_EXPR_CALL(e).arguments);
+    dynarray_free(&callexpr.arguments);
     break;
   }
   case EXP_STRUCT: {
-    free(TO_EXPR_STRUCT(e).name);
-    for (size_t i = 0; i < TO_EXPR_STRUCT(e).initializers.count; i++) {
-      free_expression(TO_EXPR_STRUCT(e).initializers.data[i]);
+    StructExpression structexpr = TO_EXPR_STRUCT(e);
+    free(structexpr.name);
+    for (size_t i = 0; i < structexpr.initializers.count; i++) {
+      free_expression(structexpr.initializers.data[i]);
     }
-    dynarray_free(&TO_EXPR_STRUCT(e).initializers);
+    dynarray_free(&structexpr.initializers);
     break;
   }
   case EXP_STRUCT_INIT: {
-    free_expression(*TO_EXPR_STRUCT_INIT(e).property);
-    free_expression(*TO_EXPR_STRUCT_INIT(e).value);
-    free(TO_EXPR_STRUCT_INIT(e).value);
-    free(TO_EXPR_STRUCT_INIT(e).property);
+    StructInitializerExpression structinitexpr = TO_EXPR_STRUCT_INIT(e);
+    free_expression(*structinitexpr.property);
+    free_expression(*structinitexpr.value);
+    free(structinitexpr.value);
+    free(structinitexpr.property);
     break;
   }
   case EXP_GET: {
-    free_expression(*TO_EXPR_GET(e).exp);
-    free(TO_EXPR_GET(e).property_name);
-    free(TO_EXPR_GET(e).exp);
-    free(TO_EXPR_GET(e).operator);
+    GetExpression getexpr = TO_EXPR_GET(e);
+    free_expression(*getexpr.exp);
+    free(getexpr.property_name);
+    free(getexpr.exp);
+    free(getexpr.operator);
     break;
   }
   default:

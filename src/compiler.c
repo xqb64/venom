@@ -224,28 +224,33 @@ static void handle_compile_expression_literal(Compiler *compiler,
                                               BytecodeChunk *chunk,
                                               Expression exp) {
   LiteralExpression e = TO_EXPR_LITERAL(exp);
-  if (!e.specval) {
-    uint32_t const_idx = add_constant(chunk, e.dval);
+  switch (e.kind) {
+  case LITERAL_BOOL: {
+    emit_byte(chunk, OP_TRUE);
+    if (!e.as.bval) {
+      emit_byte(chunk, OP_NOT);
+    }
+    break;
+  }
+  case LITERAL_NUMBER: {
+    uint32_t const_idx = add_constant(chunk, e.as.dval);
     emit_byte(chunk, OP_CONST);
     emit_uint32(chunk, const_idx);
-  } else {
-    if (strcmp(e.specval, "true") == 0) {
-      emit_byte(chunk, OP_TRUE);
-    } else if (strcmp(e.specval, "false") == 0) {
-      emit_bytes(chunk, 2, OP_TRUE, OP_NOT);
-    } else if (strcmp(e.specval, "null") == 0) {
-      emit_byte(chunk, OP_NULL);
-    }
+    break;
   }
-}
-
-static void handle_compile_expression_string(Compiler *compiler,
-                                             BytecodeChunk *chunk,
-                                             Expression exp) {
-  StringExpression e = TO_EXPR_STRING(exp);
-  uint32_t str_idx = add_string(chunk, e.str);
-  emit_byte(chunk, OP_STR);
-  emit_uint32(chunk, str_idx);
+  case LITERAL_STRING: {
+    uint32_t str_idx = add_string(chunk, e.as.sval);
+    emit_byte(chunk, OP_STR);
+    emit_uint32(chunk, str_idx);
+    break;
+  }
+  case LITERAL_NULL: {
+    emit_byte(chunk, OP_NULL);
+    break;
+  }
+  default:
+    assert(0);
+  }
 }
 
 static void handle_compile_expression_variable(Compiler *compiler,
@@ -655,8 +660,6 @@ typedef struct {
 static CompileExpressionHandler expression_handler[] = {
     [EXP_LITERAL] = {.fn = handle_compile_expression_literal,
                      .name = "EXP_LITERAL"},
-    [EXP_STRING] = {.fn = handle_compile_expression_string,
-                    .name = "EXP_STRING"},
     [EXP_VARIABLE] = {.fn = handle_compile_expression_variable,
                       .name = "EXP_VARIABLE"},
     [EXP_UNARY] = {.fn = handle_compile_expression_unary, .name = "EXP_UNARY"},
