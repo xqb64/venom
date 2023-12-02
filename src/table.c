@@ -1,0 +1,55 @@
+#include "table.h"
+#include "object.h"
+#include "util.h"
+
+int *list_find(Bucket *head, const char *item) {
+  while (head != NULL) {
+    if (strcmp(head->key, item) == 0)
+      return &head->value;
+    head = head->next;
+  }
+  return NULL;
+}
+
+void list_insert(Bucket **head, char *key, int item) {
+  /* Create a new node. */
+  Bucket *new_node = malloc(sizeof(Bucket));
+
+  new_node->key = key;
+  new_node->value = item;
+  new_node->next = NULL;
+
+  /* Handle the edge case when the list is empty. */
+  if (*head == NULL) {
+    *head = new_node;
+  } else {
+    /* Go to the end of the list. */
+    Bucket *current = *head;
+    while (current->next != NULL) {
+      current = current->next;
+    }
+
+    /* Store the new node at the end. */
+    current->next = new_node;
+  }
+}
+
+void list_free(Bucket *head) {
+  Bucket *tmp;
+  while (head != NULL) {
+    tmp = head;
+    head = head->next;
+    free(tmp->key);
+    free(tmp);
+  }
+}
+
+uint32_t hash(const char *key, int length) {
+  /* copy-paste from 'crafting interpreters' */
+  uint32_t hash = 2166136261u;
+  for (int i = 0; i < length; i++) {
+    hash ^= (uint8_t)key[i];
+    hash *= 16777619;
+  }
+  return hash;
+}

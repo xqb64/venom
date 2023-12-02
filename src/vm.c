@@ -8,12 +8,11 @@
 #include "compiler.h"
 #include "disassembler.h"
 #include "math.h"
-#include "object.h"
 #include "util.h"
 
 void init_vm(VM *vm) { memset(vm, 0, sizeof(VM)); }
 
-void free_vm(VM *vm) { table_free(&vm->globals); }
+void free_vm(VM *vm) { free_table_object(&vm->globals); }
 
 static inline void push(VM *vm, Object obj) { vm->stack[vm->tos++] = obj; }
 
@@ -49,7 +48,7 @@ static inline Object pop(VM *vm) { return vm->stack[--vm->tos]; }
   do {                                                                         \
     printf("stack: [");                                                        \
     for (size_t i = 0; i < vm->tos; i++) {                                     \
-      PRINT_OBJECT(vm->stack[i]);                                              \
+      print_object(&vm->stack[i]);                                             \
       if (i < vm->tos - 1) {                                                   \
         printf(", ");                                                          \
       }                                                                        \
@@ -106,9 +105,9 @@ static inline bool check_equality(Object *left, Object *right) {
      * vely comparing that property with the corres-
      * ponding property in struct 'b'. */
     for (size_t i = 0; i < TABLE_MAX; i++) {
-      if (a->properties.data[i] == NULL)
+      if (a->properties.indexes[i] == NULL)
         continue;
-      char *key = a->properties.data[i]->key;
+      char *key = a->properties.indexes[i]->key;
       if (!check_equality(table_get(&a->properties, key),
                           table_get(&b->properties, key))) {
         return false;
@@ -152,7 +151,7 @@ static inline int handle_op_print(VM *vm, BytecodeChunk *chunk, uint8_t **ip) {
 #ifdef venom_debug_vm
   printf("dbg print :: ");
 #endif
-  PRINT_OBJECT(object);
+  print_object(&object);
   printf("\n");
   OBJECT_DECREF(object);
   return 0;

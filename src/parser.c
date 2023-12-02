@@ -378,6 +378,7 @@ static Expression primary(Parser *parser, Tokenizer *tokenizer) {
                    TOKEN_NUMBER, TOKEN_STRING)) {
     return literal(parser);
   } else {
+    printf("%.*s\n", parser->current.length, parser->current.start);
     assert(0);
   }
 }

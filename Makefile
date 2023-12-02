@@ -1,12 +1,13 @@
 SRC := $(wildcard src/*.c)
 
-CFLAGS += -Wshadow -Wall -Wextra -Wpedantic -Werror
+CFLAGS += -Wshadow -Wall -Wextra -Werror
 CFLAGS += -Wswitch-default
 CFLAGS += -Wredundant-decls
 CFLAGS += -Wno-unused-parameter
 CFLAGS += -Wformat-security
 CFLAGS += -Wunreachable-code
 CFLAGS += -O3
+CFLAGS += -g3
 LDLIBS = -lm
 
 ifeq ($(debug), all)

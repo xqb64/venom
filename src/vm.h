@@ -9,7 +9,7 @@
 typedef struct {
   Object stack[STACK_MAX];
   size_t tos; /* top of stack */
-  Table globals;
+  Table_Object globals;
   BytecodePtr fp_stack[STACK_MAX]; /* a stack for frame pointers */
   size_t fp_count;
 } VM;

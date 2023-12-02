@@ -6,7 +6,7 @@
 #include <stdint.h>
 
 #include "dynarray.h"
-#include "internal_object.h"
+#include "table.h"
 #include "parser.h"
 
 typedef enum {
@@ -54,9 +54,25 @@ typedef struct BytecodeChunk {
   DynArray_char_ptr sp; /* string pool */
 } BytecodeChunk;
 
+typedef struct {
+  char *name;
+  size_t location;
+  size_t paramcount;
+} Function;
+
+typedef struct {
+  char *name;
+  DynArray_char_ptr properties;
+} StructBlueprint;
+
+typedef Table(Function) Table_Function;
+typedef Table(StructBlueprint) Table_StructBlueprint;
+void free_table_struct_blueprints(const Table_StructBlueprint *table);
+void free_table_functions(const Table_Function *table);
+
 typedef struct Compiler {
-  InternalTable functions;
-  InternalTable structs;
+  Table_Function functions;
+  Table_StructBlueprint struct_blueprints;
   DynArray_char_ptr globals;
   DynArray_char_ptr locals;
   DynArray_int breaks;

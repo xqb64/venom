@@ -20,13 +20,33 @@ void init_compiler(Compiler *compiler) {
   memset(compiler, 0, sizeof(Compiler));
 }
 
+void free_table_struct_blueprints(const Table_StructBlueprint *table) {
+  for (size_t i = 0; i < TABLE_MAX; i++) {
+    if (table->indexes[i] != NULL) {
+      Bucket *bucket = table->indexes[i];                                  
+      StructBlueprint sb = table->items[bucket->value];
+      dynarray_free(&sb.properties);
+      list_free(bucket);
+    }
+  }                
+}
+
+void free_table_functions(const Table_Function *table) {
+  for (size_t i = 0; i < TABLE_MAX; i++) {
+    if (table->indexes[i] != NULL) {
+      Bucket *bucket = table->indexes[i];                                  
+      list_free(bucket);
+    }
+  }                
+}
+
 void free_compiler(Compiler *compiler) {
   dynarray_free(&compiler->globals);
   dynarray_free(&compiler->locals);
   dynarray_free(&compiler->breaks);
   dynarray_free(&compiler->loop_starts);
-  internal_table_free(&compiler->structs);
-  internal_table_free(&compiler->functions);
+  free_table_struct_blueprints(&compiler->struct_blueprints);
+  free_table_functions(&compiler->functions);
 }
 
 void init_chunk(BytecodeChunk *chunk) {
@@ -379,14 +399,10 @@ static void handle_compile_expression_call(Compiler *compiler,
   CallExpression e = TO_EXPR_CALL(exp);
 
   /* Error out at compile time if the function is not defined. */
-  InternalObject *funcobj =
-      internal_table_get(&compiler->functions, e.var.name);
-  if (funcobj == NULL) {
+  Function *func = table_get(&compiler->functions, e.var.name);
+  if (func == NULL) {
     COMPILER_ERROR("Function '%s' is not defined.", e.var.name);
   }
-
-  /* Function is defined. */
-  Function *func = TO_FUNC(*funcobj);
 
   if (func->paramcount != e.arguments.count) {
     COMPILER_ERROR("Function '%s' requires %ld arguments.", e.var.name,
@@ -578,26 +594,23 @@ static void handle_compile_expression_struct(Compiler *compiler,
   StructExpression e = TO_EXPR_STRUCT(exp);
 
   /* Look up the struct with that name in compiler's structs table. */
-  InternalObject *blueprintobj = internal_table_get(&compiler->structs, e.name);
+  StructBlueprint *blueprint = table_get(&compiler->struct_blueprints, e.name);
 
   /* If it is not found, bail out. */
-  if (!blueprintobj) {
+  if (!blueprint) {
     COMPILER_ERROR("struct '%s' is not defined.\n", e.name);
   }
 
-  /* The struct has been defined. */
-  StructBlueprint *sb = TO_STRUCT_BLUEPRINT(*blueprintobj);
-
   /* If the number of properties in the struct blueprint
    * doesn't match the number of provided initializers, bail out. */
-  if (sb->properties.count != e.initializers.count) {
-    COMPILER_ERROR("struct '%s' requires %ld initializers.\n", sb->name,
-                   sb->properties.count);
+  if (blueprint->properties.count != e.initializers.count) {
+    COMPILER_ERROR("struct '%s' requires %ld initializers.\n", blueprint->name,
+                   blueprint->properties.count);
   }
 
   /* Check if the initializer names match the property names. */
-  for (size_t i = 0; i < sb->properties.count; i++) {
-    char *property = sb->properties.data[i];
+  for (size_t i = 0; i < blueprint->properties.count; i++) {
+    char *property = blueprint->properties.data[i];
     bool found = false;
     for (size_t j = 0; j < e.initializers.count; j++) {
       StructInitializerExpression initializer =
@@ -612,15 +625,15 @@ static void handle_compile_expression_struct(Compiler *compiler,
       /* This call returns a malloc'd pointer, but since we
        * are immediately calling the COMPILER_ERROR macro,
        * we rely on the OS to free up the resources. */
-      char *properties_str = strcat_dynarray(sb->properties);
-      COMPILER_ERROR("struct '%s' requires properties: [%s]", sb->name,
+      char *properties_str = strcat_dynarray(blueprint->properties);
+      COMPILER_ERROR("struct '%s' requires properties: [%s]", blueprint->name,
                      properties_str);
     }
   }
 
   /* Everything is okay, so we emit OP_STRUCT followed by struct's
    * name index in the chunk's sp, and the count of initializers. */
-  uint32_t name_idx = add_string(chunk, sb->name);
+  uint32_t name_idx = add_string(chunk, blueprint->name);
   emit_byte(chunk, OP_STRUCT);
   emit_uint32(chunk, name_idx);
 
@@ -833,7 +846,7 @@ static void handle_compile_statement_fn(Compiler *compiler,
       .paramcount = s.parameters.count,
       .location = chunk->code.count + 3,
   };
-  internal_table_insert(&compiler->functions, func.name, AS_FUNC(ALLOC(func)));
+  table_insert(&compiler->functions, func.name, func);
   compiler->pops[1] += s.parameters.count;
 
   /* Copy the function parameters into the current
@@ -865,8 +878,7 @@ static void handle_compile_statement_struct(Compiler *compiler,
     dynarray_insert(&properties, s.properties.data[i]);
   }
   StructBlueprint blueprint = {.name = s.name, .properties = properties};
-  internal_table_insert(&compiler->structs, blueprint.name,
-                        AS_STRUCT_BLUEPRINT(ALLOC(blueprint)));
+  table_insert(&compiler->struct_blueprints, blueprint.name, blueprint);
 }
 
 static void handle_compile_statement_return(Compiler *compiler,
