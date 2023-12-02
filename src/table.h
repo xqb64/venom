@@ -53,7 +53,7 @@ Return type is void*, so make sure to use a pointer of the correct type.
 #define table_get(table, key)                                                  \
   access_if_idx_not_null(                                                      \
     &(table)->items[0],                                                        \
-    sizeof((table)->items[1]),                                                 \
+    sizeof((table)->items[0]),                                                 \
     list_find(                                                                 \
       (table)->indexes[hash((key), strlen((key))) % TABLE_MAX],                \
       (key)                                                                    \
