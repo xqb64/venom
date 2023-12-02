@@ -39,12 +39,8 @@ void *access_if_idx_not_null(void *array, size_t itemsize, int *i);
 
 // Never returns NULL. Assumes that the table has the given key.
 #define table_get_unchecked(table, key)                                        \
-  (&(table)->items[                                                            \
-    *list_find(                                                                \
-      (table)->indexes[hash((key), strlen((key))) % TABLE_MAX],                \
-      (key)                                                                    \
-    )                                                                          \
-  ])
+  (&(table)->items[*list_find(                                                 \
+      (table)->indexes[hash((key), strlen((key))) % TABLE_MAX], (key))])
 
 /*
 Returns NULL for not found.
@@ -52,13 +48,9 @@ Return type is void*, so make sure to use a pointer of the correct type.
 */
 #define table_get(table, key)                                                  \
   access_if_idx_not_null(                                                      \
-    &(table)->items[0],                                                        \
-    sizeof((table)->items[0]),                                                 \
-    list_find(                                                                 \
-      (table)->indexes[hash((key), strlen((key))) % TABLE_MAX],                \
-      (key)                                                                    \
-    )                                                                          \
-  )
+      &(table)->items[0], sizeof((table)->items[0]),                           \
+      list_find((table)->indexes[hash((key), strlen((key))) % TABLE_MAX],      \
+                (key)))
 
 #define table_insert(table, key, item)                                         \
   do {                                                                         \
