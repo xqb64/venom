@@ -28,12 +28,37 @@ void list_free(Bucket *head);
 int *list_find(Bucket *head, const char *item);
 void list_insert(Bucket **head, char *key, int item);
 
+/*
+Given &array[0], sizeof(array[0]) and i, this function returns array[*i].
+If i is NULL, then this returns NULL.
+
+The advantage compared to using array[*i] in a macro is checking for NULL.
+The disadvantage is that this always evaluates to a void*.
+*/
+void *access_if_idx_not_null(void *array, size_t itemsize, int *i);
+
+// Never returns NULL. Assumes that the table has the given key.
+#define table_get_unchecked(table, key)                                        \
+  (&(table)->items[                                                            \
+    *list_find(                                                                \
+      (table)->indexes[hash((key), strlen((key))) % TABLE_MAX],                \
+      (key)                                                                    \
+    )                                                                          \
+  ])
+
+/*
+Returns NULL for not found.
+Return type is void*, so make sure to use a pointer of the correct type.
+*/
 #define table_get(table, key)                                                  \
-  ({                                                                           \
-    int idx = hash((key), strlen((key))) % TABLE_MAX;                          \
-    int *item_idx = list_find((table)->indexes[idx], (key));                   \
-    item_idx != NULL ? &((table)->items[*item_idx]) : NULL;                    \
-  })
+  access_if_idx_not_null(                                                      \
+    &(table)->items[0],                                                        \
+    sizeof((table)->items[1]),                                                 \
+    list_find(                                                                 \
+      (table)->indexes[hash((key), strlen((key))) % TABLE_MAX],                \
+      (key)                                                                    \
+    )                                                                          \
+  )
 
 #define table_insert(table, key, item)                                         \
   do {                                                                         \
@@ -43,7 +68,7 @@ void list_insert(Bucket **head, char *key, int item);
       list_insert(&(table)->indexes[bucket_idx], k, (table)->count);           \
       (table)->items[(table)->count++] = (item);                               \
     } else {                                                                   \
-      *table_get((table), (key)) = (item);                                     \
+      *table_get_unchecked((table), (key)) = (item);                           \
       free(k);                                                                 \
     }                                                                          \
   } while (0)

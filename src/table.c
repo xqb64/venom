@@ -2,6 +2,15 @@
 #include "object.h"
 #include "util.h"
 
+void *access_if_idx_not_null(void *array, size_t itemsize, int *i)
+{
+  if (i == NULL) {
+    return NULL;
+  }
+
+  return (char*)array + (*i)*itemsize;
+}
+
 int *list_find(Bucket *head, const char *item) {
   while (head != NULL) {
     if (strcmp(head->key, item) == 0)

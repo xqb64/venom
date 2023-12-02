@@ -108,8 +108,8 @@ static inline bool check_equality(Object *left, Object *right) {
       if (a->properties.indexes[i] == NULL)
         continue;
       char *key = a->properties.indexes[i]->key;
-      if (!check_equality(table_get(&a->properties, key),
-                          table_get(&b->properties, key))) {
+      if (!check_equality(table_get_unchecked(&a->properties, key),
+                          table_get_unchecked(&b->properties, key))) {
         return false;
       }
     }
@@ -300,7 +300,7 @@ static inline int handle_op_get_global(VM *vm, BytecodeChunk *chunk,
    * nce the object will be present in yet another location,
    * the refcount must be incremented. */
   uint32_t name_idx = READ_UINT32();
-  Object *obj = table_get(&vm->globals, chunk->sp.data[name_idx]);
+  Object *obj = table_get_unchecked(&vm->globals, chunk->sp.data[name_idx]);
   push(vm, *obj);
   OBJECT_INCREF(*obj);
   return 0;
@@ -313,7 +313,7 @@ static inline int handle_op_get_global_ptr(VM *vm, BytecodeChunk *chunk,
    * name in in the vm's globals table, and pushes its add-
    * ress on the stack. */
   uint32_t name_idx = READ_UINT32();
-  Object *obj = table_get(&vm->globals, chunk->sp.data[name_idx]);
+  Object *obj = table_get_unchecked(&vm->globals, chunk->sp.data[name_idx]);
   push(vm, AS_PTR(obj));
   return 0;
 }
