@@ -7,6 +7,7 @@ void *access_if_idx_not_null(void *array, size_t itemsize, int *i) {
     return NULL;
   }
 
+  // Casting to char*, so that we can give the offset as bytes.
   return (char *)array + (*i) * itemsize;
 }
 
