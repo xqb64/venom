@@ -889,19 +889,22 @@ static void handle_compile_statement_struct(Compiler *compiler,
                                             BytecodeChunk *chunk,
                                             Statement stmt) {
   StructStatement s = TO_STMT_STRUCT(stmt);
+
   emit_byte(chunk, OP_STRUCT_BLUEPRINT);
+
   uint32_t name_idx = add_string(chunk, s.name);
   emit_uint32(chunk, name_idx);
-  DynArray_char_ptr properties = {0};
+
   emit_uint32(chunk, s.properties.count);
-  StructBlueprint blueprint = {.name = s.name};
+
+  StructBlueprint blueprint = {.name = s.name, .property_indexes = {{0}}};
   for (size_t i = 0; i < s.properties.count; i++) {
     uint32_t propname_idx = add_string(chunk, s.properties.data[i]);
     emit_uint32(chunk, propname_idx);
-    dynarray_insert(&properties, s.properties.data[i]);
     table_insert(&blueprint.property_indexes, s.properties.data[i],
                  blueprint.property_indexes.count);
   }
+
   table_insert(&compiler->struct_blueprints, blueprint.name, blueprint);
 }
 

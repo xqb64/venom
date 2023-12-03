@@ -415,10 +415,8 @@ static inline int handle_op_setattr(VM *vm, BytecodeChunk *chunk,
   uint32_t property_name_idx = READ_UINT32();
   Object value = pop(vm);
   Object obj = pop(vm);
-  StructBlueprint *sb = table_get(&vm->blueprints, obj.as.structobj->name);
-  if (!sb) {
-    RUNTIME_ERROR("struct '%s' is not defined", obj.as.structobj->name);
-  }
+  StructBlueprint *sb =
+      table_get_unchecked(&vm->blueprints, obj.as.structobj->name);
   int *idx =
       table_get(&sb->property_indexes, chunk->sp.data[property_name_idx]);
   if (!idx) {
@@ -440,10 +438,8 @@ static inline int handle_op_getattr(VM *vm, BytecodeChunk *chunk,
   uint32_t property_name_idx = READ_UINT32();
   Object obj = pop(vm);
 
-  StructBlueprint *sb = table_get(&vm->blueprints, obj.as.structobj->name);
-  if (!sb) {
-    RUNTIME_ERROR("struct '%s' is not defined", obj.as.structobj->name);
-  }
+  StructBlueprint *sb =
+      table_get_unchecked(&vm->blueprints, obj.as.structobj->name);
   int *idx =
       table_get(&sb->property_indexes, chunk->sp.data[property_name_idx]);
   if (!idx) {
@@ -470,10 +466,8 @@ static inline int handle_op_getattr_ptr(VM *vm, BytecodeChunk *chunk,
   uint32_t property_name_idx = READ_UINT32();
   Object obj = pop(vm);
 
-  StructBlueprint *sb = table_get(&vm->blueprints, obj.as.structobj->name);
-  if (!sb) {
-    RUNTIME_ERROR("struct '%s' is not defined", obj.as.structobj->name);
-  }
+  StructBlueprint *sb =
+      table_get_unchecked(&vm->blueprints, obj.as.structobj->name);
   int *idx =
       table_get(&sb->property_indexes, chunk->sp.data[property_name_idx]);
   if (!idx) {
@@ -481,9 +475,9 @@ static inline int handle_op_getattr_ptr(VM *vm, BytecodeChunk *chunk,
                   obj.as.structobj->name, chunk->sp.data[property_name_idx]);
   }
 
-  Object property = obj.as.structobj->properties[*idx];
+  Object *property = &obj.as.structobj->properties[*idx];
 
-  push(vm, AS_PTR(&property));
+  push(vm, AS_PTR(property));
   OBJECT_DECREF(obj);
   return 0;
 }
@@ -518,9 +512,11 @@ static inline int handle_op_struct_blueprint(VM *vm, BytecodeChunk *chunk,
   for (size_t i = 0; i < propcount; i++) {
     dynarray_insert(&properties, chunk->sp.data[READ_UINT32()]);
   }
-  StructBlueprint sb = {.name = chunk->sp.data[name_idx]};
+  StructBlueprint sb = {.name = chunk->sp.data[name_idx],
+                        .property_indexes = {{0}}};
   for (size_t i = 0; i < properties.count; i++) {
-    table_insert(&sb.property_indexes, properties.data[i], 0);
+    table_insert(&sb.property_indexes, properties.data[i],
+                 sb.property_indexes.count);
   }
   table_insert(&vm->blueprints, chunk->sp.data[name_idx], sb);
   return 0;
