@@ -26,6 +26,7 @@ This project is my debut in the realm of programming language design. I had a bl
 - functions
   - `return` is mandatory
   - recursion!
+- `print` statement
 
 Global scope is allowed.
 
