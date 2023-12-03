@@ -1,7 +1,7 @@
 #!/bin/sh
 
 # Run clang-format
-clang-format src/*.c src/*.h --dry-run -Werror
+clang-format src/*.c src/*.h -style=file:.clang-format --dry-run -Werror
 if [ $? -ne 0 ]; then
   echo "Error: Code should be formatted with clang-format."
   exit 1
