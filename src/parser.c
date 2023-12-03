@@ -188,7 +188,7 @@ static Expression call(Parser *parser, Tokenizer *tokenizer) {
           .exp = ALLOC(expr),
           .property_name =
               own_string_n(property_name.start, property_name.length),
-          .operator= op,
+          .op = op,
       };
 
       expr = AS_EXPR_GET(get_expr);
@@ -204,7 +204,7 @@ static Expression unary(Parser *parser, Tokenizer *tokenizer) {
             TOKEN_BANG)) {
     char *op = own_string_n(parser->previous.start, parser->previous.length);
     Expression right = unary(parser, tokenizer);
-    UnaryExpression e = {.exp = ALLOC(right), .operator= op };
+    UnaryExpression e = {.exp = ALLOC(right), .op = op};
     return AS_EXPR_UNARY(e);
   }
   return call(parser, tokenizer);
@@ -218,7 +218,7 @@ static Expression factor(Parser *parser, Tokenizer *tokenizer) {
     BinaryExpression binexp = {
         .lhs = ALLOC(expr),
         .rhs = ALLOC(right),
-        .operator= op,
+        .op = op,
     };
     expr = AS_EXPR_BINARY(binexp);
   }
@@ -233,7 +233,7 @@ static Expression term(Parser *parser, Tokenizer *tokenizer) {
     BinaryExpression binexp = {
         .lhs = ALLOC(expr),
         .rhs = ALLOC(right),
-        .operator= op,
+        .op = op,
     };
     expr = AS_EXPR_BINARY(binexp);
   }
@@ -249,7 +249,7 @@ static Expression comparison(Parser *parser, Tokenizer *tokenizer) {
     BinaryExpression binexp = {
         .lhs = ALLOC(expr),
         .rhs = ALLOC(right),
-        .operator= op,
+        .op = op,
     };
     expr = AS_EXPR_BINARY(binexp);
   }
@@ -264,7 +264,7 @@ static Expression equality(Parser *parser, Tokenizer *tokenizer) {
     BinaryExpression binexp = {
         .lhs = ALLOC(expr),
         .rhs = ALLOC(right),
-        .operator= op,
+        .op = op,
     };
     expr = AS_EXPR_BINARY(binexp);
   }
@@ -279,7 +279,7 @@ static Expression and_(Parser *parser, Tokenizer *tokenizer) {
     LogicalExpression logexp = {
         .lhs = ALLOC(expr),
         .rhs = ALLOC(right),
-        .operator= op,
+        .op = op,
     };
     expr = AS_EXPR_LOGICAL(logexp);
   }
@@ -294,7 +294,7 @@ static Expression or_(Parser *parser, Tokenizer *tokenizer) {
     LogicalExpression logexp = {
         .lhs = ALLOC(expr),
         .rhs = ALLOC(right),
-        .operator= op,
+        .op = op,
     };
     expr = AS_EXPR_LOGICAL(logexp);
   }
@@ -561,7 +561,7 @@ static void free_expression(Expression e) {
     UnaryExpression unaryexpr = TO_EXPR_UNARY(e);
     free_expression(*unaryexpr.exp);
     free(unaryexpr.exp);
-    free(unaryexpr.operator);
+    free(unaryexpr.op);
     break;
   }
   case EXP_BINARY: {
@@ -586,7 +586,7 @@ static void free_expression(Expression e) {
     free_expression(*logicexpr.rhs);
     free(logicexpr.lhs);
     free(logicexpr.rhs);
-    free(logicexpr.operator);
+    free(logicexpr.op);
     break;
   }
   case EXP_CALL: {
@@ -620,7 +620,7 @@ static void free_expression(Expression e) {
     free_expression(*getexpr.exp);
     free(getexpr.property_name);
     free(getexpr.exp);
-    free(getexpr.operator);
+    free(getexpr.op);
     break;
   }
   default:

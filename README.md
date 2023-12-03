@@ -167,7 +167,7 @@ make test
 Contributors to this project are very welcome -- specifically, suggestions (and PRs) as for how to make the whole system even faster, because I suspect there's still more performance left to be squeezed out.
 
 Before submitting a PR, make sure your code:
-- is formatted using `clang-format src/*.c src/*.h -style=file:.clang-format -i`
+- is formatted properly (use `make format`)
 - passes the tests
 
 There is also a pre-commit hook in the `hooks` folder that you could copy/paste into your `.git/hooks` folder which helps with this process.

@@ -86,3 +86,6 @@ test:
 		echo "Error: Virtual environment is not active. Activate it using 'source <your_env>/bin/activate' and then run 'make test'"; \
 		exit 1; \
 	fi
+
+format:
+	clang-format src/*.c src/*.h -style=file:.clang-format -i

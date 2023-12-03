@@ -302,16 +302,16 @@ static void handle_compile_expression_unary(Compiler *compiler,
                                             BytecodeChunk *chunk,
                                             Expression exp) {
   UnaryExpression e = TO_EXPR_UNARY(exp);
-  if (strcmp(e.operator, "-") == 0) {
+  if (strcmp(e.op, "-") == 0) {
     compile_expression(compiler, chunk, *e.exp);
     emit_byte(chunk, OP_NEG);
-  } else if (strcmp(e.operator, "!") == 0) {
+  } else if (strcmp(e.op, "!") == 0) {
     compile_expression(compiler, chunk, *e.exp);
     emit_byte(chunk, OP_NOT);
-  } else if (strcmp(e.operator, "*") == 0) {
+  } else if (strcmp(e.op, "*") == 0) {
     compile_expression(compiler, chunk, *e.exp);
     emit_byte(chunk, OP_DEREF);
-  } else if (strcmp(e.operator, "&") == 0) {
+  } else if (strcmp(e.op, "&") == 0) {
     switch (e.exp->kind) {
     case EXP_VARIABLE: {
       VariableExpression var = TO_EXPR_VARIABLE(*e.exp);
@@ -342,7 +342,7 @@ static void handle_compile_expression_unary(Compiler *compiler,
        * fore the member access operator. */
       compile_expression(compiler, chunk, *getexp.exp);
       /* Deref if the operator is '->'. */
-      if (strcmp(getexp.operator, "->") == 0) {
+      if (strcmp(getexp.op, "->") == 0) {
         emit_byte(chunk, OP_DEREF);
       }
       /* Add the 'property_name' string to the
@@ -366,29 +366,29 @@ static void handle_compile_expression_binary(Compiler *compiler,
   compile_expression(compiler, chunk, *e.lhs);
   compile_expression(compiler, chunk, *e.rhs);
 
-  if (strcmp(e.operator, "+") == 0) {
+  if (strcmp(e.op, "+") == 0) {
     emit_byte(chunk, OP_ADD);
-  } else if (strcmp(e.operator, "-") == 0) {
+  } else if (strcmp(e.op, "-") == 0) {
     emit_byte(chunk, OP_SUB);
-  } else if (strcmp(e.operator, "*") == 0) {
+  } else if (strcmp(e.op, "*") == 0) {
     emit_byte(chunk, OP_MUL);
-  } else if (strcmp(e.operator, "/") == 0) {
+  } else if (strcmp(e.op, "/") == 0) {
     emit_byte(chunk, OP_DIV);
-  } else if (strcmp(e.operator, "%%") == 0) {
+  } else if (strcmp(e.op, "%%") == 0) {
     emit_byte(chunk, OP_MOD);
-  } else if (strcmp(e.operator, ">") == 0) {
+  } else if (strcmp(e.op, ">") == 0) {
     emit_byte(chunk, OP_GT);
-  } else if (strcmp(e.operator, "<") == 0) {
+  } else if (strcmp(e.op, "<") == 0) {
     emit_byte(chunk, OP_LT);
-  } else if (strcmp(e.operator, ">=") == 0) {
+  } else if (strcmp(e.op, ">=") == 0) {
     emit_bytes(chunk, 2, OP_LT, OP_NOT);
-  } else if (strcmp(e.operator, "<=") == 0) {
+  } else if (strcmp(e.op, "<=") == 0) {
     emit_bytes(chunk, 2, OP_GT, OP_NOT);
-  } else if (strcmp(e.operator, "==") == 0) {
+  } else if (strcmp(e.op, "==") == 0) {
     emit_byte(chunk, OP_EQ);
-  } else if (strcmp(e.operator, "!=") == 0) {
+  } else if (strcmp(e.op, "!=") == 0) {
     emit_bytes(chunk, 2, OP_EQ, OP_NOT);
-  } else if (strcmp(e.operator, "++") == 0) {
+  } else if (strcmp(e.op, "++") == 0) {
     emit_byte(chunk, OP_STRCAT);
   }
 }
@@ -437,7 +437,7 @@ static void handle_compile_expression_get(Compiler *compiler,
    * the member access operator. */
   compile_expression(compiler, chunk, *e.exp);
 
-  if (strcmp(e.operator, "->") == 0) {
+  if (strcmp(e.op, "->") == 0) {
     emit_byte(chunk, OP_DEREF);
   }
 
@@ -486,7 +486,7 @@ static void handle_compile_expression_assign(Compiler *compiler,
     /* Compile the part before the member access operator ('egg'),
      * because OP_SETATTR expects the struct to be on the stack. */
     compile_expression(compiler, chunk, *getexp.exp);
-    if (strcmp(getexp.operator, "->") == 0) {
+    if (strcmp(getexp.op, "->") == 0) {
       emit_byte(chunk, OP_DEREF);
     }
 
@@ -525,7 +525,7 @@ static void handle_compile_expression_logical(Compiler *compiler,
   LogicalExpression e = TO_EXPR_LOGICAL(exp);
   /* We first compile the left-hand side of the expression. */
   compile_expression(compiler, chunk, *e.lhs);
-  if (strcmp(e.operator, "&&") == 0) {
+  if (strcmp(e.op, "&&") == 0) {
     /* For logical AND, we need to short-circuit when the left-hand side is
      * falsey.
      *
@@ -554,7 +554,7 @@ static void handle_compile_expression_logical(Compiler *compiler,
     patch_placeholder(chunk, end_jump);
     emit_bytes(chunk, 2, OP_TRUE, OP_NOT);
     patch_placeholder(chunk, false_jump);
-  } else if (strcmp(e.operator, "||") == 0) {
+  } else if (strcmp(e.op, "||") == 0) {
     /* For logical OR, we need to short-circuit when the left-hand side is
      * truthy.
      *

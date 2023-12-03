@@ -45,13 +45,13 @@ typedef struct VariableExpression {
 
 typedef struct UnaryExpression {
   Expression *exp;
-  char *operator;
+  char *op;
 } UnaryExpression;
 
 typedef struct BinaryExpression {
   Expression *lhs;
   Expression *rhs;
-  char *operator;
+  char *op;
 } BinaryExpression;
 
 typedef struct CallExpression {
@@ -62,7 +62,7 @@ typedef struct CallExpression {
 typedef struct GetExpression {
   Expression *exp;
   char *property_name;
-  char *operator;
+  char *op;
 } GetExpression;
 
 typedef struct AssignExpression {
@@ -73,7 +73,7 @@ typedef struct AssignExpression {
 typedef struct LogicalExpression {
   Expression *lhs;
   Expression *rhs;
-  char *operator;
+  char *op;
 } LogicalExpression;
 
 typedef struct StructExpression {
