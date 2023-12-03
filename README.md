@@ -147,7 +147,7 @@ make graph.png <file>
 
 The tests are written in Python and venom's behavior is tested externally.
 
-The test suite relies on venom being compiled with `debug=vm` (because of the prefix in debug prints). To run the test suite, create a Python virtual environment and activate it, then execute the command below (ideally also install `pytest-xdist` because it's a time-consuming process):
+The test suite relies on venom being compiled with `debug=vm` (because of the prefix in debug prints). To run the test suite, create a Python virtual environment and activate it, install `pytest` (ideally also install `pytest-xdist` because it's a time-consuming process), then execute the command below:
 
 ```
 make test
