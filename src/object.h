@@ -6,8 +6,6 @@
 #include <stdbool.h>
 #include <stdint.h>
 
-#define TABLE_MAX 1024
-
 typedef enum {
   OBJ_NULL,
   OBJ_BOOLEAN,
@@ -76,32 +74,9 @@ typedef struct Struct {
   Object properties[];
 } Struct;
 
-#define DEALLOC_OBJ(object)                                                    \
-  do {                                                                         \
-    if (IS_STRUCT((object))) {                                                 \
-      free((object).as.structobj);                                             \
-    }                                                                          \
-    if (IS_STRING((object))) {                                                 \
-      free((object).as.str->value);                                            \
-      free((object).as.str);                                                   \
-    }                                                                          \
-  } while (0)
-
-#define OBJECT_INCREF(object)                                                  \
-  do {                                                                         \
-    if (IS_STRUCT((object)) || IS_STRING((object))) {                          \
-      ++*(object).as.refcount;                                                 \
-    }                                                                          \
-  } while (0)
-
-#define OBJECT_DECREF(object)                                                  \
-  do {                                                                         \
-    if (IS_STRUCT((object)) || IS_STRING((object))) {                          \
-      if (--*(object).as.refcount == 0) {                                      \
-        DEALLOC_OBJ((object));                                                 \
-      }                                                                        \
-    }                                                                          \
-  } while (0)
+void dealloc(Object obj);
+void objdecref(Object obj);
+void objincref(Object obj);
 
 #define GET_OBJTYPE(type)                                                      \
   ((type) == OBJ_BOOLEAN  ? "boolean"                                          \

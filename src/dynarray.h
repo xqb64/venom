@@ -3,6 +3,7 @@
 
 #include <assert.h>
 #include <stddef.h>
+#include <stdint.h>
 
 #define DynArray(T)                                                            \
   struct {                                                                     \
@@ -33,6 +34,7 @@
 
 typedef DynArray(char *) DynArray_char_ptr;
 typedef DynArray(int) DynArray_int;
+typedef DynArray(uint32_t) DynArray_uint32_t;
 
 char *strcat_dynarray(DynArray_char_ptr array);
 

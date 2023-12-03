@@ -13,13 +13,14 @@ void print_object(Object *object) {
   } else if (IS_STRING(*object)) {
     printf("%s", TO_STR(*object)->value);
   } else if (IS_STRUCT(*object)) {
-    printf("{ ");
     printf("%s", TO_STRUCT(*object)->name);
-    printf(" {");
+    printf(" { ");
     for (size_t i = 0; i < TO_STRUCT(*object)->propcount; i++) {
       print_object(&TO_STRUCT(*object)->properties[i]);
+      if (i < TO_STRUCT(*object)->propcount - 1) {
+        printf(", ");
+      }
     }
-    printf(" }");
     printf(" }");
   }
 }
@@ -30,9 +31,41 @@ void free_table_object(const Table_Object *table) {
       Bucket *bucket = table->indexes[i];
       Object obj = table->items[bucket->value];
       if (IS_STRUCT(obj) || IS_STRING(obj)) {
-        OBJECT_DECREF(obj);
+        objdecref(obj);
       }
       list_free(bucket);
     }
+  }
+}
+
+void objincref(Object obj) {
+  if (IS_STRUCT(obj) || IS_STRING(obj)) {
+    ++*obj.as.refcount;
+  }
+}
+
+void objdecref(Object obj) {
+  if (IS_STRING(obj)) {
+    if (--*obj.as.refcount == 0) {
+      dealloc(obj);
+    }
+  }
+  if (IS_STRUCT(obj)) {
+    if (--*obj.as.refcount == 0) {
+      for (size_t i = 0; i < obj.as.structobj->propcount; i++) {
+        objdecref(obj.as.structobj->properties[i]);
+      }
+      dealloc(obj);
+    }
+  }
+}
+
+void dealloc(Object obj) {
+  if (IS_STRUCT(obj)) {
+    free(obj.as.structobj);
+  }
+  if (IS_STRING(obj)) {
+    free(obj.as.str->value);
+    free(obj.as.str);
   }
 }

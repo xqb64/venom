@@ -48,7 +48,7 @@ RESULTS = {
     },
     "cursed_struct.vnm": {
         "debug_prints": [],
-        "ends_with": "Compiler error: struct 'spam' requires properties: [x, y]",
+        "ends_with": "Compiler error: struct 'spam' has no property 'z'",
         "return_code": 1,
     },
     "doubleloop.vnm": {

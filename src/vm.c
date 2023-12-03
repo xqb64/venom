@@ -152,7 +152,7 @@ static inline int handle_op_print(VM *vm, BytecodeChunk *chunk, uint8_t **ip) {
 #endif
   print_object(&object);
   printf("\n");
-  OBJECT_DECREF(object);
+  objdecref(object);
   return 0;
 }
 
@@ -189,8 +189,8 @@ static inline int handle_op_eq(VM *vm, BytecodeChunk *chunk, uint8_t **ip) {
   Object a = pop(vm);
   /* Since the two objects might be refcounted,
    * the reference count must be decremented. */
-  OBJECT_DECREF(a);
-  OBJECT_DECREF(b);
+  objdecref(a);
+  objdecref(b);
   push(vm, AS_BOOL(check_equality(&a, &b)));
   return 0;
 }
@@ -301,7 +301,7 @@ static inline int handle_op_get_global(VM *vm, BytecodeChunk *chunk,
   uint32_t name_idx = READ_UINT32();
   Object *obj = table_get_unchecked(&vm->globals, chunk->sp.data[name_idx]);
   push(vm, *obj);
-  OBJECT_INCREF(*obj);
+  objincref(*obj);
   return 0;
 }
 
@@ -343,7 +343,7 @@ static inline int handle_op_deepset(VM *vm, BytecodeChunk *chunk,
   uint32_t idx = READ_UINT32();
   uint32_t adjusted_idx = adjust_idx(vm, idx);
   Object obj = pop(vm);
-  OBJECT_DECREF(vm->stack[adjusted_idx]);
+  objdecref(vm->stack[adjusted_idx]);
   vm->stack[adjusted_idx] = obj;
   return 0;
 }
@@ -389,7 +389,7 @@ static inline int handle_op_deepget(VM *vm, BytecodeChunk *chunk,
   uint32_t adjusted_idx = adjust_idx(vm, idx);
   Object obj = vm->stack[adjusted_idx];
   push(vm, obj);
-  OBJECT_INCREF(obj);
+  objincref(obj);
   return 0;
 }
 
@@ -450,8 +450,8 @@ static inline int handle_op_getattr(VM *vm, BytecodeChunk *chunk,
   Object property = obj.as.structobj->properties[*idx];
 
   push(vm, property);
-  OBJECT_INCREF(property);
-  OBJECT_DECREF(obj);
+  objincref(property);
+  objdecref(obj);
   return 0;
 }
 
@@ -478,7 +478,7 @@ static inline int handle_op_getattr_ptr(VM *vm, BytecodeChunk *chunk,
   Object *property = &obj.as.structobj->properties[*idx];
 
   push(vm, AS_PTR(property));
-  OBJECT_DECREF(obj);
+  objdecref(obj);
   return 0;
 }
 
@@ -494,13 +494,16 @@ static inline int handle_op_struct(VM *vm, BytecodeChunk *chunk, uint8_t **ip) {
     RUNTIME_ERROR("struct '%s' is not defined", chunk->sp.data[structname]);
   }
 
-  Struct s = {
-      .name = chunk->sp.data[structname],
-      .propcount = sb->property_indexes.count,
-      .refcount = 1,
-  };
+  Struct *s =
+      malloc(sizeof(Struct) + sizeof(Object) * sb->property_indexes.count);
 
-  push(vm, AS_STRUCT(ALLOC(s)));
+  s->name = chunk->sp.data[structname];
+  s->propcount = sb->property_indexes.count;
+  s->refcount = 1;
+
+  memset(&s->properties, 0, sizeof(Object) * s->propcount);
+
+  push(vm, AS_STRUCT(s));
   return 0;
 }
 
@@ -509,16 +512,23 @@ static inline int handle_op_struct_blueprint(VM *vm, BytecodeChunk *chunk,
   uint32_t name_idx = READ_UINT32();
   uint32_t propcount = READ_UINT32();
   DynArray_char_ptr properties = {0};
+  DynArray_uint32_t prop_indexes = {0};
   for (size_t i = 0; i < propcount; i++) {
     dynarray_insert(&properties, chunk->sp.data[READ_UINT32()]);
+    dynarray_insert(&prop_indexes, READ_UINT32());
   }
+
   StructBlueprint sb = {.name = chunk->sp.data[name_idx],
                         .property_indexes = {{0}}};
+
   for (size_t i = 0; i < properties.count; i++) {
     table_insert(&sb.property_indexes, properties.data[i],
-                 sb.property_indexes.count);
+                 prop_indexes.data[i]);
   }
+
   table_insert(&vm->blueprints, chunk->sp.data[name_idx], sb);
+  dynarray_free(&properties);
+  dynarray_free(&prop_indexes);
   return 0;
 }
 
@@ -557,7 +567,7 @@ static inline int handle_op_pop(VM *vm, BytecodeChunk *chunk, uint8_t **ip) {
    * object might be refcounted, its refcount must be dec-
    * remented. */
   Object obj = pop(vm);
-  OBJECT_DECREF(obj);
+  objdecref(obj);
   return 0;
 }
 
@@ -568,7 +578,7 @@ static inline int handle_op_deref(VM *vm, BytecodeChunk *chunk, uint8_t **ip) {
    * count must be incremented.*/
   Object ptr = pop(vm);
   push(vm, *ptr.as.ptr);
-  OBJECT_INCREF(*ptr.as.ptr);
+  objincref(*ptr.as.ptr);
   return 0;
 }
 
@@ -585,8 +595,8 @@ static inline int handle_op_strcat(VM *vm, BytecodeChunk *chunk, uint8_t **ip) {
     String result = concatenate_strings(TO_STR(a)->value, TO_STR(b)->value);
     Object obj = AS_STR(ALLOC(result));
     push(vm, obj);
-    OBJECT_DECREF(b);
-    OBJECT_DECREF(a);
+    objdecref(b);
+    objdecref(a);
   } else {
     RUNTIME_ERROR(
         "'++' operator used on objects of unsupported types: %s and %s",

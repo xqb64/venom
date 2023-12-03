@@ -618,32 +618,14 @@ static void handle_compile_expression_struct(Compiler *compiler,
   }
 
   /* Check if the initializer names match the property names. */
-  for (size_t i = 0; i < blueprint->property_indexes.count; i++) {
-    char *property = blueprint->property_indexes.indexes[i]->key;
-    bool found = false;
-    for (size_t j = 0; j < e.initializers.count; j++) {
-      StructInitializerExpression initializer =
-          TO_EXPR_STRUCT_INIT(e.initializers.data[j]);
-      VariableExpression key = TO_EXPR_VARIABLE(*initializer.property);
-      if (strcmp(property, key.name) == 0) {
-        found = true;
-        break;
-      }
-    }
-    if (!found) {
-      /* This call returns a malloc'd pointer, but since we
-       * are immediately calling the COMPILER_ERROR macro,
-       * we rely on the OS to free up the resources. */
-      DynArray_char_ptr properties = {0};
-      for (size_t k = 0; k < TABLE_MAX; k++) {
-        if (blueprint->property_indexes.indexes[k]) {
-          dynarray_insert(&properties,
-                          blueprint->property_indexes.indexes[k]->key);
-        }
-      }
-      char *properties_str = strcat_dynarray(properties);
-      COMPILER_ERROR("struct '%s' requires properties: [%s]", blueprint->name,
-                     properties_str);
+  for (size_t i = 0; i < e.initializers.count; i++) {
+    StructInitializerExpression siexp =
+        e.initializers.data[i].as.expr_struct_init;
+    char *propname = TO_EXPR_VARIABLE(*siexp.property).name;
+    int *propidx = table_get(&blueprint->property_indexes, propname);
+    if (!propidx) {
+      COMPILER_ERROR("struct '%s' has no property '%s'", blueprint->name,
+                     propname);
     }
   }
 
@@ -901,8 +883,8 @@ static void handle_compile_statement_struct(Compiler *compiler,
   for (size_t i = 0; i < s.properties.count; i++) {
     uint32_t propname_idx = add_string(chunk, s.properties.data[i]);
     emit_uint32(chunk, propname_idx);
-    table_insert(&blueprint.property_indexes, s.properties.data[i],
-                 blueprint.property_indexes.count);
+    table_insert(&blueprint.property_indexes, s.properties.data[i], i);
+    emit_uint32(chunk, i);
   }
 
   table_insert(&compiler->struct_blueprints, blueprint.name, blueprint);
