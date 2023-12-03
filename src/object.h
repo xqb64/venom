@@ -78,7 +78,7 @@ typedef struct Struct {
 #define DEALLOC_OBJ(object)                                                    \
   do {                                                                         \
     if (IS_STRUCT((object))) {                                                 \
-      free_table_object(&(object).as.struct_->properties);                            \
+      free_table_object(&(object).as.struct_->properties);                     \
       free((object).as.struct_);                                               \
     }                                                                          \
     if (IS_STRING((object))) {                                                 \

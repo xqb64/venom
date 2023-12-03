@@ -23,21 +23,21 @@ void init_compiler(Compiler *compiler) {
 void free_table_struct_blueprints(const Table_StructBlueprint *table) {
   for (size_t i = 0; i < TABLE_MAX; i++) {
     if (table->indexes[i] != NULL) {
-      Bucket *bucket = table->indexes[i];                                  
+      Bucket *bucket = table->indexes[i];
       StructBlueprint sb = table->items[bucket->value];
       dynarray_free(&sb.properties);
       list_free(bucket);
     }
-  }                
+  }
 }
 
 void free_table_functions(const Table_Function *table) {
   for (size_t i = 0; i < TABLE_MAX; i++) {
     if (table->indexes[i] != NULL) {
-      Bucket *bucket = table->indexes[i];                                  
+      Bucket *bucket = table->indexes[i];
       list_free(bucket);
     }
-  }                
+  }
 }
 
 void free_compiler(Compiler *compiler) {

@@ -6,8 +6,8 @@
 #include <stdint.h>
 
 #include "dynarray.h"
-#include "table.h"
 #include "parser.h"
+#include "table.h"
 
 typedef enum {
   OP_PRINT,

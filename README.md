@@ -138,14 +138,16 @@ make debug=all
 To generate the performance graph, run:
 
 ```
-make graph.png
+make graph.png <file>
 ```
+
+...where `<file>` could, e.g., be: `benchmarks/fib40.vnm`.
 
 ## Tests
 
 The tests are written in Python and venom's behavior is tested externally.
 
-The test suite relies on venom being compiled with `debug=vm` (because of the prefix in debug prints). To run the test suite, execute the command below, but make sure you have `pytest-xdist` installed because it's a time-consuming process.
+The test suite relies on venom being compiled with `debug=vm` (because of the prefix in debug prints). To run the test suite, create a Python virtual environment and activate it, then execute the command below (ideally also install `pytest-xdist` because it's a time-consuming process):
 
 ```
 make test
@@ -160,6 +162,12 @@ make test
 ## Contributing
 
 Contributors to this project are very welcome -- specifically, suggestions (and PRs) as for how to make the whole system even faster, because I suspect there's still more performance left to be squeezed out.
+
+Before submitting a PR, make sure your code:
+- is formatted using `clang-format src/*.c src/*.h` -style=file:.clang-format -i`
+- passes the tests
+
+There is also a pre-commit hook in the `hooks` folder that you could copy/paste into your `.git/hooks` folder which helps with this process.
 
 ## See also
 
