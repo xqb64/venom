@@ -56,11 +56,12 @@ Return type is void*, so make sure to use a pointer of the correct type.
   do {                                                                         \
     char *k = own_string((key));                                               \
     int bucket_idx = hash(k, strlen(k)) % TABLE_MAX;                           \
-    if (list_find((table)->indexes[bucket_idx], k) == NULL) {                  \
+    int *item_idx = list_find((table)->indexes[bucket_idx], k);                \
+    if (item_idx == NULL) {                                                    \
       list_insert(&(table)->indexes[bucket_idx], k, (table)->count);           \
       (table)->items[(table)->count++] = (item);                               \
     } else {                                                                   \
-      *table_get_unchecked((table), (key)) = (item);                           \
+      (table)->items[*item_idx] = (item);                                      \
       free(k);                                                                 \
     }                                                                          \
   } while (0)
