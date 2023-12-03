@@ -7,7 +7,6 @@ CFLAGS += -Wno-unused-parameter
 CFLAGS += -Wformat-security
 CFLAGS += -Wunreachable-code
 CFLAGS += -O3
-CFLAGS += -g3
 LDLIBS = -lm
 
 ifeq ($(debug), all)
@@ -16,11 +15,11 @@ ifeq ($(debug), all)
 	CFLAGS += -Dvenom_debug_compiler
 	CFLAGS += -Dvenom_debug_vm
 	CFLAGS += -Dvenom_debug_disassembler
-	CFLAGS += -g
+	CFLAGS += -g3
 endif
 
 ifeq (sym, $(findstring sym, $(debug)))
-	CFLAGS += -g
+	CFLAGS += -g3
 endif
 
 ifeq (tokenizer, $(findstring tokenizer, $(debug)))
