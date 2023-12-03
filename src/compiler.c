@@ -20,12 +20,21 @@ void init_compiler(Compiler *compiler) {
   memset(compiler, 0, sizeof(Compiler));
 }
 
+void free_table_int(const Table_int *table) {
+  for (size_t i = 0; i < TABLE_MAX; i++) {
+    if (table->indexes[i] != NULL) {
+      Bucket *bucket = table->indexes[i];
+      list_free(bucket);
+    }
+  }
+}
+
 void free_table_struct_blueprints(const Table_StructBlueprint *table) {
   for (size_t i = 0; i < TABLE_MAX; i++) {
     if (table->indexes[i] != NULL) {
       Bucket *bucket = table->indexes[i];
       StructBlueprint sb = table->items[bucket->value];
-      dynarray_free(&sb.properties);
+      free_table_int(&sb.property_indexes);
       list_free(bucket);
     }
   }
@@ -603,14 +612,14 @@ static void handle_compile_expression_struct(Compiler *compiler,
 
   /* If the number of properties in the struct blueprint
    * doesn't match the number of provided initializers, bail out. */
-  if (blueprint->properties.count != e.initializers.count) {
+  if (blueprint->property_indexes.count != e.initializers.count) {
     COMPILER_ERROR("struct '%s' requires %ld initializers.\n", blueprint->name,
-                   blueprint->properties.count);
+                   blueprint->property_indexes.count);
   }
 
   /* Check if the initializer names match the property names. */
-  for (size_t i = 0; i < blueprint->properties.count; i++) {
-    char *property = blueprint->properties.data[i];
+  for (size_t i = 0; i < blueprint->property_indexes.count; i++) {
+    char *property = blueprint->property_indexes.indexes[i]->key;
     bool found = false;
     for (size_t j = 0; j < e.initializers.count; j++) {
       StructInitializerExpression initializer =
@@ -625,7 +634,14 @@ static void handle_compile_expression_struct(Compiler *compiler,
       /* This call returns a malloc'd pointer, but since we
        * are immediately calling the COMPILER_ERROR macro,
        * we rely on the OS to free up the resources. */
-      char *properties_str = strcat_dynarray(blueprint->properties);
+      DynArray_char_ptr properties = {0};
+      for (size_t k = 0; k < TABLE_MAX; k++) {
+        if (blueprint->property_indexes.indexes[k]) {
+          dynarray_insert(&properties,
+                          blueprint->property_indexes.indexes[k]->key);
+        }
+      }
+      char *properties_str = strcat_dynarray(properties);
       COMPILER_ERROR("struct '%s' requires properties: [%s]", blueprint->name,
                      properties_str);
     }
@@ -873,11 +889,19 @@ static void handle_compile_statement_struct(Compiler *compiler,
                                             BytecodeChunk *chunk,
                                             Statement stmt) {
   StructStatement s = TO_STMT_STRUCT(stmt);
+  emit_byte(chunk, OP_STRUCT_BLUEPRINT);
+  uint32_t name_idx = add_string(chunk, s.name);
+  emit_uint32(chunk, name_idx);
   DynArray_char_ptr properties = {0};
+  emit_uint32(chunk, s.properties.count);
+  StructBlueprint blueprint = {.name = s.name};
   for (size_t i = 0; i < s.properties.count; i++) {
+    uint32_t propname_idx = add_string(chunk, s.properties.data[i]);
+    emit_uint32(chunk, propname_idx);
     dynarray_insert(&properties, s.properties.data[i]);
+    table_insert(&blueprint.property_indexes, s.properties.data[i],
+                 blueprint.property_indexes.count);
   }
-  StructBlueprint blueprint = {.name = s.name, .properties = properties};
   table_insert(&compiler->struct_blueprints, blueprint.name, blueprint);
 }
 

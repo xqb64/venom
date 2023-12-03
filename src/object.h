@@ -71,14 +71,14 @@ void free_table_object(const Table_Object *table);
 
 typedef struct Struct {
   int refcount;
-  Table_Object properties;
   char *name;
+  size_t propcount;
+  Object properties[];
 } Struct;
 
 #define DEALLOC_OBJ(object)                                                    \
   do {                                                                         \
     if (IS_STRUCT((object))) {                                                 \
-      free_table_object(&(object).as.structobj->properties);                   \
       free((object).as.structobj);                                             \
     }                                                                          \
     if (IS_STRING((object))) {                                                 \

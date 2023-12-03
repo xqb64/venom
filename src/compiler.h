@@ -37,6 +37,7 @@ typedef enum {
   OP_GETATTR,
   OP_GETATTR_PTR,
   OP_STRUCT,
+  OP_STRUCT_BLUEPRINT,
   OP_CALL,
   OP_RET,
   OP_POP,
@@ -60,9 +61,11 @@ typedef struct {
   size_t paramcount;
 } Function;
 
+typedef Table(int) Table_int;
+
 typedef struct {
   char *name;
-  DynArray_char_ptr properties;
+  Table_int property_indexes;
 } StructBlueprint;
 
 typedef Table(Function) Table_Function;

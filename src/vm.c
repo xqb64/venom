@@ -12,7 +12,10 @@
 
 void init_vm(VM *vm) { memset(vm, 0, sizeof(VM)); }
 
-void free_vm(VM *vm) { free_table_object(&vm->globals); }
+void free_vm(VM *vm) {
+  free_table_object(&vm->globals);
+  free_table_struct_blueprints(&vm->blueprints);
+}
 
 static inline void push(VM *vm, Object obj) { vm->stack[vm->tos++] = obj; }
 
@@ -104,12 +107,8 @@ static inline bool check_equality(Object *left, Object *right) {
      * property in struct 'a', run the func recursi-
      * vely comparing that property with the corres-
      * ponding property in struct 'b'. */
-    for (size_t i = 0; i < TABLE_MAX; i++) {
-      if (a->properties.indexes[i] == NULL)
-        continue;
-      char *key = a->properties.indexes[i]->key;
-      if (!check_equality(table_get_unchecked(&a->properties, key),
-                          table_get_unchecked(&b->properties, key))) {
+    for (size_t i = 0; i < a->propcount; i++) {
+      if (!check_equality(&a->properties[i], &b->properties[i])) {
         return false;
       }
     }
@@ -415,10 +414,19 @@ static inline int handle_op_setattr(VM *vm, BytecodeChunk *chunk,
    * en it pushes the modified object back on the stack. */
   uint32_t property_name_idx = READ_UINT32();
   Object value = pop(vm);
-  Object structobj = pop(vm);
-  table_insert(&TO_STRUCT(structobj)->properties,
-               chunk->sp.data[property_name_idx], value);
-  push(vm, structobj);
+  Object obj = pop(vm);
+  StructBlueprint *sb = table_get(&vm->blueprints, obj.as.structobj->name);
+  if (!sb) {
+    RUNTIME_ERROR("struct '%s' is not defined", obj.as.structobj->name);
+  }
+  int *idx =
+      table_get(&sb->property_indexes, chunk->sp.data[property_name_idx]);
+  if (!idx) {
+    RUNTIME_ERROR("struct '%s' does not have property '%s'",
+                  obj.as.structobj->name, chunk->sp.data[property_name_idx]);
+  }
+  obj.as.structobj->properties[*idx] = value;
+  push(vm, obj);
   return 0;
 }
 
@@ -431,14 +439,22 @@ static inline int handle_op_getattr(VM *vm, BytecodeChunk *chunk,
    * stack. Otherwise, a runtime error is raised. */
   uint32_t property_name_idx = READ_UINT32();
   Object obj = pop(vm);
-  Object *property =
-      table_get(&TO_STRUCT(obj)->properties, chunk->sp.data[property_name_idx]);
-  if (property == NULL) {
-    RUNTIME_ERROR("Property '%s' is not defined on object '%s'",
-                  chunk->sp.data[property_name_idx], TO_STRUCT(obj)->name);
+
+  StructBlueprint *sb = table_get(&vm->blueprints, obj.as.structobj->name);
+  if (!sb) {
+    RUNTIME_ERROR("struct '%s' is not defined", obj.as.structobj->name);
   }
-  push(vm, *property);
-  OBJECT_INCREF(*property);
+  int *idx =
+      table_get(&sb->property_indexes, chunk->sp.data[property_name_idx]);
+  if (!idx) {
+    RUNTIME_ERROR("struct '%s' does not have property '%s'",
+                  obj.as.structobj->name, chunk->sp.data[property_name_idx]);
+  }
+
+  Object property = obj.as.structobj->properties[*idx];
+
+  push(vm, property);
+  OBJECT_INCREF(property);
   OBJECT_DECREF(obj);
   return 0;
 }
@@ -453,13 +469,21 @@ static inline int handle_op_getattr_ptr(VM *vm, BytecodeChunk *chunk,
    * turns a pointer). Otherwise, a runtime error is raised. */
   uint32_t property_name_idx = READ_UINT32();
   Object obj = pop(vm);
-  Object *property =
-      table_get(&TO_STRUCT(obj)->properties, chunk->sp.data[property_name_idx]);
-  if (property == NULL) {
-    RUNTIME_ERROR("Property '%s' is not defined on object '%s'",
-                  chunk->sp.data[property_name_idx], TO_STRUCT(obj)->name);
+
+  StructBlueprint *sb = table_get(&vm->blueprints, obj.as.structobj->name);
+  if (!sb) {
+    RUNTIME_ERROR("struct '%s' is not defined", obj.as.structobj->name);
   }
-  push(vm, AS_PTR(property));
+  int *idx =
+      table_get(&sb->property_indexes, chunk->sp.data[property_name_idx]);
+  if (!idx) {
+    RUNTIME_ERROR("struct '%s' does not have property '%s'",
+                  obj.as.structobj->name, chunk->sp.data[property_name_idx]);
+  }
+
+  Object property = obj.as.structobj->properties[*idx];
+
+  push(vm, AS_PTR(&property));
   OBJECT_DECREF(obj);
   return 0;
 }
@@ -471,13 +495,34 @@ static inline int handle_op_struct(VM *vm, BytecodeChunk *chunk, uint8_t **ip) {
    * rties table properly), and pushes it on the stack. */
   uint32_t structname = READ_UINT32();
 
+  StructBlueprint *sb = table_get(&vm->blueprints, chunk->sp.data[structname]);
+  if (!sb) {
+    RUNTIME_ERROR("struct '%s' is not defined", chunk->sp.data[structname]);
+  }
+
   Struct s = {
       .name = chunk->sp.data[structname],
-      .properties = {{0}},
+      .propcount = sb->property_indexes.count,
       .refcount = 1,
   };
 
   push(vm, AS_STRUCT(ALLOC(s)));
+  return 0;
+}
+
+static inline int handle_op_struct_blueprint(VM *vm, BytecodeChunk *chunk,
+                                             uint8_t **ip) {
+  uint32_t name_idx = READ_UINT32();
+  uint32_t propcount = READ_UINT32();
+  DynArray_char_ptr properties = {0};
+  for (size_t i = 0; i < propcount; i++) {
+    dynarray_insert(&properties, chunk->sp.data[READ_UINT32()]);
+  }
+  StructBlueprint sb = {.name = chunk->sp.data[name_idx]};
+  for (size_t i = 0; i < properties.count; i++) {
+    table_insert(&sb.property_indexes, properties.data[i], 0);
+  }
+  table_insert(&vm->blueprints, chunk->sp.data[name_idx], sb);
   return 0;
 }
 
@@ -591,6 +636,8 @@ static Handler dispatcher[] = {
     [OP_GETATTR_PTR] = {.fn = handle_op_getattr_ptr,
                         .opcode = "OP_GETATTR_PTR"},
     [OP_STRUCT] = {.fn = handle_op_struct, .opcode = "OP_STRUCT"},
+    [OP_STRUCT_BLUEPRINT] = {.fn = handle_op_struct_blueprint,
+                             .opcode = "OP_STRUCT_BLUEPRINT"},
     [OP_CALL] = {.fn = handle_op_call, .opcode = "OP_CALL"},
     [OP_RET] = {.fn = handle_op_ret, .opcode = "OP_RET"},
     [OP_POP] = {.fn = handle_op_pop, .opcode = "OP_POP"},

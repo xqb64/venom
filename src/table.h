@@ -20,7 +20,7 @@ typedef struct Bucket {
   struct {                                                                     \
     Bucket *indexes[TABLE_MAX];                                                \
     T items[TABLE_MAX];                                                        \
-    int count;                                                                 \
+    size_t count;                                                              \
   }
 
 uint32_t hash(const char *key, int length);
@@ -59,7 +59,8 @@ Return type is void*, so make sure to use a pointer of the correct type.
     int *item_idx = list_find((table)->indexes[bucket_idx], k);                \
     if (item_idx == NULL) {                                                    \
       list_insert(&(table)->indexes[bucket_idx], k, (table)->count);           \
-      (table)->items[(table)->count++] = (item);                               \
+      (table)->items[(table)->count] = (item);                                 \
+      (table)->count++;                                                        \
     } else {                                                                   \
       (table)->items[*item_idx] = (item);                                      \
       free(k);                                                                 \

@@ -16,7 +16,9 @@ void print_object(Object *object) {
     printf("{ ");
     printf("%s", TO_STRUCT(*object)->name);
     printf(" {");
-    table_print(&TO_STRUCT(*object)->properties);
+    for (size_t i = 0; i < TO_STRUCT(*object)->propcount; i++) {
+      print_object(&TO_STRUCT(*object)->properties[i]);
+    }
     printf(" }");
     printf(" }");
   }
