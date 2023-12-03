@@ -51,7 +51,7 @@ typedef struct Object {
      * e.g. if one of the instructions takes a variable
      * from somewhere and pushes it on the stack, now we
      * have it at two places, and we need to INCREF. */
-    struct Struct *struct_;
+    struct Struct *structobj;
 
     /* Since we have two refcounted objects (Struct and String),
      * we need a handy way to access their refcounts.
@@ -78,8 +78,8 @@ typedef struct Struct {
 #define DEALLOC_OBJ(object)                                                    \
   do {                                                                         \
     if (IS_STRUCT((object))) {                                                 \
-      free_table_object(&(object).as.struct_->properties);                     \
-      free((object).as.struct_);                                               \
+      free_table_object(&(object).as.structobj->properties);                   \
+      free((object).as.structobj);                                             \
     }                                                                          \
     if (IS_STRING((object))) {                                                 \
       free((object).as.str->value);                                            \
@@ -127,7 +127,7 @@ typedef struct Struct {
 
 #define TO_DOUBLE(object) ((object).as.dval)
 #define TO_BOOL(object) ((object).as.bval)
-#define TO_STRUCT(object) ((object).as.struct_)
+#define TO_STRUCT(object) ((object).as.structobj)
 #define TO_PTR(object) ((object).as.ptr)
 #define TO_STR(object) ((object).as.str)
 
@@ -136,7 +136,7 @@ typedef struct Struct {
 #define AS_PTR(thing) ((Object){.type = OBJ_PTR, .as.ptr = (thing)})
 #define AS_STR(thing) ((Object){.type = OBJ_STRING, .as.str = (thing)})
 #define AS_NULL() ((Object){.type = OBJ_NULL})
-#define AS_STRUCT(thing) ((Object){.type = OBJ_STRUCT, .as.struct_ = (thing)})
+#define AS_STRUCT(thing) ((Object){.type = OBJ_STRUCT, .as.structobj = (thing)})
 
 void print_object(Object *obj);
 
