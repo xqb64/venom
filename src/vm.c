@@ -10,11 +10,16 @@
 #include "math.h"
 #include "util.h"
 
-void init_vm(VM *vm) { memset(vm, 0, sizeof(VM)); }
+void init_vm(VM *vm) {
+  memset(vm, 0, sizeof(VM));
+  vm->blueprints = malloc(sizeof(Table_StructBlueprint));
+  memset(vm->blueprints, 0, sizeof(Table_StructBlueprint));
+}
 
 void free_vm(VM *vm) {
   free_table_object(&vm->globals);
-  free_table_struct_blueprints(&vm->blueprints);
+  free_table_struct_blueprints(vm->blueprints);
+  free(vm->blueprints);
 }
 
 static inline void push(VM *vm, Object obj) { vm->stack[vm->tos++] = obj; }
@@ -416,9 +421,8 @@ static inline int handle_op_setattr(VM *vm, BytecodeChunk *chunk,
   Object value = pop(vm);
   Object obj = pop(vm);
   StructBlueprint *sb =
-      table_get_unchecked(&vm->blueprints, obj.as.structobj->name);
-  int *idx =
-      table_get(&sb->property_indexes, chunk->sp.data[property_name_idx]);
+      table_get_unchecked(vm->blueprints, obj.as.structobj->name);
+  int *idx = table_get(sb->property_indexes, chunk->sp.data[property_name_idx]);
   if (!idx) {
     RUNTIME_ERROR("struct '%s' does not have property '%s'",
                   obj.as.structobj->name, chunk->sp.data[property_name_idx]);
@@ -439,9 +443,8 @@ static inline int handle_op_getattr(VM *vm, BytecodeChunk *chunk,
   Object obj = pop(vm);
 
   StructBlueprint *sb =
-      table_get_unchecked(&vm->blueprints, obj.as.structobj->name);
-  int *idx =
-      table_get(&sb->property_indexes, chunk->sp.data[property_name_idx]);
+      table_get_unchecked(vm->blueprints, obj.as.structobj->name);
+  int *idx = table_get(sb->property_indexes, chunk->sp.data[property_name_idx]);
   if (!idx) {
     RUNTIME_ERROR("struct '%s' does not have property '%s'",
                   obj.as.structobj->name, chunk->sp.data[property_name_idx]);
@@ -467,9 +470,8 @@ static inline int handle_op_getattr_ptr(VM *vm, BytecodeChunk *chunk,
   Object obj = pop(vm);
 
   StructBlueprint *sb =
-      table_get_unchecked(&vm->blueprints, obj.as.structobj->name);
-  int *idx =
-      table_get(&sb->property_indexes, chunk->sp.data[property_name_idx]);
+      table_get_unchecked(vm->blueprints, obj.as.structobj->name);
+  int *idx = table_get(sb->property_indexes, chunk->sp.data[property_name_idx]);
   if (!idx) {
     RUNTIME_ERROR("struct '%s' does not have property '%s'",
                   obj.as.structobj->name, chunk->sp.data[property_name_idx]);
@@ -489,16 +491,16 @@ static inline int handle_op_struct(VM *vm, BytecodeChunk *chunk, uint8_t **ip) {
    * rties table properly), and pushes it on the stack. */
   uint32_t structname = READ_UINT32();
 
-  StructBlueprint *sb = table_get(&vm->blueprints, chunk->sp.data[structname]);
+  StructBlueprint *sb = table_get(vm->blueprints, chunk->sp.data[structname]);
   if (!sb) {
     RUNTIME_ERROR("struct '%s' is not defined", chunk->sp.data[structname]);
   }
 
   Struct *s =
-      malloc(sizeof(Struct) + sizeof(Object) * sb->property_indexes.count);
+      malloc(sizeof(Struct) + sizeof(Object) * sb->property_indexes->count);
 
   s->name = chunk->sp.data[structname];
-  s->propcount = sb->property_indexes.count;
+  s->propcount = sb->property_indexes->count;
   s->refcount = 1;
 
   memset(&s->properties, 0, sizeof(Object) * s->propcount);
@@ -519,14 +521,13 @@ static inline int handle_op_struct_blueprint(VM *vm, BytecodeChunk *chunk,
   }
 
   StructBlueprint sb = {.name = chunk->sp.data[name_idx],
-                        .property_indexes = {{0}}};
+                        .property_indexes = malloc(sizeof(Table_int))};
 
   for (size_t i = 0; i < properties.count; i++) {
-    table_insert(&sb.property_indexes, properties.data[i],
-                 prop_indexes.data[i]);
+    table_insert(sb.property_indexes, properties.data[i], prop_indexes.data[i]);
   }
 
-  table_insert(&vm->blueprints, chunk->sp.data[name_idx], sb);
+  table_insert(vm->blueprints, chunk->sp.data[name_idx], sb);
   dynarray_free(&properties);
   dynarray_free(&prop_indexes);
   return 0;

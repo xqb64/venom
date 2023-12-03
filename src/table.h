@@ -8,7 +8,7 @@
 
 #include "util.h"
 
-#define TABLE_MAX 64
+#define TABLE_MAX 1024
 
 typedef struct Bucket {
   char *key;

@@ -18,6 +18,10 @@
 
 void init_compiler(Compiler *compiler) {
   memset(compiler, 0, sizeof(Compiler));
+  compiler->functions = malloc(sizeof(Table_Function));
+  compiler->struct_blueprints = malloc(sizeof(Table_StructBlueprint));
+  memset(compiler->functions, 0, sizeof(Table_Function));
+  memset(compiler->struct_blueprints, 0, sizeof(Table_StructBlueprint));
 }
 
 void free_table_int(const Table_int *table) {
@@ -34,7 +38,8 @@ void free_table_struct_blueprints(const Table_StructBlueprint *table) {
     if (table->indexes[i] != NULL) {
       Bucket *bucket = table->indexes[i];
       StructBlueprint sb = table->items[bucket->value];
-      free_table_int(&sb.property_indexes);
+      free_table_int(sb.property_indexes);
+      free(sb.property_indexes);
       list_free(bucket);
     }
   }
@@ -54,8 +59,10 @@ void free_compiler(Compiler *compiler) {
   dynarray_free(&compiler->locals);
   dynarray_free(&compiler->breaks);
   dynarray_free(&compiler->loop_starts);
-  free_table_struct_blueprints(&compiler->struct_blueprints);
-  free_table_functions(&compiler->functions);
+  free_table_struct_blueprints(compiler->struct_blueprints);
+  free_table_functions(compiler->functions);
+  free(compiler->struct_blueprints);
+  free(compiler->functions);
 }
 
 void init_chunk(BytecodeChunk *chunk) {
@@ -408,7 +415,7 @@ static void handle_compile_expression_call(Compiler *compiler,
   CallExpression e = TO_EXPR_CALL(exp);
 
   /* Error out at compile time if the function is not defined. */
-  Function *func = table_get(&compiler->functions, e.var.name);
+  Function *func = table_get(compiler->functions, e.var.name);
   if (func == NULL) {
     COMPILER_ERROR("Function '%s' is not defined.", e.var.name);
   }
@@ -603,7 +610,7 @@ static void handle_compile_expression_struct(Compiler *compiler,
   StructExpression e = TO_EXPR_STRUCT(exp);
 
   /* Look up the struct with that name in compiler's structs table. */
-  StructBlueprint *blueprint = table_get(&compiler->struct_blueprints, e.name);
+  StructBlueprint *blueprint = table_get(compiler->struct_blueprints, e.name);
 
   /* If it is not found, bail out. */
   if (!blueprint) {
@@ -612,9 +619,9 @@ static void handle_compile_expression_struct(Compiler *compiler,
 
   /* If the number of properties in the struct blueprint
    * doesn't match the number of provided initializers, bail out. */
-  if (blueprint->property_indexes.count != e.initializers.count) {
+  if (blueprint->property_indexes->count != e.initializers.count) {
     COMPILER_ERROR("struct '%s' requires %ld initializers.\n", blueprint->name,
-                   blueprint->property_indexes.count);
+                   blueprint->property_indexes->count);
   }
 
   /* Check if the initializer names match the property names. */
@@ -622,7 +629,7 @@ static void handle_compile_expression_struct(Compiler *compiler,
     StructInitializerExpression siexp =
         e.initializers.data[i].as.expr_struct_init;
     char *propname = TO_EXPR_VARIABLE(*siexp.property).name;
-    int *propidx = table_get(&blueprint->property_indexes, propname);
+    int *propidx = table_get(blueprint->property_indexes, propname);
     if (!propidx) {
       COMPILER_ERROR("struct '%s' has no property '%s'", blueprint->name,
                      propname);
@@ -844,7 +851,7 @@ static void handle_compile_statement_fn(Compiler *compiler,
       .paramcount = s.parameters.count,
       .location = chunk->code.count + 3,
   };
-  table_insert(&compiler->functions, func.name, func);
+  table_insert(compiler->functions, func.name, func);
   compiler->pops[1] += s.parameters.count;
 
   /* Copy the function parameters into the current
@@ -879,15 +886,16 @@ static void handle_compile_statement_struct(Compiler *compiler,
 
   emit_uint32(chunk, s.properties.count);
 
-  StructBlueprint blueprint = {.name = s.name, .property_indexes = {{0}}};
+  StructBlueprint blueprint = {.name = s.name,
+                               .property_indexes = malloc(sizeof(Table_int))};
   for (size_t i = 0; i < s.properties.count; i++) {
     uint32_t propname_idx = add_string(chunk, s.properties.data[i]);
     emit_uint32(chunk, propname_idx);
-    table_insert(&blueprint.property_indexes, s.properties.data[i], i);
+    table_insert(blueprint.property_indexes, s.properties.data[i], i);
     emit_uint32(chunk, i);
   }
 
-  table_insert(&compiler->struct_blueprints, blueprint.name, blueprint);
+  table_insert(compiler->struct_blueprints, blueprint.name, blueprint);
 }
 
 static void handle_compile_statement_return(Compiler *compiler,

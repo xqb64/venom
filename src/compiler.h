@@ -65,7 +65,7 @@ typedef Table(int) Table_int;
 
 typedef struct {
   char *name;
-  Table_int property_indexes;
+  Table_int *property_indexes;
 } StructBlueprint;
 
 typedef Table(Function) Table_Function;
@@ -74,8 +74,8 @@ void free_table_struct_blueprints(const Table_StructBlueprint *table);
 void free_table_functions(const Table_Function *table);
 
 typedef struct Compiler {
-  Table_Function functions;
-  Table_StructBlueprint struct_blueprints;
+  Table_Function *functions;
+  Table_StructBlueprint *struct_blueprints;
   DynArray_char_ptr globals;
   DynArray_char_ptr locals;
   DynArray_int breaks;

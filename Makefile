@@ -6,7 +6,7 @@ CFLAGS += -Wredundant-decls
 CFLAGS += -Wno-unused-parameter -Wno-unused-variable
 CFLAGS += -Wformat-security
 CFLAGS += -Wunreachable-code
-CFLAGS += -O3
+CFLAGS += -Ofast
 LDLIBS = -lm
 
 ifeq ($(debug), all)

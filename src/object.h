@@ -21,8 +21,8 @@ typedef struct {
 } String;
 
 typedef struct {
-  int location;
   uint8_t *addr;
+  int location;
 } BytecodePtr;
 
 struct Struct;
