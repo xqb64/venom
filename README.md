@@ -16,7 +16,7 @@ This project is my debut in the realm of programming language design. I had a bl
 - operators for the said types
   - `==`, `!=`, `<`, `>`, `<=`, `>=`
   - `+`, `-`, `*`, `/`, `%`
-  - `&&`, `||` (logical and/or)
+  - `&&`, `||`, `!` (logical and/or/not)
   - `++` (string concatenation)
   - `&`, `*`, `->` (for pointers)
   - `.` (member access)
