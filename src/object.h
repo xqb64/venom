@@ -74,10 +74,6 @@ typedef struct Struct {
   Object properties[];
 } Struct;
 
-void dealloc(Object *obj);
-void objdecref(Object *obj);
-void objincref(Object *obj);
-
 #define GET_OBJTYPE(type)                                                      \
   ((type) == OBJ_BOOLEAN  ? "boolean"                                          \
    : (type) == OBJ_NUMBER ? "number"                                           \
@@ -114,5 +110,37 @@ void objincref(Object *obj);
 #define AS_STRUCT(thing) ((Object){.type = OBJ_STRUCT, .as.structobj = (thing)})
 
 void print_object(Object *obj);
+
+inline void dealloc(Object *obj) {
+  if (IS_STRUCT(*obj)) {
+    free(obj->as.structobj);
+  }
+  if (IS_STRING(*obj)) {
+    free(obj->as.str->value);
+    free(obj->as.str);
+  }
+}
+
+inline void objincref(Object *obj) {
+  if (IS_STRUCT(*obj) || IS_STRING(*obj)) {
+    ++*obj->as.refcount;
+  }
+}
+
+inline void objdecref(Object *obj) {
+  if (IS_STRING(*obj)) {
+    if (--*obj->as.refcount == 0) {
+      dealloc(obj);
+    }
+  }
+  if (IS_STRUCT(*obj)) {
+    if (--*obj->as.refcount == 0) {
+      for (size_t i = 0; i < obj->as.structobj->propcount; i++) {
+        objdecref(&obj->as.structobj->properties[i]);
+      }
+      dealloc(obj);
+    }
+  }
+}
 
 #endif
