@@ -31,41 +31,41 @@ void free_table_object(const Table_Object *table) {
       Bucket *bucket = table->indexes[i];
       Object obj = table->items[bucket->value];
       if (IS_STRUCT(obj) || IS_STRING(obj)) {
-        objdecref(obj);
+        objdecref(&obj);
       }
       list_free(bucket);
     }
   }
 }
 
-void objincref(Object obj) {
-  if (IS_STRUCT(obj) || IS_STRING(obj)) {
-    ++*obj.as.refcount;
+inline void objincref(Object *obj) {
+  if (IS_STRUCT(*obj) || IS_STRING(*obj)) {
+    ++*obj->as.refcount;
   }
 }
 
-void objdecref(Object obj) {
-  if (IS_STRING(obj)) {
-    if (--*obj.as.refcount == 0) {
+inline void objdecref(Object *obj) {
+  if (IS_STRING(*obj)) {
+    if (--*obj->as.refcount == 0) {
       dealloc(obj);
     }
   }
-  if (IS_STRUCT(obj)) {
-    if (--*obj.as.refcount == 0) {
-      for (size_t i = 0; i < obj.as.structobj->propcount; i++) {
-        objdecref(obj.as.structobj->properties[i]);
+  if (IS_STRUCT(*obj)) {
+    if (--*obj->as.refcount == 0) {
+      for (size_t i = 0; i < obj->as.structobj->propcount; i++) {
+        objdecref(&obj->as.structobj->properties[i]);
       }
       dealloc(obj);
     }
   }
 }
 
-void dealloc(Object obj) {
-  if (IS_STRUCT(obj)) {
-    free(obj.as.structobj);
+inline void dealloc(Object *obj) {
+  if (IS_STRUCT(*obj)) {
+    free(obj->as.structobj);
   }
-  if (IS_STRING(obj)) {
-    free(obj.as.str->value);
-    free(obj.as.str);
+  if (IS_STRING(*obj)) {
+    free(obj->as.str->value);
+    free(obj->as.str);
   }
 }

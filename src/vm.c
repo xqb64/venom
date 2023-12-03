@@ -152,7 +152,7 @@ static inline int handle_op_print(VM *vm, BytecodeChunk *chunk, uint8_t **ip) {
 #endif
   print_object(&object);
   printf("\n");
-  objdecref(object);
+  objdecref(&object);
   return 0;
 }
 
@@ -189,8 +189,8 @@ static inline int handle_op_eq(VM *vm, BytecodeChunk *chunk, uint8_t **ip) {
   Object a = pop(vm);
   /* Since the two objects might be refcounted,
    * the reference count must be decremented. */
-  objdecref(a);
-  objdecref(b);
+  objdecref(&a);
+  objdecref(&b);
   push(vm, AS_BOOL(check_equality(&a, &b)));
   return 0;
 }
@@ -301,7 +301,7 @@ static inline int handle_op_get_global(VM *vm, BytecodeChunk *chunk,
   uint32_t name_idx = READ_UINT32();
   Object *obj = table_get_unchecked(&vm->globals, chunk->sp.data[name_idx]);
   push(vm, *obj);
-  objincref(*obj);
+  objincref(obj);
   return 0;
 }
 
@@ -343,7 +343,7 @@ static inline int handle_op_deepset(VM *vm, BytecodeChunk *chunk,
   uint32_t idx = READ_UINT32();
   uint32_t adjusted_idx = adjust_idx(vm, idx);
   Object obj = pop(vm);
-  objdecref(vm->stack[adjusted_idx]);
+  objdecref(&vm->stack[adjusted_idx]);
   vm->stack[adjusted_idx] = obj;
   return 0;
 }
@@ -389,7 +389,7 @@ static inline int handle_op_deepget(VM *vm, BytecodeChunk *chunk,
   uint32_t adjusted_idx = adjust_idx(vm, idx);
   Object obj = vm->stack[adjusted_idx];
   push(vm, obj);
-  objincref(obj);
+  objincref(&obj);
   return 0;
 }
 
@@ -450,8 +450,8 @@ static inline int handle_op_getattr(VM *vm, BytecodeChunk *chunk,
   Object property = obj.as.structobj->properties[*idx];
 
   push(vm, property);
-  objincref(property);
-  objdecref(obj);
+  objincref(&property);
+  objdecref(&obj);
   return 0;
 }
 
@@ -478,7 +478,7 @@ static inline int handle_op_getattr_ptr(VM *vm, BytecodeChunk *chunk,
   Object *property = &obj.as.structobj->properties[*idx];
 
   push(vm, AS_PTR(property));
-  objdecref(obj);
+  objdecref(&obj);
   return 0;
 }
 
@@ -567,7 +567,7 @@ static inline int handle_op_pop(VM *vm, BytecodeChunk *chunk, uint8_t **ip) {
    * object might be refcounted, its refcount must be dec-
    * remented. */
   Object obj = pop(vm);
-  objdecref(obj);
+  objdecref(&obj);
   return 0;
 }
 
@@ -578,7 +578,7 @@ static inline int handle_op_deref(VM *vm, BytecodeChunk *chunk, uint8_t **ip) {
    * count must be incremented.*/
   Object ptr = pop(vm);
   push(vm, *ptr.as.ptr);
-  objincref(*ptr.as.ptr);
+  objincref(ptr.as.ptr);
   return 0;
 }
 
@@ -595,8 +595,8 @@ static inline int handle_op_strcat(VM *vm, BytecodeChunk *chunk, uint8_t **ip) {
     String result = concatenate_strings(TO_STR(a)->value, TO_STR(b)->value);
     Object obj = AS_STR(ALLOC(result));
     push(vm, obj);
-    objdecref(b);
-    objdecref(a);
+    objdecref(&b);
+    objdecref(&a);
   } else {
     RUNTIME_ERROR(
         "'++' operator used on objects of unsupported types: %s and %s",

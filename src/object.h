@@ -13,7 +13,7 @@ typedef enum {
   OBJ_STRING,
   OBJ_STRUCT,
   OBJ_PTR,
-} __attribute__((__packed__)) ObjectType;
+} ObjectType;
 
 typedef struct {
   int refcount;
@@ -74,9 +74,9 @@ typedef struct Struct {
   Object properties[];
 } Struct;
 
-void dealloc(Object obj);
-void objdecref(Object obj);
-void objincref(Object obj);
+void dealloc(Object *obj);
+void objdecref(Object *obj);
+void objincref(Object *obj);
 
 #define GET_OBJTYPE(type)                                                      \
   ((type) == OBJ_BOOLEAN  ? "boolean"                                          \
