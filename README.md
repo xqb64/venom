@@ -16,10 +16,14 @@ This project is my debut in the realm of programming language design. I had a bl
 - operators for the said types
   - `==`, `!=`, `<`, `>`, `<=`, `>=`
   - `+`, `-`, `*`, `/`, `%`
+  - `+=`, `-=`, `*=`, `/=`, `%=` (compound assignment)
+  - `&`, `|`, `^`, `~`, `<<`, `>>` (bitwise and/or/xor/not/shift (left|right))
+  - `&=`, `|=`, `^=`, `<<=`, `>>=` (bitwise compound assignment)
   - `&&`, `||`, `!` (logical and/or/not)
   - `++` (string concatenation)
   - `&`, `*`, `->` (for pointers)
   - `.` (member access)
+  - `,` (comma)
 - control flow
   - `if`, `else`
   - `while` (and `break` and `continue`, of course)
@@ -166,9 +170,10 @@ make test
 
 Contributors to this project are very welcome -- specifically, suggestions (and PRs) as for how to make the whole system even faster, because I suspect there's still more performance left to be squeezed out.
 
-Before submitting a PR, make sure your code:
-- is formatted properly (use `make format`)
-- passes the tests
+Before submitting a PR, make sure:
+- C code is formatted properly (use `make format`)
+- Python code (tests) pass the ruff check (use `make ruff`)
+- all tests pass
 
 There is also a pre-commit hook in the `hooks` folder that you could copy/paste into your `.git/hooks` folder which helps with this process.
 
