@@ -7,6 +7,20 @@ if [ $? -ne 0 ]; then
   exit 1
 fi
 
+# Run ruff on the tests
+ruff tests/
+if [ $? -ne 0 ]; then
+  echo "ruff check failed."
+  exit 1
+fi
+
+# Run ruff format on the tests
+ruff format tests/
+if [ $? -ne 0 ]; then
+  echo "ruff format failed."
+  exit 1
+fi
+
 # Run tests
 make clean
 make -j$(nproc) debug=vm
