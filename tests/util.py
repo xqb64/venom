@@ -14,12 +14,10 @@ TWO_OPERANDS_GROUP = [
     [2, 2],
     [4, 2],
     [2, 4],
-    
     # 2-digit operands ops
     [3, 10],
     [10, 3],
     [10, 10],
-    
     # negative operands ops
     [2, -2],
     [-2, 2],

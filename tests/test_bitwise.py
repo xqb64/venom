@@ -3,7 +3,6 @@ import pytest
 import textwrap
 
 from tests.util import VALGRIND_CMD
-from tests.util import TWO_OPERANDS_GROUP
 
 
 @pytest.mark.parametrize(
