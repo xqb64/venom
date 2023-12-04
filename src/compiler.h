@@ -21,6 +21,12 @@ typedef enum {
   OP_LT,
   OP_NOT,
   OP_NEG,
+  OP_BITWISE_AND,
+  OP_BITWISE_OR,
+  OP_BITWISE_XOR,
+  OP_BITWISE_NOT,
+  OP_BITWISE_SHIFT_LEFT,
+  OP_BITWISE_SHIFT_RIGHT,
   OP_TRUE,
   OP_NULL,
   OP_CONST,
@@ -70,8 +76,8 @@ typedef struct {
 
 typedef Table(Function) Table_Function;
 typedef Table(StructBlueprint) Table_StructBlueprint;
-void free_table_struct_blueprints(const Table_StructBlueprint *table);
-void free_table_functions(const Table_Function *table);
+void free_table_struct_blueprints(Table_StructBlueprint *table);
+void free_table_functions(Table_Function *table);
 
 typedef struct Compiler {
   Table_Function *functions;

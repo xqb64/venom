@@ -159,15 +159,25 @@ Token get_token(Tokenizer *tokenizer) {
     return make_token(tokenizer, TOKEN_DOT, 1);
   case '"':
     return string(tokenizer);
+  case '^':
+    return make_token(tokenizer, TOKEN_CARET, 1);
+  case '~':
+    return make_token(tokenizer, TOKEN_TILDE, 1);
   case '>': {
     if (lookahead(tokenizer, 1, "=")) {
       return make_token(tokenizer, TOKEN_GREATER_EQUAL, 2);
+    }
+    if (lookahead(tokenizer, 1, ">")) {
+      return make_token(tokenizer, TOKEN_GREATER_GREATER, 2);
     }
     return make_token(tokenizer, TOKEN_GREATER, 1);
   }
   case '<': {
     if (lookahead(tokenizer, 1, "=")) {
       return make_token(tokenizer, TOKEN_LESS_EQUAL, 2);
+    }
+    if (lookahead(tokenizer, 1, "<")) {
+      return make_token(tokenizer, TOKEN_LESS_LESS, 2);
     }
     return make_token(tokenizer, TOKEN_LESS, 1);
   }

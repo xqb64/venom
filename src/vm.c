@@ -34,6 +34,21 @@ static inline Object pop(VM *vm) { return vm->stack[--vm->tos]; }
     push(vm, obj);                                                             \
   } while (0)
 
+#define BITWISE_OP(op)                                                         \
+  do {                                                                         \
+    Object b = pop(vm);                                                        \
+    Object a = pop(vm);                                                        \
+                                                                               \
+    int64_t truncated_a = (int64_t)TO_DOUBLE(a);                               \
+    int64_t truncated_b = (int64_t)TO_DOUBLE(b);                               \
+                                                                               \
+    int32_t reduced_a = (int32_t)(truncated_a % (int64_t)(1LL << 32));         \
+    int32_t reduced_b = (int32_t)(truncated_b % (int64_t)(1LL << 32));         \
+                                                                               \
+    Object obj = AS_DOUBLE(reduced_a op reduced_b);                            \
+    push(vm, obj);                                                             \
+  } while (0)
+
 #define READ_UINT8() (*++(*ip))
 
 #define READ_INT16()                                                           \
@@ -186,6 +201,55 @@ static inline int handle_op_mod(VM *vm, BytecodeChunk *chunk, uint8_t **ip) {
   Object a = pop(vm);
   Object obj = AS_DOUBLE(fmod(TO_DOUBLE(a), TO_DOUBLE(b)));
   push(vm, obj);
+  return 0;
+}
+
+static inline int handle_op_bitwise_and(VM *vm, BytecodeChunk *chunk,
+                                        uint8_t **ip) {
+  BITWISE_OP(&);
+  return 0;
+}
+
+static inline int handle_op_bitwise_or(VM *vm, BytecodeChunk *chunk,
+                                       uint8_t **ip) {
+  BITWISE_OP(|);
+  return 0;
+}
+
+static inline int handle_op_bitwise_xor(VM *vm, BytecodeChunk *chunk,
+                                        uint8_t **ip) {
+  BITWISE_OP(^);
+  return 0;
+}
+
+static inline int handle_op_bitwise_not(VM *vm, BytecodeChunk *chunk,
+                                        uint8_t **ip) {
+  Object obj = pop(vm);
+  double value = TO_DOUBLE(obj);
+
+  /* discard the fractional part */
+  int64_t truncated = (int64_t)value;
+
+  /* reduce modulo 2^32 to fit into 32-bit int */
+  int32_t reduced = (int32_t)(truncated % (int64_t)(1LL << 32));
+
+  /* apply bitwise not */
+  int32_t inverted = ~reduced;
+
+  /* convert back to double */
+  push(vm, AS_DOUBLE(inverted));
+  return 0;
+}
+
+static inline int handle_op_bitwise_shift_left(VM *vm, BytecodeChunk *chunk,
+                                               uint8_t **ip) {
+  BITWISE_OP(<<);
+  return 0;
+}
+
+static inline int handle_op_bitwise_shift_right(VM *vm, BytecodeChunk *chunk,
+                                                uint8_t **ip) {
+  BITWISE_OP(>>);
   return 0;
 }
 
@@ -523,6 +587,8 @@ static inline int handle_op_struct_blueprint(VM *vm, BytecodeChunk *chunk,
   StructBlueprint sb = {.name = chunk->sp.data[name_idx],
                         .property_indexes = malloc(sizeof(Table_int))};
 
+  memset(sb.property_indexes, 0, sizeof(Table_int));
+
   for (size_t i = 0; i < properties.count; i++) {
     table_insert(sb.property_indexes, properties.data[i], prop_indexes.data[i]);
   }
@@ -630,6 +696,17 @@ static Handler dispatcher[] = {
     [OP_STR] = {.fn = handle_op_str, .opcode = "OP_STR"},
     [OP_JZ] = {.fn = handle_op_jz, .opcode = "OP_JZ"},
     [OP_JMP] = {.fn = handle_op_jmp, .opcode = "OP_JMP"},
+    [OP_BITWISE_AND] = {.fn = handle_op_bitwise_and,
+                        .opcode = "OP_BITWISE_AND"},
+    [OP_BITWISE_OR] = {.fn = handle_op_bitwise_or, .opcode = "OP_BITWISE_OR"},
+    [OP_BITWISE_XOR] = {.fn = handle_op_bitwise_xor,
+                        .opcode = "OP_BITWISE_XOR"},
+    [OP_BITWISE_NOT] = {.fn = handle_op_bitwise_not,
+                        .opcode = "OP_BITWISE_NOT"},
+    [OP_BITWISE_SHIFT_LEFT] = {.fn = handle_op_bitwise_shift_left,
+                               .opcode = "OP_BITWISE_SHIFT_LEFT"},
+    [OP_BITWISE_SHIFT_RIGHT] = {.fn = handle_op_bitwise_shift_right,
+                                .opcode = "OP_BITWISE_SHIFT_RIGHT"},
     [OP_SET_GLOBAL] = {.fn = handle_op_set_global, .opcode = "OP_SET_GLOBAL"},
     [OP_GET_GLOBAL] = {.fn = handle_op_get_global, .opcode = "OP_GET_GLOBAL"},
     [OP_GET_GLOBAL_PTR] = {.fn = handle_op_get_global_ptr,

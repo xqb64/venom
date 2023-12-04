@@ -24,7 +24,7 @@ void init_compiler(Compiler *compiler) {
   memset(compiler->struct_blueprints, 0, sizeof(Table_StructBlueprint));
 }
 
-void free_table_int(const Table_int *table) {
+void free_table_int(Table_int *table) {
   for (size_t i = 0; i < TABLE_MAX; i++) {
     if (table->indexes[i] != NULL) {
       Bucket *bucket = table->indexes[i];
@@ -33,19 +33,20 @@ void free_table_int(const Table_int *table) {
   }
 }
 
-void free_table_struct_blueprints(const Table_StructBlueprint *table) {
+void free_table_struct_blueprints(Table_StructBlueprint *table) {
   for (size_t i = 0; i < TABLE_MAX; i++) {
     if (table->indexes[i] != NULL) {
       Bucket *bucket = table->indexes[i];
-      StructBlueprint sb = table->items[bucket->value];
-      free_table_int(sb.property_indexes);
-      free(sb.property_indexes);
       list_free(bucket);
     }
   }
+  for (size_t i = 0; i < table->count; i++) {
+    free_table_int(table->items[i].property_indexes);
+    free(table->items[i].property_indexes);
+  }
 }
 
-void free_table_functions(const Table_Function *table) {
+void free_table_functions(Table_Function *table) {
   for (size_t i = 0; i < TABLE_MAX; i++) {
     if (table->indexes[i] != NULL) {
       Bucket *bucket = table->indexes[i];
@@ -371,6 +372,9 @@ static void handle_compile_expression_unary(Compiler *compiler,
     default:
       break;
     }
+  } else if (strcmp(e.op, "~") == 0) {
+    compile_expression(compiler, chunk, *e.exp);
+    emit_byte(chunk, OP_BITWISE_NOT);
   }
 }
 
@@ -392,6 +396,12 @@ static void handle_compile_expression_binary(Compiler *compiler,
     emit_byte(chunk, OP_DIV);
   } else if (strcmp(e.op, "%%") == 0) {
     emit_byte(chunk, OP_MOD);
+  } else if (strcmp(e.op, "&") == 0) {
+    emit_byte(chunk, OP_BITWISE_AND);
+  } else if (strcmp(e.op, "|") == 0) {
+    emit_byte(chunk, OP_BITWISE_OR);
+  } else if (strcmp(e.op, "^") == 0) {
+    emit_byte(chunk, OP_BITWISE_XOR);
   } else if (strcmp(e.op, ">") == 0) {
     emit_byte(chunk, OP_GT);
   } else if (strcmp(e.op, "<") == 0) {
@@ -404,6 +414,10 @@ static void handle_compile_expression_binary(Compiler *compiler,
     emit_byte(chunk, OP_EQ);
   } else if (strcmp(e.op, "!=") == 0) {
     emit_bytes(chunk, 2, OP_EQ, OP_NOT);
+  } else if (strcmp(e.op, "<<") == 0) {
+    emit_byte(chunk, OP_BITWISE_SHIFT_LEFT);
+  } else if (strcmp(e.op, ">>") == 0) {
+    emit_byte(chunk, OP_BITWISE_SHIFT_RIGHT);
   } else if (strcmp(e.op, "++") == 0) {
     emit_byte(chunk, OP_STRCAT);
   }
@@ -888,6 +902,9 @@ static void handle_compile_statement_struct(Compiler *compiler,
 
   StructBlueprint blueprint = {.name = s.name,
                                .property_indexes = malloc(sizeof(Table_int))};
+
+  memset(blueprint.property_indexes, 0, sizeof(Table_int));
+
   for (size_t i = 0; i < s.properties.count; i++) {
     uint32_t propname_idx = add_string(chunk, s.properties.data[i]);
     emit_uint32(chunk, propname_idx);

@@ -136,6 +136,12 @@ static char *operator(Token token) {
     return "*";
   case TOKEN_SLASH:
     return "/";
+  case TOKEN_AMPERSAND:
+    return "&";
+  case TOKEN_PIPE:
+    return "|";
+  case TOKEN_CARET:
+    return "^";
   case TOKEN_MOD:
     return "%%";
   case TOKEN_DOUBLE_EQUAL:
@@ -152,6 +158,10 @@ static char *operator(Token token) {
     return "<=";
   case TOKEN_PLUSPLUS:
     return "++";
+  case TOKEN_GREATER_GREATER:
+    return ">>";
+  case TOKEN_LESS_LESS:
+    return "<<";
   default:
     assert(0);
   }
@@ -200,8 +210,8 @@ static Expression call(Parser *parser, Tokenizer *tokenizer) {
 }
 
 static Expression unary(Parser *parser, Tokenizer *tokenizer) {
-  if (match(parser, tokenizer, 4, TOKEN_MINUS, TOKEN_AMPERSAND, TOKEN_STAR,
-            TOKEN_BANG)) {
+  if (match(parser, tokenizer, 5, TOKEN_MINUS, TOKEN_AMPERSAND, TOKEN_STAR,
+            TOKEN_BANG, TOKEN_TILDE)) {
     char *op = own_string_n(parser->previous.start, parser->previous.length);
     Expression right = unary(parser, tokenizer);
     UnaryExpression e = {.exp = ALLOC(right), .op = op};
@@ -240,12 +250,27 @@ static Expression term(Parser *parser, Tokenizer *tokenizer) {
   return expr;
 }
 
-static Expression comparison(Parser *parser, Tokenizer *tokenizer) {
+static Expression bitwise_shift(Parser *parser, Tokenizer *tokenizer) {
   Expression expr = term(parser, tokenizer);
+  while (match(parser, tokenizer, 2, TOKEN_GREATER_GREATER, TOKEN_LESS_LESS)) {
+    char *op = operator(parser->previous);
+    Expression right = term(parser, tokenizer);
+    BinaryExpression binexp = {
+        .lhs = ALLOC(expr),
+        .rhs = ALLOC(right),
+        .op = op,
+    };
+    expr = AS_EXPR_BINARY(binexp);
+  }
+  return expr;
+}
+
+static Expression comparison(Parser *parser, Tokenizer *tokenizer) {
+  Expression expr = bitwise_shift(parser, tokenizer);
   while (match(parser, tokenizer, 4, TOKEN_GREATER, TOKEN_LESS,
                TOKEN_GREATER_EQUAL, TOKEN_LESS_EQUAL)) {
     char *op = operator(parser->previous);
-    Expression right = term(parser, tokenizer);
+    Expression right = bitwise_shift(parser, tokenizer);
     BinaryExpression binexp = {
         .lhs = ALLOC(expr),
         .rhs = ALLOC(right),
@@ -271,11 +296,56 @@ static Expression equality(Parser *parser, Tokenizer *tokenizer) {
   return expr;
 }
 
-static Expression and_(Parser *parser, Tokenizer *tokenizer) {
+static Expression bitwise_and(Parser *parser, Tokenizer *tokenizer) {
   Expression expr = equality(parser, tokenizer);
+  while (match(parser, tokenizer, 1, TOKEN_AMPERSAND)) {
+    char *op = operator(parser->previous);
+    Expression right = equality(parser, tokenizer);
+    BinaryExpression binexp = {
+        .lhs = ALLOC(expr),
+        .rhs = ALLOC(right),
+        .op = op,
+    };
+    expr = AS_EXPR_BINARY(binexp);
+  }
+  return expr;
+}
+
+static Expression bitwise_xor(Parser *parser, Tokenizer *tokenizer) {
+  Expression expr = bitwise_and(parser, tokenizer);
+  while (match(parser, tokenizer, 1, TOKEN_CARET)) {
+    char *op = operator(parser->previous);
+    Expression right = bitwise_and(parser, tokenizer);
+    BinaryExpression binexp = {
+        .lhs = ALLOC(expr),
+        .rhs = ALLOC(right),
+        .op = op,
+    };
+    expr = AS_EXPR_BINARY(binexp);
+  }
+  return expr;
+}
+
+static Expression bitwise_or(Parser *parser, Tokenizer *tokenizer) {
+  Expression expr = bitwise_xor(parser, tokenizer);
+  while (match(parser, tokenizer, 1, TOKEN_PIPE)) {
+    char *op = operator(parser->previous);
+    Expression right = bitwise_xor(parser, tokenizer);
+    BinaryExpression binexp = {
+        .lhs = ALLOC(expr),
+        .rhs = ALLOC(right),
+        .op = op,
+    };
+    expr = AS_EXPR_BINARY(binexp);
+  }
+  return expr;
+}
+
+static Expression and_(Parser *parser, Tokenizer *tokenizer) {
+  Expression expr = bitwise_or(parser, tokenizer);
   while (match(parser, tokenizer, 1, TOKEN_DOUBLE_AMPERSAND)) {
     char *op = own_string_n(parser->previous.start, parser->previous.length);
-    Expression right = equality(parser, tokenizer);
+    Expression right = bitwise_or(parser, tokenizer);
     LogicalExpression logexp = {
         .lhs = ALLOC(expr),
         .rhs = ALLOC(right),
@@ -304,7 +374,7 @@ static Expression or_(Parser *parser, Tokenizer *tokenizer) {
 static Expression assignment(Parser *parser, Tokenizer *tokenizer) {
   Expression expr = or_(parser, tokenizer);
   if (match(parser, tokenizer, 1, TOKEN_EQUAL)) {
-    Expression right = assignment(parser, tokenizer);
+    Expression right = or_(parser, tokenizer);
     AssignExpression assignexp = {
         .lhs = ALLOC(expr),
         .rhs = ALLOC(right),
