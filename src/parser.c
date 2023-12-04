@@ -128,22 +128,40 @@ static Statement statement(Parser *parser, Tokenizer *tokenizer);
 
 static char *operator(Token token) {
   switch (token.type) {
+  case TOKEN_EQUAL:
+    return "=";
   case TOKEN_PLUS:
     return "+";
+  case TOKEN_PLUS_EQUAL:
+    return "+=";
   case TOKEN_MINUS:
     return "-";
+  case TOKEN_MINUS_EQUAL:
+    return "-=";
   case TOKEN_STAR:
     return "*";
+  case TOKEN_STAR_EQUAL:
+    return "*=";
   case TOKEN_SLASH:
     return "/";
+  case TOKEN_SLASH_EQUAL:
+    return "/=";
   case TOKEN_AMPERSAND:
     return "&";
+  case TOKEN_AMPERSAND_EQUAL:
+    return "&=";
   case TOKEN_PIPE:
     return "|";
+  case TOKEN_PIPE_EQUAL:
+    return "|=";
   case TOKEN_CARET:
     return "^";
+  case TOKEN_CARET_EQUAL:
+    return "^=";
   case TOKEN_MOD:
     return "%%";
+  case TOKEN_MOD_EQUAL:
+    return "%%=";
   case TOKEN_DOUBLE_EQUAL:
     return "==";
   case TOKEN_BANG_EQUAL:
@@ -160,8 +178,12 @@ static char *operator(Token token) {
     return "++";
   case TOKEN_GREATER_GREATER:
     return ">>";
+  case TOKEN_GREATER_GREATER_EQUAL:
+    return ">>=";
   case TOKEN_LESS_LESS:
     return "<<";
+  case TOKEN_LESS_LESS_EQUAL:
+    return "<<=";
   default:
     assert(0);
   }
@@ -373,11 +395,17 @@ static Expression or_(Parser *parser, Tokenizer *tokenizer) {
 
 static Expression assignment(Parser *parser, Tokenizer *tokenizer) {
   Expression expr = or_(parser, tokenizer);
-  if (match(parser, tokenizer, 1, TOKEN_EQUAL)) {
+  if (match(parser, tokenizer, 11, TOKEN_EQUAL, TOKEN_PLUS_EQUAL,
+            TOKEN_MINUS_EQUAL, TOKEN_STAR_EQUAL, TOKEN_SLASH_EQUAL,
+            TOKEN_MOD_EQUAL, TOKEN_AMPERSAND_EQUAL, TOKEN_PIPE_EQUAL,
+            TOKEN_CARET_EQUAL, TOKEN_GREATER_GREATER_EQUAL,
+            TOKEN_LESS_LESS_EQUAL)) {
+    char *op = operator(parser->previous);
     Expression right = or_(parser, tokenizer);
     AssignExpression assignexp = {
         .lhs = ALLOC(expr),
         .rhs = ALLOC(right),
+        .op = op,
     };
     expr = AS_EXPR_ASSIGN(assignexp);
   }
@@ -448,7 +476,6 @@ static Expression primary(Parser *parser, Tokenizer *tokenizer) {
                    TOKEN_NUMBER, TOKEN_STRING)) {
     return literal(parser);
   } else {
-    printf("%.*s\n", parser->current.length, parser->current.start);
     assert(0);
   }
 }

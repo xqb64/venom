@@ -127,17 +127,29 @@ Token get_token(Tokenizer *tokenizer) {
     if (lookahead(tokenizer, 1, "+")) {
       return make_token(tokenizer, TOKEN_PLUSPLUS, 2);
     }
+    if (lookahead(tokenizer, 1, "=")) {
+      return make_token(tokenizer, TOKEN_PLUS_EQUAL, 2);
+    }
     return make_token(tokenizer, TOKEN_PLUS, 1);
   }
   case '-': {
     if (lookahead(tokenizer, 1, ">")) {
       return make_token(tokenizer, TOKEN_ARROW, 2);
     }
+    if (lookahead(tokenizer, 1, "=")) {
+      return make_token(tokenizer, TOKEN_MINUS_EQUAL, 2);
+    }
     return make_token(tokenizer, TOKEN_MINUS, 1);
   }
   case '*':
+    if (lookahead(tokenizer, 1, "=")) {
+      return make_token(tokenizer, TOKEN_STAR_EQUAL, 2);
+    }
     return make_token(tokenizer, TOKEN_STAR, 1);
   case '/':
+    if (lookahead(tokenizer, 1, "=")) {
+      return make_token(tokenizer, TOKEN_SLASH_EQUAL, 2);
+    }
     return make_token(tokenizer, TOKEN_SLASH, 1);
   case '(':
     return make_token(tokenizer, TOKEN_LEFT_PAREN, 1);
@@ -154,30 +166,42 @@ Token get_token(Tokenizer *tokenizer) {
   case ',':
     return make_token(tokenizer, TOKEN_COMMA, 1);
   case '%':
+    if (lookahead(tokenizer, 1, "=")) {
+      return make_token(tokenizer, TOKEN_MOD_EQUAL, 2);
+    }
     return make_token(tokenizer, TOKEN_MOD, 1);
   case '.':
     return make_token(tokenizer, TOKEN_DOT, 1);
   case '"':
     return string(tokenizer);
   case '^':
+    if (lookahead(tokenizer, 1, "=")) {
+      return make_token(tokenizer, TOKEN_CARET_EQUAL, 2);
+    }
     return make_token(tokenizer, TOKEN_CARET, 1);
   case '~':
     return make_token(tokenizer, TOKEN_TILDE, 1);
   case '>': {
-    if (lookahead(tokenizer, 1, "=")) {
-      return make_token(tokenizer, TOKEN_GREATER_EQUAL, 2);
+    if (lookahead(tokenizer, 2, ">=")) {
+      return make_token(tokenizer, TOKEN_GREATER_GREATER_EQUAL, 3);
     }
     if (lookahead(tokenizer, 1, ">")) {
       return make_token(tokenizer, TOKEN_GREATER_GREATER, 2);
     }
+    if (lookahead(tokenizer, 1, "=")) {
+      return make_token(tokenizer, TOKEN_GREATER_EQUAL, 2);
+    }
     return make_token(tokenizer, TOKEN_GREATER, 1);
   }
   case '<': {
-    if (lookahead(tokenizer, 1, "=")) {
-      return make_token(tokenizer, TOKEN_LESS_EQUAL, 2);
+    if (lookahead(tokenizer, 2, "<=")) {
+      return make_token(tokenizer, TOKEN_LESS_LESS_EQUAL, 3);
     }
     if (lookahead(tokenizer, 1, "<")) {
       return make_token(tokenizer, TOKEN_LESS_LESS, 2);
+    }
+    if (lookahead(tokenizer, 1, "=")) {
+      return make_token(tokenizer, TOKEN_LESS_EQUAL, 2);
     }
     return make_token(tokenizer, TOKEN_LESS, 1);
   }
@@ -197,11 +221,17 @@ Token get_token(Tokenizer *tokenizer) {
     if (lookahead(tokenizer, 1, "&")) {
       return make_token(tokenizer, TOKEN_DOUBLE_AMPERSAND, 2);
     }
+    if (lookahead(tokenizer, 1, "=")) {
+      return make_token(tokenizer, TOKEN_AMPERSAND_EQUAL, 2);
+    }
     return make_token(tokenizer, TOKEN_AMPERSAND, 1);
   }
   case '|': {
     if (lookahead(tokenizer, 1, "|")) {
       return make_token(tokenizer, TOKEN_DOUBLE_PIPE, 2);
+    }
+    if (lookahead(tokenizer, 1, "=")) {
+      return make_token(tokenizer, TOKEN_PIPE_EQUAL, 2);
     }
     return make_token(tokenizer, TOKEN_PIPE, 1);
   }

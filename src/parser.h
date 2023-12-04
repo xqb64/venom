@@ -68,6 +68,7 @@ typedef struct GetExpression {
 typedef struct AssignExpression {
   Expression *lhs;
   Expression *rhs;
+  char *op;
 } AssignExpression;
 
 typedef struct LogicalExpression {
