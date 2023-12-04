@@ -479,209 +479,123 @@ static void handle_compile_expression_get(Compiler *compiler,
   emit_uint32(chunk, property_name_idx);
 }
 
+static void handle_specialized_operator(BytecodeChunk *chunk, const char *op) {
+  if (strcmp(op, "+=") == 0)
+    emit_byte(chunk, OP_ADD);
+  else if (strcmp(op, "-=") == 0)
+    emit_byte(chunk, OP_SUB);
+  else if (strcmp(op, "*=") == 0)
+    emit_byte(chunk, OP_MUL);
+  else if (strcmp(op, "/=") == 0)
+    emit_byte(chunk, OP_DIV);
+  else if (strcmp(op, "%%=") == 0)
+    emit_byte(chunk, OP_MOD);
+  else if (strcmp(op, "&=") == 0)
+    emit_byte(chunk, OP_BITWISE_AND);
+  else if (strcmp(op, "|=") == 0)
+    emit_byte(chunk, OP_BITWISE_OR);
+  else if (strcmp(op, "^=") == 0)
+    emit_byte(chunk, OP_BITWISE_XOR);
+  else if (strcmp(op, ">>=") == 0)
+    emit_byte(chunk, OP_BITWISE_SHIFT_RIGHT);
+  else if (strcmp(op, "<<=") == 0)
+    emit_byte(chunk, OP_BITWISE_SHIFT_LEFT);
+}
+
+static void compile_variable_assignment(Compiler *compiler,
+                                        BytecodeChunk *chunk,
+                                        VariableExpression *var,
+                                        Expression *rhs, const char *op,
+                                        bool is_specialized) {
+  int idx = resolve_local(compiler, var->name);
+  bool is_global = false;
+
+  if (idx == -1) {
+    idx = resolve_global(compiler, var->name)
+              ? (int)add_string(chunk, var->name)
+              : -1;
+    is_global = true;
+  }
+
+  if (idx == -1) {
+    COMPILER_ERROR("Variable '%s' is not defined.", var->name);
+    return;
+  }
+
+  if (is_specialized) {
+    emit_byte(chunk, is_global ? OP_GET_GLOBAL : OP_DEEPGET);
+    emit_uint32(chunk, idx);
+    compile_expression(compiler, chunk, *rhs);
+    handle_specialized_operator(chunk, op);
+  } else {
+    compile_expression(compiler, chunk, *rhs);
+  }
+
+  emit_byte(chunk, is_global ? OP_SET_GLOBAL : OP_DEEPSET);
+  emit_uint32(chunk, idx);
+}
+
+static void compile_get_expression_assignment(Compiler *compiler,
+                                              BytecodeChunk *chunk,
+                                              GetExpression *getexp,
+                                              Expression *rhs, const char *op,
+                                              bool is_specialized) {
+  compile_expression(compiler, chunk, *getexp->exp);
+  if (strcmp(getexp->op, "->") == 0) {
+    emit_byte(chunk, OP_DEREF);
+  }
+
+  if (is_specialized) {
+    emit_byte(chunk, OP_DUP);
+    emit_byte(chunk, OP_GETATTR);
+    emit_uint32(chunk, add_string(chunk, getexp->property_name));
+    compile_expression(compiler, chunk, *rhs);
+    handle_specialized_operator(chunk, op);
+  } else {
+    compile_expression(compiler, chunk, *rhs);
+  }
+
+  emit_byte(chunk, OP_SETATTR);
+  emit_uint32(chunk, add_string(chunk, getexp->property_name));
+  emit_byte(chunk, OP_POP);
+}
+
+static void compile_unary_expression_assignment(Compiler *compiler,
+                                                BytecodeChunk *chunk,
+                                                UnaryExpression *unary,
+                                                Expression *rhs, const char *op,
+                                                bool is_specialized) {
+  compile_expression(compiler, chunk, *unary->exp);
+  if (is_specialized) {
+    emit_byte(chunk, OP_DUP);
+    compile_expression(compiler, chunk, *rhs);
+    handle_specialized_operator(chunk, op);
+  } else {
+    compile_expression(compiler, chunk, *rhs);
+  }
+  emit_byte(chunk, OP_DEREFSET);
+}
+
 static void handle_compile_expression_assign(Compiler *compiler,
                                              BytecodeChunk *chunk,
                                              Expression exp) {
   AssignExpression e = TO_EXPR_ASSIGN(exp);
+  bool specialized_assignment = strcmp(e.op, "=") != 0;
 
-  bool specialized_assignment = false;
-  if (strcmp(e.op, "=") != 0) {
-    specialized_assignment = true;
-  }
-
-  /* If the left-hand side is a variable (as opposed to a get expression) */
-  if (e.lhs->kind == EXP_VARIABLE) {
-    /* First compile the right-hand side of the assigment. */
-    if (!specialized_assignment) {
-      compile_expression(compiler, chunk, *e.rhs);
-      VariableExpression var = TO_EXPR_VARIABLE(*e.lhs);
-      /* Try to resolve it as a local. */
-      int idx = resolve_local(compiler, var.name);
-      if (idx != -1) {
-        /* If it is found in locals, emit OP_DEEPSET. */
-        emit_byte(chunk, OP_DEEPSET);
-        emit_uint32(chunk, idx);
-      } else {
-        /* If it is not found in locals, try to resolve it as global. */
-        bool is_defined = resolve_global(compiler, var.name);
-        if (is_defined) {
-          /* If it is found in globals, emit OP_SET_GLOBAL. */
-          uint32_t name_idx = add_string(chunk, var.name);
-          emit_byte(chunk, OP_SET_GLOBAL);
-          emit_uint32(chunk, name_idx);
-        } else {
-          /* If it is not found in globals, bail out. */
-          COMPILER_ERROR("Variable '%s' is not defined.", var.name);
-        }
-      }
-    } else {
-      uint32_t i = 0;
-      bool is_global = false;
-      VariableExpression var = TO_EXPR_VARIABLE(*e.lhs);
-      /* Try to resolve it as a local. */
-      int idx = resolve_local(compiler, var.name);
-      if (idx != -1) {
-        /* If it is found in locals, emit OP_DEEPSET. */
-        emit_byte(chunk, OP_DEEPGET);
-        emit_uint32(chunk, idx);
-        i = idx;
-      } else {
-        /* If it is not found in locals, try to resolve it as global. */
-        bool is_defined = resolve_global(compiler, var.name);
-        if (is_defined) {
-          /* If it is found in globals, emit OP_SET_GLOBAL. */
-          uint32_t name_idx = add_string(chunk, var.name);
-          emit_byte(chunk, OP_GET_GLOBAL);
-          emit_uint32(chunk, name_idx);
-          is_global = true;
-          i = name_idx;
-        } else {
-          /* If it is not found in globals, bail out. */
-          COMPILER_ERROR("Variable '%s' is not defined.", var.name);
-        }
-      }
-      compile_expression(compiler, chunk, *e.rhs);
-      if (strcmp(e.op, "+=") == 0)
-        emit_byte(chunk, OP_ADD);
-      if (strcmp(e.op, "-=") == 0)
-        emit_byte(chunk, OP_SUB);
-      if (strcmp(e.op, "*=") == 0)
-        emit_byte(chunk, OP_MUL);
-      if (strcmp(e.op, "/=") == 0)
-        emit_byte(chunk, OP_DIV);
-      if (strcmp(e.op, "%%=") == 0)
-        emit_byte(chunk, OP_MOD);
-      if (strcmp(e.op, "&=") == 0)
-        emit_byte(chunk, OP_BITWISE_AND);
-      if (strcmp(e.op, "|=") == 0)
-        emit_byte(chunk, OP_BITWISE_OR);
-      if (strcmp(e.op, "^=") == 0)
-        emit_byte(chunk, OP_BITWISE_XOR);
-      if (strcmp(e.op, ">>=") == 0)
-        emit_byte(chunk, OP_BITWISE_SHIFT_RIGHT);
-      if (strcmp(e.op, "<<=") == 0)
-        emit_byte(chunk, OP_BITWISE_SHIFT_LEFT);
-
-      if (is_global) {
-        emit_byte(chunk, OP_SET_GLOBAL);
-        emit_uint32(chunk, i);
-      } else {
-        emit_byte(chunk, OP_DEEPSET);
-        emit_uint32(chunk, i);
-      }
-    }
-  } else if (e.lhs->kind == EXP_GET) {
-    if (!specialized_assignment) {
-      /* If the left-hand side is a get expression (like 'egg.x') */
-      GetExpression getexp = TO_EXPR_GET(*e.lhs);
-
-      /* Compile the part before the member access operator ('egg'),
-       * because OP_SETATTR expects the struct to be on the stack. */
-      compile_expression(compiler, chunk, *getexp.exp);
-      if (strcmp(getexp.op, "->") == 0) {
-        emit_byte(chunk, OP_DEREF);
-      }
-
-      /* Then compile the right-hand side of the assigment. */
-      compile_expression(compiler, chunk, *e.rhs);
-
-      /* Emit OP_SETATTR which will pop the value, pop the struct,
-       * and set the struct's property to the popped value.*/
-      uint32_t property_name_idx = add_string(chunk, getexp.property_name);
-      emit_byte(chunk, OP_SETATTR);
-      emit_uint32(chunk, property_name_idx);
-
-      /* Since OP_SETATTR will leave the struct on the stack,
-       * don't forget to pop it off. */
-      emit_byte(chunk, OP_POP);
-    } else {
-      GetExpression getexp = TO_EXPR_GET(*e.lhs);
-
-      /* Compile the part before the member access operator ('egg'),
-       * because OP_SETATTR expects the struct to be on the stack. */
-      compile_expression(compiler, chunk, *getexp.exp);
-      if (strcmp(getexp.op, "->") == 0) {
-        emit_byte(chunk, OP_DEREF);
-      }
-      /* Then compile the right-hand side of the assigment. */
-      compile_expression(compiler, chunk, *e.rhs);
-
-      if (strcmp(e.op, "+=") == 0)
-        emit_byte(chunk, OP_ADD);
-      if (strcmp(e.op, "-=") == 0)
-        emit_byte(chunk, OP_SUB);
-      if (strcmp(e.op, "*=") == 0)
-        emit_byte(chunk, OP_MUL);
-      if (strcmp(e.op, "/=") == 0)
-        emit_byte(chunk, OP_DIV);
-      if (strcmp(e.op, "%%=") == 0)
-        emit_byte(chunk, OP_MOD);
-      if (strcmp(e.op, "&=") == 0)
-        emit_byte(chunk, OP_BITWISE_AND);
-      if (strcmp(e.op, "|=") == 0)
-        emit_byte(chunk, OP_BITWISE_OR);
-      if (strcmp(e.op, "^=") == 0)
-        emit_byte(chunk, OP_BITWISE_XOR);
-      if (strcmp(e.op, ">>=") == 0)
-        emit_byte(chunk, OP_BITWISE_SHIFT_RIGHT);
-      if (strcmp(e.op, "<<=") == 0)
-        emit_byte(chunk, OP_BITWISE_SHIFT_LEFT);
-
-      /* Emit OP_SETATTR which will pop the value, pop the struct,
-       * and set the struct's property to the popped value.*/
-      uint32_t property_name_idx = add_string(chunk, getexp.property_name);
-      emit_byte(chunk, OP_SETATTR);
-      emit_uint32(chunk, property_name_idx);
-
-      /* Since OP_SETATTR will leave the struct on the stack,
-       * don't forget to pop it off. */
-      emit_byte(chunk, OP_POP);
-    }
-  } else if (e.lhs->kind == EXP_UNARY) {
-    if (!specialized_assignment) {
-      /* First compile the left-hand side of the assigment. */
-      UnaryExpression unary = TO_EXPR_UNARY(*e.lhs);
-      compile_expression(compiler, chunk, *unary.exp);
-
-      /* Then compile the right-hand side. */
-      compile_expression(compiler, chunk, *e.rhs);
-
-      /* Emit OP_DEREFSET. */
-      emit_byte(chunk, OP_DEREFSET);
-    } else {
-      UnaryExpression unary = TO_EXPR_UNARY(*e.lhs);
-      compile_expression(compiler, chunk, *unary.exp);
-
-      /* Then compile the right-hand side. */
-      compile_expression(compiler, chunk, *e.rhs);
-
-      if (strcmp(e.op, "+=") == 0)
-        emit_byte(chunk, OP_ADD);
-      if (strcmp(e.op, "-=") == 0)
-        emit_byte(chunk, OP_SUB);
-      if (strcmp(e.op, "*=") == 0)
-        emit_byte(chunk, OP_MUL);
-      if (strcmp(e.op, "/=") == 0)
-        emit_byte(chunk, OP_DIV);
-      if (strcmp(e.op, "%%=") == 0)
-        emit_byte(chunk, OP_MOD);
-      if (strcmp(e.op, "&=") == 0)
-        emit_byte(chunk, OP_BITWISE_AND);
-      if (strcmp(e.op, "|=") == 0)
-        emit_byte(chunk, OP_BITWISE_OR);
-      if (strcmp(e.op, "^=") == 0)
-        emit_byte(chunk, OP_BITWISE_XOR);
-      if (strcmp(e.op, ">>=") == 0)
-        emit_byte(chunk, OP_BITWISE_SHIFT_RIGHT);
-      if (strcmp(e.op, "<<=") == 0)
-        emit_byte(chunk, OP_BITWISE_SHIFT_LEFT);
-
-      /* Emit OP_DEREFSET. */
-      emit_byte(chunk, OP_DEREFSET);
-    }
-  } else {
-    /* If the left-hand side is neither a variable expression
-     * nor a get expression, bail out. */
+  switch (e.lhs->kind) {
+  case EXP_VARIABLE:
+    compile_variable_assignment(compiler, chunk, &TO_EXPR_VARIABLE(*e.lhs),
+                                e.rhs, e.op, specialized_assignment);
+    break;
+  case EXP_GET:
+    compile_get_expression_assignment(compiler, chunk, &TO_EXPR_GET(*e.lhs),
+                                      e.rhs, e.op, specialized_assignment);
+    break;
+  case EXP_UNARY:
+    compile_unary_expression_assignment(compiler, chunk, &TO_EXPR_UNARY(*e.lhs),
+                                        e.rhs, e.op, specialized_assignment);
+    break;
+  default:
     COMPILER_ERROR("Invalid assignment.");
   }
 }

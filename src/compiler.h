@@ -47,6 +47,7 @@ typedef enum {
   OP_CALL,
   OP_RET,
   OP_POP,
+  OP_DUP,
   OP_DEREF,
   OP_DEREFSET,
   OP_STRCAT,

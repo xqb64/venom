@@ -638,6 +638,16 @@ static inline int handle_op_pop(VM *vm, BytecodeChunk *chunk, uint8_t **ip) {
   return 0;
 }
 
+static inline int handle_op_dup(VM *vm, BytecodeChunk *chunk, uint8_t **ip) {
+  /* OP_DUP duplicates the top value on the stack. Since the
+   * duplicated object is now present in one more place, its
+   * refcount must be incremented. */
+  Object obj = vm->stack[vm->tos - 1];
+  push(vm, obj);
+  objincref(&obj);
+  return 0;
+}
+
 static inline int handle_op_deref(VM *vm, BytecodeChunk *chunk, uint8_t **ip) {
   /* OP_DEREF pops an object off the stack, dereferences it
    * and pushes it back on the stack. Since the object will
@@ -725,6 +735,7 @@ static Handler dispatcher[] = {
     [OP_CALL] = {.fn = handle_op_call, .opcode = "OP_CALL"},
     [OP_RET] = {.fn = handle_op_ret, .opcode = "OP_RET"},
     [OP_POP] = {.fn = handle_op_pop, .opcode = "OP_POP"},
+    [OP_DUP] = {.fn = handle_op_dup, .opcode = "OP_DUP"},
     [OP_DEREF] = {.fn = handle_op_deref, .opcode = "OP_DEREF"},
     [OP_DEREFSET] = {.fn = handle_op_derefset, .opcode = "OP_DEREFSET"},
     [OP_STRCAT] = {.fn = handle_op_strcat, .opcode = "OP_STRCAT"},
