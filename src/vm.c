@@ -575,6 +575,17 @@ static inline int handle_op_struct(VM *vm, BytecodeChunk *chunk, uint8_t **ip) {
 
 static inline int handle_op_struct_blueprint(VM *vm, BytecodeChunk *chunk,
                                              uint8_t **ip) {
+  /* OP_STRUCT_BLUEPRINT reads a 4-byte name index of the
+   * struct name in the sp, then it reads a 4-byte prope-
+   * rty count of the said struct (let's call this propc-
+   * ount). Then, it loops 'propcount' times and for each
+   * property, it reads the name index in the sp, and pr-
+   * operty index (in the items array in the Table_int of
+   * the StructBlueprint). Finally, it uses all this info
+   * to construct a StructBlueprint object, initialize it
+   * properly, and insert it into the vm's blueprints ta-
+   * ble.
+   * */
   uint32_t name_idx = READ_UINT32();
   uint32_t propcount = READ_UINT32();
   DynArray_char_ptr properties = {0};
