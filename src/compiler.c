@@ -18,10 +18,8 @@
 
 void init_compiler(Compiler *compiler) {
   memset(compiler, 0, sizeof(Compiler));
-  compiler->functions = malloc(sizeof(Table_Function));
-  compiler->struct_blueprints = malloc(sizeof(Table_StructBlueprint));
-  memset(compiler->functions, 0, sizeof(Table_Function));
-  memset(compiler->struct_blueprints, 0, sizeof(Table_StructBlueprint));
+  compiler->functions = calloc(1, sizeof(Table_Function));
+  compiler->struct_blueprints = calloc(1, sizeof(Table_StructBlueprint));
 }
 
 void free_table_int(Table_int *table) {

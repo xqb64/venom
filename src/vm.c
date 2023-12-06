@@ -12,8 +12,7 @@
 
 void init_vm(VM *vm) {
   memset(vm, 0, sizeof(VM));
-  vm->blueprints = malloc(sizeof(Table_StructBlueprint));
-  memset(vm->blueprints, 0, sizeof(Table_StructBlueprint));
+  vm->blueprints = calloc(1, sizeof(Table_StructBlueprint));
 }
 
 void free_vm(VM *vm) {
