@@ -3,8 +3,9 @@
 
 #include <stdbool.h>
 #include <stdint.h>
+#include <stdio.h>
+#include <stdlib.h>
 
-#include "dynarray.h"
 #include "table.h"
 
 typedef enum {
@@ -25,8 +26,6 @@ typedef struct {
   uint8_t *addr;
   int location;
 } BytecodePtr;
-
-struct Struct;
 
 typedef struct Object {
   ObjectType type;

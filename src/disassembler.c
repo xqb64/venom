@@ -1,6 +1,8 @@
+#include <stdint.h>
 #include <stdio.h>
 
 #include "disassembler.h"
+#include "dynarray.h"
 
 typedef struct {
   char *opcode;

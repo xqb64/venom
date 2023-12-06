@@ -2,6 +2,7 @@
 #define venom_parser_h
 
 #include <stdbool.h>
+#include <stddef.h>
 
 #include "dynarray.h"
 #include "tokenizer.h"

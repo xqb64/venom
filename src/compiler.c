@@ -2,10 +2,10 @@
 #include <stdarg.h>
 #include <stdbool.h>
 #include <stdio.h>
+#include <stdlib.h>
 #include <string.h>
 
 #include "compiler.h"
-#include "util.h"
 
 #define COMPILER_ERROR(...)                                                    \
   do {                                                                         \
@@ -114,7 +114,7 @@ static void emit_byte(BytecodeChunk *chunk, uint8_t byte) {
   dynarray_insert(&chunk->code, byte);
 }
 
-static void emit_bytes(BytecodeChunk *chunk, uint8_t n, ...) {
+static void emit_bytes(BytecodeChunk *chunk, int n, ...) {
   va_list ap;
   va_start(ap, n);
   for (int i = 0; i < n; i++) {

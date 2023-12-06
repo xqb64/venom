@@ -3,6 +3,7 @@
 
 #define POPS_MAX 256
 
+#include <stddef.h>
 #include <stdint.h>
 
 #include "dynarray.h"
