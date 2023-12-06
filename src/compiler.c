@@ -374,7 +374,7 @@ static void handle_compile_expression_unary(Compiler *compiler,
     }
   } else if (strcmp(e.op, "~") == 0) {
     compile_expression(compiler, chunk, *e.exp);
-    emit_byte(chunk, OP_BITWISE_NOT);
+    emit_byte(chunk, OP_BITNOT);
   }
 }
 
@@ -397,11 +397,11 @@ static void handle_compile_expression_binary(Compiler *compiler,
   } else if (strcmp(e.op, "%%") == 0) {
     emit_byte(chunk, OP_MOD);
   } else if (strcmp(e.op, "&") == 0) {
-    emit_byte(chunk, OP_BITWISE_AND);
+    emit_byte(chunk, OP_BITAND);
   } else if (strcmp(e.op, "|") == 0) {
-    emit_byte(chunk, OP_BITWISE_OR);
+    emit_byte(chunk, OP_BITOR);
   } else if (strcmp(e.op, "^") == 0) {
-    emit_byte(chunk, OP_BITWISE_XOR);
+    emit_byte(chunk, OP_BITXOR);
   } else if (strcmp(e.op, ">") == 0) {
     emit_byte(chunk, OP_GT);
   } else if (strcmp(e.op, "<") == 0) {
@@ -415,9 +415,9 @@ static void handle_compile_expression_binary(Compiler *compiler,
   } else if (strcmp(e.op, "!=") == 0) {
     emit_bytes(chunk, 2, OP_EQ, OP_NOT);
   } else if (strcmp(e.op, "<<") == 0) {
-    emit_byte(chunk, OP_BITWISE_SHIFT_LEFT);
+    emit_byte(chunk, OP_BITSHL);
   } else if (strcmp(e.op, ">>") == 0) {
-    emit_byte(chunk, OP_BITWISE_SHIFT_RIGHT);
+    emit_byte(chunk, OP_BITSHR);
   } else if (strcmp(e.op, "++") == 0) {
     emit_byte(chunk, OP_STRCAT);
   }
@@ -491,15 +491,15 @@ static void handle_specialized_operator(BytecodeChunk *chunk, const char *op) {
   else if (strcmp(op, "%%=") == 0)
     emit_byte(chunk, OP_MOD);
   else if (strcmp(op, "&=") == 0)
-    emit_byte(chunk, OP_BITWISE_AND);
+    emit_byte(chunk, OP_BITAND);
   else if (strcmp(op, "|=") == 0)
-    emit_byte(chunk, OP_BITWISE_OR);
+    emit_byte(chunk, OP_BITOR);
   else if (strcmp(op, "^=") == 0)
-    emit_byte(chunk, OP_BITWISE_XOR);
+    emit_byte(chunk, OP_BITXOR);
   else if (strcmp(op, ">>=") == 0)
-    emit_byte(chunk, OP_BITWISE_SHIFT_RIGHT);
+    emit_byte(chunk, OP_BITSHR);
   else if (strcmp(op, "<<=") == 0)
-    emit_byte(chunk, OP_BITWISE_SHIFT_LEFT);
+    emit_byte(chunk, OP_BITSHL);
 }
 
 static void compile_variable_assignment(Compiler *compiler,
