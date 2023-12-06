@@ -13,6 +13,9 @@
 
 #define dynarray_insert(array, exp)                                            \
   do {                                                                         \
+    /* If the array is full, increase its capacity and allocate                \
+     * enough memory. The capacity starts at 2 and then doubles                \
+     * each time when it fills up. */                                          \
     if ((array)->count >= (array)->capacity) {                                 \
       (array)->capacity = (array)->capacity == 0 ? 2 : (array)->capacity * 2;  \
       (array)->data = realloc((array)->data,                                   \
@@ -34,8 +37,6 @@
 typedef DynArray(char *) DynArray_char_ptr;
 typedef DynArray(int) DynArray_int;
 typedef DynArray(uint32_t) DynArray_uint32_t;
-
-char *strcat_dynarray(DynArray_char_ptr array);
 
 #define COPY_DYNARRAY(dest, src)                                               \
   do {                                                                         \

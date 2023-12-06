@@ -2,26 +2,46 @@
 #include "table.h"
 
 void print_object(Object *object) {
-  if (IS_BOOL(*object)) {
-    printf("%s", TO_BOOL(*object) ? "true" : "false");
-  } else if (IS_NUM(*object)) {
-    printf("%.2f", TO_DOUBLE(*object));
-  } else if (IS_PTR(*object)) {
-    printf("PTR ('%p')", (void *)TO_PTR(*object));
-  } else if (IS_NULL(*object)) {
-    printf("null");
-  } else if (IS_STRING(*object)) {
-    printf("%s", TO_STR(*object)->value);
-  } else if (IS_STRUCT(*object)) {
-    printf("%s", TO_STRUCT(*object)->name);
+  switch (object->type) {
+  case OBJ_BOOLEAN: {
+    bool value = TO_BOOL(*object);
+    printf("%s", value ? "true" : "false");
+    break;
+  }
+  case OBJ_NUMBER: {
+    double number = TO_DOUBLE(*object);
+    printf("%.2f", number);
+    break;
+  }
+  case OBJ_STRING: {
+    String *string = TO_STR(*object);
+    printf("%s", string->value);
+    break;
+  }
+  case OBJ_STRUCT: {
+    Struct *structobj = TO_STRUCT(*object);
+    printf("%s", structobj->name);
     printf(" { ");
-    for (size_t i = 0; i < TO_STRUCT(*object)->propcount; i++) {
-      print_object(&TO_STRUCT(*object)->properties[i]);
-      if (i < TO_STRUCT(*object)->propcount - 1) {
+    for (size_t i = 0; i < structobj->propcount; i++) {
+      print_object(&structobj->properties[i]);
+      if (i < structobj->propcount - 1) {
         printf(", ");
       }
     }
     printf(" }");
+    break;
+  }
+  case OBJ_PTR: {
+    Object *ptr = TO_PTR(*object);
+    printf("PTR ('%p')", (void *)ptr);
+    break;
+  }
+  case OBJ_NULL: {
+    printf("null");
+    break;
+  }
+  default:
+    break;
   }
 }
 

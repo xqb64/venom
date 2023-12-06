@@ -66,16 +66,4 @@ Return type is void*, so make sure to use a pointer of the correct type.
     }                                                                          \
   } while (0)
 
-#define table_print(table)                                                     \
-  do {                                                                         \
-    for (int i = 0; i < TABLE_MAX; i++) {                                      \
-      if ((table)->indexes[i] != NULL) {                                       \
-        Bucket *bucket = (table)->indexes[i];                                  \
-        printf(" %s: ", bucket->key);                                          \
-        print_object(&((table)->items[bucket->value]));                        \
-        printf(", ");                                                          \
-      }                                                                        \
-    }                                                                          \
-  } while (0)
-
 #endif
