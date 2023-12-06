@@ -1,5 +1,3 @@
-#include "vm.h"
-
 #include <assert.h>
 #include <stdio.h>
 #include <stdlib.h>
@@ -9,6 +7,7 @@
 #include "disassembler.h"
 #include "math.h"
 #include "util.h"
+#include "vm.h"
 
 void init_vm(VM *vm) {
   memset(vm, 0, sizeof(VM));

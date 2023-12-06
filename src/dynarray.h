@@ -1,7 +1,6 @@
 #ifndef venom_dynarray_h
 #define venom_dynarray_h
 
-#include <assert.h>
 #include <stddef.h>
 #include <stdint.h>
 

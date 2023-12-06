@@ -1,11 +1,10 @@
-#include "compiler.h"
-
 #include <assert.h>
 #include <stdarg.h>
 #include <stdbool.h>
 #include <stdio.h>
 #include <string.h>
 
+#include "compiler.h"
 #include "util.h"
 
 #define COMPILER_ERROR(...)                                                    \

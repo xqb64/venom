@@ -1,6 +1,6 @@
-#include "util.h"
-
 #include <stdio.h>
+
+#include "util.h"
 
 char *own_string(const char *string) {
   char *s = malloc(strlen(string) + 1);

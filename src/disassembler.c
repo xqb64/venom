@@ -1,6 +1,6 @@
-#include "disassembler.h"
-
 #include <stdio.h>
+
+#include "disassembler.h"
 
 typedef struct {
   char *opcode;

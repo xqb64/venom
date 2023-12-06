@@ -1,9 +1,9 @@
-#include "tokenizer.h"
-
 #include <stdbool.h>
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
+
+#include "tokenizer.h"
 
 void init_tokenizer(Tokenizer *tokenizer, char *source) {
   tokenizer->current = source;

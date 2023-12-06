@@ -1,10 +1,11 @@
 #ifndef venom_object_h
 #define venom_object_h
 
-#include "dynarray.h"
-#include "table.h"
 #include <stdbool.h>
 #include <stdint.h>
+
+#include "dynarray.h"
+#include "table.h"
 
 typedef enum {
   OBJ_NULL,

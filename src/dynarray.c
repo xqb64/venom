@@ -1,7 +1,7 @@
-#include "dynarray.h"
-
 #include <stdlib.h>
 #include <string.h>
+
+#include "dynarray.h"
 
 char *strcat_dynarray(DynArray_char_ptr array) {
   /* Compute the combined length of all strings

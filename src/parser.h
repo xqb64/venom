@@ -1,9 +1,10 @@
 #ifndef venom_parser_h
 #define venom_parser_h
 
+#include <stdbool.h>
+
 #include "dynarray.h"
 #include "tokenizer.h"
-#include <stdbool.h>
 
 typedef enum {
   EXP_LITERAL,

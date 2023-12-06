@@ -1,5 +1,3 @@
-#include "parser.h"
-
 #include <assert.h>
 #include <stdarg.h>
 #include <stdbool.h>
@@ -8,6 +6,7 @@
 #include <string.h>
 
 #include "dynarray.h"
+#include "parser.h"
 #include "tokenizer.h"
 #include "util.h"
 
