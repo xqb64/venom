@@ -199,26 +199,22 @@ static inline int handle_op_mod(VM *vm, BytecodeChunk *chunk, uint8_t **ip) {
   return 0;
 }
 
-static inline int handle_op_bitwise_and(VM *vm, BytecodeChunk *chunk,
-                                        uint8_t **ip) {
+static inline int handle_op_bitand(VM *vm, BytecodeChunk *chunk, uint8_t **ip) {
   BITWISE_OP(&);
   return 0;
 }
 
-static inline int handle_op_bitwise_or(VM *vm, BytecodeChunk *chunk,
-                                       uint8_t **ip) {
+static inline int handle_op_bitor(VM *vm, BytecodeChunk *chunk, uint8_t **ip) {
   BITWISE_OP(|);
   return 0;
 }
 
-static inline int handle_op_bitwise_xor(VM *vm, BytecodeChunk *chunk,
-                                        uint8_t **ip) {
+static inline int handle_op_bitxor(VM *vm, BytecodeChunk *chunk, uint8_t **ip) {
   BITWISE_OP(^);
   return 0;
 }
 
-static inline int handle_op_bitwise_not(VM *vm, BytecodeChunk *chunk,
-                                        uint8_t **ip) {
+static inline int handle_op_bitnot(VM *vm, BytecodeChunk *chunk, uint8_t **ip) {
   Object obj = pop(vm);
   double value = TO_DOUBLE(obj);
 
@@ -236,14 +232,12 @@ static inline int handle_op_bitwise_not(VM *vm, BytecodeChunk *chunk,
   return 0;
 }
 
-static inline int handle_op_bitwise_shift_left(VM *vm, BytecodeChunk *chunk,
-                                               uint8_t **ip) {
+static inline int handle_op_bitshl(VM *vm, BytecodeChunk *chunk, uint8_t **ip) {
   BITWISE_OP(<<);
   return 0;
 }
 
-static inline int handle_op_bitwise_shift_right(VM *vm, BytecodeChunk *chunk,
-                                                uint8_t **ip) {
+static inline int handle_op_bitshr(VM *vm, BytecodeChunk *chunk, uint8_t **ip) {
   BITWISE_OP(>>);
   return 0;
 }
@@ -690,60 +684,94 @@ static inline int handle_op_strcat(VM *vm, BytecodeChunk *chunk, uint8_t **ip) {
   return 0;
 }
 
-typedef int (*HandlerFn)(VM *vm, BytecodeChunk *chunk, uint8_t **ip);
-typedef struct {
-  char *opcode;
-} Handler;
-
-static Handler dispatcher[] = {
-    [OP_PRINT] = {.opcode = "OP_PRINT"},
-    [OP_ADD] = {.opcode = "OP_ADD"},
-    [OP_SUB] = {.opcode = "OP_SUB"},
-    [OP_MUL] = {.opcode = "OP_MUL"},
-    [OP_DIV] = {.opcode = "OP_DIV"},
-    [OP_MOD] = {.opcode = "OP_MOD"},
-    [OP_EQ] = {.opcode = "OP_EQ"},
-    [OP_GT] = {.opcode = "OP_GT"},
-    [OP_LT] = {.opcode = "OP_LT"},
-    [OP_NOT] = {.opcode = "OP_NOT"},
-    [OP_NEG] = {.opcode = "OP_NEG"},
-    [OP_TRUE] = {.opcode = "OP_TRUE"},
-    [OP_NULL] = {.opcode = "OP_NULL"},
-    [OP_CONST] = {.opcode = "OP_CONST"},
-    [OP_STR] = {.opcode = "OP_STR"},
-    [OP_JZ] = {.opcode = "OP_JZ"},
-    [OP_JMP] = {.opcode = "OP_JMP"},
-    [OP_BITAND] = {.opcode = "OP_BITAND"},
-    [OP_BITOR] = {.opcode = "OP_BITOR"},
-    [OP_BITXOR] = {.opcode = "OP_BITXOR"},
-    [OP_BITNOT] = {.opcode = "OP_BITNOT"},
-    [OP_BITSHL] = {.opcode = "OP_BITSHL"},
-    [OP_BITSHR] = {.opcode = "OP_BITSHR"},
-    [OP_SET_GLOBAL] = {.opcode = "OP_SET_GLOBAL"},
-    [OP_GET_GLOBAL] = {.opcode = "OP_GET_GLOBAL"},
-    [OP_GET_GLOBAL_PTR] = {.opcode = "OP_GET_GLOBAL_PTR"},
-    [OP_DEEPSET] = {.opcode = "OP_DEEPSET"},
-    [OP_DEEPGET] = {.opcode = "OP_DEEPGET"},
-    [OP_DEEPGET_PTR] = {.opcode = "OP_DEEPGET_PTR"},
-    [OP_SETATTR] = {.opcode = "OP_SETATTR"},
-    [OP_GETATTR] = {.opcode = "OP_GETATTR"},
-    [OP_GETATTR_PTR] = {.opcode = "OP_GETATTR_PTR"},
-    [OP_STRUCT] = {.opcode = "OP_STRUCT"},
-    [OP_STRUCT_BLUEPRINT] = {.opcode = "OP_STRUCT_BLUEPRINT"},
-    [OP_CALL] = {.opcode = "OP_CALL"},
-    [OP_RET] = {.opcode = "OP_RET"},
-    [OP_POP] = {.opcode = "OP_POP"},
-    [OP_DUP] = {.opcode = "OP_DUP"},
-    [OP_DEREF] = {.opcode = "OP_DEREF"},
-    [OP_DEREFSET] = {.opcode = "OP_DEREFSET"},
-    [OP_STRCAT] = {.opcode = "OP_STRCAT"},
-};
-
-#ifdef venom_debug_vm
-static void print_current_instruction(uint8_t *ip) {
-  printf("current instruction: %s\n", dispatcher[*ip].opcode);
+static inline const char *print_current_instruction(uint8_t opcode) {
+  switch (opcode) {
+  case OP_PRINT:
+    return "OP_PRINT";
+  case OP_ADD:
+    return "OP_ADD";
+  case OP_SUB:
+    return "OP_SUB";
+  case OP_MUL:
+    return "OP_MUL";
+  case OP_DIV:
+    return "OP_DIV";
+  case OP_MOD:
+    return "OP_MOD";
+  case OP_EQ:
+    return "OP_EQ";
+  case OP_GT:
+    return "OP_GT";
+  case OP_LT:
+    return "OP_LT";
+  case OP_NOT:
+    return "OP_NOT";
+  case OP_NEG:
+    return "OP_NEG";
+  case OP_TRUE:
+    return "OP_TRUE";
+  case OP_NULL:
+    return "OP_NULL";
+  case OP_CONST:
+    return "OP_CONST";
+  case OP_STR:
+    return "OP_STR";
+  case OP_JZ:
+    return "OP_JZ";
+  case OP_JMP:
+    return "OP_JMP";
+  case OP_BITAND:
+    return "OP_BITAND";
+  case OP_BITOR:
+    return "OP_BITOR";
+  case OP_BITXOR:
+    return "OP_BITXOR";
+  case OP_BITNOT:
+    return "OP_BITNOT";
+  case OP_BITSHL:
+    return "OP_BITSHL";
+  case OP_BITSHR:
+    return "OP_BITSHR";
+  case OP_SET_GLOBAL:
+    return "OP_SET_GLOBAL";
+  case OP_GET_GLOBAL:
+    return "OP_GET_GLOBAL";
+  case OP_GET_GLOBAL_PTR:
+    return "OP_GET_GLOBAL_PTR";
+  case OP_DEEPSET:
+    return "OP_DEEPSET";
+  case OP_DEEPGET:
+    return "OP_DEEPGET";
+  case OP_DEEPGET_PTR:
+    return "OP_DEEPGET_PTR";
+  case OP_SETATTR:
+    return "OP_SETATTR";
+  case OP_GETATTR:
+    return "OP_GETATTR";
+  case OP_GETATTR_PTR:
+    return "OP_GETATTR_PTR";
+  case OP_STRUCT:
+    return "OP_STRUCT";
+  case OP_STRUCT_BLUEPRINT:
+    return "OP_STRUCT_BLUEPRINT";
+  case OP_CALL:
+    return "OP_CALL";
+  case OP_RET:
+    return "OP_RET";
+  case OP_POP:
+    return "OP_POP";
+  case OP_DUP:
+    return "OP_DUP";
+  case OP_DEREF:
+    return "OP_DEREF";
+  case OP_DEREFSET:
+    return "OP_DEREFSET";
+  case OP_STRCAT:
+    return "OP_STRCAT";
+  default:
+    assert(0);
+  }
 }
-#endif
 
 int run(VM *vm, BytecodeChunk *chunk) {
 #ifdef venom_debug_disassembler
@@ -755,7 +783,7 @@ int run(VM *vm, BytecodeChunk *chunk) {
                                                      the last instruction */
        ip++) {
 #ifdef venom_debug_vm
-    print_current_instruction(ip);
+    print_current_instruction(*ip);
 #endif
     int status;
     switch (*ip) {
@@ -828,27 +856,27 @@ int run(VM *vm, BytecodeChunk *chunk) {
       break;
     }
     case OP_BITAND: {
-      status = handle_op_bitwise_and(vm, chunk, &ip);
+      status = handle_op_bitand(vm, chunk, &ip);
       break;
     }
     case OP_BITOR: {
-      status = handle_op_bitwise_or(vm, chunk, &ip);
+      status = handle_op_bitor(vm, chunk, &ip);
       break;
     }
     case OP_BITXOR: {
-      status = handle_op_bitwise_xor(vm, chunk, &ip);
+      status = handle_op_bitxor(vm, chunk, &ip);
       break;
     }
     case OP_BITNOT: {
-      status = handle_op_bitwise_not(vm, chunk, &ip);
+      status = handle_op_bitnot(vm, chunk, &ip);
       break;
     }
     case OP_BITSHL: {
-      status = handle_op_bitwise_shift_left(vm, chunk, &ip);
+      status = handle_op_bitshl(vm, chunk, &ip);
       break;
     }
     case OP_BITSHR: {
-      status = handle_op_bitwise_shift_right(vm, chunk, &ip);
+      status = handle_op_bitshr(vm, chunk, &ip);
       break;
     }
     case OP_SET_GLOBAL: {
