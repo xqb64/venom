@@ -2,46 +2,45 @@
 #include "table.h"
 
 void print_object(Object *object) {
-  switch (object->type) {
-  case OBJ_BOOLEAN: {
-    bool value = TO_BOOL(*object);
+  if (IS_BOOL(*object)) {
+    bool value = AS_BOOL(*object);
     printf("%s", value ? "true" : "false");
-    break;
   }
-  case OBJ_NUMBER: {
-    double number = TO_DOUBLE(*object);
+  if (IS_NUM(*object)) {
+    double number = AS_NUM(*object);
     printf("%.2f", number);
-    break;
   }
-  case OBJ_STRING: {
-    String *string = TO_STR(*object);
-    printf("%s", string->value);
-    break;
-  }
-  case OBJ_STRUCT: {
-    Struct *structobj = TO_STRUCT(*object);
-    printf("%s", structobj->name);
-    printf(" { ");
-    for (size_t i = 0; i < structobj->propcount; i++) {
-      print_object(&structobj->properties[i]);
-      if (i < structobj->propcount - 1) {
-        printf(", ");
-      }
-    }
-    printf(" }");
-    break;
-  }
-  case OBJ_PTR: {
-    Object *ptr = TO_PTR(*object);
-    printf("PTR ('%p')", (void *)ptr);
-    break;
-  }
-  case OBJ_NULL: {
+  if (IS_NULL(*object)) {
     printf("null");
-    break;
   }
-  default:
-    break;
+  if (IS_OBJ(*object)) {
+    switch (AS_OBJ(*object)->type) {
+    case OBJ_STRING: {
+      String *string = AS_STR(*object);
+      printf("%s", string->value);
+      break;
+    }
+    case OBJ_STRUCT: {
+      Struct *structobj = AS_STRUCT(*object);
+      printf("%s", structobj->name);
+      printf(" { ");
+      for (size_t i = 0; i < structobj->propcount; i++) {
+        print_object(&structobj->properties[i]);
+        if (i < structobj->propcount - 1) {
+          printf(", ");
+        }
+      }
+      printf(" }");
+      break;
+    }
+    case OBJ_PTR: {
+      Object *ptr = AS_PTR(*object);
+      printf("PTR ('%p')", (void *)ptr);
+      break;
+    }
+    default:
+      break;
+    }
   }
 }
 
@@ -61,3 +60,4 @@ void free_table_object(const Table_Object *table) {
 extern inline void dealloc(Object *obj);
 extern inline void objdecref(Object *obj);
 extern inline void objincref(Object *obj);
+extern inline const char *get_object_type(Object *object);

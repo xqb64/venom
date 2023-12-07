@@ -9,6 +9,10 @@ CFLAGS += -Wunreachable-code
 CFLAGS += -Ofast
 LDLIBS = -lm
 
+ifeq (nan_boxing, $(findstring nan_boxing, $(opt)))
+	CFLAGS += -DNAN_BOXING
+endif
+
 ifeq ($(debug), all)
 	CFLAGS += -Dvenom_debug_tokenizer
 	CFLAGS += -Dvenom_debug_parser

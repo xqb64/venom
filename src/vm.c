@@ -31,7 +31,7 @@ static inline Object pop(VM *vm) { return vm->stack[--vm->tos]; }
   do {                                                                         \
     Object b = pop(vm);                                                        \
     Object a = pop(vm);                                                        \
-    Object obj = wrapper(TO_DOUBLE(a) op TO_DOUBLE(b));                        \
+    Object obj = wrapper(AS_NUM(a) op AS_NUM(b));                              \
     push(vm, obj);                                                             \
   } while (0)
 
@@ -40,13 +40,13 @@ static inline Object pop(VM *vm) { return vm->stack[--vm->tos]; }
     Object b = pop(vm);                                                        \
     Object a = pop(vm);                                                        \
                                                                                \
-    int64_t truncated_a = (int64_t)TO_DOUBLE(a);                               \
-    int64_t truncated_b = (int64_t)TO_DOUBLE(b);                               \
+    int64_t truncated_a = (int64_t)AS_NUM(a);                                  \
+    int64_t truncated_b = (int64_t)AS_NUM(b);                                  \
                                                                                \
     int32_t reduced_a = (int32_t)(truncated_a % (int64_t)(1LL << 32));         \
     int32_t reduced_b = (int32_t)(truncated_b % (int64_t)(1LL << 32));         \
                                                                                \
-    Object obj = AS_DOUBLE(reduced_a op reduced_b);                            \
+    Object obj = NUM_VAL(reduced_a op reduced_b);                              \
     push(vm, obj);                                                             \
   } while (0)
 
@@ -89,49 +89,61 @@ static inline Object pop(VM *vm) { return vm->stack[--vm->tos]; }
   } while (0)
 
 static inline bool check_equality(Object *left, Object *right) {
+#ifdef NAN_BOXING
+  return *left == *right;
+#else
+
   /* Return false if the objects are of different type. */
   if (left->type != right->type) {
     return false;
   }
 
   switch (left->type) {
+  case OBJ_OBJ: {
+    switch (AS_OBJ(*left)->type) {
+    case OBJ_STRING: {
+      return strcmp(AS_STR(*left)->value, AS_STR(*right)->value) == 0;
+    }
+    case OBJ_STRUCT: {
+      Struct *a = AS_STRUCT(*left);
+      Struct *b = AS_STRUCT(*right);
+
+      /* Return false if the structs are of different types. */
+      if (strcmp(a->name, b->name) != 0) {
+        return false;
+      }
+
+      /* If they have the same type, for each non-NULL
+       * property in struct 'a', run the func recursi-
+       * vely comparing that property with the corres-
+       * ponding property in struct 'b'. */
+      for (size_t i = 0; i < a->propcount; i++) {
+        if (!check_equality(&a->properties[i], &b->properties[i])) {
+          return false;
+        }
+      }
+      /* Comparing the properties didn't return false,
+       * which means that the two structs are equal. */
+      return true;
+    }
+    default:
+      assert(0);
+    }
+    break;
+  }
   case OBJ_NULL: {
     return true;
   }
   case OBJ_BOOLEAN: {
-    return TO_BOOL(*left) == TO_BOOL(*right);
+    return AS_BOOL(*left) == AS_BOOL(*right);
   }
   case OBJ_NUMBER: {
-    return TO_DOUBLE(*left) == TO_DOUBLE(*right);
-  }
-  case OBJ_STRING: {
-    return strcmp(TO_STR(*left)->value, TO_STR(*right)->value) == 0;
-  }
-  case OBJ_STRUCT: {
-    Struct *a = TO_STRUCT(*left);
-    Struct *b = TO_STRUCT(*right);
-
-    /* Return false if the structs are of different types. */
-    if (strcmp(a->name, b->name) != 0) {
-      return false;
-    }
-
-    /* If they have the same type, for each non-NULL
-     * property in struct 'a', run the func recursi-
-     * vely comparing that property with the corres-
-     * ponding property in struct 'b'. */
-    for (size_t i = 0; i < a->propcount; i++) {
-      if (!check_equality(&a->properties[i], &b->properties[i])) {
-        return false;
-      }
-    }
-    /* Comparing the properties didn't return false,
-     * which means that the two structs are equal. */
-    return true;
+    return AS_NUM(*left) == AS_NUM(*right);
   }
   default:
     assert(0);
   }
+#endif
 }
 
 static inline uint32_t adjust_idx(VM *vm, uint32_t idx) {
@@ -172,29 +184,29 @@ static inline int handle_op_print(VM *vm, BytecodeChunk *chunk, uint8_t **ip) {
 }
 
 static inline int handle_op_add(VM *vm, BytecodeChunk *chunk, uint8_t **ip) {
-  BINARY_OP(+, AS_DOUBLE);
+  BINARY_OP(+, NUM_VAL);
   return 0;
 }
 
 static inline int handle_op_sub(VM *vm, BytecodeChunk *chunk, uint8_t **ip) {
-  BINARY_OP(-, AS_DOUBLE);
+  BINARY_OP(-, NUM_VAL);
   return 0;
 }
 
 static inline int handle_op_mul(VM *vm, BytecodeChunk *chunk, uint8_t **ip) {
-  BINARY_OP(*, AS_DOUBLE);
+  BINARY_OP(*, NUM_VAL);
   return 0;
 }
 
 static inline int handle_op_div(VM *vm, BytecodeChunk *chunk, uint8_t **ip) {
-  BINARY_OP(/, AS_DOUBLE);
+  BINARY_OP(/, NUM_VAL);
   return 0;
 }
 
 static inline int handle_op_mod(VM *vm, BytecodeChunk *chunk, uint8_t **ip) {
   Object b = pop(vm);
   Object a = pop(vm);
-  Object obj = AS_DOUBLE(fmod(TO_DOUBLE(a), TO_DOUBLE(b)));
+  Object obj = NUM_VAL(fmod(AS_NUM(a), AS_NUM(b)));
   push(vm, obj);
   return 0;
 }
@@ -216,7 +228,7 @@ static inline int handle_op_bitxor(VM *vm, BytecodeChunk *chunk, uint8_t **ip) {
 
 static inline int handle_op_bitnot(VM *vm, BytecodeChunk *chunk, uint8_t **ip) {
   Object obj = pop(vm);
-  double value = TO_DOUBLE(obj);
+  double value = AS_NUM(obj);
 
   /* discard the fractional part */
   int64_t truncated = (int64_t)value;
@@ -228,7 +240,7 @@ static inline int handle_op_bitnot(VM *vm, BytecodeChunk *chunk, uint8_t **ip) {
   int32_t inverted = ~reduced;
 
   /* convert back to double */
-  push(vm, AS_DOUBLE(inverted));
+  push(vm, NUM_VAL(inverted));
   return 0;
 }
 
@@ -249,17 +261,17 @@ static inline int handle_op_eq(VM *vm, BytecodeChunk *chunk, uint8_t **ip) {
    * the reference count must be decremented. */
   objdecref(&a);
   objdecref(&b);
-  push(vm, AS_BOOL(check_equality(&a, &b)));
+  push(vm, BOOL_VAL(check_equality(&a, &b)));
   return 0;
 }
 
 static inline int handle_op_gt(VM *vm, BytecodeChunk *chunk, uint8_t **ip) {
-  BINARY_OP(>, AS_BOOL);
+  BINARY_OP(>, BOOL_VAL);
   return 0;
 }
 
 static inline int handle_op_lt(VM *vm, BytecodeChunk *chunk, uint8_t **ip) {
-  BINARY_OP(<, AS_BOOL);
+  BINARY_OP(<, BOOL_VAL);
   return 0;
 }
 
@@ -268,7 +280,7 @@ static inline int handle_op_not(VM *vm, BytecodeChunk *chunk, uint8_t **ip) {
    * its inverse back on the stack. The popped obj-
    * ect must be a boolean.  */
   Object obj = pop(vm);
-  push(vm, AS_BOOL(TO_BOOL(obj) ^ 1));
+  push(vm, BOOL_VAL(AS_BOOL(obj) ^ 1));
   return 0;
 }
 
@@ -276,20 +288,20 @@ static inline int handle_op_neg(VM *vm, BytecodeChunk *chunk, uint8_t **ip) {
   /* OP_NEG pops an object off the stack, negates
    * it and pushes the negative back on the stack. */
   Object original = pop(vm);
-  Object negated = AS_DOUBLE(-TO_DOUBLE(original));
+  Object negated = NUM_VAL(-AS_NUM(original));
   push(vm, negated);
   return 0;
 }
 
 static inline int handle_op_true(VM *vm, BytecodeChunk *chunk, uint8_t **ip) {
   /* OP_TRUE pushes a boolean object ('true') on the stack. */
-  push(vm, AS_BOOL(true));
+  push(vm, BOOL_VAL(true));
   return 0;
 }
 
 static inline int handle_op_null(VM *vm, BytecodeChunk *chunk, uint8_t **ip) {
   /* OP_NULL pushes a null object on the stack. */
-  push(vm, AS_NULL());
+  push(vm, NULL_VAL);
   return 0;
 }
 
@@ -299,7 +311,7 @@ static inline int handle_op_const(VM *vm, BytecodeChunk *chunk, uint8_t **ip) {
    * pushes it on the stack. Since constants are not ref-
    * counted, incrementing the refcount is not needed. */
   uint32_t idx = READ_UINT32();
-  Object obj = AS_DOUBLE(chunk->cp.data[idx]);
+  Object obj = NUM_VAL(chunk->cp.data[idx]);
   push(vm, obj);
   return 0;
 }
@@ -310,8 +322,9 @@ static inline int handle_op_str(VM *vm, BytecodeChunk *chunk, uint8_t **ip) {
    * and pushes it on the stack. */
   uint32_t idx = READ_UINT32();
   String s = {.refcount = 1, .value = own_string(chunk->sp.data[idx])};
-  Object obj = AS_STR(ALLOC(s));
-  push(vm, obj);
+  // Obj o = {.type = OBJ_STRING, .as.str = ALLOC(s)};
+  // Object obj = OBJ_VAL((Object){.type = OBJ_OBJ, .as.obj = ALLOC(o) });
+  // push(vm, obj);
   return 0;
 }
 
@@ -322,7 +335,7 @@ static inline int handle_op_jz(VM *vm, BytecodeChunk *chunk, uint8_t **ip) {
    * the popped object was 'false'. */
   int16_t offset = READ_INT16();
   Object obj = pop(vm);
-  if (!TO_BOOL(obj)) {
+  if (!AS_BOOL(obj)) {
     *ip += offset;
   }
   return 0;
@@ -371,7 +384,7 @@ static inline int handle_op_get_global_ptr(VM *vm, BytecodeChunk *chunk,
    * ress on the stack. */
   uint32_t name_idx = READ_UINT32();
   Object *obj = table_get_unchecked(&vm->globals, chunk->sp.data[name_idx]);
-  push(vm, AS_PTR(obj));
+  push(vm, OBJ_VAL(obj));
   return 0;
 }
 
@@ -416,7 +429,7 @@ static inline int handle_op_derefset(VM *vm, BytecodeChunk *chunk,
    * essentially changes what the pointer points to.
    */
   Object item = pop(vm);
-  Object *ptr = TO_PTR(pop(vm));
+  Object *ptr = AS_PTR(pop(vm));
 
   *ptr = item;
 
@@ -459,7 +472,7 @@ static inline int handle_op_deepget_ptr(VM *vm, BytecodeChunk *chunk,
    * ress on the stack. */
   uint32_t idx = READ_UINT32();
   uint32_t adjusted_idx = adjust_idx(vm, idx);
-  push(vm, AS_PTR(&vm->stack[adjusted_idx]));
+  push(vm, OBJ_VAL(&vm->stack[adjusted_idx]));
   return 0;
 }
 
@@ -474,13 +487,13 @@ static inline int handle_op_setattr(VM *vm, BytecodeChunk *chunk,
   Object value = pop(vm);
   Object obj = pop(vm);
   StructBlueprint *sb =
-      table_get_unchecked(vm->blueprints, obj.as.structobj->name);
+      table_get_unchecked(vm->blueprints, AS_STRUCT(obj)->name);
   int *idx = table_get(sb->property_indexes, chunk->sp.data[property_name_idx]);
   if (!idx) {
     RUNTIME_ERROR("struct '%s' does not have property '%s'",
-                  obj.as.structobj->name, chunk->sp.data[property_name_idx]);
+                  AS_STRUCT(obj)->name, chunk->sp.data[property_name_idx]);
   }
-  obj.as.structobj->properties[*idx] = value;
+  AS_STRUCT(obj)->properties[*idx] = value;
   push(vm, obj);
   return 0;
 }
@@ -496,14 +509,14 @@ static inline int handle_op_getattr(VM *vm, BytecodeChunk *chunk,
   Object obj = pop(vm);
 
   StructBlueprint *sb =
-      table_get_unchecked(vm->blueprints, obj.as.structobj->name);
+      table_get_unchecked(vm->blueprints, AS_STRUCT(obj)->name);
   int *idx = table_get(sb->property_indexes, chunk->sp.data[property_name_idx]);
   if (!idx) {
     RUNTIME_ERROR("struct '%s' does not have property '%s'",
-                  obj.as.structobj->name, chunk->sp.data[property_name_idx]);
+                  AS_STRUCT(obj)->name, chunk->sp.data[property_name_idx]);
   }
 
-  Object property = obj.as.structobj->properties[*idx];
+  Object property = AS_STRUCT(obj)->properties[*idx];
 
   push(vm, property);
   objincref(&property);
@@ -523,16 +536,16 @@ static inline int handle_op_getattr_ptr(VM *vm, BytecodeChunk *chunk,
   Object obj = pop(vm);
 
   StructBlueprint *sb =
-      table_get_unchecked(vm->blueprints, obj.as.structobj->name);
+      table_get_unchecked(vm->blueprints, AS_STRUCT(obj)->name);
   int *idx = table_get(sb->property_indexes, chunk->sp.data[property_name_idx]);
   if (!idx) {
     RUNTIME_ERROR("struct '%s' does not have property '%s'",
-                  obj.as.structobj->name, chunk->sp.data[property_name_idx]);
+                  AS_STRUCT(obj)->name, chunk->sp.data[property_name_idx]);
   }
 
-  Object *property = &obj.as.structobj->properties[*idx];
+  Object *property = &AS_STRUCT(obj)->properties[*idx];
 
-  push(vm, AS_PTR(property));
+  push(vm, OBJ_VAL(property));
   objdecref(&obj);
   return 0;
 }
@@ -555,12 +568,13 @@ static inline int handle_op_struct(VM *vm, BytecodeChunk *chunk, uint8_t **ip) {
   s->name = chunk->sp.data[structname];
   s->propcount = sb->property_indexes->count;
   s->refcount = 1;
+  s->properties = malloc(sizeof(Object) * s->propcount);
 
   for (size_t i = 0; i < s->propcount; i++) {
-    s->properties[i] = (Object){.type = OBJ_NULL};
+    s->properties[i] = NULL_VAL;
   }
 
-  push(vm, AS_STRUCT(s));
+  push(vm, OBJ_VAL(s));
   return 0;
 }
 
@@ -655,9 +669,9 @@ static inline int handle_op_deref(VM *vm, BytecodeChunk *chunk, uint8_t **ip) {
    * and pushes it back on the stack. Since the object will
    * be present in one more another location, its reference
    * count must be incremented.*/
-  Object ptr = pop(vm);
-  push(vm, *ptr.as.ptr);
-  objincref(ptr.as.ptr);
+  Object obj = pop(vm);
+  push(vm, *AS_PTR(obj));
+  objincref(AS_PTR(obj));
   return 0;
 }
 
@@ -670,16 +684,16 @@ static inline int handle_op_strcat(VM *vm, BytecodeChunk *chunk, uint8_t **ip) {
    * the refcount of 1. */
   Object b = pop(vm);
   Object a = pop(vm);
-  if (a.type == OBJ_STRING && b.type == OBJ_STRING) {
-    String result = concatenate_strings(TO_STR(a)->value, TO_STR(b)->value);
-    Object obj = AS_STR(ALLOC(result));
+  if (IS_STRING(a) && IS_STRING(b)) {
+    String result = concatenate_strings(AS_STR(a)->value, AS_STR(b)->value);
+    Object obj = OBJ_VAL(ALLOC(result));
     push(vm, obj);
     objdecref(&b);
     objdecref(&a);
   } else {
     RUNTIME_ERROR(
         "'++' operator used on objects of unsupported types: %s and %s",
-        GET_OBJTYPE(a.type), GET_OBJTYPE(b.type));
+        get_object_type(&a), get_object_type(&b));
   }
   return 0;
 }
@@ -783,7 +797,7 @@ int run(VM *vm, BytecodeChunk *chunk) {
                                                      the last instruction */
        ip++) {
 #ifdef venom_debug_vm
-    print_current_instruction(*ip);
+    printf("%s\n", print_current_instruction(*ip));
 #endif
     int status;
     switch (*ip) {
