@@ -42,6 +42,7 @@ typedef uint64_t Object;
   (IS_OBJ((object)) && AS_OBJ((object))->type == OBJ_STRING)
 #define IS_STRUCT(object)                                                      \
   (IS_OBJ((object)) && AS_OBJ((object))->type == OBJ_STRUCT)
+#define IS_PTR(object) (IS_OBJ((object)) && AS_OBJ((object))->type == OBJ_PTR)
 
 static inline double object2num(Object value) {
   double num;
@@ -79,33 +80,25 @@ typedef struct Object {
 #define IS_FUNC(object) ((object).type == OBJ_FUNCTION)
 #define IS_STRUCT_BLUEPRINT(object) ((object).type == OBJ_STRUCT_BLUEPRINT)
 
+#define AS_OBJ(object) ((object).as.obj)
 #define AS_NUM(object) ((object).as.dval)
 #define AS_BOOL(object) ((object).as.bval)
 #define AS_STRUCT(object) ((object).as.obj->as.structobj)
-#define AS_PTR(object) ((object).as.obj->as.ptr)
-#define AS_STR(object) ((object).as.obj->as.str)
-#define AS_OBJ(object) ((object).as.obj)
+#define AS_PTR(object) (AS_OBJ((object))->as.ptr)
+#define AS_STR(object) ((AS_OBJ((object))->as.str)
 
 #define AS_FUNC(object) ((object).as.func)
 #define AS_STRUCT_BLUEPRINT(object) ((object).as.struct_blueprint)
 
 #define NUM_VAL(thing) ((Object){.type = OBJ_NUMBER, .as.dval = (thing)})
 #define BOOL_VAL(thing) ((Object){.type = OBJ_BOOLEAN, .as.bval = (thing)})
-#define PTR_VAL(thing)                                                         \
-  ((Object){.type = OBJ_OBJ,                                                   \
-            .as.obj = ALLOC(((Obj){.type = OBJ_PTR, .as.ptr = (thing)}))})
-#define STR_VAL(thing)                                                         \
-  ((Object){.type = OBJ_OBJ,                                                   \
-            .as.obj = ALLOC(((Obj){.type = OBJ_STRING, .as.str = (thing)}))})
 #define NULL_VAL ((Object){.type = OBJ_NULL})
-#define STRUCT_VAL(thing)                                                      \
-  ((Object){.type = OBJ_OBJ,                                                   \
-            .as.obj =                                                          \
-                ALLOC(((Obj){.type = OBJ_STRUCT, .as.structobj = (thing)}))})
 
 #endif
 
 void print_object(Object *obj);
+
+typedef struct Pointer Pointer;
 
 typedef enum {
   OBJ_OBJ,
@@ -136,7 +129,7 @@ typedef struct Obj {
   ObjType type;
   union {
     String *str;
-    struct Object *ptr;
+    Pointer *ptr;
 
     /* Structs can get arbitrarily large, so we need
      * a pointer, at which point (no pun intended) it
@@ -204,29 +197,30 @@ typedef struct {
 
 inline void dealloc(Object *obj) {
   if (IS_STRUCT(*obj)) {
+    free(AS_OBJ(*obj)->as.structobj->properties);
     free(AS_OBJ(*obj)->as.structobj);
     free(AS_OBJ(*obj));
-  }
-  if (IS_STRING(*obj)) {
+  } else if (IS_STRING(*obj)) {
     free(AS_OBJ(*obj)->as.str->value);
     free(AS_OBJ(*obj)->as.str);
     free(AS_OBJ(*obj));
+  } else if (IS_PTR(*obj)) {
+    free(AS_OBJ(*obj)->as.ptr);
   }
 }
 
 inline void objincref(Object *obj) {
-  if (IS_STRING(*obj) || IS_STRUCT(*obj)) {
+  if (IS_STRING(*obj) || IS_STRUCT(*obj) || IS_PTR(*obj)) {
     ++*AS_OBJ(*obj)->as.refcount;
   }
 }
 
 inline void objdecref(Object *obj) {
-  if (IS_STRING(*obj)) {
+  if (IS_STRING(*obj) || IS_PTR(*obj)) {
     if (--*AS_OBJ(*obj)->as.refcount == 0) {
       dealloc(obj);
     }
-  }
-  if (IS_STRUCT(*obj)) {
+  } else if (IS_STRUCT(*obj)) {
     if (--*AS_OBJ(*obj)->as.refcount == 0) {
       for (size_t i = 0; i < AS_OBJ(*obj)->as.structobj->propcount; i++) {
         objdecref(&AS_OBJ(*obj)->as.structobj->properties[i]);
@@ -235,5 +229,10 @@ inline void objdecref(Object *obj) {
     }
   }
 }
+
+typedef struct Pointer {
+  int refcount;
+  Object *ptr;
+} Pointer;
 
 #endif

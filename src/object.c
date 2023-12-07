@@ -5,16 +5,13 @@ void print_object(Object *object) {
   if (IS_BOOL(*object)) {
     bool value = AS_BOOL(*object);
     printf("%s", value ? "true" : "false");
-  }
-  if (IS_NUM(*object)) {
+  } else if (IS_NUM(*object)) {
     double number = AS_NUM(*object);
     printf("%.2f", number);
-  }
-  if (IS_NULL(*object)) {
+  } else if (IS_NULL(*object)) {
     printf("null");
-  }
-  if (IS_OBJ(*object)) {
-    switch (AS_OBJ(*object)->type) {
+  } else if (IS_OBJ(*object)) {
+    switch (OBJ_TYPE(*object)) {
     case OBJ_STRING: {
       String *string = AS_STR(*object);
       printf("%s", string->value);

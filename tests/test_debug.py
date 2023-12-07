@@ -168,6 +168,8 @@ def test_debug():
             capture_output=True,
         )
 
+        print(file)
+
         if info["return_code"] == 0:
             output = process.stdout.decode("utf-8")
             for debug_print in info["debug_prints"]:
