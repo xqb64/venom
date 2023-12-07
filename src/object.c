@@ -31,8 +31,8 @@ void print_object(Object *object) {
       break;
     }
     case OBJ_PTR: {
-      Object *ptr = AS_PTR(*object);
-      printf("PTR ('%p')", (void *)ptr);
+      Obj *objptr = AS_OBJ(*object);
+      printf("PTR ('%p')", (void *)(objptr->as.ptr->ptr));
       break;
     }
     default:

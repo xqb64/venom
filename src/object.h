@@ -29,7 +29,7 @@ typedef uint64_t Object;
 #define AS_OBJ(value) ((Obj *)(uintptr_t)((value) & ~(SIGN_BIT | QNAN)))
 #define AS_STRUCT(object) (AS_OBJ((object))->as.structobj)
 #define AS_STR(object) (AS_OBJ((object))->as.str)
-#define AS_PTR(object) ((Object *)(AS_OBJ((object))->as.ptr))
+#define AS_PTR(object) ((AS_OBJ((object))->as.ptr))
 
 #define BOOL_VAL(b) ((b) ? TRUE_VAL : FALSE_VAL)
 #define FALSE_VAL ((Object)(uint64_t)(QNAN | TAG_FALSE))
@@ -206,6 +206,7 @@ inline void dealloc(Object *obj) {
     free(AS_OBJ(*obj));
   } else if (IS_PTR(*obj)) {
     free(AS_OBJ(*obj)->as.ptr);
+    free(AS_OBJ(*obj));
   }
 }
 

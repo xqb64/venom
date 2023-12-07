@@ -411,8 +411,9 @@ static inline int handle_op_get_global_ptr(VM *vm, BytecodeChunk *chunk,
    * name in in the vm's globals table, and pushes its add-
    * ress on the stack. */
   uint32_t name_idx = READ_UINT32();
-  Object *object = table_get_unchecked(&vm->globals, chunk->sp.data[name_idx]);
-  Pointer ptr = {.refcount = 1, .ptr = object};
+  Object *object_ptr =
+      table_get_unchecked(&vm->globals, chunk->sp.data[name_idx]);
+  Pointer ptr = {.refcount = 1, .ptr = object_ptr};
   Obj obj = {.type = OBJ_PTR, .as.ptr = ALLOC(ptr)};
   push(vm, OBJ_VAL(ALLOC(obj)));
   return 0;
@@ -459,12 +460,13 @@ static inline int handle_op_derefset(VM *vm, BytecodeChunk *chunk,
    * essentially changes what the pointer points to.
    */
   Object item = pop(vm);
-  Object *ptr = AS_PTR(pop(vm));
+  Object ptr = pop(vm);
 
-  *ptr = item;
+  Obj *objptr = AS_OBJ(ptr);
 
-  objdecref(ptr);
+  *(objptr->as.ptr->ptr) = item;
 
+  objdecref(&ptr);
   return 0;
 }
 
@@ -504,8 +506,8 @@ static inline int handle_op_deepget_ptr(VM *vm, BytecodeChunk *chunk,
    * ress on the stack. */
   uint32_t idx = READ_UINT32();
   uint32_t adjusted_idx = adjust_idx(vm, idx);
-  Object *object = &vm->stack[adjusted_idx];
-  Pointer ptr = {.refcount = 1, .ptr = object};
+  Object *object_ptr = &vm->stack[adjusted_idx];
+  Pointer ptr = {.refcount = 1, .ptr = object_ptr};
   Obj obj = {.type = OBJ_PTR, .as.ptr = ALLOC(ptr)};
   push(vm, OBJ_VAL(ALLOC(obj)));
   return 0;
@@ -581,8 +583,7 @@ static inline int handle_op_getattr_ptr(VM *vm, BytecodeChunk *chunk,
   Object *property = &AS_STRUCT(object)->properties[*idx];
   Pointer ptr = {.refcount = 1, .ptr = property};
   Obj obj = {.type = OBJ_PTR, .as.ptr = ALLOC(ptr)};
-
-  push(vm, OBJ_VAL(property));
+  push(vm, OBJ_VAL(ALLOC(obj)));
   objdecref(&object);
   return 0;
 }
@@ -708,10 +709,15 @@ static inline int handle_op_deref(VM *vm, BytecodeChunk *chunk, uint8_t **ip) {
    * and pushes it back on the stack. Since the object will
    * be present in one more another location, its reference
    * count must be incremented.*/
-  Object obj = pop(vm);
-  push(vm, *AS_PTR(obj));
-  objdecref(&obj);
-  objincref(AS_PTR(obj));
+  Object ptrobj = pop(vm);
+
+  Obj *objptr = AS_OBJ(ptrobj);
+
+  Object derefed = *(Object *)(objptr->as.ptr->ptr);
+
+  push(vm, derefed);
+  objincref(&derefed);
+  objdecref(&ptrobj);
 
   return 0;
 }
