@@ -9,11 +9,11 @@
 #include "table.h"
 
 typedef enum {
+  OBJ_STRUCT,
+  OBJ_STRING,
   OBJ_NULL,
   OBJ_BOOLEAN,
   OBJ_NUMBER,
-  OBJ_STRING,
-  OBJ_STRUCT,
   OBJ_PTR,
 } ObjectType;
 
@@ -112,34 +112,52 @@ typedef struct Struct {
 void print_object(Object *obj);
 
 inline void dealloc(Object *obj) {
-  if (IS_STRUCT(*obj)) {
+  switch (obj->type) {
+  case OBJ_STRUCT: {
     free(obj->as.structobj);
+    break;
   }
-  if (IS_STRING(*obj)) {
+  case OBJ_STRING: {
     free(obj->as.str->value);
     free(obj->as.str);
+    break;
+  }
+  default:
+    break;
   }
 }
 
 inline void objincref(Object *obj) {
-  if (IS_STRUCT(*obj) || IS_STRING(*obj)) {
+  switch (obj->type) {
+  case OBJ_STRING:
+  case OBJ_STRUCT: {
     ++*obj->as.refcount;
+    break;
+  }
+  default:
+    break;
   }
 }
 
 inline void objdecref(Object *obj) {
-  if (IS_STRING(*obj)) {
+  switch (obj->type) {
+  case OBJ_STRING: {
     if (--*obj->as.refcount == 0) {
       dealloc(obj);
     }
+    break;
   }
-  if (IS_STRUCT(*obj)) {
+  case OBJ_STRUCT: {
     if (--*obj->as.refcount == 0) {
       for (size_t i = 0; i < obj->as.structobj->propcount; i++) {
         objdecref(&obj->as.structobj->properties[i]);
       }
       dealloc(obj);
     }
+    break;
+  }
+  default:
+    break;
   }
 }
 

@@ -94,28 +94,20 @@ static inline bool check_equality(Object *left, Object *right) {
     return false;
   }
 
-  /* Return true if both objects are nulls. */
-  if (IS_NULL(*left) && IS_NULL(*right)) {
+  switch (left->type) {
+  case OBJ_NULL: {
     return true;
   }
-
-  /* If both objects are booleans, compare them. */
-  if (IS_BOOL(*left) && IS_BOOL(*right)) {
+  case OBJ_BOOLEAN: {
     return TO_BOOL(*left) == TO_BOOL(*right);
   }
-
-  /* If both objects are numbers, compare them. */
-  if (IS_NUM(*left) && IS_NUM(*right)) {
+  case OBJ_NUMBER: {
     return TO_DOUBLE(*left) == TO_DOUBLE(*right);
   }
-
-  /* If both objects are strings, compare them. */
-  if (IS_STRING(*left) && IS_STRING(*right)) {
+  case OBJ_STRING: {
     return strcmp(TO_STR(*left)->value, TO_STR(*right)->value) == 0;
   }
-
-  /* If both objects are structs, compare them. */
-  if (IS_STRUCT(*left) && IS_STRUCT(*right)) {
+  case OBJ_STRUCT: {
     Struct *a = TO_STRUCT(*left);
     Struct *b = TO_STRUCT(*right);
 
@@ -137,7 +129,9 @@ static inline bool check_equality(Object *left, Object *right) {
      * which means that the two structs are equal. */
     return true;
   }
-  assert(0);
+  default:
+    assert(0);
+  }
 }
 
 static inline uint32_t adjust_idx(VM *vm, uint32_t idx) {
@@ -568,7 +562,9 @@ static inline int handle_op_struct(VM *vm, BytecodeChunk *chunk, uint8_t **ip) {
   s->propcount = sb->property_indexes->count;
   s->refcount = 1;
 
-  memset(&s->properties, 0, sizeof(Object) * s->propcount);
+  for (size_t i = 0; i < s->propcount; i++) {
+    s->properties[i] = (Object){.type = OBJ_NULL};
+  }
 
   push(vm, AS_STRUCT(s));
   return 0;
@@ -766,7 +762,175 @@ int run(VM *vm, BytecodeChunk *chunk) {
 #ifdef venom_debug_vm
     print_current_instruction(ip);
 #endif
-    int status = dispatcher[*ip].fn(vm, chunk, &ip);
+    int status;
+    switch (*ip) {
+    case OP_PRINT: {
+      status = handle_op_print(vm, chunk, &ip);
+      break;
+    }
+    case OP_ADD: {
+      status = handle_op_add(vm, chunk, &ip);
+      break;
+    }
+    case OP_SUB: {
+      status = handle_op_sub(vm, chunk, &ip);
+      break;
+    }
+    case OP_MUL: {
+      status = handle_op_mul(vm, chunk, &ip);
+      break;
+    }
+    case OP_DIV: {
+      status = handle_op_div(vm, chunk, &ip);
+      break;
+    }
+    case OP_MOD: {
+      status = handle_op_mod(vm, chunk, &ip);
+      break;
+    }
+    case OP_EQ: {
+      status = handle_op_eq(vm, chunk, &ip);
+      break;
+    }
+    case OP_GT: {
+      status = handle_op_gt(vm, chunk, &ip);
+      break;
+    }
+    case OP_LT: {
+      status = handle_op_lt(vm, chunk, &ip);
+      break;
+    }
+    case OP_NOT: {
+      status = handle_op_not(vm, chunk, &ip);
+      break;
+    }
+    case OP_NEG: {
+      status = handle_op_neg(vm, chunk, &ip);
+      break;
+    }
+    case OP_TRUE: {
+      status = handle_op_true(vm, chunk, &ip);
+      break;
+    }
+    case OP_NULL: {
+      status = handle_op_null(vm, chunk, &ip);
+      break;
+    }
+    case OP_CONST: {
+      status = handle_op_const(vm, chunk, &ip);
+      break;
+    }
+    case OP_STR: {
+      status = handle_op_str(vm, chunk, &ip);
+      break;
+    }
+    case OP_JZ: {
+      status = handle_op_jz(vm, chunk, &ip);
+      break;
+    }
+    case OP_JMP: {
+      status = handle_op_jmp(vm, chunk, &ip);
+      break;
+    }
+    case OP_BITAND: {
+      status = handle_op_bitwise_and(vm, chunk, &ip);
+      break;
+    }
+    case OP_BITOR: {
+      status = handle_op_bitwise_or(vm, chunk, &ip);
+      break;
+    }
+    case OP_BITXOR: {
+      status = handle_op_bitwise_xor(vm, chunk, &ip);
+      break;
+    }
+    case OP_BITNOT: {
+      status = handle_op_bitwise_not(vm, chunk, &ip);
+      break;
+    }
+    case OP_BITSHL: {
+      status = handle_op_bitwise_shift_left(vm, chunk, &ip);
+      break;
+    }
+    case OP_BITSHR: {
+      status = handle_op_bitwise_shift_right(vm, chunk, &ip);
+      break;
+    }
+    case OP_SET_GLOBAL: {
+      status = handle_op_set_global(vm, chunk, &ip);
+      break;
+    }
+    case OP_GET_GLOBAL: {
+      status = handle_op_get_global(vm, chunk, &ip);
+      break;
+    }
+    case OP_GET_GLOBAL_PTR: {
+      status = handle_op_get_global_ptr(vm, chunk, &ip);
+      break;
+    }
+    case OP_DEEPSET: {
+      status = handle_op_deepset(vm, chunk, &ip);
+      break;
+    }
+    case OP_DEEPGET: {
+      status = handle_op_deepget(vm, chunk, &ip);
+      break;
+    }
+    case OP_DEEPGET_PTR: {
+      status = handle_op_deepget_ptr(vm, chunk, &ip);
+      break;
+    }
+    case OP_SETATTR: {
+      status = handle_op_setattr(vm, chunk, &ip);
+      break;
+    }
+    case OP_GETATTR: {
+      status = handle_op_getattr(vm, chunk, &ip);
+      break;
+    }
+    case OP_GETATTR_PTR: {
+      status = handle_op_getattr_ptr(vm, chunk, &ip);
+      break;
+    }
+    case OP_STRUCT: {
+      status = handle_op_struct(vm, chunk, &ip);
+      break;
+    }
+    case OP_STRUCT_BLUEPRINT: {
+      status = handle_op_struct_blueprint(vm, chunk, &ip);
+      break;
+    }
+    case OP_CALL: {
+      status = handle_op_call(vm, chunk, &ip);
+      break;
+    }
+    case OP_RET: {
+      status = handle_op_ret(vm, chunk, &ip);
+      break;
+    }
+    case OP_POP: {
+      status = handle_op_pop(vm, chunk, &ip);
+      break;
+    }
+    case OP_DUP: {
+      status = handle_op_dup(vm, chunk, &ip);
+      break;
+    }
+    case OP_DEREF: {
+      status = handle_op_deref(vm, chunk, &ip);
+      break;
+    }
+    case OP_DEREFSET: {
+      status = handle_op_derefset(vm, chunk, &ip);
+      break;
+    }
+    case OP_STRCAT: {
+      status = handle_op_strcat(vm, chunk, &ip);
+      break;
+    }
+    default:
+      break;
+    }
     if (status != 0)
       return status;
 #ifdef venom_debug_vm
