@@ -21,20 +21,20 @@ RESULTS = {
     },
     "breakcomplex.vnm": {
         "debug_prints": [
-            "dbg print :: 1.00",
+            "dbg print :: 1",
             "dbg print :: Hello, world!",
             "dbg print :: Hello, world!",
             "dbg print :: Hello, world!",
             "dbg print :: Hello, world!",
             "dbg print :: Hello, world!",
-            "dbg print :: 3.00",
+            "dbg print :: 3",
         ],
         "ends_with": "stack: []",
         "return_code": 0,
     },
     "call.vnm": {
         "debug_prints": [
-            "dbg print :: 7.00",
+            "dbg print :: 7",
         ],
         "ends_with": "stack: []",
         "return_code": 0,
@@ -54,23 +54,23 @@ RESULTS = {
     "doubleloop.vnm": {
         "debug_prints": [
             "dbg print :: Printing i...",
-            "dbg print :: 1.00",
+            "dbg print :: 1",
             "dbg print :: Printing i...",
-            "dbg print :: 2.00",
+            "dbg print :: 2",
         ],
         "ends_with": "stack: []",
         "return_code": 0,
     },
     "empty.vnm": {
         "debug_prints": [
-            "dbg print :: 1.00",
+            "dbg print :: 1",
         ],
         "ends_with": "stack: []",
         "return_code": 0,
     },
     "global_loop.vnm": {
         "debug_prints": [
-            "dbg print :: 7.00",
+            "dbg print :: 7",
             "dbg print :: Hello world!",
             "dbg print :: Hello world!",
             "dbg print :: Hello world!",
@@ -96,9 +96,9 @@ RESULTS = {
     },
     "loop.vnm": {
         "debug_prints": [
-            "dbg print :: 0.00",
-            "dbg print :: 1.00",
-            "dbg print :: 2.00",
+            "dbg print :: 0",
+            "dbg print :: 1",
+            "dbg print :: 2",
         ],
         "ends_with": "stack: []",
         "return_code": 0,
@@ -119,14 +119,14 @@ RESULTS = {
     },
     "recursion.vnm": {
         "debug_prints": [
-            "dbg print :: 0.00",
+            "dbg print :: 0",
         ],
         "ends_with": "stack: []",
         "return_code": 0,
     },
     "simple_fn.vnm": {
         "debug_prints": [
-            "dbg print :: 10.00",
+            "dbg print :: 10",
         ],
         "ends_with": "stack: []",
         "return_code": 0,
@@ -167,8 +167,6 @@ def test_debug():
             VALGRIND_CMD + [Path(".") / "debug" / file],
             capture_output=True,
         )
-
-        print(file)
 
         if info["return_code"] == 0:
             output = process.stdout.decode("utf-8")

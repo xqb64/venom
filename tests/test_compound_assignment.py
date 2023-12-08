@@ -43,7 +43,7 @@ def test_compound_assignment(tmp_path, start, cond_op, end, step, op, intermedia
     output = process.stdout.decode("utf-8")
 
     asserts = intermediate
-    asserts = [f"dbg print :: {x:.2f}\n" for x in intermediate]
+    asserts = [f"dbg print :: {x:.16g}\n" for x in intermediate]
 
     for _assert in asserts:
         assert _assert in output
@@ -88,7 +88,7 @@ def test_compound_assignment_other(tmp_path, left, op, right, expected):
 
     output = process.stdout.decode("utf-8")
 
-    assert f"dbg print :: {expected:.2f}" in output
+    assert f"dbg print :: {expected:.16g}" in output
 
     assert process.returncode == 0
 

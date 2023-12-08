@@ -25,7 +25,7 @@ def test_block_func_param_inherited(tmp_path):
         capture_output=True,
     )
 
-    assert f"dbg print :: {0:.2f}\n".encode("utf-8") in process.stdout
+    assert f"dbg print :: {0:.16g}\n".encode("utf-8") in process.stdout
     assert process.returncode == 0
 
     # the stack must end up empty
@@ -54,7 +54,7 @@ def test_block_local_var_inherited(tmp_path):
         capture_output=True,
     )
 
-    assert f"dbg print :: {3:.2f}\n".encode("utf-8") in process.stdout
+    assert f"dbg print :: {3:.16g}\n".encode("utf-8") in process.stdout
     assert process.returncode == 0
 
     # the stack must end up empty
@@ -115,7 +115,7 @@ def test_block_return_value_remains_on_stack(tmp_path):
     output = process.stdout.decode("utf-8")
 
     asserts = [
-        "dbg print :: 7.00\n",
+        "dbg print :: 7\n",
         "dbg print :: null\n",
     ]
 
@@ -158,7 +158,7 @@ def test_block_return_value_gets_popped(tmp_path):
     output = process.stdout.decode("utf-8")
 
     asserts = [
-        "dbg print :: 7.00\n",
+        "dbg print :: 7\n",
         "dbg print :: Hello, world!\n",
         "dbg print :: Hello, world!\n",
         "dbg print :: Hello, world!\n",

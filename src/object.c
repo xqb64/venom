@@ -7,7 +7,7 @@ void print_object(Object *object) {
     printf("%s", value ? "true" : "false");
   } else if (IS_NUM(*object)) {
     double number = AS_NUM(*object);
-    printf("%.2f", number);
+    printf("%.16g", number);
   } else if (IS_NULL(*object)) {
     printf("null");
   } else if (IS_OBJ(*object)) {

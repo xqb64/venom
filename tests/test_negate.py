@@ -32,7 +32,7 @@ def test_negate_global(tmp_path, x):
             # for x == 0 and for every odd number of minuses,
             # the result is going to have a minus in front.
             f"{'-' if (x == 0 and minus_count % 2 != 0) else ''}"
-            + f"{eval('-' * minus_count + str(x)):.2f}\n"
+            + f"{eval('-' * minus_count + str(x)):.16g}\n"
         ).encode("utf-8") in process.stdout
         assert process.returncode == 0
 
@@ -71,7 +71,7 @@ def test_negate_func(tmp_path, x):
             # for x == 0 and for every odd number of minuses,
             # the result is going to have a minus in front.
             f"{'-' if (x == 0 and minus_count % 2 != 0) else ''}"
-            + f"{eval('-' * minus_count + str(x)):.2f}\n"
+            + f"{eval('-' * minus_count + str(x)):.16g}\n"
         ).encode("utf-8") in process.stdout
         assert process.returncode == 0
 
@@ -98,7 +98,7 @@ def test_negate_variable(tmp_path):
         capture_output=True,
     )
 
-    assert "dbg print :: -5.00".encode("utf-8") in process.stdout
+    assert "dbg print :: -5".encode("utf-8") in process.stdout
     assert process.returncode == 0
 
     # the stack must end up empty

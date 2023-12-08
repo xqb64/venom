@@ -67,7 +67,7 @@ void disassemble(BytecodeChunk *chunk) {
       switch (*ip) {
       case OP_CONST: {
         uint32_t const_idx = READ_UINT32();
-        printf(" (value: %.2f)", chunk->cp.data[const_idx]);
+        printf(" (value: %.16g)", chunk->cp.data[const_idx]);
         break;
       }
       case OP_STR: {

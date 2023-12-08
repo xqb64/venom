@@ -27,7 +27,7 @@ def test_pointers_deref_set(tmp_path):
         capture_output=True,
     )
 
-    expected = "14.00"
+    expected = "14"
 
     assert f"dbg print :: {expected}\n".encode("utf-8") in process.stdout
     assert process.returncode == 0
@@ -219,7 +219,7 @@ def test_pointers_werid(tmp_path):
         capture_output=True,
     )
 
-    expected = "3.00"
+    expected = "3"
 
     assert f"dbg print :: {expected}\n".encode("utf-8") in process.stdout
     assert process.returncode == 0
@@ -314,7 +314,7 @@ def test_pointers_global_deref(tmp_path):
         capture_output=True,
     )
 
-    expected = "4096.00"
+    expected = "4096"
 
     assert f"dbg print :: {expected}\n".encode("utf-8") in process.stdout
     assert process.returncode == 0
@@ -347,7 +347,7 @@ def test_pointers_global_deref_set(tmp_path):
         capture_output=True,
     )
 
-    expected = "2048.00"
+    expected = "2048"
 
     assert f"dbg print :: {expected}\n".encode("utf-8") in process.stdout
     assert process.returncode == 0
@@ -381,7 +381,7 @@ def test_pointers_global_double_deref_set(tmp_path):
         capture_output=True,
     )
 
-    expected = "2048.00"
+    expected = "2048"
 
     assert f"dbg print :: {expected}\n".encode("utf-8") in process.stdout
     assert process.returncode == 0

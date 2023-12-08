@@ -27,7 +27,7 @@ def test_assignment_global(tmp_path, a, b):
         capture_output=True,
     )
     for value in [a, b]:
-        assert f"dbg print :: {value:.2f}\n".encode("utf-8") in process.stdout
+        assert f"dbg print :: {value:.16g}\n".encode("utf-8") in process.stdout
         assert process.returncode == 0
 
     # the stack must end up empty
@@ -60,7 +60,7 @@ def test_assignment_func(tmp_path, a, b):
         capture_output=True,
     )
     for value in [a, b]:
-        assert f"dbg print :: {value:.2f}\n".encode("utf-8") in process.stdout
+        assert f"dbg print :: {value:.16g}\n".encode("utf-8") in process.stdout
         assert process.returncode == 0
 
     # the stack must end up empty
@@ -118,7 +118,7 @@ def test_struct_property_assignment(tmp_path):
 
     output = process.stdout.decode("utf-8")
 
-    assert "dbg print :: 3.00\n" in output
+    assert "dbg print :: 3\n" in output
     assert output.endswith("stack: []\n")
 
     assert process.returncode == 0

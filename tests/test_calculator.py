@@ -16,7 +16,7 @@ def test_calculator(tmp_path, a, b):
         source = f"print {a} {op} {b};"
         input_file = tmp_path / "input.vnm"
         input_file.write_text(source)
-        expected = "%.2f" % eval(f"{a} {op} {b}")
+        expected = "%.16g" % eval(f"{a} {op} {b}")
         process = subprocess.run(
             VALGRIND_CMD + [input_file],
             capture_output=True,
@@ -37,7 +37,7 @@ def test_calculator_grouping(tmp_path, a, b, c):
         source = f"print ({a} {op} {b}) {op2} {c};"
         input_file = tmp_path / "input.vnm"
         input_file.write_text(source)
-        expected = "%.2f" % eval(f"({a} {op} {b}) {op2} {c}")
+        expected = "%.16g" % eval(f"({a} {op} {b}) {op2} {c}")
         process = subprocess.run(
             VALGRIND_CMD + [input_file],
             capture_output=True,

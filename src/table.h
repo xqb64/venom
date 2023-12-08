@@ -53,16 +53,15 @@ Return type is void*, so make sure to use a pointer of the correct type.
 
 #define table_insert(table, key, item)                                         \
   do {                                                                         \
-    char *k = own_string((key));                                               \
-    int bucket_idx = hash(k, strlen(k)) % TABLE_MAX;                           \
-    int *item_idx = list_find((table)->indexes[bucket_idx], k);                \
+    int bucket_idx = hash(key, strlen(key)) % TABLE_MAX;                       \
+    int *item_idx = list_find((table)->indexes[bucket_idx], key);              \
     if (item_idx == NULL) {                                                    \
+      char *k = own_string((key));                                             \
       list_insert(&(table)->indexes[bucket_idx], k, (table)->count);           \
       (table)->items[(table)->count] = (item);                                 \
       (table)->count++;                                                        \
     } else {                                                                   \
       (table)->items[*item_idx] = (item);                                      \
-      free(k);                                                                 \
     }                                                                          \
   } while (0)
 

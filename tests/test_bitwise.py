@@ -36,7 +36,7 @@ def test_bitwise(tmp_path, a, op, b, expected):
 
     output = process.stdout.decode("utf-8")
 
-    assert f"dbg print :: {expected:.2f}" in output
+    assert f"dbg print :: {expected:.16g}" in output
 
     assert process.returncode == 0
 
@@ -65,7 +65,7 @@ def test_bitwise_not(tmp_path):
 
     output = process.stdout.decode("utf-8")
 
-    assert f"dbg print :: {-2:.2f}" in output
+    assert f"dbg print :: {-2:.16g}" in output
 
     assert process.returncode == 0
 

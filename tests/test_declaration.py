@@ -21,7 +21,7 @@ def test_declarations(tmp_path, value):
     input_file = tmp_path / "input.vnm"
     input_file.write_text(source)
 
-    expected = f"{value:.2f}"
+    expected = f"{value:.16g}"
 
     process = subprocess.run(
         VALGRIND_CMD + [input_file],
@@ -49,7 +49,7 @@ def test_printing_declared_variable(tmp_path, value):
     input_file = tmp_path / "input.vnm"
     input_file.write_text(source)
 
-    expected = "%.2f" % (value + 1)
+    expected = "%.16g" % (value + 1)
 
     process = subprocess.run(
         VALGRIND_CMD + [input_file],
@@ -79,7 +79,7 @@ def test_printing_declared_variables(tmp_path, x, y):
         input_file = tmp_path / "input.vnm"
         input_file.write_text(source)
 
-        expected = "%.2f" % eval(f"{x} {op} {y} + 2")
+        expected = "%.16g" % eval(f"{x} {op} {y} + 2")
 
         process = subprocess.run(
             VALGRIND_CMD + [input_file],
@@ -108,7 +108,7 @@ def test_declarations_with_expressions(tmp_path, a, b):
         input_file = tmp_path / "input.vnm"
         input_file.write_text(source)
 
-        expected = "%.2f" % eval(f"{a} {op} {b}")
+        expected = "%.16g" % eval(f"{a} {op} {b}")
 
         process = subprocess.run(
             VALGRIND_CMD + [input_file],
@@ -138,7 +138,7 @@ def test_reuse_declaration(tmp_path, a, b):
         input_file = tmp_path / "input.vnm"
         input_file.write_text(source)
 
-        expected = "%.2f" % eval(f"{a} {op} {b}")
+        expected = "%.16g" % eval(f"{a} {op} {b}")
 
         process = subprocess.run(
             VALGRIND_CMD + [input_file],
