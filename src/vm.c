@@ -95,8 +95,22 @@ static inline bool check_equality(Object *left, Object *right) {
     return AS_NUM(*left) == AS_NUM(*right);
   }
   if (IS_STRUCT(*left) && IS_STRUCT(*right)) {
-    return *left == *right;
+    Struct a = AS_STRUCT(*left);
+    Struct b = AS_STRUCT(*right);
+
+    if (strcmp(a.name, b.name) != 0) {
+      return false;
+    }
+
+    for (size_t i = 0; i < a.propcount; i++) {
+      if (!check_equality(&a.properties[i], &b.properties[i])) {
+        return false;
+      }
+    }
+
+    return true;
   }
+  return *left == *right;
 #else
 
   /* Return false if the objects are of different type. */
