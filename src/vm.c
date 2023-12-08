@@ -6,6 +6,7 @@
 #include <string.h>
 
 #include "compiler.h"
+#include "disassembler.h"
 #include "dynarray.h"
 #include "math.h"
 #include "table.h"
@@ -94,28 +95,8 @@ static inline bool check_equality(Object *left, Object *right) {
     return AS_NUM(*left) == AS_NUM(*right);
   }
   if (IS_STRUCT(*left) && IS_STRUCT(*right)) {
-    Struct a = AS_STRUCT(*left);
-    Struct b = AS_STRUCT(*right);
-
-    /* Return false if the structs are of different types. */
-    if (strcmp(a.name, b.name) != 0) {
-      return false;
-    }
-
-    /* If they have the same type, for each non-NULL
-     * property in struct 'a', run the func recursi-
-     * vely comparing that property with the corres-
-     * ponding property in struct 'b'. */
-    for (size_t i = 0; i < a.propcount; i++) {
-      if (!check_equality(&a.properties[i], &b.properties[i])) {
-        return false;
-      }
-    }
-    /* Comparing the properties didn't return false,
-     * which means that the two structs are equal. */
-    return true;
+    return *left == *right;
   }
-  return *left == *right;
 #else
 
   /* Return false if the objects are of different type. */
@@ -127,14 +108,14 @@ static inline bool check_equality(Object *left, Object *right) {
   case OBJ_OBJ: {
     switch (AS_OBJ(*left)->type) {
     case OBJ_STRING: {
-      return strcmp(AS_STR(*left)->value, AS_STR(*right)->value) == 0;
+      return strcmp(AS_STR(*left).value, AS_STR(*right).value) == 0;
     }
     case OBJ_STRUCT: {
-      Struct *a = AS_STRUCT(*left);
-      Struct *b = AS_STRUCT(*right);
+      Struct a = AS_STRUCT(*left);
+      Struct b = AS_STRUCT(*right);
 
       /* Return false if the structs are of different types. */
-      if (strcmp(a->name, b->name) != 0) {
+      if (strcmp(a.name, b.name) != 0) {
         return false;
       }
 
@@ -142,8 +123,8 @@ static inline bool check_equality(Object *left, Object *right) {
        * property in struct 'a', run the func recursi-
        * vely comparing that property with the corres-
        * ponding property in struct 'b'. */
-      for (size_t i = 0; i < a->propcount; i++) {
-        if (!check_equality(&a->properties[i], &b->properties[i])) {
+      for (size_t i = 0; i < a.propcount; i++) {
+        if (!check_equality(&a.properties[i], &b.properties[i])) {
           return false;
         }
       }

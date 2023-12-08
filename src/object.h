@@ -8,6 +8,13 @@
 
 #include "table.h"
 
+typedef enum {
+  OBJ_OBJ,
+  OBJ_NULL,
+  OBJ_BOOLEAN,
+  OBJ_NUMBER,
+} ObjectType;
+
 #ifdef NAN_BOXING
 
 #define SIGN_BIT ((uint64_t)0x8000000000000000)
@@ -58,6 +65,8 @@ static inline Object num2object(double num) {
 
 #else
 
+typedef struct Obj Obj;
+
 typedef struct Object {
   ObjectType type;
   union {
@@ -79,13 +88,14 @@ typedef struct Object {
 
 #define IS_FUNC(object) ((object).type == OBJ_FUNCTION)
 #define IS_STRUCT_BLUEPRINT(object) ((object).type == OBJ_STRUCT_BLUEPRINT)
+#define IS_OBJ(object) ((object).type == OBJ_OBJ)
 
 #define AS_OBJ(object) ((object).as.obj)
 #define AS_NUM(object) ((object).as.dval)
 #define AS_BOOL(object) ((object).as.bval)
 #define AS_STRUCT(object) ((object).as.obj->as.structobj)
-#define AS_PTR(object) (AS_OBJ((object))->as.ptr)
-#define AS_STR(object) ((AS_OBJ((object))->as.str)
+#define AS_PTR(object) ((object).as.obj->as.ptr)
+#define AS_STR(object) ((object).as.obj->as.str)
 
 #define AS_FUNC(object) ((object).as.func)
 #define AS_STRUCT_BLUEPRINT(object) ((object).as.struct_blueprint)
@@ -93,17 +103,11 @@ typedef struct Object {
 #define NUM_VAL(thing) ((Object){.type = OBJ_NUMBER, .as.dval = (thing)})
 #define BOOL_VAL(thing) ((Object){.type = OBJ_BOOLEAN, .as.bval = (thing)})
 #define NULL_VAL ((Object){.type = OBJ_NULL})
+#define OBJ_VAL(thing) ((Object){.type = OBJ_OBJ, .as.obj = (thing)})
 
 #endif
 
 void print_object(Object *obj);
-
-typedef enum {
-  OBJ_OBJ,
-  OBJ_NULL,
-  OBJ_BOOLEAN,
-  OBJ_NUMBER,
-} ObjectType;
 
 typedef enum {
   OBJ_STRUCT,
