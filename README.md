@@ -61,9 +61,9 @@ The above program has been the go-to benchmark throughout the development cycle.
 ❯ time ./venom benchmarks/fib40.vnm
 102334155.00
 
-real	0m12,020s
-user	0m12,014s
-sys	0m0,004s
+real	0m11,990s
+user	0m11,989s
+sys	0m0,000s
 ```
 
 ```
