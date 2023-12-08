@@ -98,8 +98,6 @@ typedef struct Object {
 
 void print_object(Object *obj);
 
-typedef struct Pointer Pointer;
-
 typedef enum {
   OBJ_OBJ,
   OBJ_NULL,
@@ -125,11 +123,16 @@ typedef struct Struct {
   Object *properties;
 } Struct;
 
+typedef struct Pointer {
+  int refcount;
+  Object *ptr;
+} Pointer;
+
 typedef struct Obj {
   ObjType type;
   union {
-    String *str;
-    Pointer *ptr;
+    String str;
+    Pointer ptr;
 
     /* Structs can get arbitrarily large, so we need
      * a pointer, at which point (no pun intended) it
@@ -145,7 +148,7 @@ typedef struct Obj {
      * e.g. if one of the instructions takes a variable
      * from somewhere and pushes it on the stack, now we
      * have it at two places, and we need to INCREF. */
-    struct Struct *structobj;
+    Struct structobj;
 
     /* Since we have two refcounted objects (Struct and String),
      * we need a handy way to access their refcounts.
@@ -156,7 +159,7 @@ typedef struct Obj {
      * lying at the same address, and choose to interpret the
      * object at that address as an int pointer, effectively
      * accessing their refcounts. */
-    int *refcount;
+    int refcount;
   } as;
 } Obj;
 
@@ -197,43 +200,35 @@ typedef struct {
 
 inline void dealloc(Object *obj) {
   if (IS_STRUCT(*obj)) {
-    free(AS_OBJ(*obj)->as.structobj->properties);
-    free(AS_OBJ(*obj)->as.structobj);
+    free(AS_OBJ(*obj)->as.structobj.properties);
     free(AS_OBJ(*obj));
   } else if (IS_STRING(*obj)) {
-    free(AS_OBJ(*obj)->as.str->value);
-    free(AS_OBJ(*obj)->as.str);
+    free(AS_OBJ(*obj)->as.str.value);
     free(AS_OBJ(*obj));
   } else if (IS_PTR(*obj)) {
-    free(AS_OBJ(*obj)->as.ptr);
     free(AS_OBJ(*obj));
   }
 }
 
 inline void objincref(Object *obj) {
   if (IS_STRING(*obj) || IS_STRUCT(*obj) || IS_PTR(*obj)) {
-    ++*AS_OBJ(*obj)->as.refcount;
+    ++AS_OBJ(*obj)->as.refcount;
   }
 }
 
 inline void objdecref(Object *obj) {
   if (IS_STRING(*obj) || IS_PTR(*obj)) {
-    if (--*AS_OBJ(*obj)->as.refcount == 0) {
+    if (--AS_OBJ(*obj)->as.refcount == 0) {
       dealloc(obj);
     }
   } else if (IS_STRUCT(*obj)) {
-    if (--*AS_OBJ(*obj)->as.refcount == 0) {
-      for (size_t i = 0; i < AS_OBJ(*obj)->as.structobj->propcount; i++) {
-        objdecref(&AS_OBJ(*obj)->as.structobj->properties[i]);
+    if (--AS_OBJ(*obj)->as.refcount == 0) {
+      for (size_t i = 0; i < AS_OBJ(*obj)->as.structobj.propcount; i++) {
+        objdecref(&AS_OBJ(*obj)->as.structobj.properties[i]);
       }
       dealloc(obj);
     }
   }
 }
-
-typedef struct Pointer {
-  int refcount;
-  Object *ptr;
-} Pointer;
 
 #endif

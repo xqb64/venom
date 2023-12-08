@@ -13,17 +13,17 @@ void print_object(Object *object) {
   } else if (IS_OBJ(*object)) {
     switch (OBJ_TYPE(*object)) {
     case OBJ_STRING: {
-      String *string = AS_STR(*object);
-      printf("%s", string->value);
+      String string = AS_STR(*object);
+      printf("%s", string.value);
       break;
     }
     case OBJ_STRUCT: {
-      Struct *structobj = AS_STRUCT(*object);
-      printf("%s", structobj->name);
+      Struct structobj = AS_STRUCT(*object);
+      printf("%s", structobj.name);
       printf(" { ");
-      for (size_t i = 0; i < structobj->propcount; i++) {
-        print_object(&structobj->properties[i]);
-        if (i < structobj->propcount - 1) {
+      for (size_t i = 0; i < structobj.propcount; i++) {
+        print_object(&structobj.properties[i]);
+        if (i < structobj.propcount - 1) {
           printf(", ");
         }
       }
@@ -32,7 +32,7 @@ void print_object(Object *object) {
     }
     case OBJ_PTR: {
       Obj *objptr = AS_OBJ(*object);
-      printf("PTR ('%p')", (void *)(objptr->as.ptr->ptr));
+      printf("PTR ('%p')", (void *)(objptr->as.ptr.ptr));
       break;
     }
     default:

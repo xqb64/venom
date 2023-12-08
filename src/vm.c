@@ -94,11 +94,11 @@ static inline bool check_equality(Object *left, Object *right) {
     return AS_NUM(*left) == AS_NUM(*right);
   }
   if (IS_STRUCT(*left) && IS_STRUCT(*right)) {
-    Struct *a = AS_STRUCT(*left);
-    Struct *b = AS_STRUCT(*right);
+    Struct a = AS_STRUCT(*left);
+    Struct b = AS_STRUCT(*right);
 
     /* Return false if the structs are of different types. */
-    if (strcmp(a->name, b->name) != 0) {
+    if (strcmp(a.name, b.name) != 0) {
       return false;
     }
 
@@ -106,8 +106,8 @@ static inline bool check_equality(Object *left, Object *right) {
      * property in struct 'a', run the func recursi-
      * vely comparing that property with the corres-
      * ponding property in struct 'b'. */
-    for (size_t i = 0; i < a->propcount; i++) {
-      if (!check_equality(&a->properties[i], &b->properties[i])) {
+    for (size_t i = 0; i < a.propcount; i++) {
+      if (!check_equality(&a.properties[i], &b.properties[i])) {
         return false;
       }
     }
@@ -347,11 +347,9 @@ static inline int handle_op_str(VM *vm, BytecodeChunk *chunk, uint8_t **ip) {
    * and pushes it on the stack. */
   uint32_t idx = READ_UINT32();
 
-  String *s = malloc(sizeof(String));
-  s->refcount = 1;
-  s->value = own_string(chunk->sp.data[idx]);
-
+  String s = {.refcount = 1, .value = own_string(chunk->sp.data[idx])};
   Obj obj = {.type = OBJ_STRING, .as.str = s};
+
   push(vm, OBJ_VAL(ALLOC(obj)));
   return 0;
 }
@@ -414,7 +412,7 @@ static inline int handle_op_get_global_ptr(VM *vm, BytecodeChunk *chunk,
   Object *object_ptr =
       table_get_unchecked(&vm->globals, chunk->sp.data[name_idx]);
   Pointer ptr = {.refcount = 1, .ptr = object_ptr};
-  Obj obj = {.type = OBJ_PTR, .as.ptr = ALLOC(ptr)};
+  Obj obj = {.type = OBJ_PTR, .as.ptr = ptr};
   push(vm, OBJ_VAL(ALLOC(obj)));
   return 0;
 }
@@ -464,7 +462,7 @@ static inline int handle_op_derefset(VM *vm, BytecodeChunk *chunk,
 
   Obj *objptr = AS_OBJ(ptr);
 
-  *(objptr->as.ptr->ptr) = item;
+  *(objptr->as.ptr.ptr) = item;
 
   objdecref(&ptr);
   return 0;
@@ -508,7 +506,7 @@ static inline int handle_op_deepget_ptr(VM *vm, BytecodeChunk *chunk,
   uint32_t adjusted_idx = adjust_idx(vm, idx);
   Object *object_ptr = &vm->stack[adjusted_idx];
   Pointer ptr = {.refcount = 1, .ptr = object_ptr};
-  Obj obj = {.type = OBJ_PTR, .as.ptr = ALLOC(ptr)};
+  Obj obj = {.type = OBJ_PTR, .as.ptr = ptr};
   push(vm, OBJ_VAL(ALLOC(obj)));
   return 0;
 }
@@ -524,13 +522,13 @@ static inline int handle_op_setattr(VM *vm, BytecodeChunk *chunk,
   Object value = pop(vm);
   Object obj = pop(vm);
   StructBlueprint *sb =
-      table_get_unchecked(vm->blueprints, AS_STRUCT(obj)->name);
+      table_get_unchecked(vm->blueprints, AS_STRUCT(obj).name);
   int *idx = table_get(sb->property_indexes, chunk->sp.data[property_name_idx]);
   if (!idx) {
     RUNTIME_ERROR("struct '%s' does not have property '%s'",
-                  AS_STRUCT(obj)->name, chunk->sp.data[property_name_idx]);
+                  AS_STRUCT(obj).name, chunk->sp.data[property_name_idx]);
   }
-  AS_STRUCT(obj)->properties[*idx] = value;
+  AS_STRUCT(obj).properties[*idx] = value;
   push(vm, obj);
   return 0;
 }
@@ -546,14 +544,14 @@ static inline int handle_op_getattr(VM *vm, BytecodeChunk *chunk,
   Object obj = pop(vm);
 
   StructBlueprint *sb =
-      table_get_unchecked(vm->blueprints, AS_STRUCT(obj)->name);
+      table_get_unchecked(vm->blueprints, AS_STRUCT(obj).name);
   int *idx = table_get(sb->property_indexes, chunk->sp.data[property_name_idx]);
   if (!idx) {
     RUNTIME_ERROR("struct '%s' does not have property '%s'",
-                  AS_STRUCT(obj)->name, chunk->sp.data[property_name_idx]);
+                  AS_STRUCT(obj).name, chunk->sp.data[property_name_idx]);
   }
 
-  Object property = AS_STRUCT(obj)->properties[*idx];
+  Object property = AS_STRUCT(obj).properties[*idx];
 
   push(vm, property);
   objincref(&property);
@@ -573,16 +571,16 @@ static inline int handle_op_getattr_ptr(VM *vm, BytecodeChunk *chunk,
   Object object = pop(vm);
 
   StructBlueprint *sb =
-      table_get_unchecked(vm->blueprints, AS_STRUCT(object)->name);
+      table_get_unchecked(vm->blueprints, AS_STRUCT(object).name);
   int *idx = table_get(sb->property_indexes, chunk->sp.data[property_name_idx]);
   if (!idx) {
     RUNTIME_ERROR("struct '%s' does not have property '%s'",
-                  AS_STRUCT(object)->name, chunk->sp.data[property_name_idx]);
+                  AS_STRUCT(object).name, chunk->sp.data[property_name_idx]);
   }
 
-  Object *property = &AS_STRUCT(object)->properties[*idx];
+  Object *property = &AS_STRUCT(object).properties[*idx];
   Pointer ptr = {.refcount = 1, .ptr = property};
-  Obj obj = {.type = OBJ_PTR, .as.ptr = ALLOC(ptr)};
+  Obj obj = {.type = OBJ_PTR, .as.ptr = ptr};
   push(vm, OBJ_VAL(ALLOC(obj)));
   objdecref(&object);
   return 0;
@@ -600,16 +598,14 @@ static inline int handle_op_struct(VM *vm, BytecodeChunk *chunk, uint8_t **ip) {
     RUNTIME_ERROR("struct '%s' is not defined", chunk->sp.data[structname]);
   }
 
-  Struct *s =
-      malloc(sizeof(Struct) + sizeof(Object) * sb->property_indexes->count);
+  Struct s = {.name = chunk->sp.data[structname],
+              .propcount = sb->property_indexes->count,
+              .refcount = 1,
+              .properties =
+                  malloc(sizeof(Object) * sb->property_indexes->count)};
 
-  s->name = chunk->sp.data[structname];
-  s->propcount = sb->property_indexes->count;
-  s->refcount = 1;
-  s->properties = malloc(sizeof(Object) * s->propcount);
-
-  for (size_t i = 0; i < s->propcount; i++) {
-    s->properties[i] = NULL_VAL;
+  for (size_t i = 0; i < s.propcount; i++) {
+    s.properties[i] = NULL_VAL;
   }
 
   Obj obj = {.type = OBJ_STRUCT, .as.structobj = s};
@@ -713,7 +709,7 @@ static inline int handle_op_deref(VM *vm, BytecodeChunk *chunk, uint8_t **ip) {
 
   Obj *objptr = AS_OBJ(ptrobj);
 
-  Object derefed = *(Object *)(objptr->as.ptr->ptr);
+  Object derefed = *(Object *)(objptr->as.ptr.ptr);
 
   push(vm, derefed);
   objincref(&derefed);
@@ -732,11 +728,9 @@ static inline int handle_op_strcat(VM *vm, BytecodeChunk *chunk, uint8_t **ip) {
   Object b = pop(vm);
   Object a = pop(vm);
   if (IS_STRING(a) && IS_STRING(b)) {
-    char *result = concatenate_strings(AS_STR(a)->value, AS_STR(b)->value);
+    char *result = concatenate_strings(AS_STR(a).value, AS_STR(b).value);
 
-    String *s = malloc(sizeof(String));
-    s->refcount = 1;
-    s->value = result;
+    String s = {.refcount = 1, .value = result};
 
     Obj obj = {.type = OBJ_STRING, .as.str = s};
 
