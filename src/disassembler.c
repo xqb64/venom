@@ -19,6 +19,12 @@ static DisassembleHandler disassemble_handler[] = {
     [OP_EQ] = {.opcode = "OP_EQ", .operands = 0},
     [OP_GT] = {.opcode = "OP_GT", .operands = 0},
     [OP_LT] = {.opcode = "OP_LT", .operands = 0},
+    [OP_BITAND] = {.opcode = "OP_BITAND", .operands = 0},
+    [OP_BITOR] = {.opcode = "OP_BITOR", .operands = 0},
+    [OP_BITXOR] = {.opcode = "OP_BITXOR", .operands = 0},
+    [OP_BITNOT] = {.opcode = "OP_BITNOT", .operands = 0},
+    [OP_BITSHL] = {.opcode = "OP_BITSHL", .operands = 0},
+    [OP_BITSHR] = {.opcode = "OP_BITSHR", .operands = 0},
     [OP_NOT] = {.opcode = "OP_NOT", .operands = 0},
     [OP_NEG] = {.opcode = "OP_NEG", .operands = 0},
     [OP_TRUE] = {.opcode = "OP_TRUE", .operands = 0},
@@ -39,7 +45,9 @@ static DisassembleHandler disassemble_handler[] = {
     [OP_STRUCT] = {.opcode = "OP_STRUCT", .operands = 4},
     [OP_RET] = {.opcode = "OP_RET", .operands = 0},
     [OP_POP] = {.opcode = "OP_POP", .operands = 0},
+    [OP_DUP] = {.opcode = "OP_DUP", .operands = 0},
     [OP_DEREF] = {.opcode = "OP_DEREF", .operands = 0},
+    [OP_DEREFSET] = {.opcode = "OP_DEREFSET", .operands = 0},
     [OP_CALL] = {.opcode = "OP_CALL", .operands = 4},
 };
 
@@ -103,6 +111,7 @@ void disassemble(BytecodeChunk *chunk) {
       case OP_CALL: {
         uint32_t argcount = READ_UINT32();
         printf(" (argcount: %d)", argcount);
+        break;
       }
       default:
         break;
