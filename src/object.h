@@ -1,6 +1,7 @@
 #ifndef venom_object_h
 #define venom_object_h
 
+#include <assert.h>
 #include <stdbool.h>
 #include <stdint.h>
 #include <stdio.h>
@@ -9,47 +10,187 @@
 #include "table.h"
 
 typedef enum {
-  OBJ_OBJ,
-  OBJ_NULL,
-  OBJ_BOOLEAN,
+  OBJ_STRUCT,
+  OBJ_STRING,
+  OBJ_PTR,
   OBJ_NUMBER,
+  OBJ_BOOLEAN,
+  OBJ_NULL,
 } ObjectType;
 
 #ifdef NAN_BOXING
 
+/* IEEE 754 double-precision floating-point numbers are used for encoding
+ * all Venom objects which currently include numbers (doubles), booleans,
+ * strings, structs, pointers, and nulls.
+ *
+ * A brief reminder for my future self of how NaN boxing works follows.
+ *
+ * A double is composed of:
+ *  - a sign bit (MSB),
+ *  - 11-bit exponent, and
+ *  - 52-bit mantissa
+ *
+ * What's interesting about IEEE 754 double-precision floating-point num-
+ * bers is that when all exponent bits are set, i.e., are ones, that dou-
+ * ble represents a special value called NaN (Not a Number).
+ *
+ * There are two types of NaNs:
+ *  - signalling NaNs (the MSB of the mantissa is clear (0))
+ *  - quiet NaNs (the MSB of the mantissa is set (1))
+ *
+ * As the name says, signalling NaNs are meant to convey that an erroneo-
+ * us computation, like division by zero or similar, occurred. Quiet NaNs
+ * don't represent any useful value, so they're supposed to be safer, and
+ * these are what we will use for this scheme.
+ *
+ * This means that any double where all the exponent bits plus the highe-
+ * st mantissa bit are set is a quiet NaN. The 12 bits (including 11 exp-
+ * onent bits + the MSB of mantissa) used for indicating a quiet NaN lea-
+ * ves 64 - 12 = 52 bits free to use for whatever we want. However, since
+ * there exists a bit (at index 50, zero-based, called "QNaN Floating-Po-
+ * int Indefinite") that Intel processors don't like you to step on, care
+ * needs to be taken to not do so, leaving us with 51 bits to spare (0-49
+ * (inclusive)) + sign bit.
+ *
+ * Is this the best we can do?
+ *
+ * Well, on most machines, a pointer is usually just 48-bits and the rest
+ * of the bits are either unspecified or zeroed out. We will (ab)use this
+ * fact, along with the Object pointers are aligned to an 8-byte boundary
+ * since Object contains a union whose largest member is 64 bits, effect-
+ * ively making the size of the whole union 64 bits. This, in turn, means
+ * that the three least significant bits of the pointer will always be 0.
+ * Since the pointer occupies 48 bits, and we have space until bit 50, we
+ * can shift the pointer two places to the left, such that it starts from
+ * 2 (instead of 0) and end at 49 (instead of 47). This frees up 2 slots,
+ * and combined with the last 3 bits of the pointer, this is 5 bits total
+ * to pack in the type of the Object.
+ *
+ * Essentially, 64 bits is enough to hold all possible numeric fp values,
+ * a pointer, and 32 different tags.
+ *
+ * So, we'll use the sign bit, the QNAN pattern, and tags to denote diff-
+ * erent objects.
+ *
+ * Encoding a number is straightforward. It just takes a little type pun-
+ * ning to convince the compiler to interpret our doubles as uint64_t.
+ *
+ * Encoding null, false, and true is done by setting QNAN and the approp-
+ * riate tag.
+ *
+ * As for the other objects, we'll set the SIGN_BIT, QNAN, tag them acco-
+ * rdingly, and use a pointer to the object. */
+
 #define SIGN_BIT ((uint64_t)0x8000000000000000)
 #define QNAN ((uint64_t)0x7ffc000000000000)
 
-#define TAG_NULL 1  // 01.
-#define TAG_FALSE 2 // 10.
-#define TAG_TRUE 3  // 11.
+#define TAG_NULL 1
+#define TAG_FALSE 2
+#define TAG_TRUE 3
+#define TAG_STRUCT 4
+#define TAG_STRING 5
+#define TAG_PTR 6
 
 typedef uint64_t Object;
 
-#define IS_BOOL(value) (((value) | 1) == TRUE_VAL)
 #define IS_NULL(value) ((value) == NULL_VAL)
-#define IS_NUM(value) (((value)&QNAN) != QNAN)
-#define IS_OBJ(value) (((value) & (QNAN | SIGN_BIT)) == (QNAN | SIGN_BIT))
 
+/* To check whether a value is a boolean, we'll set the LSB to 1.
+ *
+ * If it was 'false', its two least significant bits were '10' and now
+ * they are '11', which is the bit pattern for 'true' (TAG_TRUE).
+ *
+ * If it was 'true', its two least significant bits were '11', and now
+ * they remained changed.
+ *
+ * Either way, it ends up 'true', so we just check if the value is eq-
+ * ual to the TAG_TRUE bit pattern after setting the LSB. */
+#define IS_BOOL(value) (((value) | 1) == TRUE_VAL)
+
+/* To check whether a value is a number, we just bitwise-and it with QNAN.
+ * If the result is not QNAN, it means it's a number. */
+#define IS_NUM(value) (((value) & (QNAN)) != QNAN)
+
+/* To check whether a value is some other object, we bitwise-and it with
+ * (SIGN_BIT | QNAN). If the result is (SIGN_BIT | QNAN), it means those
+ * bits were set, and remember, the patterns with those bits set mean we
+ * have some object other than numbers, booleans, and nulls. */
+#define IS_OBJ(value) (((value) & (SIGN_BIT | QNAN)) == (SIGN_BIT | QNAN))
+
+/* To check whether a value is a struct, we check if it's an object and
+ * whether it is tagged as a Struct. */
+#define IS_STRUCT(value) (IS_OBJ((value)) && ((value) & (0x1F)) == TAG_STRUCT)
+
+/* To check whether a value is a struct, we check if it's an object and
+ * whether it is tagged as a String. */
+#define IS_STRING(value) (IS_OBJ((value)) && ((value) & (0x1F)) == TAG_STRING)
+
+/* To check whether a value is a struct, we check if it's an object and
+ * whether it is tagged as a pointer. */
+#define IS_PTR(value) (IS_OBJ((value)) && ((value) & (0x1F)) == TAG_PTR)
+
+/* To convert a value to a boolean, we compare it to TRUE_VAL because
+ * if we had a 'false', (false == true) will be false, and we got our
+ * value. However, if we had a true, (true == true) will be true, and
+ * we again have our value. */
 #define AS_BOOL(value) ((value) == TRUE_VAL)
+
 #define AS_NUM(value) object2num(value)
-#define AS_OBJ(value) ((Obj *)(uintptr_t)((value) & ~(SIGN_BIT | QNAN)))
-#define AS_STRUCT(object) (AS_OBJ((object))->as.structobj)
-#define AS_STR(object) (AS_OBJ((object))->as.str)
-#define AS_PTR(object) ((AS_OBJ((object))->as.ptr))
+
+/* To convert a value to an Object pointer, we need to clear the SIGN_BIT,
+ * QNAN, and the tag, and shift the result two places to the right. Final-
+ * ly, we cast the result to Object pointer. */
+#define AS_OBJ(value)                                                          \
+  ((Object *)(uintptr_t)(((value) & ~(SIGN_BIT | QNAN | 0x1F)) >> 2))
+
+/* To convert a value to a Struct pointer, we need to clear the SIGN_BIT,
+ * QNAN, and the tag, and shift the result two places to the right. Fina-
+ * lly, we cast the result to Struct pointer. */
+#define AS_STRUCT(object)                                                      \
+  ((IS_STRUCT(object))                                                         \
+       ? (Struct *)((uintptr_t)((object) & ~(SIGN_BIT | QNAN | 0x1F)) >> 2)    \
+       : NULL)
+
+/* To convert a value to a String pointer, we need to clear the SIGN_BIT,
+ * QNAN, and the tag, and shift the result two places to the right. Fina-
+ * lly, we cast the result to String pointer. */
+#define AS_STRING(object)                                                      \
+  ((IS_STRING(object))                                                         \
+       ? (String *)((uintptr_t)((object) & ~(SIGN_BIT | QNAN | 0x1F)) >> 2)    \
+       : NULL)
+
+/* To convert a value to a pointer Object, we need to clear the SIGN_BIT,
+ * QNAN, and the tag, and shift the result two places to the right. Fina-
+ * lly, we cast the result to Object pointer. */
+#define AS_PTR(object)                                                         \
+  ((IS_PTR(object))                                                            \
+       ? (Object *)((uintptr_t)((object) & ~(SIGN_BIT | QNAN | 0x1F)) >> 2)    \
+       : NULL)
 
 #define BOOL_VAL(b) ((b) ? TRUE_VAL : FALSE_VAL)
+
+/* To construct a boolean Object with value 'false', we set QNAN and tag
+ * it, then sprinkle a little type punning on top of it.
+ *
+ * Likewise for 'true' and 'null'. */
 #define FALSE_VAL ((Object)(uint64_t)(QNAN | TAG_FALSE))
 #define TRUE_VAL ((Object)(uint64_t)(QNAN | TAG_TRUE))
 #define NULL_VAL ((Object)(uint64_t)(QNAN | TAG_NULL))
 #define NUM_VAL(num) num2object(num)
-#define OBJ_VAL(obj) (Object)(SIGN_BIT | QNAN | (uint64_t)(uintptr_t)(obj))
 
-#define IS_STRING(object)                                                      \
-  (IS_OBJ((object)) && AS_OBJ((object))->type == OBJ_STRING)
-#define IS_STRUCT(object)                                                      \
-  (IS_OBJ((object)) && AS_OBJ((object))->type == OBJ_STRUCT)
-#define IS_PTR(object) (IS_OBJ((object)) && AS_OBJ((object))->type == OBJ_PTR)
+/* To construct a Struct object, we shitf the pointer two places to the left,
+ * and set the SIGN_BIT, QNAN, and finally tag it as struct.
+ *
+ * Likewise for String and Object pointer. */
+#define STRUCT_VAL(obj)                                                        \
+  (Object)(SIGN_BIT | QNAN | ((uint64_t)(uintptr_t)(obj) << 2) | TAG_STRUCT)
+
+#define STRING_VAL(obj)                                                        \
+  (Object)(SIGN_BIT | QNAN | ((uint64_t)(uintptr_t)(obj) << 2) | TAG_STRING)
+
+#define PTR_VAL(obj)                                                           \
+  (Object)(SIGN_BIT | QNAN | ((uint64_t)(uintptr_t)(obj) << 2) | TAG_PTR)
 
 static inline double object2num(Object value) {
   double num;
@@ -65,78 +206,16 @@ static inline Object num2object(double num) {
 
 #else
 
-typedef struct Obj Obj;
+typedef struct String String;
+typedef struct Struct Struct;
 
 typedef struct Object {
   ObjectType type;
   union {
     double dval;
     bool bval;
-    Obj *obj;
-  } as;
-} Object;
-
-#define IS_BOOL(object) ((object).type == OBJ_BOOLEAN)
-#define IS_NUM(object) ((object).type == OBJ_NUMBER)
-#define IS_PTR(object)                                                         \
-  ((object).type == OBJ_OBJ && AS_OBJ((object))->type == OBJ_PTR)
-#define IS_NULL(object) ((object).type == OBJ_NULL)
-#define IS_STRING(object)                                                      \
-  ((object).type == OBJ_OBJ && AS_OBJ((object))->type == OBJ_STRING)
-#define IS_STRUCT(object)                                                      \
-  ((object).type == OBJ_OBJ && AS_OBJ((object))->type == OBJ_STRUCT)
-
-#define IS_FUNC(object) ((object).type == OBJ_FUNCTION)
-#define IS_STRUCT_BLUEPRINT(object) ((object).type == OBJ_STRUCT_BLUEPRINT)
-#define IS_OBJ(object) ((object).type == OBJ_OBJ)
-
-#define AS_OBJ(object) ((object).as.obj)
-#define AS_NUM(object) ((object).as.dval)
-#define AS_BOOL(object) ((object).as.bval)
-#define AS_STRUCT(object) ((object).as.obj->as.structobj)
-#define AS_PTR(object) ((object).as.obj->as.ptr)
-#define AS_STR(object) ((object).as.obj->as.str)
-
-#define AS_FUNC(object) ((object).as.func)
-#define AS_STRUCT_BLUEPRINT(object) ((object).as.struct_blueprint)
-
-#define NUM_VAL(thing) ((Object){.type = OBJ_NUMBER, .as.dval = (thing)})
-#define BOOL_VAL(thing) ((Object){.type = OBJ_BOOLEAN, .as.bval = (thing)})
-#define NULL_VAL ((Object){.type = OBJ_NULL})
-#define OBJ_VAL(thing) ((Object){.type = OBJ_OBJ, .as.obj = (thing)})
-
-#endif
-
-void print_object(Object *obj);
-
-typedef enum {
-  OBJ_STRUCT,
-  OBJ_STRING,
-  OBJ_PTR,
-} ObjType;
-
-typedef struct {
-  int refcount;
-  char *value;
-} String;
-
-typedef struct Struct {
-  int refcount;
-  char *name;
-  size_t propcount;
-  Object *properties;
-} Struct;
-
-typedef struct Pointer {
-  int refcount;
-  Object *ptr;
-} Pointer;
-
-typedef struct Obj {
-  ObjType type;
-  union {
-    String str;
-    Pointer ptr;
+    String *str;
+    struct Object *ptr;
 
     /* Structs can get arbitrarily large, so we need
      * a pointer, at which point (no pun intended) it
@@ -152,7 +231,7 @@ typedef struct Obj {
      * e.g. if one of the instructions takes a variable
      * from somewhere and pushes it on the stack, now we
      * have it at two places, and we need to INCREF. */
-    Struct structobj;
+    Struct *structobj;
 
     /* Since we have two refcounted objects (Struct and String),
      * we need a handy way to access their refcounts.
@@ -163,35 +242,70 @@ typedef struct Obj {
      * lying at the same address, and choose to interpret the
      * object at that address as an int pointer, effectively
      * accessing their refcounts. */
-    int refcount;
+    int *refcount;
   } as;
-} Obj;
+} Object;
+
+#define IS_BOOL(object) ((object).type == OBJ_BOOLEAN)
+#define IS_NUM(object) ((object).type == OBJ_NUMBER)
+#define IS_PTR(object) ((object).type == OBJ_PTR)
+#define IS_NULL(object) ((object).type == OBJ_NULL)
+#define IS_STRING(object) ((object).type == OBJ_STRING)
+#define IS_STRUCT(object) ((object).type == OBJ_STRUCT)
+
+#define IS_FUNC(object) ((object).type == OBJ_FUNCTION)
+#define IS_STRUCT_BLUEPRINT(object) ((object).type == OBJ_STRUCT_BLUEPRINT)
+
+#define AS_NUM(object) ((object).as.dval)
+#define AS_BOOL(object) ((object).as.bval)
+#define AS_STRUCT(object) ((object).as.structobj)
+#define AS_PTR(object) ((object).as.ptr)
+#define AS_STRING(object) ((object).as.str)
+
+#define AS_FUNC(object) ((object).as.func)
+#define AS_STRUCT_BLUEPRINT(object) ((object).as.struct_blueprint)
+
+#define NUM_VAL(thing) ((Object){.type = OBJ_NUMBER, .as.dval = (thing)})
+#define BOOL_VAL(thing) ((Object){.type = OBJ_BOOLEAN, .as.bval = (thing)})
+#define STRING_VAL(thing) ((Object){.type = OBJ_STRING, .as.str = (thing)})
+#define STRUCT_VAL(thing)                                                      \
+  ((Object){.type = OBJ_STRUCT, .as.structobj = (thing)})
+#define PTR_VAL(thing) ((Object){.type = OBJ_PTR, .as.ptr = (thing)})
+#define NULL_VAL ((Object){.type = OBJ_NULL})
+
+#endif
+
+void print_object(Object *obj);
+
+typedef struct String {
+  int refcount;
+  char *value;
+} String;
+
+typedef struct Struct {
+  int refcount;
+  char *name;
+  size_t propcount;
+  Object *properties;
+} Struct;
 
 #define OBJ_TYPE(value) (AS_OBJ(value)->type)
 
 inline const char *get_object_type(Object *object) {
-  if (IS_OBJ(*object)) {
-    switch (OBJ_TYPE(*object)) {
-    case OBJ_STRING:
-      return "string";
-    case OBJ_STRUCT:
-      return "struct";
-    case OBJ_PTR:
-      return "pointer";
-    default:
-      break;
-    }
-  }
-  if (IS_BOOL(*object)) {
+  if (IS_STRING(*object)) {
+    return "string";
+  } else if (IS_STRUCT(*object)) {
+    return "struct";
+  } else if (IS_PTR(*object)) {
+    return "pointer";
+  } else if (IS_BOOL(*object)) {
     return "boolean";
-  }
-  if (IS_NUM(*object)) {
+  } else if (IS_NUM(*object)) {
     return "number";
-  }
-  if (IS_NULL(*object)) {
+  } else if (IS_NULL(*object)) {
     return "null";
   }
-  return "unknown";
+  assert(0);
 }
 
 typedef Table(Object) Table_Object;
@@ -203,36 +317,88 @@ typedef struct {
 } BytecodePtr;
 
 inline void dealloc(Object *obj) {
+#ifdef NAN_BOXING
   if (IS_STRUCT(*obj)) {
-    free(AS_OBJ(*obj)->as.structobj.properties);
-    free(AS_OBJ(*obj));
+    free(AS_STRUCT(*obj)->properties);
+    free(AS_STRUCT(*obj));
   } else if (IS_STRING(*obj)) {
-    free(AS_OBJ(*obj)->as.str.value);
-    free(AS_OBJ(*obj));
-  } else if (IS_PTR(*obj)) {
-    free(AS_OBJ(*obj));
+    free(AS_STRING(*obj)->value);
+    free(AS_STRING(*obj));
   }
+#else
+  switch (obj->type) {
+  case OBJ_STRUCT: {
+    free(AS_STRUCT(*obj)->properties);
+    free(AS_STRUCT(*obj));
+    break;
+  }
+  case OBJ_STRING: {
+    free(AS_STRING(*obj)->value);
+    free(AS_STRING(*obj));
+    break;
+  }
+  default:
+    break;
+  }
+#endif
 }
 
 inline void objincref(Object *obj) {
-  if (IS_STRING(*obj) || IS_STRUCT(*obj) || IS_PTR(*obj)) {
-    ++AS_OBJ(*obj)->as.refcount;
+#ifdef NAN_BOXING
+  if (IS_STRING(*obj)) {
+    ++AS_STRING(*obj)->refcount;
+  } else if (IS_STRUCT(*obj)) {
+    ++AS_STRUCT(*obj)->refcount;
   }
+#else
+  switch (obj->type) {
+  case OBJ_STRING:
+  case OBJ_STRUCT: {
+    ++*(obj)->as.refcount;
+    break;
+  }
+  default:
+    break;
+  }
+#endif
 }
 
 inline void objdecref(Object *obj) {
-  if (IS_STRING(*obj) || IS_PTR(*obj)) {
-    if (--AS_OBJ(*obj)->as.refcount == 0) {
+#ifdef NAN_BOXING
+  if (IS_STRING(*obj)) {
+    if (--AS_STRING(*obj)->refcount == 0) {
       dealloc(obj);
     }
   } else if (IS_STRUCT(*obj)) {
-    if (--AS_OBJ(*obj)->as.refcount == 0) {
-      for (size_t i = 0; i < AS_OBJ(*obj)->as.structobj.propcount; i++) {
-        objdecref(&AS_OBJ(*obj)->as.structobj.properties[i]);
+    if (--AS_STRUCT(*obj)->refcount == 0) {
+      for (size_t i = 0; i < AS_STRUCT(*obj)->propcount; i++) {
+        objdecref(&AS_STRUCT(*obj)->properties[i]);
       }
       dealloc(obj);
     }
   }
+#else
+
+  switch (obj->type) {
+  case OBJ_STRING: {
+    if (--*(obj)->as.refcount == 0) {
+      dealloc(obj);
+    }
+    break;
+  }
+  case OBJ_STRUCT: {
+    if (--*(obj)->as.refcount == 0) {
+      for (size_t i = 0; i < AS_STRUCT(*obj)->propcount; i++) {
+        objdecref(&AS_STRUCT(*obj)->properties[i]);
+      }
+      dealloc(obj);
+    }
+    break;
+  }
+  default:
+    break;
+  }
+#endif
 }
 
 #endif

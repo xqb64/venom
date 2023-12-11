@@ -10,34 +10,21 @@ void print_object(Object *object) {
     printf("%.16g", number);
   } else if (IS_NULL(*object)) {
     printf("null");
-  } else if (IS_OBJ(*object)) {
-    switch (OBJ_TYPE(*object)) {
-    case OBJ_STRING: {
-      String string = AS_STR(*object);
-      printf("%s", string.value);
-      break;
-    }
-    case OBJ_STRUCT: {
-      Struct structobj = AS_STRUCT(*object);
-      printf("%s", structobj.name);
-      printf(" { ");
-      for (size_t i = 0; i < structobj.propcount; i++) {
-        print_object(&structobj.properties[i]);
-        if (i < structobj.propcount - 1) {
-          printf(", ");
-        }
+  } else if (IS_STRING(*object)) {
+    String *string = AS_STRING(*object);
+    printf("%s", string->value);
+  } else if (IS_STRUCT(*object)) {
+    Struct *structobj = AS_STRUCT(*object);
+    printf("%s", structobj->name);
+    printf(" { ");
+    for (size_t i = 0; i < structobj->propcount; i++) {
+      print_object(&structobj->properties[i]);
+      if (i < structobj->propcount - 1) {
+        printf(", ");
       }
-      printf(" }");
-      break;
     }
-    case OBJ_PTR: {
-      Obj *objptr = AS_OBJ(*object);
-      printf("PTR ('%p')", (void *)(objptr->as.ptr.ptr));
-      break;
-    }
-    default:
-      break;
-    }
+  } else if (IS_PTR(*object)) {
+    printf("PTR ('%p')", (void *)AS_PTR(*object));
   }
 }
 

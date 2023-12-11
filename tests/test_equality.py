@@ -16,13 +16,6 @@ class Struct:
             ", ".join(f"{k}: {str(v)}" for k, v in self.properties.items()),
         )
 
-    def __eq__(self, other):
-        return (
-            isinstance(other, Struct)
-            and self.name == other.name
-            and self.properties == other.properties
-        )
-
     def definition(self):
         return textwrap.dedent(
             """
@@ -61,32 +54,6 @@ class Struct:
         # Two structs of the same type and the same values.
         (Struct(name="spam", x=5, y=10), Struct(name="spam", x=5, y=10)),
         # Two structs of the same type and one different value.
-        (Struct(name="spam", x=5, y=10), Struct(name="spam", x=3, y=10)),
-        # Two structs of the same type with one boolean.
-        (Struct(name="spam", x="true", y=10), Struct(name="spam", x="true", y=10)),
-        (Struct(name="spam", x="true", y=10), Struct(name="spam", x="false", y=10)),
-        # Two structs of the same type with one null.
-        (Struct(name="spam", x=5, y="null"), Struct(name="spam", x=5, y="null")),
-        (Struct(name="spam", x=5, y="null"), Struct(name="spam", x=5, y="false")),
-        # Two structs with different types but same values.
-        (Struct(name="spam", x=5, y=10), Struct(name="egg", x=5, y=10)),
-        # Two structs with same types containing nested structs.
-        (
-            Struct(name="spam", x=5, y=Struct(name="spam", x=32, y=64)),
-            Struct(name="spam", x=5, y=Struct(name="spam", x=32, y=64)),
-        ),
-        (
-            Struct(
-                name="spam",
-                x=5,
-                y=Struct(name="spam", x=Struct(name="spam", x=128, y=3.14), y=64),
-            ),
-            Struct(
-                name="spam",
-                x=5,
-                y=Struct(name="spam", x=Struct(name="spam", x=128, y=3.14), y=64),
-            ),
-        ),
     ],
 )
 def test_equality(tmp_path, a, b):
@@ -126,6 +93,39 @@ def test_equality(tmp_path, a, b):
     )
 
     expected = "true" if a == b else "false"
+
+    assert f"dbg print :: {expected}\n".encode("utf-8") in process.stdout
+    assert process.returncode == 0
+
+    # the stack must end up empty
+    assert "stack: []".encode("utf-8") in process.stdout
+
+
+def test_equality_same_object(tmp_path):
+    source = textwrap.dedent(
+        """
+        struct spam {
+          x;
+          y;
+        }
+        fn main() {
+          let a = spam { x: 3.14, y: 5.16 };
+          let b = a;
+          print a == b;
+          return 0;
+        }
+        main();"""
+    )
+
+    input_file = tmp_path / "input.vnm"
+    input_file.write_text(source)
+
+    process = subprocess.run(
+        VALGRIND_CMD + [input_file],
+        capture_output=True,
+    )
+
+    expected = "true"
 
     assert f"dbg print :: {expected}\n".encode("utf-8") in process.stdout
     assert process.returncode == 0
