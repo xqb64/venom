@@ -26,7 +26,9 @@ This project is my debut in the realm of programming language design. I had a bl
   - `,` (comma)
 - control flow
   - `if`, `else`
-  - `while` (and `break` and `continue`, of course)
+  - `while`
+  - `for` (C-style)
+  - `break` and `continue`
 - functions
   - `return` is mandatory
   - recursion!
@@ -149,6 +151,14 @@ make graph.png <file>
 ```
 
 ...where `<file>` could, e.g., be: `benchmarks/fib40.vnm`.
+
+### Compiling with NaN boxing
+
+```
+make -j$(nproc) opt=nan_boxing
+```
+
+However, note that I've found this to not improve the performance, at all.
 
 ## Tests
 
