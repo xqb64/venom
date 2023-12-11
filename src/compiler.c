@@ -900,6 +900,80 @@ static void handle_compile_statement_while(Compiler *compiler,
   }
 }
 
+static void handle_compile_statement_for(Compiler *compiler,
+                                         BytecodeChunk *chunk, Statement stmt) {
+
+  ForStatement s = TO_STMT_FOR(stmt);
+
+  AssignExpression assignment = TO_EXPR_ASSIGN(s.initializer);
+  VariableExpression variable = TO_EXPR_VARIABLE(*assignment.lhs);
+
+  /* Insert the initializer variable name into compiler->locals as the
+   * condition that follows the initializer expects it to be defined there. */
+  dynarray_insert(&compiler->locals, variable.name);
+
+  /* Compile the right-hand side of the initializer first. */
+  compile_expression(compiler, chunk, *assignment.rhs);
+
+  int loop_start = chunk->code.count;
+  dynarray_insert(&compiler->loop_starts, loop_start);
+  size_t breakcount = compiler->breaks.count;
+
+  /* Then compile the condition. */
+  compile_expression(compiler, chunk, s.condition);
+
+  /* Emit jz in case the condition is falsey so that we cam break out of the
+   * loop. */
+  int exit_jump = emit_placeholder(chunk, OP_JZ);
+
+  /* In the case the initializer is truthy, we want to jump over the
+   * advancement. */
+  int jump_over_advancement = emit_placeholder(chunk, OP_JMP);
+
+  /* Mark the place where we should jump after continuing looping. */
+  int loop_continuation = chunk->code.count;
+
+  /* Compile the advancement. */
+  compile_expression(compiler, chunk, s.advancement);
+
+  /* After the loop body is executed, it will jump to here, and we need
+   * to evaluate the condition again, so emit a backward unconditional jump. */
+  emit_loop(chunk, loop_start);
+
+  /* Patch the 'jump_over_advancement' jump now that we know its size. */
+  patch_placeholder(chunk, jump_over_advancement);
+
+  /* Patch the loop_start we inserted to point to the 'loop_continuation' */
+  compiler->loop_starts.data[compiler->loop_starts.count - 1] =
+      loop_continuation;
+
+  /* Compile loop body. */
+  compile(compiler, chunk, *s.body);
+
+  /* Emit jump back to the advancement. */
+  emit_loop(chunk, loop_continuation);
+
+  int to_pop = compiler->breaks.count - breakcount;
+  for (int i = 0; i < to_pop; i++) {
+    int break_jump = dynarray_pop(&compiler->breaks);
+    patch_placeholder(chunk, break_jump);
+  }
+
+  dynarray_pop(&compiler->locals);
+  dynarray_pop(&compiler->loop_starts);
+
+  /* Finally, we patch the exit jump. */
+  patch_placeholder(chunk, exit_jump);
+
+  /* Pop the initializer. */
+  emit_byte(chunk, OP_POP);
+
+  if (compiler->depth == 0) {
+    assert(compiler->breaks.count == 0);
+    assert(compiler->loop_starts.count == 0);
+  }
+}
+
 static void handle_compile_statement_fn(Compiler *compiler,
                                         BytecodeChunk *chunk, Statement stmt) {
   FunctionStatement s = TO_STMT_FN(stmt);
@@ -1039,6 +1113,7 @@ static CompileHandler handler[] = {
     [STMT_BLOCK] = {.fn = handle_compile_statement_block, .name = "STMT_BLOCK"},
     [STMT_IF] = {.fn = handle_compile_statement_if, .name = "STMT_IF"},
     [STMT_WHILE] = {.fn = handle_compile_statement_while, .name = "STMT_WHILE"},
+    [STMT_FOR] = {.fn = handle_compile_statement_for, .name = "STMT_FOR"},
     [STMT_FN] = {.fn = handle_compile_statement_fn, .name = "STMT_FN"},
     [STMT_STRUCT] = {.fn = handle_compile_statement_struct,
                      .name = "STMT_STRUCT"},

@@ -68,6 +68,27 @@ RESULTS = {
         "ends_with": "stack: []",
         "return_code": 0,
     },
+    "for.vnm": {
+        "debug_prints": [
+            "dbg print :: 0",
+            "dbg print :: 1",
+            "dbg print :: 2",
+            "dbg print :: 4",
+        ],
+        "ends_with": "stack: []",
+        "return_code": 0,
+    },
+    "for_local.vnm": {
+        "debug_prints": [
+            "dbg print :: 20",
+            "dbg print :: 16",
+            "dbg print :: 14",
+            "dbg print :: 12",
+            "dbg print :: 13",
+        ],
+        "ends_with": "stack: []",
+        "return_code": 0,
+    },
     "global_loop.vnm": {
         "debug_prints": [
             "dbg print :: 7",
@@ -167,7 +188,7 @@ def test_debug():
             VALGRIND_CMD + [Path(".") / "debug" / file],
             capture_output=True,
         )
-
+        print(file)
         if info["return_code"] == 0:
             output = process.stdout.decode("utf-8")
             for debug_print in info["debug_prints"]:

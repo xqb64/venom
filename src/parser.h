@@ -146,6 +146,7 @@ typedef enum {
   STMT_BLOCK,
   STMT_IF,
   STMT_WHILE,
+  STMT_FOR,
   STMT_BREAK,
   STMT_CONTINUE,
   STMT_FN,
@@ -193,6 +194,13 @@ typedef struct {
 } WhileStatement;
 
 typedef struct {
+  Expression initializer;
+  Expression condition;
+  Expression advancement;
+  Statement *body;
+} ForStatement;
+
+typedef struct {
   Expression returnval;
 } ReturnStatement;
 
@@ -219,6 +227,7 @@ typedef struct Statement {
     FunctionStatement stmt_fn;
     IfStatement stmt_if;
     WhileStatement stmt_while;
+    ForStatement stmt_for;
     BreakStatement stmt_break;
     ContinueStatement stmt_continue;
     ReturnStatement stmt_return;
@@ -233,6 +242,7 @@ typedef struct Statement {
 #define TO_STMT_FN(stmt) ((stmt).as.stmt_fn)
 #define TO_STMT_IF(stmt) ((stmt).as.stmt_if)
 #define TO_STMT_WHILE(stmt) ((stmt).as.stmt_while)
+#define TO_STMT_FOR(stmt) ((stmt).as.stmt_for)
 #define TO_STMT_RETURN(stmt) ((stmt).as.stmt_return)
 #define TO_STMT_STRUCT(stmt) ((stmt).as.stmt_struct)
 
@@ -247,6 +257,7 @@ typedef struct Statement {
 #define AS_STMT_IF(stmt) ((Statement){.kind = STMT_IF, .as.stmt_if = (stmt)})
 #define AS_STMT_WHILE(stmt)                                                    \
   ((Statement){.kind = STMT_WHILE, .as.stmt_while = (stmt)})
+#define AS_STMT_FOR(stmt) ((Statement){.kind = STMT_FOR, .as.stmt_for = (stmt)})
 #define AS_STMT_BREAK(stmt)                                                    \
   ((Statement){.kind = STMT_BREAK, .as.stmt_break = (stmt)})
 #define AS_STMT_CONTINUE(stmt)                                                 \

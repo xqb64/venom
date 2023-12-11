@@ -31,6 +31,7 @@ static DisassembleHandler disassemble_handler[] = {
     [OP_NULL] = {.opcode = "OP_NULL", .operands = 0},
     [OP_CONST] = {.opcode = "OP_CONST", .operands = 4},
     [OP_STR] = {.opcode = "OP_STR", .operands = 4},
+    [OP_STRCAT] = {.opcode = "OP_STRCAT", .operands = 0},
     [OP_JZ] = {.opcode = "OP_JZ", .operands = 2},
     [OP_JMP] = {.opcode = "OP_JMP", .operands = 2},
     [OP_SET_GLOBAL] = {.opcode = "OP_SET_GLOBAL", .operands = 4},

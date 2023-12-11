@@ -534,17 +534,51 @@ static Statement if_statement(Parser *parser, Tokenizer *tokenizer) {
 
 static Statement while_statement(Parser *parser, Tokenizer *tokenizer) {
   consume(parser, tokenizer, TOKEN_LEFT_PAREN, "Expected '(' after while.");
+
   Expression condition = expression(parser, tokenizer);
   consume(parser, tokenizer, TOKEN_RIGHT_PAREN,
           "Expected ')' after condition.");
+
   consume(parser, tokenizer, TOKEN_LEFT_BRACE,
           "Expected '{' after the while condition.");
+
   Statement body = block(parser, tokenizer);
+
   WhileStatement stmt = {
       .condition = condition,
       .body = ALLOC(body),
   };
   return AS_STMT_WHILE(stmt);
+}
+
+static Statement for_statement(Parser *parser, Tokenizer *tokenizer) {
+  consume(parser, tokenizer, TOKEN_LEFT_PAREN, "Expected '(' after for.");
+
+  consume(parser, tokenizer, TOKEN_LET, "Expected 'let' in initializer");
+
+  Expression initializer = expression(parser, tokenizer);
+  consume(parser, tokenizer, TOKEN_SEMICOLON,
+          "Expected ';' after initializer.");
+
+  Expression condition = expression(parser, tokenizer);
+  consume(parser, tokenizer, TOKEN_SEMICOLON, "Expected ';' after condition.");
+
+  Expression advancement = expression(parser, tokenizer);
+  consume(parser, tokenizer, TOKEN_RIGHT_PAREN,
+          "Expected ')' after advancement.");
+
+  consume(parser, tokenizer, TOKEN_LEFT_BRACE, "Expected '{' after ')'.");
+
+  Statement body = block(parser, tokenizer);
+
+  ForStatement stmt = {
+      .initializer = initializer,
+      .condition = condition,
+      .advancement = advancement,
+      .body = ALLOC(body),
+  };
+
+  return AS_STMT_FOR(stmt);
 }
 
 static Statement function_statement(Parser *parser, Tokenizer *tokenizer) {
@@ -624,6 +658,8 @@ static Statement statement(Parser *parser, Tokenizer *tokenizer) {
     return if_statement(parser, tokenizer);
   } else if (match(parser, tokenizer, 1, TOKEN_WHILE)) {
     return while_statement(parser, tokenizer);
+  } else if (match(parser, tokenizer, 1, TOKEN_FOR)) {
+    return for_statement(parser, tokenizer);
   } else if (match(parser, tokenizer, 1, TOKEN_BREAK)) {
     return break_statement(parser, tokenizer);
   } else if (match(parser, tokenizer, 1, TOKEN_CONTINUE)) {
@@ -763,6 +799,18 @@ void free_stmt(Statement stmt) {
     }
     dynarray_free(&TO_STMT_BLOCK(TO_STMT_WHILE(stmt).body).stmts);
     free(TO_STMT_WHILE(stmt).body);
+    break;
+  }
+  case STMT_FOR: {
+    free_expression(TO_STMT_FOR(stmt).initializer);
+    free_expression(TO_STMT_FOR(stmt).condition);
+    free_expression(TO_STMT_FOR(stmt).advancement);
+    for (size_t i = 0; i < TO_STMT_BLOCK(TO_STMT_FOR(stmt).body).stmts.count;
+         i++) {
+      free_stmt(TO_STMT_BLOCK(TO_STMT_FOR(stmt).body).stmts.data[i]);
+    }
+    dynarray_free(&TO_STMT_BLOCK(TO_STMT_FOR(stmt).body).stmts);
+    free(TO_STMT_FOR(stmt).body);
     break;
   }
   case STMT_RETURN: {

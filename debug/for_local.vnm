@@ -1,0 +1,12 @@
+fn main() {
+    let i = 10;
+    for (let x = 10; x > 0; x -= 2) {
+        if (x == 8) continue;
+        print x + 10;
+    }
+    let z = 3;
+    print z + i;
+    return 0;
+}
+
+main();

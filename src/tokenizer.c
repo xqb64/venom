@@ -254,11 +254,12 @@ Token get_token(Tokenizer *tokenizer) {
     return identifier(tokenizer);
   }
   case 'f': {
-    if (lookahead(tokenizer, 1, "n")) {
-      return make_token(tokenizer, TOKEN_FN, 2);
-    }
     if (lookahead(tokenizer, 4, "alse")) {
       return make_token(tokenizer, TOKEN_FALSE, 5);
+    } else if (lookahead(tokenizer, 2, "or")) {
+      return make_token(tokenizer, TOKEN_FOR, 3);
+    } else if (lookahead(tokenizer, 1, "n")) {
+      return make_token(tokenizer, TOKEN_FN, 2);
     }
     return identifier(tokenizer);
   }
