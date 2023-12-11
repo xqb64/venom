@@ -82,6 +82,24 @@ sys	0m0,001s
 But in any case, this is about where I'd draw the line in terms of functionality. As I continue to improve as a programmer, I might come back to it to make it a little faster (at least as fast as the [VM I wrote in Rust](https://github.com/xqb64/synapse)). 
 
 
+## Examples
+
+### Fizzbuzz
+
+```rust
+for (let i = 1; i <= 20; i += 1) {
+    if ((i % 3 == 0) && (i % 5 == 0)) {
+        print "fizzbuzz";
+    } else if (i % 3 == 0) {
+        print "fizz";
+    } else if (i % 5 == 0) {
+        print "buzz";
+    } else {
+        print i;
+    }
+}
+```
+
 ### Linked list
 
 ```rust
