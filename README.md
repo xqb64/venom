@@ -81,6 +81,36 @@ sys	0m0,001s
 
 But in any case, this is about where I'd draw the line in terms of functionality. As I continue to improve as a programmer, I might come back to it to make it a little faster (at least as fast as the [VM I wrote in Rust](https://github.com/xqb64/synapse)). 
 
+### Pi generator
+
+```rust
+let sum = 0;
+let flip = -1;
+let n = 100000000;
+for (let i = 1; i < n; i += 1) {
+  flip *= -1;
+  sum += flip / (2 * i - 1);
+}
+print sum * 4;
+```
+
+```
+❯ time ./venom benchmarks/100MPi_global.vnm
+3.141592663589326
+
+real	0m19,206s
+user	0m19,070s
+sys	0m0,004s
+```
+
+```
+❯ time python3 benchmarks/py/100MPi_global.py
+3.141592663589326
+
+real	0m22,397s
+user	0m22,365s
+sys	0m0,012s
+```
 
 ## Examples
 
