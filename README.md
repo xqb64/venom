@@ -118,15 +118,10 @@ sys	0m0,012s
 
 ```rust
 for (let i = 1; i <= 20; i += 1) {
-    if ((i % 3 == 0) && (i % 5 == 0)) {
-        print "fizzbuzz";
-    } else if (i % 3 == 0) {
-        print "fizz";
-    } else if (i % 5 == 0) {
-        print "buzz";
-    } else {
-        print i;
-    }
+    if (i % 15) print "fizzbuzz";
+    else if (i % 3 == 0) print "fizz";
+    else if (i % 5 == 0) print "buzz";
+    else print i;
 }
 ```
 
