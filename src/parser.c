@@ -491,10 +491,11 @@ static Statement let_statement(Parser *parser, Tokenizer *tokenizer) {
   Token identifier = consume(parser, tokenizer, TOKEN_IDENTIFIER,
                              "Expected identifier after 'let'.");
   char *name = own_string_n(identifier.start, identifier.length);
-  Expression initializer;
-  if (match(parser, tokenizer, 1, TOKEN_EQUAL)) {
-    initializer = expression(parser, tokenizer);
-  }
+
+  consume(parser, tokenizer, TOKEN_EQUAL, "Expected '=' after variable name.");
+
+  Expression initializer = expression(parser, tokenizer);
+
   consume(parser, tokenizer, TOKEN_SEMICOLON,
           "Expected semicolon at the end of the statement.");
   LetStatement stmt = {.name = name, .initializer = initializer};
