@@ -107,10 +107,7 @@ static inline bool check_equality(Object *left, Object *right) {
     return strcmp(AS_STRING(*left)->value, AS_STRING(*right)->value) == 0;
   }
   case OBJ_STRUCT: {
-    Struct *a = AS_STRUCT(*left);
-    Struct *b = AS_STRUCT(*right);
-
-    return a == b;
+    return AS_STRUCT(*left) == AS_STRUCT(*right);
   }
   case OBJ_NULL: {
     return true;
@@ -441,17 +438,21 @@ static inline void handle_op_setattr(VM *vm, BytecodeChunk *chunk,
    * serts the value into the object's properties Table. Th-
    * en it pushes the modified object back on the stack. */
   uint32_t property_name_idx = READ_UINT32();
+
   Object value = pop(vm);
   Object obj = pop(vm);
-  Struct *structptr = AS_STRUCT(obj);
+
   StructBlueprint *sb =
       table_get_unchecked(vm->blueprints, AS_STRUCT(obj)->name);
+
   int *idx = table_get(sb->property_indexes, chunk->sp.data[property_name_idx]);
   if (!idx) {
     RUNTIME_ERROR("struct '%s' does not have property '%s'",
                   AS_STRUCT(obj)->name, chunk->sp.data[property_name_idx]);
   }
+
   AS_STRUCT(obj)->properties[*idx] = value;
+
   push(vm, obj);
 }
 
@@ -650,6 +651,7 @@ static inline void handle_op_strcat(VM *vm, BytecodeChunk *chunk,
   }
 }
 
+#ifdef venom_debug_vm
 static inline const char *print_current_instruction(uint8_t opcode) {
   switch (opcode) {
   case OP_PRINT:
@@ -738,6 +740,7 @@ static inline const char *print_current_instruction(uint8_t opcode) {
     assert(0);
   }
 }
+#endif
 
 void run(VM *vm, BytecodeChunk *chunk) {
 #ifdef venom_debug_disassembler
