@@ -45,5 +45,8 @@ extern inline void dealloc(Object *obj);
 extern inline void objdecref(Object *obj);
 extern inline void objincref(Object *obj);
 extern inline const char *get_object_type(Object *object);
+
+#ifdef NAN_BOXING
 extern inline double object2num(Object value);
 extern inline Object num2object(double num);
+#endif
