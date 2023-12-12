@@ -65,7 +65,11 @@ typedef enum {
  * can shift the pointer two places to the left, such that it starts from
  * 2 (instead of 0) and end at 49 (instead of 47). This frees up 2 slots,
  * and combined with the last 3 bits of the pointer, this is 5 bits total
- * to pack in the type of the Object.
+ * consecutively to pack in the type of the Object. However, the tag bits
+ * need not be consecutive. If we wanted them consecutively, there'd need
+ * to be some bit shifting involved in very common operations and this is
+ * slightly detrimental to the performance (well, it's rational to expect
+ * that it is supposed to be, unless you have a Ryzen 3 3200g).
  *
  * Essentially, 64 bits is enough to hold all possible numeric fp values,
  * a pointer, and 32 different tags.
@@ -102,7 +106,7 @@ typedef uint64_t Object;
  * they are '11', which is the bit pattern for 'true' (TAG_TRUE).
  *
  * If it was 'true', its two least significant bits were '11', and now
- * they remained changed.
+ * they remained unchanged.
  *
  * Either way, it ends up 'true', so we just check if the value is eq-
  * ual to the TAG_TRUE bit pattern after setting the LSB. */
@@ -118,17 +122,21 @@ typedef uint64_t Object;
  * have some object other than numbers, booleans, and nulls. */
 #define IS_OBJ(value) (((value) & (SIGN_BIT | QNAN)) == (SIGN_BIT | QNAN))
 
+#define STRUCT_PATTERN (SIGN_BIT | QNAN | TAG_STRUCT)
+#define STRING_PATTERN (SIGN_BIT | QNAN | TAG_STRING)
+#define PTR_PATTERN (SIGN_BIT | QNAN | TAG_PTR)
+
 /* To check whether a value is a struct, we check if it's an object and
  * whether it is tagged as a Struct. */
-#define IS_STRUCT(value) (IS_OBJ((value)) && ((value) & (0x1F)) == TAG_STRUCT)
+#define IS_STRUCT(value) (((value) & (SIGN_BIT | QNAN | 0x7)) == STRUCT_PATTERN)
 
 /* To check whether a value is a struct, we check if it's an object and
  * whether it is tagged as a String. */
-#define IS_STRING(value) (IS_OBJ((value)) && ((value) & (0x1F)) == TAG_STRING)
+#define IS_STRING(value) (((value) & (SIGN_BIT | QNAN | 0x7)) == STRING_PATTERN)
 
 /* To check whether a value is a struct, we check if it's an object and
  * whether it is tagged as a pointer. */
-#define IS_PTR(value) (IS_OBJ((value)) && ((value) & (0x1F)) == TAG_PTR)
+#define IS_PTR(value) (((value) & (SIGN_BIT | QNAN | 0x7)) == PTR_PATTERN)
 
 /* To convert a value to a boolean, we compare it to TRUE_VAL because
  * if we had a 'false', (false == true) will be false, and we got our
@@ -139,33 +147,29 @@ typedef uint64_t Object;
 #define AS_NUM(value) object2num(value)
 
 /* To convert a value to an Object pointer, we need to clear the SIGN_BIT,
- * QNAN, and the tag, and shift the result two places to the right. Final-
- * ly, we cast the result to Object pointer. */
+ * QNAN, and the tag. Finally, we cast the result to Object pointer. */
 #define AS_OBJ(value)                                                          \
-  ((Object *)(uintptr_t)(((value) & ~(SIGN_BIT | QNAN | 0x1F)) >> 2))
+  ((Object *)(uintptr_t)(((value) & ~(SIGN_BIT | QNAN | 0x7))))
 
 /* To convert a value to a Struct pointer, we need to clear the SIGN_BIT,
- * QNAN, and the tag, and shift the result two places to the right. Fina-
- * lly, we cast the result to Struct pointer. */
+ * QNAN, and the tag. Finaly, we cast the result to Struct pointer. */
 #define AS_STRUCT(object)                                                      \
   ((IS_STRUCT(object))                                                         \
-       ? (Struct *)((uintptr_t)((object) & ~(SIGN_BIT | QNAN | 0x1F)) >> 2)    \
+       ? (Struct *)((uintptr_t)((object) & ~(SIGN_BIT | QNAN | 0x7)))          \
        : NULL)
 
 /* To convert a value to a String pointer, we need to clear the SIGN_BIT,
- * QNAN, and the tag, and shift the result two places to the right. Fina-
- * lly, we cast the result to String pointer. */
+ * QNAN, and the tag. Finally, we cast the result to String pointer. */
 #define AS_STRING(object)                                                      \
   ((IS_STRING(object))                                                         \
-       ? (String *)((uintptr_t)((object) & ~(SIGN_BIT | QNAN | 0x1F)) >> 2)    \
+       ? (String *)((uintptr_t)((object) & ~(SIGN_BIT | QNAN | 0x7)))          \
        : NULL)
 
 /* To convert a value to a pointer Object, we need to clear the SIGN_BIT,
- * QNAN, and the tag, and shift the result two places to the right. Fina-
- * lly, we cast the result to Object pointer. */
+ * QNAN, and the tag. Finally, we cast the result to Object pointer. */
 #define AS_PTR(object)                                                         \
   ((IS_PTR(object))                                                            \
-       ? (Object *)((uintptr_t)((object) & ~(SIGN_BIT | QNAN | 0x1F)) >> 2)    \
+       ? (Object *)((uintptr_t)((object) & ~(SIGN_BIT | QNAN | 0x7)))          \
        : NULL)
 
 #define BOOL_VAL(b) ((b) ? TRUE_VAL : FALSE_VAL)
@@ -179,29 +183,35 @@ typedef uint64_t Object;
 #define NULL_VAL ((Object)(uint64_t)(QNAN | TAG_NULL))
 #define NUM_VAL(num) num2object(num)
 
-/* To construct a Struct object, we shitf the pointer two places to the left,
- * and set the SIGN_BIT, QNAN, and finally tag it as struct.
+/* To construct a Struct object, we set the SIGN_BIT, QNAN, and tag it as
+ * struct.
  *
  * Likewise for String and Object pointer. */
 #define STRUCT_VAL(obj)                                                        \
-  (Object)(SIGN_BIT | QNAN | ((uint64_t)(uintptr_t)(obj) << 2) | TAG_STRUCT)
+  (Object)(SIGN_BIT | QNAN | ((uint64_t)(uintptr_t)(obj)) | TAG_STRUCT)
 
 #define STRING_VAL(obj)                                                        \
-  (Object)(SIGN_BIT | QNAN | ((uint64_t)(uintptr_t)(obj) << 2) | TAG_STRING)
+  (Object)(SIGN_BIT | QNAN | ((uint64_t)(uintptr_t)(obj)) | TAG_STRING)
 
 #define PTR_VAL(obj)                                                           \
-  (Object)(SIGN_BIT | QNAN | ((uint64_t)(uintptr_t)(obj) << 2) | TAG_PTR)
+  (Object)(SIGN_BIT | QNAN | ((uint64_t)(uintptr_t)(obj)) | TAG_PTR)
 
 static inline double object2num(Object value) {
-  double num;
-  memcpy(&num, &value, sizeof(Object));
-  return num;
+  union {
+    double num;
+    uint64_t bits;
+  } data;
+  data.bits = value;
+  return data.num;
 }
 
 static inline Object num2object(double num) {
-  Object value;
-  memcpy(&value, &num, sizeof(double));
-  return value;
+  union {
+    double num;
+    uint64_t bits;
+  } data;
+  data.num = num;
+  return data.bits;
 }
 
 #else
