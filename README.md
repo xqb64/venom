@@ -33,8 +33,8 @@ This project is my debut in the realm of programming language design. I had a bl
   - `return` is mandatory
   - recursion!
 - `print` statement
-
-Global scope is allowed.
+- global scope
+- optional NaN boxing
 
 The system includes what you would expect from a programming language implementation:
 
@@ -191,7 +191,7 @@ make graph.png <file>
 
 ...where `<file>` could, e.g., be: `benchmarks/fib40.vnm`.
 
-### Compiling with NaN boxing
+### Compiling with NaN boxing enabled
 
 ```
 make -j$(nproc) opt=nan_boxing
