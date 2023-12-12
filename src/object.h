@@ -196,7 +196,7 @@ typedef uint64_t Object;
 #define PTR_VAL(obj)                                                           \
   (Object)(SIGN_BIT | QNAN | ((uint64_t)(uintptr_t)(obj)) | TAG_PTR)
 
-static inline double object2num(Object value) {
+inline double object2num(Object value) {
   union {
     double num;
     uint64_t bits;
@@ -205,7 +205,7 @@ static inline double object2num(Object value) {
   return data.num;
 }
 
-static inline Object num2object(double num) {
+inline Object num2object(double num) {
   union {
     double num;
     uint64_t bits;
