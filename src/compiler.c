@@ -476,27 +476,27 @@ static void handle_compile_expression_get(Compiler *compiler,
   emit_uint32(chunk, property_name_idx);
 }
 
-static void handle_specialized_operator(BytecodeChunk *chunk, const char *op) {
+static void emit_compound_assignment(BytecodeChunk *chunk, const char *op) {
   if (strcmp(op, "+=") == 0)
-    emit_byte(chunk, OP_ADD);
+    emit_byte(chunk, OP_ADD_ASSIGN);
   else if (strcmp(op, "-=") == 0)
-    emit_byte(chunk, OP_SUB);
+    emit_byte(chunk, OP_SUB_ASSIGN);
   else if (strcmp(op, "*=") == 0)
-    emit_byte(chunk, OP_MUL);
+    emit_byte(chunk, OP_MUL_ASSIGN);
   else if (strcmp(op, "/=") == 0)
-    emit_byte(chunk, OP_DIV);
+    emit_byte(chunk, OP_DIV_ASSIGN);
   else if (strcmp(op, "%%=") == 0)
-    emit_byte(chunk, OP_MOD);
+    emit_byte(chunk, OP_MOD_ASSIGN);
   else if (strcmp(op, "&=") == 0)
-    emit_byte(chunk, OP_BITAND);
+    emit_byte(chunk, OP_BITAND_ASSIGN);
   else if (strcmp(op, "|=") == 0)
-    emit_byte(chunk, OP_BITOR);
+    emit_byte(chunk, OP_BITOR_ASSIGN);
   else if (strcmp(op, "^=") == 0)
-    emit_byte(chunk, OP_BITXOR);
+    emit_byte(chunk, OP_BITXOR_ASSIGN);
   else if (strcmp(op, ">>=") == 0)
-    emit_byte(chunk, OP_BITSHR);
+    emit_byte(chunk, OP_BITSHR_ASSIGN);
   else if (strcmp(op, "<<=") == 0)
-    emit_byte(chunk, OP_BITSHL);
+    emit_byte(chunk, OP_BITSHL_ASSIGN);
 }
 
 static void compile_variable_assignment(Compiler *compiler,
@@ -523,7 +523,7 @@ static void compile_variable_assignment(Compiler *compiler,
     emit_byte(chunk, is_global ? OP_GET_GLOBAL : OP_DEEPGET);
     emit_uint32(chunk, idx);
     compile_expression(compiler, chunk, *rhs);
-    handle_specialized_operator(chunk, op);
+    emit_compound_assignment(chunk, op);
   } else {
     compile_expression(compiler, chunk, *rhs);
   }
@@ -543,11 +543,10 @@ static void compile_get_expression_assignment(Compiler *compiler,
   }
 
   if (is_specialized) {
-    emit_byte(chunk, OP_DUP);
     emit_byte(chunk, OP_GETATTR);
     emit_uint32(chunk, add_string(chunk, getexp->property_name));
     compile_expression(compiler, chunk, *rhs);
-    handle_specialized_operator(chunk, op);
+    emit_compound_assignment(chunk, op);
   } else {
     compile_expression(compiler, chunk, *rhs);
   }
@@ -564,9 +563,8 @@ static void compile_unary_expression_assignment(Compiler *compiler,
                                                 bool is_specialized) {
   compile_expression(compiler, chunk, *unary->exp);
   if (is_specialized) {
-    emit_byte(chunk, OP_DUP);
     compile_expression(compiler, chunk, *rhs);
-    handle_specialized_operator(chunk, op);
+    emit_compound_assignment(chunk, op);
   } else {
     compile_expression(compiler, chunk, *rhs);
   }

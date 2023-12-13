@@ -36,6 +36,29 @@ static inline Object pop(VM *vm) { return vm->stack[--vm->tos]; }
     push(vm, obj);                                                             \
   } while (0)
 
+#define COMPOUND_ASSIGN(op)                                                    \
+  do {                                                                         \
+    double b = AS_NUM(pop(vm));                                                \
+    double a = AS_NUM(pop(vm));                                                \
+    a op b;                                                                    \
+    push(vm, NUM_VAL(a));                                                      \
+  } while (0)
+
+#define COMPOUND_BITWISE_ASSIGN(op)                                            \
+  do {                                                                         \
+    double b = AS_NUM(pop(vm));                                                \
+    double a = AS_NUM(pop(vm));                                                \
+    int64_t truncated_a = (int64_t)a;                                          \
+    int64_t truncated_b = (int64_t)b;                                          \
+                                                                               \
+    int32_t reduced_a = (int32_t)(truncated_a % (int64_t)(1LL << 32));         \
+    int32_t reduced_b = (int32_t)(truncated_b % (int64_t)(1LL << 32));         \
+                                                                               \
+    reduced_a op reduced_b;                                                    \
+                                                                               \
+    push(vm, NUM_VAL(reduced_a));                                              \
+  } while (0)
+
 #define BITWISE_OP(op)                                                         \
   do {                                                                         \
     Object b = pop(vm);                                                        \
@@ -164,16 +187,36 @@ static inline void handle_op_add(VM *vm, BytecodeChunk *chunk, uint8_t **ip) {
   BINARY_OP(+, NUM_VAL);
 }
 
+static inline void handle_op_add_assign(VM *vm, BytecodeChunk *chunk,
+                                        uint8_t **ip) {
+  COMPOUND_ASSIGN(+=);
+}
+
 static inline void handle_op_sub(VM *vm, BytecodeChunk *chunk, uint8_t **ip) {
   BINARY_OP(-, NUM_VAL);
+}
+
+static inline void handle_op_sub_assign(VM *vm, BytecodeChunk *chunk,
+                                        uint8_t **ip) {
+  COMPOUND_ASSIGN(-=);
 }
 
 static inline void handle_op_mul(VM *vm, BytecodeChunk *chunk, uint8_t **ip) {
   BINARY_OP(*, NUM_VAL);
 }
 
+static inline void handle_op_mul_assign(VM *vm, BytecodeChunk *chunk,
+                                        uint8_t **ip) {
+  COMPOUND_ASSIGN(*=);
+}
+
 static inline void handle_op_div(VM *vm, BytecodeChunk *chunk, uint8_t **ip) {
   BINARY_OP(/, NUM_VAL);
+}
+
+static inline void handle_op_div_assign(VM *vm, BytecodeChunk *chunk,
+                                        uint8_t **ip) {
+  COMPOUND_ASSIGN(/=);
 }
 
 static inline void handle_op_mod(VM *vm, BytecodeChunk *chunk, uint8_t **ip) {
@@ -183,18 +226,42 @@ static inline void handle_op_mod(VM *vm, BytecodeChunk *chunk, uint8_t **ip) {
   push(vm, obj);
 }
 
+static inline void handle_op_mod_assign(VM *vm, BytecodeChunk *chunk,
+                                        uint8_t **ip) {
+  double b = AS_NUM(pop(vm));
+  double a = AS_NUM(pop(vm));
+  a = fmod(a, b);
+  Object obj = NUM_VAL(a);
+  push(vm, obj);
+}
+
 static inline void handle_op_bitand(VM *vm, BytecodeChunk *chunk,
                                     uint8_t **ip) {
   BITWISE_OP(&);
+}
+
+static inline void handle_op_bitand_assign(VM *vm, BytecodeChunk *chunk,
+                                           uint8_t **ip) {
+  COMPOUND_BITWISE_ASSIGN(&=);
 }
 
 static inline void handle_op_bitor(VM *vm, BytecodeChunk *chunk, uint8_t **ip) {
   BITWISE_OP(|);
 }
 
+static inline void handle_op_bitor_assign(VM *vm, BytecodeChunk *chunk,
+                                          uint8_t **ip) {
+  COMPOUND_BITWISE_ASSIGN(|=);
+}
+
 static inline void handle_op_bitxor(VM *vm, BytecodeChunk *chunk,
                                     uint8_t **ip) {
   BITWISE_OP(^);
+}
+
+static inline void handle_op_bitxor_assign(VM *vm, BytecodeChunk *chunk,
+                                           uint8_t **ip) {
+  COMPOUND_BITWISE_ASSIGN(^=);
 }
 
 static inline void handle_op_bitnot(VM *vm, BytecodeChunk *chunk,
@@ -220,9 +287,19 @@ static inline void handle_op_bitshl(VM *vm, BytecodeChunk *chunk,
   BITWISE_OP(<<);
 }
 
+static inline void handle_op_bitshl_assign(VM *vm, BytecodeChunk *chunk,
+                                           uint8_t **ip) {
+  COMPOUND_BITWISE_ASSIGN(<<=);
+}
+
 static inline void handle_op_bitshr(VM *vm, BytecodeChunk *chunk,
                                     uint8_t **ip) {
   BITWISE_OP(>>);
+}
+
+static inline void handle_op_bitshr_assign(VM *vm, BytecodeChunk *chunk,
+                                           uint8_t **ip) {
+  COMPOUND_BITWISE_ASSIGN(>>=);
 }
 
 static inline void handle_op_eq(VM *vm, BytecodeChunk *chunk, uint8_t **ip) {
@@ -604,15 +681,6 @@ static inline void handle_op_pop(VM *vm, BytecodeChunk *chunk, uint8_t **ip) {
   objdecref(&obj);
 }
 
-static inline void handle_op_dup(VM *vm, BytecodeChunk *chunk, uint8_t **ip) {
-  /* OP_DUP duplicates the top value on the stack. Since the
-   * duplicated object is now present in one more place, its
-   * refcount must be incremented. */
-  Object obj = vm->stack[vm->tos - 1];
-  push(vm, obj);
-  objincref(&obj);
-}
-
 static inline void handle_op_deref(VM *vm, BytecodeChunk *chunk, uint8_t **ip) {
   /* OP_DEREF pops an object off the stack, dereferences it
    * and pushes it back on the stack. Since the object will
@@ -658,14 +726,24 @@ static inline const char *print_current_instruction(uint8_t opcode) {
     return "OP_PRINT";
   case OP_ADD:
     return "OP_ADD";
+  case OP_ADD_ASSIGN:
+    return "OP_ADD_ASSIGN";
   case OP_SUB:
     return "OP_SUB";
+  case OP_SUB_ASSIGN:
+    return "OP_SUB_ASSIGN";
   case OP_MUL:
     return "OP_MUL";
+  case OP_MUL_ASSIGN:
+    return "OP_MUL_ASSIGN";
   case OP_DIV:
     return "OP_DIV";
+  case OP_DIV_ASSIGN:
+    return "OP_DIV_ASSIGN";
   case OP_MOD:
     return "OP_MOD";
+  case OP_MOD_ASSIGN:
+    return "OP_MOD_ASSIGN";
   case OP_EQ:
     return "OP_EQ";
   case OP_GT:
@@ -690,16 +768,26 @@ static inline const char *print_current_instruction(uint8_t opcode) {
     return "OP_JMP";
   case OP_BITAND:
     return "OP_BITAND";
+  case OP_BITAND_ASSIGN:
+    return "OP_BITAND_ASSIGN";
   case OP_BITOR:
     return "OP_BITOR";
+  case OP_BITOR_ASSIGN:
+    return "OP_BITOR_ASSIGN";
   case OP_BITXOR:
     return "OP_BITXOR";
+  case OP_BITXOR_ASSIGN:
+    return "OP_BITXOR_ASSIGN";
   case OP_BITNOT:
     return "OP_BITNOT";
   case OP_BITSHL:
     return "OP_BITSHL";
+  case OP_BITSHL_ASSIGN:
+    return "OP_BITSHL_ASSIGN";
   case OP_BITSHR:
     return "OP_BITSHR";
+  case OP_BITSHR_ASSIGN:
+    return "OP_BITSHR_ASSIGN";
   case OP_SET_GLOBAL:
     return "OP_SET_GLOBAL";
   case OP_GET_GLOBAL:
@@ -728,8 +816,6 @@ static inline const char *print_current_instruction(uint8_t opcode) {
     return "OP_RET";
   case OP_POP:
     return "OP_POP";
-  case OP_DUP:
-    return "OP_DUP";
   case OP_DEREF:
     return "OP_DEREF";
   case OP_DEREFSET:
@@ -765,20 +851,40 @@ void run(VM *vm, BytecodeChunk *chunk) {
       handle_op_add(vm, chunk, &ip);
       break;
     }
+    case OP_ADD_ASSIGN: {
+      handle_op_add_assign(vm, chunk, &ip);
+      break;
+    }
     case OP_SUB: {
       handle_op_sub(vm, chunk, &ip);
+      break;
+    }
+    case OP_SUB_ASSIGN: {
+      handle_op_sub_assign(vm, chunk, &ip);
       break;
     }
     case OP_MUL: {
       handle_op_mul(vm, chunk, &ip);
       break;
     }
+    case OP_MUL_ASSIGN: {
+      handle_op_mul_assign(vm, chunk, &ip);
+      break;
+    }
     case OP_DIV: {
       handle_op_div(vm, chunk, &ip);
       break;
     }
+    case OP_DIV_ASSIGN: {
+      handle_op_div_assign(vm, chunk, &ip);
+      break;
+    }
     case OP_MOD: {
       handle_op_mod(vm, chunk, &ip);
+      break;
+    }
+    case OP_MOD_ASSIGN: {
+      handle_op_mod_assign(vm, chunk, &ip);
       break;
     }
     case OP_EQ: {
@@ -829,12 +935,24 @@ void run(VM *vm, BytecodeChunk *chunk) {
       handle_op_bitand(vm, chunk, &ip);
       break;
     }
+    case OP_BITAND_ASSIGN: {
+      handle_op_bitand_assign(vm, chunk, &ip);
+      break;
+    }
     case OP_BITOR: {
       handle_op_bitor(vm, chunk, &ip);
       break;
     }
+    case OP_BITOR_ASSIGN: {
+      handle_op_bitor_assign(vm, chunk, &ip);
+      break;
+    }
     case OP_BITXOR: {
       handle_op_bitxor(vm, chunk, &ip);
+      break;
+    }
+    case OP_BITXOR_ASSIGN: {
+      handle_op_bitxor_assign(vm, chunk, &ip);
       break;
     }
     case OP_BITNOT: {
@@ -845,8 +963,16 @@ void run(VM *vm, BytecodeChunk *chunk) {
       handle_op_bitshl(vm, chunk, &ip);
       break;
     }
+    case OP_BITSHL_ASSIGN: {
+      handle_op_bitshl_assign(vm, chunk, &ip);
+      break;
+    }
     case OP_BITSHR: {
       handle_op_bitshr(vm, chunk, &ip);
+      break;
+    }
+    case OP_BITSHR_ASSIGN: {
+      handle_op_bitshr_assign(vm, chunk, &ip);
       break;
     }
     case OP_SET_GLOBAL: {
@@ -903,10 +1029,6 @@ void run(VM *vm, BytecodeChunk *chunk) {
     }
     case OP_POP: {
       handle_op_pop(vm, chunk, &ip);
-      break;
-    }
-    case OP_DUP: {
-      handle_op_dup(vm, chunk, &ip);
       break;
     }
     case OP_DEREF: {
