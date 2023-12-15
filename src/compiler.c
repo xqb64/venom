@@ -922,7 +922,7 @@ static void handle_compile_statement_for(Compiler *compiler,
   /* Then compile the condition. */
   compile_expression(compiler, chunk, s.condition);
 
-  /* Emit jz in case the condition is falsey so that we cam break out of the
+  /* Emit jz in case the condition is falsey so that we can break out of the
    * loop. */
   int exit_jump = emit_placeholder(chunk, OP_JZ);
 
