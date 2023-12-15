@@ -28,6 +28,16 @@ static inline void push(VM *vm, Object obj) { vm->stack[vm->tos++] = obj; }
 
 static inline Object pop(VM *vm) { return vm->stack[--vm->tos]; }
 
+static inline uint64_t clamp(double d) {
+  if (d < 0.0) {
+    return 0;
+  } else if (d > UINT64_MAX) {
+    return UINT64_MAX;
+  } else {
+    return (uint64_t)d;
+  }
+}
+
 #define BINARY_OP(op, wrapper)                                                 \
   do {                                                                         \
     Object b = pop(vm);                                                        \
@@ -41,13 +51,13 @@ static inline Object pop(VM *vm) { return vm->stack[--vm->tos]; }
     Object b = pop(vm);                                                        \
     Object a = pop(vm);                                                        \
                                                                                \
-    int64_t truncated_a = (int64_t)AS_NUM(a);                                  \
-    int64_t truncated_b = (int64_t)AS_NUM(b);                                  \
+    uint64_t clamped_a = clamp(AS_NUM(a));                                     \
+    uint64_t clamped_b = clamp(AS_NUM(b));                                     \
                                                                                \
-    int32_t reduced_a = (int32_t)(truncated_a % (int64_t)(1LL << 32));         \
-    int32_t reduced_b = (int32_t)(truncated_b % (int64_t)(1LL << 32));         \
+    uint64_t result = clamped_a op clamped_b;                                  \
                                                                                \
-    Object obj = NUM_VAL(reduced_a op reduced_b);                              \
+    Object obj = NUM_VAL((double)result);                                      \
+                                                                               \
     push(vm, obj);                                                             \
   } while (0)
 
