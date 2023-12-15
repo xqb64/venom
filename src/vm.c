@@ -210,16 +210,12 @@ static inline void handle_op_bitxor(VM *vm, BytecodeChunk *chunk,
 static inline void handle_op_bitnot(VM *vm, BytecodeChunk *chunk,
                                     uint8_t **ip) {
   Object obj = pop(vm);
-  double value = AS_NUM(obj);
 
   /* discard the fractional part */
-  int64_t truncated = (int64_t)value;
-
-  /* reduce modulo 2^32 to fit into 32-bit int */
-  int32_t reduced = (int32_t)(truncated % (int64_t)(1LL << 32));
+  uint64_t clamped = clamp(AS_NUM(obj));
 
   /* apply bitwise not */
-  int32_t inverted = ~reduced;
+  uint64_t inverted = ~clamped;
 
   /* convert back to double */
   push(vm, NUM_VAL(inverted));
