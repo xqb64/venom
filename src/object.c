@@ -23,6 +23,7 @@ void print_object(Object *object) {
         printf(", ");
       }
     }
+    printf(" }");
   } else if (IS_PTR(*object)) {
     printf("PTR ('%p')", (void *)AS_PTR(*object));
   }
