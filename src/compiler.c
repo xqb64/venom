@@ -83,29 +83,26 @@ static void end_scope(Compiler *compiler) {
   compiler->depth--;
 }
 
+/* Check if the string is already present in the sp.
+ * If not, add it first, and finally return the idx. */
 static uint32_t add_string(BytecodeChunk *chunk, char *string) {
-  /* Check if the string is already present in the pool. */
   for (size_t idx = 0; idx < chunk->sp.count; idx++) {
-    /* If it is, return the index. */
     if (strcmp(chunk->sp.data[idx], string) == 0) {
       return idx;
     }
   }
-  /* Otherwise, insert it into the pool and return the index. */
   dynarray_insert(&chunk->sp, string);
   return chunk->sp.count - 1;
 }
 
+/* Check if the uint32 is already present in the cp.
+ * If not, add it first, and finally return the idx. */
 static uint32_t add_constant(BytecodeChunk *chunk, double constant) {
-  /* Check if the constant is already present in the pool. */
   for (size_t idx = 0; idx < chunk->cp.count; idx++) {
-    /* If it is, return the index. */
     if (chunk->cp.data[idx] == constant) {
       return idx;
     }
   }
-  /* Otherwise, insert the constant into the pool
-   * and return the index. */
   dynarray_insert(&chunk->cp, constant);
   return chunk->cp.count - 1;
 }
@@ -131,22 +128,22 @@ static void emit_uint32(BytecodeChunk *chunk, uint32_t idx) {
 
 static int emit_placeholder(BytecodeChunk *chunk, Opcode op) {
   emit_bytes(chunk, 3, op, 0xFF, 0xFF);
-  /* The opcode, followed by its 2-byte offset is the last
-   * emitted instruction.
+  /* The opcode, followed by its 2-byte offset are the last
+   * emitted bytes.
    *
    * e.g. if `chunk->code.data` is:
    *
-   * [OP_CONST, operand,
-   *  OP_CONST, operand,
+   * [OP_CONST, a0, a1, a2, a3, // 4-byte operands
+   *  OP_CONST, b0, b1, b2, b3, // 4-byte operands
    *  OP_EQ,
-   *  OP_JZ, operand, operand]
-   *                            ^-- `chunk->code.count`
+   *  OP_JZ, c0, c1]
+   *                 ^-- `chunk->code.count`
    *
-   * `chunk->code.count` will be 8. Because the indexing is
-   * zero-based, the count points to just beyond the 2-byte
-   * offset. In order to get the position of the opcode, we
-   * need to go back 3 slots (two operands plus one 'extra'
-   * slot to adjust for zero-based indexing). */
+   * `chunk->code.count` will be 14. Since the indexing is
+   * 0-based, the count points just beyond the 2-byte off-
+   * set. To get the opcode position, we need to go back 3
+   * slots (two-byte operand + one more slot to adjust for
+   * zero-based indexing). */
   return chunk->code.count - 3;
 }
 
@@ -158,15 +155,15 @@ static void patch_placeholder(BytecodeChunk *chunk, int op) {
    *
    * For example, if we have:
    *
-   * [OP_CONST, operand,
-   *  OP_CONST, operand,
+   * [OP_CONST, a0, a1, a2, a3, // 4-byte operands
+   *  OP_CONST, b0, b1, b2, b3, // 4-byte operands
    *  OP_EQ,
-   *  OP_JZ, operand, operand,
-   *  OP_STR, operand,
+   *  OP_JZ, c0, c1,            // 2-byte operand
+   *  OP_STR, d0, d1, d2, d3    // 4-byte operand
    *  OP_PRINT]
    *             ^-- `chunk->code.count`
    *
-   * 'op' will be 5. To get the number of emitted instruc-
+   * 'op' will be 11. To get the count of emitted instruc-
    * tions, the count is adjusted by subtracting 1 (so th-
    * at it points to the last element). Then, two is added
    * to the index to account for the two-byte operand that
@@ -181,44 +178,53 @@ static void patch_placeholder(BytecodeChunk *chunk, int op) {
 
 static void emit_loop(BytecodeChunk *chunk, int loop_start) {
   /*
-   * For example, consider the following bytecode for the program
-   * on the side:
+   * For example, consider the following bytecode for a simp-
+   * le program on the side:
    *
-   *     0: OP_CONST (value: 0.000000)    |
-   *     2: OP_SET_GLOBAL (index: 0)      |
-   *     4: OP_GET_GLOBAL (index: 0)      |
-   *     6: OP_CONST (value: 5.000000)    |   let x = 0;
-   *     8: OP_LT                         |   while (x < 5) {
-   *     9: OP_JZ (offset: 13)            |       print x;
-   *     12: OP_GET_GLOBAL (index: 0)     |       x = x+1;
-   *     14: OP_PRINT                     |   }
-   *     15: OP_GET_GLOBAL (index: 0)     |
-   *     17: OP_CONST (value: 1.000000)   |
-   *     19: OP_ADD                       |
-   *     20: OP_SET_GLOBAL (index: 0)     |
-   *     22: OP_JMP (offset: -21)         |
+   *  0: OP_CONST (value: 0)           |                    |
+   *  5: OP_SET_GLOBAL (name: x)       |                    |
+   *  10: OP_GET_GLOBAL (name: x)      |                    |
+   *  15: OP_CONST (value: 5)          |   let x = 0;       |
+   *  20: OP_LT                        |   while (x < 5) {  |
+   *  21: OP_JZ + 2-byte offset: 25    |     print x;       |
+   *  24: OP_GET_GLOBAL (name: x)      |     x = x + 1;     |
+   *  29: OP_PRINT                     |   }                |
+   *  30: OP_GET_GLOBAL (name: x)      |                    |
+   *  35: OP_CONST (value: 1)          |                    |
+   *  40: OP_ADD                       |                    |
+   *  41: OP_SET_GLOBAL (name: x)      |                    |
+   *  46: OP_JMP + 2-byte offset: -39  |                    |
    *
-   * In this case, the loop starts at `4`, OP_GET_GLOBAL.
    *
-   * We first emit OP_JMP, so the count will be 23 and will
-   * point to one instruction beyond the end of the bytecode.
-   * In order to go back to the beginning of the loop, we need
-   * to go backwards 19 instructions:
+   * In this case, the loop starts at `10`, OP_GET_GLOBAL.
    *
-   *     `chunk->code.count` - `loop_start` = 23 - 4 = 19
+   * After emitting OP_JMP, `chunk->code.count` will be 47, and
+   * it'll point to just beyond the end of the bytecode. To get
+   * back to the beginning of the loop, we need to go backwards
+   * 37 bytes:
    *
-   * However, we need to make sure we include the 2-byte offset
-   * for OP_JMP (23 - 4 + 2 = 21), because by the time the vm
-   * encounters this jump, it will have read the 2-byte offset
-   * as well - which means it will need to jump from `24` to `4`.
-   * In order to get there, we need to be one step behind so that
-   * the main loop will increment the instruction pointer to the
-   * next instruction.
+   *  `chunk->code.count` - `loop_start` = 47 - 10 = 37
    *
-   * So, 24 - 21 = 3, and we wait for the main loop to increment ip.
-   */
+   * Or do we?
+   *
+   * By the time the vm is ready to jump, it will have read the
+   * 2-byte offset as well, meaning we do not need to jump from
+   * index `46`, but from `48`. So, we need to go back 39 bytes
+   * and not 37, hence the +2 below:
+   *
+   *  `chunk->code.count` + 2 - `loop_start` = 47 + 2 - 10 = 39
+   *
+   * When we perform the jump, we will be at index `48`, so:
+   *
+   *   48 - 39 = 9
+   *
+   * Which is one byte before the beginning of the loop.
+   *
+   * This is exactly where we want to end up because we're rel-
+   * ying on the vm to increment the instruction pointer by one
+   * after having previously set it in the op_jmp handler. */
   emit_byte(chunk, OP_JMP);
-  int16_t offset = -(chunk->code.count - loop_start + 2);
+  int16_t offset = -(chunk->code.count + 2 - loop_start);
   emit_byte(chunk, (offset >> 8) & 0xFF);
   emit_byte(chunk, offset & 0xFF);
 }
@@ -230,8 +236,9 @@ static void emit_stack_cleanup(Compiler *compiler, BytecodeChunk *chunk) {
   }
 }
 
+/* Check if 'name' is present in the globals dynarray.
+ * If it is, return true, otherwise return false. */
 static bool resolve_global(Compiler *compiler, char *name) {
-  /* Check if 'name' is present in the globals dynarray. */
   for (size_t idx = 0; idx < compiler->globals.count; idx++) {
     if (strcmp(compiler->globals.data[idx], name) == 0) {
       return true;
@@ -240,9 +247,9 @@ static bool resolve_global(Compiler *compiler, char *name) {
   return false;
 }
 
+/* Check if 'name' is present in the locals dynarray.
+ * If it is, return the index, otherwise return -1. */
 static int resolve_local(Compiler *compiler, char *name) {
-  /* Check if 'name' is present in the locals dynarray.
-   * If it is, return the index, otherwise return -1. */
   for (size_t idx = 0; idx < compiler->locals.count; idx++) {
     if (strcmp(compiler->locals.data[idx], name) == 0) {
       return idx;
