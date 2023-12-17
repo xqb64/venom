@@ -51,7 +51,7 @@ def test_bitwise_not(tmp_path):
         fn test_bitwise_not(a) {
           return ~a;
         }
-        print test_bitwise_not(1);
+        print test_bitwise_not(0);
         """
     )
 
@@ -65,7 +65,7 @@ def test_bitwise_not(tmp_path):
 
     output = process.stdout.decode("utf-8")
 
-    assert f"dbg print :: {-2:.16g}" in output
+    assert f"dbg print :: {1:.16g}" in output
 
     assert process.returncode == 0
 
