@@ -135,10 +135,9 @@ static inline bool check_equality(Object *left, Object *right) {
 }
 
 static inline uint32_t adjust_idx(VM *vm, uint32_t idx) {
-  /* 'idx' is adjusted to be relative to the
-   * current frame pointer ('adjustment' ta-
-   * kes care of the case where there are no
-   * frame pointers on the stack). */
+  /* 'idx' is adjusted to be relative to the current fra-
+   * me pointer, if there are any. If not, it is returned
+   * back, as is. */
   if (vm->fp_count > 0) {
     BytecodePtr fp = vm->fp_stack[vm->fp_count - 1];
     return fp.location + idx;
@@ -157,138 +156,250 @@ static inline char *concatenate_strings(char *a, char *b) {
   return result;
 }
 
+/* OP_PRINT pops an object off the stack and prints it,
+ * prefixing it with "dbg print :: " in debug=vm mode.
+ * 
+ * REFCOUNTING: Since the popped object might be refco-
+ * unted, the reference count must be decremented. */
 static inline void handle_op_print(VM *vm, BytecodeChunk *chunk, uint8_t **ip) {
-  /* OP_PRINT pops an object off the stack and prints it.
-   * Since the popped object might be refcounted, the re-
-   * ference count must be decremented. */
   Object object = pop(vm);
+
 #ifdef venom_debug_vm
   printf("dbg print :: ");
 #endif
+
   print_object(&object);
   printf("\n");
+
   objdecref(&object);
 }
 
+/* OP_ADD pops two objects off the stack, adds them, and
+ * pushes the result back on the stack.
+ * 
+ * SAFETY: It is up to the user to ensure the two objec-
+ * ts are numbers, because this handler does not do run-
+ * time type checks. */
 static inline void handle_op_add(VM *vm, BytecodeChunk *chunk, uint8_t **ip) {
   BINARY_OP(+, NUM_VAL);
 }
 
+/* OP_SUB pops two objects off the stack, subs them, and
+ * pushes the result back on the stack.
+ * 
+ * SAFETY: It is up to the user to ensure the two objec-
+ * ts are numbers, because this handler does not do run-
+ * time type checks. */
 static inline void handle_op_sub(VM *vm, BytecodeChunk *chunk, uint8_t **ip) {
   BINARY_OP(-, NUM_VAL);
 }
 
+/* OP_MUL pops two objects off the stack, muls them, and
+ * pushes the result back on the stack.
+ * 
+ * SAFETY: It is up to the user to ensure the two objec-
+ * ts are numbers, because this handler does not do run-
+ * time type checks. */
 static inline void handle_op_mul(VM *vm, BytecodeChunk *chunk, uint8_t **ip) {
   BINARY_OP(*, NUM_VAL);
 }
 
+/* OP_DIV pops two objects off the stack, divs them, and
+ * pushes the result back on the stack.
+ * 
+ * SAFETY: It is up to the user to ensure the two objec-
+ * ts are numbers, because this handler does not do run-
+ * time type checks. */
 static inline void handle_op_div(VM *vm, BytecodeChunk *chunk, uint8_t **ip) {
   BINARY_OP(/, NUM_VAL);
 }
 
+/* OP_MOD pops two objects off the stack, mods them, and
+ * pushes the result back on the stack.
+ * 
+ * SAFETY: It is up to the user to ensure the two objec-
+ * ts are numbers, because this handler does not do run-
+ * time type checks. */
 static inline void handle_op_mod(VM *vm, BytecodeChunk *chunk, uint8_t **ip) {
   Object b = pop(vm);
   Object a = pop(vm);
+
   Object obj = NUM_VAL(fmod(AS_NUM(a), AS_NUM(b)));
+
   push(vm, obj);
 }
 
+/* OP_BITAND pops two objects off the stack, clamps them
+ * to [0, UINT64_MAX], performs the bitwise AND operati-
+ * on on them, and pushes the result back on the stack.
+ * 
+ * SAFETY: It is up to the user to ensure the two objec-
+ * ts are numbers, because this handler does not do run-
+ * time type checks. */
 static inline void handle_op_bitand(VM *vm, BytecodeChunk *chunk,
                                     uint8_t **ip) {
   BITWISE_OP(&);
 }
 
+/* OP_BITOR pops two objects off the stack, clamps them
+ * to [0, UINT64_MAX], performs the bitwise OR operati-
+ * on on them, and pushes the result back on the stack.
+ * 
+ * SAFETY: It is up to the user to ensure the two objec-
+ * ts are numbers, because this handler does not do run-
+ * time type checks. */
 static inline void handle_op_bitor(VM *vm, BytecodeChunk *chunk, uint8_t **ip) {
   BITWISE_OP(|);
 }
 
+/* OP_BITXOR pops two objects off the stack, clamps them
+ * to [0, UINT64_MAX], performs the bitwise XOR operati-
+ * on on them, and pushes the result back on the stack.
+ * 
+ * SAFETY: It is up to the user to ensure the two objec-
+ * ts are numbers, because this handler does not do run-
+ * time type checks. */
 static inline void handle_op_bitxor(VM *vm, BytecodeChunk *chunk,
                                     uint8_t **ip) {
   BITWISE_OP(^);
 }
 
+/* OP_BITNOT pops an object off the stack, clamps it to
+ * to [0, UINT64_MAX], performs the bitwise NOT operat-
+ * ion on it, and pushes the result back on the stack.
+ * 
+ * SAFETY: It is up to the user to ensure the object is a
+ * number because this handler does not do a runtime type
+ * check. */
 static inline void handle_op_bitnot(VM *vm, BytecodeChunk *chunk,
                                     uint8_t **ip) {
   Object obj = pop(vm);
 
-  /* discard the fractional part */
   uint64_t clamped = clamp(AS_NUM(obj));
 
-  /* apply bitwise not */
   uint64_t inverted = ~clamped;
 
-  /* convert back to double */
   push(vm, NUM_VAL(inverted));
 }
 
+/* OP_BITSHL pops two objects off the stack, clamps them
+ * to [0, UINT64_MAX], performs the bitwise SHL operati-
+ * on on them, and pushes the result back on the stack.
+ * 
+ * SAFETY: It is up to the user to ensure the two objec-
+ * ts are numbers, because this handler does not do run-
+ * time type checks. */
 static inline void handle_op_bitshl(VM *vm, BytecodeChunk *chunk,
                                     uint8_t **ip) {
   BITWISE_OP(<<);
 }
 
+/* OP_BITSHR pops two objects off the stack, clamps them
+ * to [0, UINT64_MAX], performs the bitwise SHR operati-
+ * on on them, and pushes the result back on the stack.
+ * 
+ * SAFETY: It is up to the user to ensure the two objec-
+ * ts are numbers, because this handler does not do run-
+ * time type checks. */
 static inline void handle_op_bitshr(VM *vm, BytecodeChunk *chunk,
                                     uint8_t **ip) {
   BITWISE_OP(>>);
 }
 
+/* OP_EQ pops two objects off the stack, clamps them to
+ * [0, UINT64_MAX], performs the equality check on them
+ * and pushes the result on the stack.
+ *
+ * REFCOUNTING: Since the two objects might be refcoun-
+ * ted, the reference count for both must be decrement-
+ * ed.
+ *  
+ * SAFETY: It is up to the user to ensure the two objec-
+ * ts are bools, because this handler does not do runti-
+ * me type checks. */
 static inline void handle_op_eq(VM *vm, BytecodeChunk *chunk, uint8_t **ip) {
   Object b = pop(vm);
   Object a = pop(vm);
-  /* Since the two objects might be refcounted,
-   * the reference count must be decremented. */
+
   objdecref(&a);
   objdecref(&b);
+
   push(vm, BOOL_VAL(check_equality(&a, &b)));
 }
 
+/* OP_GT pops two objects off the stack, compares them us-
+ * ing the GT operation, and pushes the result back on the
+ * stack.
+ * 
+ * SAFETY: It is up to the user to ensure the two objects
+ * are numbers, because this handler does not do runtime
+ * type checks. */
 static inline void handle_op_gt(VM *vm, BytecodeChunk *chunk, uint8_t **ip) {
   BINARY_OP(>, BOOL_VAL);
 }
 
+/* OP_LT pops two objects off the stack, compares them us-
+ * ing the LT operation, and pushes the result back on the
+ * stack.
+ * 
+ * SAFETY: It is up to the user to ensure the two objects
+ * are numbers, because this handler does not do runtime
+ * type checks. */
 static inline void handle_op_lt(VM *vm, BytecodeChunk *chunk, uint8_t **ip) {
   BINARY_OP(<, BOOL_VAL);
 }
 
+/* OP_NOT pops an object off the stack, performs the
+ * logical NOT operation on it by inverting its bool
+ * value, and pushes the result back on the stack.
+ * 
+ * SAFETY: It is up to the user to ensure the object
+ * is a bool, because this handler does not do a ru-
+ * ntime type check. */
 static inline void handle_op_not(VM *vm, BytecodeChunk *chunk, uint8_t **ip) {
-  /* OP_NOT pops an object off the stack and pushes
-   * its inverse back on the stack. The popped obj-
-   * ect must be a boolean.  */
   Object obj = pop(vm);
   push(vm, BOOL_VAL(AS_BOOL(obj) ^ 1));
 }
 
+/* OP_NEG pops an object off the stack, performs the
+ * logical NEG operation on it by negating its value,
+ * and pushes the result back on the stack.
+ * 
+ * SAFETY: It is up to the user to ensure the object is
+ * a number, because this handler does not do a runtime
+ * type check. */
 static inline void handle_op_neg(VM *vm, BytecodeChunk *chunk, uint8_t **ip) {
-  /* OP_NEG pops an object off the stack, negates
-   * it and pushes the negative back on the stack. */
   Object original = pop(vm);
   Object negated = NUM_VAL(-AS_NUM(original));
   push(vm, negated);
 }
 
+/* OP_TRUE pushes a bool object ('true') on the stack. */
 static inline void handle_op_true(VM *vm, BytecodeChunk *chunk, uint8_t **ip) {
-  /* OP_TRUE pushes a boolean object ('true') on the stack. */
   push(vm, BOOL_VAL(true));
 }
 
+/* OP_NULL pushes a null object on the stack. */
 static inline void handle_op_null(VM *vm, BytecodeChunk *chunk, uint8_t **ip) {
-  /* OP_NULL pushes a null object on the stack. */
   push(vm, NULL_VAL);
 }
 
+/* OP_CONST reads a 4-byte index of the constant in the
+ * chunk's cp, constructs an object with that value and
+ * pushes it on the stack. */
 static inline void handle_op_const(VM *vm, BytecodeChunk *chunk, uint8_t **ip) {
-  /* OP_CONST reads a 4-byte index of the constant in the
-   * chunk's cp, constructs an object with that value and
-   * pushes it on the stack. Since constants are not ref-
-   * counted, incrementing the refcount is not needed. */
   uint32_t idx = READ_UINT32();
   Object obj = NUM_VAL(chunk->cp.data[idx]);
   push(vm, obj);
 }
 
+/* OP_STR reads a 4-byte index of the string in the ch-
+ * unk's sp, constructs a string object with that value
+ * and pushes it on the stack.
+ * 
+ * REFCOUNTING: Since Strings are refcounted, the newly
+ * constructed object has a refcount=1. */
 static inline void handle_op_str(VM *vm, BytecodeChunk *chunk, uint8_t **ip) {
-  /* OP_STR reads a 4-byte index of the string in the ch-
-   * unk's sp, constructs a string object with that value
-   * and pushes it on the stack. */
   uint32_t idx = READ_UINT32();
 
   String s = {.refcount = 1, .value = own_string(chunk->sp.data[idx])};
@@ -296,11 +407,11 @@ static inline void handle_op_str(VM *vm, BytecodeChunk *chunk, uint8_t **ip) {
   push(vm, STRING_VAL(ALLOC(s)));
 }
 
+/* OP_JZ reads a signed 2-byte offset (that could be ne-
+ * gative), pops an object off the stack, and increments
+ * the instruction pointer by the offset, if and only if
+ * the popped object was 'false'. */
 static inline void handle_op_jz(VM *vm, BytecodeChunk *chunk, uint8_t **ip) {
-  /* OP_JZ reads a signed 2-byte offset (that could be ne-
-   * gative), pops an object off the stack, and increments
-   * the instruction pointer by the offset, if and only if
-   * the popped object was 'false'. */
   int16_t offset = READ_INT16();
   Object obj = pop(vm);
   if (!AS_BOOL(obj)) {
@@ -308,73 +419,66 @@ static inline void handle_op_jz(VM *vm, BytecodeChunk *chunk, uint8_t **ip) {
   }
 }
 
+/* OP_JMP reads a signed 2-byte offset (that could be ne-
+ * gative), and increments the instruction pointer by the
+ * offset. Unlike OP_JZ, which is a conditional jump, the
+ * OP_JMP instruction takes the jump unconditionally. */
 static inline void handle_op_jmp(VM *vm, BytecodeChunk *chunk, uint8_t **ip) {
-  /* OP_JMP reads a signed 2-byte offset (that could be ne-
-   * gative), and increments the instruction pointer by the
-   * offset. Unlike OP_JZ, which is a conditional jump, the
-   * OP_JMP instruction takes the jump unconditionally. */
   int16_t offset = READ_INT16();
   *ip += offset;
 }
 
+
+/* OP_SET_GLOBAL reads a 4-byte index of the variable name
+ * in the chunk's sp, pops an object off the stack and in-
+ * serts it into the vm's globals table under that name.
+ * 
+ * REFCOUNTING: We do NOT need to increment the refcount of
+ * the object we are inserting into the table because we're
+ * merely moving it from one location to another.
+ * */
 static inline void handle_op_set_global(VM *vm, BytecodeChunk *chunk,
                                         uint8_t **ip) {
-  /* OP_SET_GLOBAL reads a 4-byte index of the variable name
-   * in the chunk's sp, pops an object off the stack and in-
-   * serts it into the vm's globals table under that name. */
   uint32_t name_idx = READ_UINT32();
   Object obj = pop(vm);
   table_insert(&vm->globals, chunk->sp.data[name_idx], obj);
 }
 
+/* OP_GET_GLOBAL reads a 4-byte index of the variable name
+ * in the chunk's sp, looks up an object with that name in
+ * the vm's globals table, and pushes it on the stack.
+ * 
+ * REFCOUNTING: Since the object will be present in yet an-
+ * other location, the refcount must be incremented. */
 static inline void handle_op_get_global(VM *vm, BytecodeChunk *chunk,
                                         uint8_t **ip) {
-  /* OP_GET_GLOBAL reads a 4-byte index of the variable name
-   * in the chunk's sp, looks up an object with that name in
-   * the vm's globals table, and pushes it on the stack. Si-
-   * nce the object will be present in yet another location,
-   * the refcount must be incremented. */
   uint32_t name_idx = READ_UINT32();
   Object *obj = table_get_unchecked(&vm->globals, chunk->sp.data[name_idx]);
   push(vm, *obj);
   objincref(obj);
 }
 
+/* OP_GET_GLOBAL_PTR reads a 4-byte index of the variable
+ * name in the chunk's sp, looks up the object under that
+ * name in in the vm's globals table, and pushes its add-
+ * ress on the stack. */
 static inline void handle_op_get_global_ptr(VM *vm, BytecodeChunk *chunk,
                                             uint8_t **ip) {
-  /* OP_GET_GLOBAL_PTR reads a 4-byte index of the variable
-   * name in the chunk's sp, looks up the object under that
-   * name in in the vm's globals table, and pushes its add-
-   * ress on the stack. */
   uint32_t name_idx = READ_UINT32();
   Object *object_ptr =
       table_get_unchecked(&vm->globals, chunk->sp.data[name_idx]);
   push(vm, PTR_VAL(object_ptr));
 }
 
+/* OP_DEEPSET reads a 4-byte index (1-based) of the obj-
+ * ect being modified, which is adjusted and used to set
+ * the object in that position to the popped object.
+ *
+ * REFCOUNTING: Since the object being set will be over-
+ * written, its reference count must be decremented bef-
+ * ore putting the popped object into that position. */
 static inline void handle_op_deepset(VM *vm, BytecodeChunk *chunk,
                                      uint8_t **ip) {
-  /* OP_DEEPSET reads a 4-byte index (1-based) of the obj-
-   * ect being modified, which is adjusted and used to set
-   * the object in that position to the popped object.
-   *
-   * Considering that the object being set will be overwr-
-   * itten, its reference count must be decremented before
-   * putting the popped object into that position.
-   *
-   * For example, if there is a variable 'thing', which is
-   * a number object with value 2:
-   *
-   *      [fp, 1, 2, 3, ..., 8]
-   *
-   * ...and if the user sets it to, let's say, 8, by doing
-   *
-   *      thing = 8;
-   *
-   * ...the stack will look like below:
-   *
-   *      [fp, 1, 8, 3, ...]
-   */
   uint32_t idx = READ_UINT32();
   uint32_t adjusted_idx = adjust_idx(vm, idx);
   Object obj = pop(vm);
@@ -382,41 +486,33 @@ static inline void handle_op_deepset(VM *vm, BytecodeChunk *chunk,
   vm->stack[adjusted_idx] = obj;
 }
 
-static inline void handle_op_derefset(VM *vm, BytecodeChunk *chunk,
+/* OP_DEREFSET pops two objects off the stack which are
+ * expected to be:
+ * - the value that is being assigned
+ * - the assignee (a pointer)
+ * It then dereferences the pointer and sets the value,
+ * essentially changing what the pointer points to.
+ * 
+ * REFCOUNTING: We do NOT need to incref/decref the obj-
+ * ect here because we're merely moving it from one loc-
+ * ation to another. */
+ static inline void handle_op_derefset(VM *vm, BytecodeChunk *chunk,
                                       uint8_t **ip) {
-  /* OP_DEREFSET expects two things to already be on the
-   * stack:
-   * - the value that is being assigned
-   * - the assignee (a pointer)
-   * It then pops those two objects off the stack, and
-   * essentially changes what the pointer points to.
-   */
   Object item = pop(vm);
   Object ptr = pop(vm);
 
   *AS_PTR(ptr) = item;
 }
 
+/* OP_DEEPGET reads a 4-byte index (1-based) of the obj-
+ * ect being accessed, which is adjusted and used to get
+ * the object in that position and push it on the stack.
+ *
+ * REFCOUNTING: Since the object being accessed will now
+ * be available in yet another location, we need to inc-
+ * rement its refcount. */
 static inline void handle_op_deepget(VM *vm, BytecodeChunk *chunk,
                                      uint8_t **ip) {
-  /* OP_DEEPGET reads a 4-byte index (1-based) of the obj-
-   * ect being accessed, which is adjusted and used to get
-   * the object in that position and push it on the stack.
-   *
-   * Since the object being accessed will now be available
-   * in yet another location, its refcount must be increm-
-   * ented.
-   *
-   * For example, if there is a variable 'thing', which is
-   * a number object with value 2:
-   *
-   *      [fp, 1, 2, 3, ...]
-   *
-   * ...and if the user references 'thing' in an expressi-
-   * on, the stack will look like below:
-   *
-   *      [fp, 1, 2, 3, ..., 2]
-   */
   uint32_t idx = READ_UINT32();
   uint32_t adjusted_idx = adjust_idx(vm, idx);
   Object obj = vm->stack[adjusted_idx];
@@ -424,25 +520,28 @@ static inline void handle_op_deepget(VM *vm, BytecodeChunk *chunk,
   objincref(&obj);
 }
 
+/* OP_DEEPGET_PTR reads a 4-byte index (1-based) of the
+ * object being accessed, which is adjusted and used to
+ * access the object in that position and push its add-
+ * ress on the stack. */
 static inline void handle_op_deepget_ptr(VM *vm, BytecodeChunk *chunk,
                                          uint8_t **ip) {
-  /* OP_DEEPGET_PTR reads a 4-byte index (1-based) of the
-   * object being accessed, which is adjusted and used to
-   * access the object in that position and push its add-
-   * ress on the stack. */
   uint32_t idx = READ_UINT32();
   uint32_t adjusted_idx = adjust_idx(vm, idx);
   Object *object_ptr = &vm->stack[adjusted_idx];
   push(vm, PTR_VAL(object_ptr));
 }
 
+/* OP_SETATTR reads a 4-byte index of the property name in
+ * the chunk's sp, pops two objects off the stack (a value
+ * of the property, and the object being modified) and in-
+ * serts the value into the object's properties Table. Th-
+ * en it pushes the modified object back on the stack.
+ * 
+ * SAFETY: the handler will try to ensure that the accessed
+ * property is defined on the object being modified. */
 static inline void handle_op_setattr(VM *vm, BytecodeChunk *chunk,
                                      uint8_t **ip) {
-  /* OP_SETATTR reads a 4-byte index of the property name in
-   * the chunk's sp, pops two objects off the stack (a value
-   * of the property, and the object being modified) and in-
-   * serts the value into the object's properties Table. Th-
-   * en it pushes the modified object back on the stack. */
   uint32_t property_name_idx = READ_UINT32();
 
   Object value = pop(vm);
@@ -462,13 +561,21 @@ static inline void handle_op_setattr(VM *vm, BytecodeChunk *chunk,
   push(vm, obj);
 }
 
+/* OP_GETATTR reads a 4-byte index of the property name in
+ * the sp. Then, it pops an object off the stack, and loo-
+ * ks up the property with that name in its properties Ta-
+ * ble. If the property is found, it will be pushed on the
+ * stack. Otherwise, a runtime error is raised. 
+ * 
+ * REFCOUNTING:
+ * 
+ * Since the property will now be present in yet another
+ * location, its recount must be incremented.
+ * 
+ * Since the popped object will no longer present at the
+ * location, its refcount must be decremented. */
 static inline void handle_op_getattr(VM *vm, BytecodeChunk *chunk,
                                      uint8_t **ip) {
-  /* OP_GETATTR reads a 4-byte index of the property name in
-   * the sp. Then, it pops an object off the stack, and loo-
-   * ks up the property with that name in its properties Ta-
-   * ble. If the property is found, it will be pushed on the
-   * stack. Otherwise, a runtime error is raised. */
   uint32_t property_name_idx = READ_UINT32();
   Object obj = pop(vm);
 
@@ -487,14 +594,17 @@ static inline void handle_op_getattr(VM *vm, BytecodeChunk *chunk,
   objdecref(&obj);
 }
 
+/* OP_GETATTR_PTR reads a 4-byte index of the property name
+ * in the chunk's sp. Then, it pops an object off the stack
+ * and looks up the property with that name in the object's
+ * properties Table. If the property is found, a pointer to
+ * it is pushed on the stack (conveniently, table_get() re-
+ * turns a pointer). Otherwise, a runtime error is raised.
+ * 
+ * REFCOUNTING: Since the popped object will no longer pre-
+ * sent at that location, its refcount must be decremented. */
 static inline void handle_op_getattr_ptr(VM *vm, BytecodeChunk *chunk,
                                          uint8_t **ip) {
-  /* OP_GETATTR_PTR reads a 4-byte index of the property name
-   * in the chunk's sp. Then, it pops an object off the stack
-   * and looks up the property with that name in the object's
-   * properties Table. If the property is found, a pointer to
-   * it is pushed on the stack (conveniently, table_get() re-
-   * turns a pointer). Otherwise, a runtime error is raised. */
   uint32_t property_name_idx = READ_UINT32();
   Object object = pop(vm);
 
@@ -512,12 +622,12 @@ static inline void handle_op_getattr_ptr(VM *vm, BytecodeChunk *chunk,
   objdecref(&object);
 }
 
+/* OP_STRUCT reads a 4-byte index of the struct name in the
+ * sp, constructs a struct object with that name and refco-
+ * unt set to 1 (while making sure to initialize the prope-
+ * rties table properly), and pushes it on the stack. */
 static inline void handle_op_struct(VM *vm, BytecodeChunk *chunk,
                                     uint8_t **ip) {
-  /* OP_STRUCT reads a 4-byte index of the struct name in the
-   * sp, constructs a struct object with that name and refco-
-   * unt set to 1 (while making sure to initialize the prope-
-   * rties table properly), and pushes it on the stack. */
   uint32_t structname = READ_UINT32();
 
   StructBlueprint *sb = table_get(vm->blueprints, chunk->sp.data[structname]);
@@ -538,21 +648,21 @@ static inline void handle_op_struct(VM *vm, BytecodeChunk *chunk,
   push(vm, STRUCT_VAL(ALLOC(s)));
 }
 
+/* OP_STRUCT_BLUEPRINT reads a 4-byte name index of the
+ * struct name in the sp, then it reads a 4-byte prope-
+ * rty count of the said struct (let's call this propc-
+ * ount). Then, it loops 'propcount' times and for each
+ * property, it reads the name index in the sp, and pr-
+ * operty index (in the items array in the Table_int of
+ * the StructBlueprint). Finally, it uses all this info
+ * to construct a StructBlueprint object, initialize it
+ * properly, and insert it into the vm's blueprints ta-
+ * ble. */
 static inline void handle_op_struct_blueprint(VM *vm, BytecodeChunk *chunk,
                                               uint8_t **ip) {
-  /* OP_STRUCT_BLUEPRINT reads a 4-byte name index of the
-   * struct name in the sp, then it reads a 4-byte prope-
-   * rty count of the said struct (let's call this propc-
-   * ount). Then, it loops 'propcount' times and for each
-   * property, it reads the name index in the sp, and pr-
-   * operty index (in the items array in the Table_int of
-   * the StructBlueprint). Finally, it uses all this info
-   * to construct a StructBlueprint object, initialize it
-   * properly, and insert it into the vm's blueprints ta-
-   * ble.
-   * */
   uint32_t name_idx = READ_UINT32();
   uint32_t propcount = READ_UINT32();
+
   DynArray_char_ptr properties = {0};
   DynArray_uint32_t prop_indexes = {0};
   for (size_t i = 0; i < propcount; i++) {
@@ -570,76 +680,79 @@ static inline void handle_op_struct_blueprint(VM *vm, BytecodeChunk *chunk,
   }
 
   table_insert(vm->blueprints, chunk->sp.data[name_idx], sb);
+
   dynarray_free(&properties);
   dynarray_free(&prop_indexes);
 }
 
+/* OP_CALL reads a 4-byte number uses it to construct a BytecodePtr
+ * object and push it on the frame pointer stack.
+ * 
+ * The address the BytecodePtr points to is the one of the next in-
+ * struction that comes after the jump following the opcode and its
+ * 4-byte operand.
+ * 
+ * The location is where the index of the position where the frame starts. */
 static inline void handle_op_call(VM *vm, BytecodeChunk *chunk, uint8_t **ip) {
-  /* OP_IP reads a signed 2-byte offset and constructs a by-
-   * tecode pointer object which points to the next instruc-
-   * tion that comes after the function call dance, and pus-
-   * hes it on the stack. Besides this, it updates the frame
-   * pointer stack.
-   *
-   * NOTE: vm->fp_stack should be updated first before push-
-   * ing the bytecode pointer on the stack, because the ins-
-   * tructions that base their indexing off of frame pointe-
-   * rs expect the indexes to be zero-based. */
   uint32_t argcount = READ_UINT32();
   BytecodePtr ip_obj = {.addr = *(ip) + 3, .location = vm->tos - argcount};
   vm->fp_stack[vm->fp_count++] = ip_obj;
 }
 
+/* OP_RET pops a BytecodePtr off the frame pointer stack
+ * and sets the instruction pointer to point to the add-
+ * ress contained in the BytecodePtr. */
 static inline void handle_op_ret(VM *vm, BytecodeChunk *chunk, uint8_t **ip) {
-  /* OP_RET pops the return value and the return address off
-   * the stack (because the return address, which is what is
-   * actually needed, is located beneath the return value on
-   * the stack), and modifies the instruction pointer to po-
-   * int to the return address. Besides, it ends the functi-
-   * on call by decrementing vm->fp_count and making sure to
-   * put the return value back on the stack.   */
   BytecodePtr retaddr = vm->fp_stack[--vm->fp_count];
   *ip = retaddr.addr;
 }
 
+/* OP_POP pops an object off the stack.
+ *
+ * REFCOUNTING: Since the popped object might be refcounted,
+ * its refcount must be decremented. */
 static inline void handle_op_pop(VM *vm, BytecodeChunk *chunk, uint8_t **ip) {
-  /* OP_POP pops an object off the stack. Since the popped
-   * object might be refcounted, its refcount must be dec-
-   * remented. */
   Object obj = pop(vm);
   objdecref(&obj);
 }
 
+/* OP_DUP duplicates the top object on the stack.
+ *
+ * REFCOUNTING: Since the new object might be refcounted,
+ * its refcount must be incremented. */
 static inline void handle_op_dup(VM *vm, BytecodeChunk *chunk, uint8_t **ip) {
-  /* OP_DUP duplicates the top value on the stack. Since the
-   * duplicated object is now present in one more place, its
-   * refcount must be incremented. */
   Object obj = vm->stack[vm->tos - 1];
   push(vm, obj);
   objincref(&obj);
 }
 
+/* OP_DEREF pops an object off the stack, dereferences it
+ * and pushes it back on the stack.
+ * 
+ * REFCOUNTING: Since the object will now be present in one
+ * more another location, its refcount must be incremented. */
 static inline void handle_op_deref(VM *vm, BytecodeChunk *chunk, uint8_t **ip) {
-  /* OP_DEREF pops an object off the stack, dereferences it
-   * and pushes it back on the stack. Since the object will
-   * be present in one more another location, its reference
-   * count must be incremented.*/
   Object ptrobj = pop(vm);
 
   push(vm, *AS_PTR(ptrobj));
   objincref(&*AS_PTR(ptrobj));
 }
 
+/* OP_STRCAT pops two objects off the stack, checks whether they
+ * are both strings and if so, concatenates them, and pushes the
+ * resulting string back on the stack.
+ *
+ * REFCOUNTING:
+ * 
+ * Since Strings are refcounted objects, their refcounts must be
+ * decremented.
+ * 
+ * The resulting string is initalized with the refcount of 1. */
 static inline void handle_op_strcat(VM *vm, BytecodeChunk *chunk,
                                     uint8_t **ip) {
-  /* OP_STRCAT pops two objects off the stack, checks if they
-   * are both Strings, and if so, concatenates them and pushes
-   * the resulting string on the stack. Since Strings are ref-
-   * counted objects, the refcount for the popped objects needs
-   * to be decremented. The resulting string is initalized with
-   * the refcount of 1. */
   Object b = pop(vm);
   Object a = pop(vm);
+
   if (IS_STRING(a) && IS_STRING(b)) {
     char *result =
         concatenate_strings(AS_STRING(a)->value, AS_STRING(b)->value);
