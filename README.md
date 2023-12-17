@@ -34,6 +34,7 @@ This project is my debut in the realm of programming language design. I had a bl
   - recursion!
 - `print` statement
 - global scope
+- reference counting
 - optional NaN boxing
 
 The system includes what you would expect from a programming language implementation:
