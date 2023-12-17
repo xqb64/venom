@@ -161,7 +161,7 @@ static inline char *concatenate_strings(char *a, char *b) {
  *
  * REFCOUNTING: Since the popped object might be refco-
  * unted, the reference count must be decremented. */
-static inline void handle_op_print(VM *vm, BytecodeChunk *chunk, uint8_t **ip) {
+static inline void handle_op_print(VM *vm, Bytecode *code, uint8_t **ip) {
   Object object = pop(vm);
 
 #ifdef venom_debug_vm
@@ -180,7 +180,7 @@ static inline void handle_op_print(VM *vm, BytecodeChunk *chunk, uint8_t **ip) {
  * SAFETY: It is up to the user to ensure the two objec-
  * ts are numbers, because this handler does not do run-
  * time type checks. */
-static inline void handle_op_add(VM *vm, BytecodeChunk *chunk, uint8_t **ip) {
+static inline void handle_op_add(VM *vm, Bytecode *code, uint8_t **ip) {
   BINARY_OP(+, NUM_VAL);
 }
 
@@ -190,7 +190,7 @@ static inline void handle_op_add(VM *vm, BytecodeChunk *chunk, uint8_t **ip) {
  * SAFETY: It is up to the user to ensure the two objec-
  * ts are numbers, because this handler does not do run-
  * time type checks. */
-static inline void handle_op_sub(VM *vm, BytecodeChunk *chunk, uint8_t **ip) {
+static inline void handle_op_sub(VM *vm, Bytecode *code, uint8_t **ip) {
   BINARY_OP(-, NUM_VAL);
 }
 
@@ -200,7 +200,7 @@ static inline void handle_op_sub(VM *vm, BytecodeChunk *chunk, uint8_t **ip) {
  * SAFETY: It is up to the user to ensure the two objec-
  * ts are numbers, because this handler does not do run-
  * time type checks. */
-static inline void handle_op_mul(VM *vm, BytecodeChunk *chunk, uint8_t **ip) {
+static inline void handle_op_mul(VM *vm, Bytecode *code, uint8_t **ip) {
   BINARY_OP(*, NUM_VAL);
 }
 
@@ -210,7 +210,7 @@ static inline void handle_op_mul(VM *vm, BytecodeChunk *chunk, uint8_t **ip) {
  * SAFETY: It is up to the user to ensure the two objec-
  * ts are numbers, because this handler does not do run-
  * time type checks. */
-static inline void handle_op_div(VM *vm, BytecodeChunk *chunk, uint8_t **ip) {
+static inline void handle_op_div(VM *vm, Bytecode *code, uint8_t **ip) {
   BINARY_OP(/, NUM_VAL);
 }
 
@@ -220,7 +220,7 @@ static inline void handle_op_div(VM *vm, BytecodeChunk *chunk, uint8_t **ip) {
  * SAFETY: It is up to the user to ensure the two objec-
  * ts are numbers, because this handler does not do run-
  * time type checks. */
-static inline void handle_op_mod(VM *vm, BytecodeChunk *chunk, uint8_t **ip) {
+static inline void handle_op_mod(VM *vm, Bytecode *code, uint8_t **ip) {
   Object b = pop(vm);
   Object a = pop(vm);
 
@@ -236,8 +236,7 @@ static inline void handle_op_mod(VM *vm, BytecodeChunk *chunk, uint8_t **ip) {
  * SAFETY: It is up to the user to ensure the two objec-
  * ts are numbers, because this handler does not do run-
  * time type checks. */
-static inline void handle_op_bitand(VM *vm, BytecodeChunk *chunk,
-                                    uint8_t **ip) {
+static inline void handle_op_bitand(VM *vm, Bytecode *code, uint8_t **ip) {
   BITWISE_OP(&);
 }
 
@@ -248,7 +247,7 @@ static inline void handle_op_bitand(VM *vm, BytecodeChunk *chunk,
  * SAFETY: It is up to the user to ensure the two objec-
  * ts are numbers, because this handler does not do run-
  * time type checks. */
-static inline void handle_op_bitor(VM *vm, BytecodeChunk *chunk, uint8_t **ip) {
+static inline void handle_op_bitor(VM *vm, Bytecode *code, uint8_t **ip) {
   BITWISE_OP(|);
 }
 
@@ -259,8 +258,7 @@ static inline void handle_op_bitor(VM *vm, BytecodeChunk *chunk, uint8_t **ip) {
  * SAFETY: It is up to the user to ensure the two objec-
  * ts are numbers, because this handler does not do run-
  * time type checks. */
-static inline void handle_op_bitxor(VM *vm, BytecodeChunk *chunk,
-                                    uint8_t **ip) {
+static inline void handle_op_bitxor(VM *vm, Bytecode *code, uint8_t **ip) {
   BITWISE_OP(^);
 }
 
@@ -271,8 +269,7 @@ static inline void handle_op_bitxor(VM *vm, BytecodeChunk *chunk,
  * SAFETY: It is up to the user to ensure the object is a
  * number because this handler does not do a runtime type
  * check. */
-static inline void handle_op_bitnot(VM *vm, BytecodeChunk *chunk,
-                                    uint8_t **ip) {
+static inline void handle_op_bitnot(VM *vm, Bytecode *code, uint8_t **ip) {
   Object obj = pop(vm);
 
   uint64_t clamped = clamp(AS_NUM(obj));
@@ -289,8 +286,7 @@ static inline void handle_op_bitnot(VM *vm, BytecodeChunk *chunk,
  * SAFETY: It is up to the user to ensure the two objec-
  * ts are numbers, because this handler does not do run-
  * time type checks. */
-static inline void handle_op_bitshl(VM *vm, BytecodeChunk *chunk,
-                                    uint8_t **ip) {
+static inline void handle_op_bitshl(VM *vm, Bytecode *code, uint8_t **ip) {
   BITWISE_OP(<<);
 }
 
@@ -301,8 +297,7 @@ static inline void handle_op_bitshl(VM *vm, BytecodeChunk *chunk,
  * SAFETY: It is up to the user to ensure the two objec-
  * ts are numbers, because this handler does not do run-
  * time type checks. */
-static inline void handle_op_bitshr(VM *vm, BytecodeChunk *chunk,
-                                    uint8_t **ip) {
+static inline void handle_op_bitshr(VM *vm, Bytecode *code, uint8_t **ip) {
   BITWISE_OP(>>);
 }
 
@@ -317,7 +312,7 @@ static inline void handle_op_bitshr(VM *vm, BytecodeChunk *chunk,
  * SAFETY: It is up to the user to ensure the two objec-
  * ts are bools, because this handler does not do runti-
  * me type checks. */
-static inline void handle_op_eq(VM *vm, BytecodeChunk *chunk, uint8_t **ip) {
+static inline void handle_op_eq(VM *vm, Bytecode *code, uint8_t **ip) {
   Object b = pop(vm);
   Object a = pop(vm);
 
@@ -334,7 +329,7 @@ static inline void handle_op_eq(VM *vm, BytecodeChunk *chunk, uint8_t **ip) {
  * SAFETY: It is up to the user to ensure the two objects
  * are numbers, because this handler does not do runtime
  * type checks. */
-static inline void handle_op_gt(VM *vm, BytecodeChunk *chunk, uint8_t **ip) {
+static inline void handle_op_gt(VM *vm, Bytecode *code, uint8_t **ip) {
   BINARY_OP(>, BOOL_VAL);
 }
 
@@ -345,7 +340,7 @@ static inline void handle_op_gt(VM *vm, BytecodeChunk *chunk, uint8_t **ip) {
  * SAFETY: It is up to the user to ensure the two objects
  * are numbers, because this handler does not do runtime
  * type checks. */
-static inline void handle_op_lt(VM *vm, BytecodeChunk *chunk, uint8_t **ip) {
+static inline void handle_op_lt(VM *vm, Bytecode *code, uint8_t **ip) {
   BINARY_OP(<, BOOL_VAL);
 }
 
@@ -356,7 +351,7 @@ static inline void handle_op_lt(VM *vm, BytecodeChunk *chunk, uint8_t **ip) {
  * SAFETY: It is up to the user to ensure the object
  * is a bool, because this handler does not do a ru-
  * ntime type check. */
-static inline void handle_op_not(VM *vm, BytecodeChunk *chunk, uint8_t **ip) {
+static inline void handle_op_not(VM *vm, Bytecode *code, uint8_t **ip) {
   Object obj = pop(vm);
   push(vm, BOOL_VAL(AS_BOOL(obj) ^ 1));
 }
@@ -368,28 +363,28 @@ static inline void handle_op_not(VM *vm, BytecodeChunk *chunk, uint8_t **ip) {
  * SAFETY: It is up to the user to ensure the object is
  * a number, because this handler does not do a runtime
  * type check. */
-static inline void handle_op_neg(VM *vm, BytecodeChunk *chunk, uint8_t **ip) {
+static inline void handle_op_neg(VM *vm, Bytecode *code, uint8_t **ip) {
   Object original = pop(vm);
   Object negated = NUM_VAL(-AS_NUM(original));
   push(vm, negated);
 }
 
 /* OP_TRUE pushes a bool object ('true') on the stack. */
-static inline void handle_op_true(VM *vm, BytecodeChunk *chunk, uint8_t **ip) {
+static inline void handle_op_true(VM *vm, Bytecode *code, uint8_t **ip) {
   push(vm, BOOL_VAL(true));
 }
 
 /* OP_NULL pushes a null object on the stack. */
-static inline void handle_op_null(VM *vm, BytecodeChunk *chunk, uint8_t **ip) {
+static inline void handle_op_null(VM *vm, Bytecode *code, uint8_t **ip) {
   push(vm, NULL_VAL);
 }
 
 /* OP_CONST reads a 4-byte index of the constant in the
  * chunk's cp, constructs an object with that value and
  * pushes it on the stack. */
-static inline void handle_op_const(VM *vm, BytecodeChunk *chunk, uint8_t **ip) {
+static inline void handle_op_const(VM *vm, Bytecode *code, uint8_t **ip) {
   uint32_t idx = READ_UINT32();
-  Object obj = NUM_VAL(chunk->cp.data[idx]);
+  Object obj = NUM_VAL(code->cp.data[idx]);
   push(vm, obj);
 }
 
@@ -399,10 +394,10 @@ static inline void handle_op_const(VM *vm, BytecodeChunk *chunk, uint8_t **ip) {
  *
  * REFCOUNTING: Since Strings are refcounted, the newly
  * constructed object has a refcount=1. */
-static inline void handle_op_str(VM *vm, BytecodeChunk *chunk, uint8_t **ip) {
+static inline void handle_op_str(VM *vm, Bytecode *code, uint8_t **ip) {
   uint32_t idx = READ_UINT32();
 
-  String s = {.refcount = 1, .value = own_string(chunk->sp.data[idx])};
+  String s = {.refcount = 1, .value = own_string(code->sp.data[idx])};
 
   push(vm, STRING_VAL(ALLOC(s)));
 }
@@ -411,7 +406,7 @@ static inline void handle_op_str(VM *vm, BytecodeChunk *chunk, uint8_t **ip) {
  * gative), pops an object off the stack, and increments
  * the instruction pointer by the offset, if and only if
  * the popped object was 'false'. */
-static inline void handle_op_jz(VM *vm, BytecodeChunk *chunk, uint8_t **ip) {
+static inline void handle_op_jz(VM *vm, Bytecode *code, uint8_t **ip) {
   int16_t offset = READ_INT16();
   Object obj = pop(vm);
   if (!AS_BOOL(obj)) {
@@ -423,7 +418,7 @@ static inline void handle_op_jz(VM *vm, BytecodeChunk *chunk, uint8_t **ip) {
  * gative), and increments the instruction pointer by the
  * offset. Unlike OP_JZ, which is a conditional jump, the
  * OP_JMP instruction takes the jump unconditionally. */
-static inline void handle_op_jmp(VM *vm, BytecodeChunk *chunk, uint8_t **ip) {
+static inline void handle_op_jmp(VM *vm, Bytecode *code, uint8_t **ip) {
   int16_t offset = READ_INT16();
   *ip += offset;
 }
@@ -436,11 +431,10 @@ static inline void handle_op_jmp(VM *vm, BytecodeChunk *chunk, uint8_t **ip) {
  * the object we are inserting into the table because we're
  * merely moving it from one location to another.
  * */
-static inline void handle_op_set_global(VM *vm, BytecodeChunk *chunk,
-                                        uint8_t **ip) {
+static inline void handle_op_set_global(VM *vm, Bytecode *code, uint8_t **ip) {
   uint32_t name_idx = READ_UINT32();
   Object obj = pop(vm);
-  table_insert(&vm->globals, chunk->sp.data[name_idx], obj);
+  table_insert(&vm->globals, code->sp.data[name_idx], obj);
 }
 
 /* OP_GET_GLOBAL reads a 4-byte index of the variable name
@@ -449,10 +443,9 @@ static inline void handle_op_set_global(VM *vm, BytecodeChunk *chunk,
  *
  * REFCOUNTING: Since the object will be present in yet an-
  * other location, the refcount must be incremented. */
-static inline void handle_op_get_global(VM *vm, BytecodeChunk *chunk,
-                                        uint8_t **ip) {
+static inline void handle_op_get_global(VM *vm, Bytecode *code, uint8_t **ip) {
   uint32_t name_idx = READ_UINT32();
-  Object *obj = table_get_unchecked(&vm->globals, chunk->sp.data[name_idx]);
+  Object *obj = table_get_unchecked(&vm->globals, code->sp.data[name_idx]);
   push(vm, *obj);
   objincref(obj);
 }
@@ -461,11 +454,11 @@ static inline void handle_op_get_global(VM *vm, BytecodeChunk *chunk,
  * name in the chunk's sp, looks up the object under that
  * name in in the vm's globals table, and pushes its add-
  * ress on the stack. */
-static inline void handle_op_get_global_ptr(VM *vm, BytecodeChunk *chunk,
+static inline void handle_op_get_global_ptr(VM *vm, Bytecode *code,
                                             uint8_t **ip) {
   uint32_t name_idx = READ_UINT32();
   Object *object_ptr =
-      table_get_unchecked(&vm->globals, chunk->sp.data[name_idx]);
+      table_get_unchecked(&vm->globals, code->sp.data[name_idx]);
   push(vm, PTR_VAL(object_ptr));
 }
 
@@ -476,8 +469,7 @@ static inline void handle_op_get_global_ptr(VM *vm, BytecodeChunk *chunk,
  * REFCOUNTING: Since the object being set will be over-
  * written, its reference count must be decremented bef-
  * ore putting the popped object into that position. */
-static inline void handle_op_deepset(VM *vm, BytecodeChunk *chunk,
-                                     uint8_t **ip) {
+static inline void handle_op_deepset(VM *vm, Bytecode *code, uint8_t **ip) {
   uint32_t idx = READ_UINT32();
   uint32_t adjusted_idx = adjust_idx(vm, idx);
   Object obj = pop(vm);
@@ -495,8 +487,7 @@ static inline void handle_op_deepset(VM *vm, BytecodeChunk *chunk,
  * REFCOUNTING: We do NOT need to incref/decref the obj-
  * ect here because we're merely moving it from one loc-
  * ation to another. */
-static inline void handle_op_derefset(VM *vm, BytecodeChunk *chunk,
-                                      uint8_t **ip) {
+static inline void handle_op_derefset(VM *vm, Bytecode *code, uint8_t **ip) {
   Object item = pop(vm);
   Object ptr = pop(vm);
 
@@ -510,8 +501,7 @@ static inline void handle_op_derefset(VM *vm, BytecodeChunk *chunk,
  * REFCOUNTING: Since the object being accessed will now
  * be available in yet another location, we need to inc-
  * rement its refcount. */
-static inline void handle_op_deepget(VM *vm, BytecodeChunk *chunk,
-                                     uint8_t **ip) {
+static inline void handle_op_deepget(VM *vm, Bytecode *code, uint8_t **ip) {
   uint32_t idx = READ_UINT32();
   uint32_t adjusted_idx = adjust_idx(vm, idx);
   Object obj = vm->stack[adjusted_idx];
@@ -523,8 +513,7 @@ static inline void handle_op_deepget(VM *vm, BytecodeChunk *chunk,
  * object being accessed, which is adjusted and used to
  * access the object in that position and push its add-
  * ress on the stack. */
-static inline void handle_op_deepget_ptr(VM *vm, BytecodeChunk *chunk,
-                                         uint8_t **ip) {
+static inline void handle_op_deepget_ptr(VM *vm, Bytecode *code, uint8_t **ip) {
   uint32_t idx = READ_UINT32();
   uint32_t adjusted_idx = adjust_idx(vm, idx);
   Object *object_ptr = &vm->stack[adjusted_idx];
@@ -539,8 +528,7 @@ static inline void handle_op_deepget_ptr(VM *vm, BytecodeChunk *chunk,
  *
  * SAFETY: the handler will try to ensure that the accessed
  * property is defined on the object being modified. */
-static inline void handle_op_setattr(VM *vm, BytecodeChunk *chunk,
-                                     uint8_t **ip) {
+static inline void handle_op_setattr(VM *vm, Bytecode *code, uint8_t **ip) {
   uint32_t property_name_idx = READ_UINT32();
 
   Object value = pop(vm);
@@ -549,10 +537,10 @@ static inline void handle_op_setattr(VM *vm, BytecodeChunk *chunk,
   StructBlueprint *sb =
       table_get_unchecked(vm->blueprints, AS_STRUCT(obj)->name);
 
-  int *idx = table_get(sb->property_indexes, chunk->sp.data[property_name_idx]);
+  int *idx = table_get(sb->property_indexes, code->sp.data[property_name_idx]);
   if (!idx) {
     RUNTIME_ERROR("struct '%s' does not have property '%s'",
-                  AS_STRUCT(obj)->name, chunk->sp.data[property_name_idx]);
+                  AS_STRUCT(obj)->name, code->sp.data[property_name_idx]);
   }
 
   AS_STRUCT(obj)->properties[*idx] = value;
@@ -573,17 +561,16 @@ static inline void handle_op_setattr(VM *vm, BytecodeChunk *chunk,
  *
  * Since the popped object will no longer present at the
  * location, its refcount must be decremented. */
-static inline void handle_op_getattr(VM *vm, BytecodeChunk *chunk,
-                                     uint8_t **ip) {
+static inline void handle_op_getattr(VM *vm, Bytecode *code, uint8_t **ip) {
   uint32_t property_name_idx = READ_UINT32();
   Object obj = pop(vm);
 
   StructBlueprint *sb =
       table_get_unchecked(vm->blueprints, AS_STRUCT(obj)->name);
-  int *idx = table_get(sb->property_indexes, chunk->sp.data[property_name_idx]);
+  int *idx = table_get(sb->property_indexes, code->sp.data[property_name_idx]);
   if (!idx) {
     RUNTIME_ERROR("struct '%s' does not have property '%s'",
-                  AS_STRUCT(obj)->name, chunk->sp.data[property_name_idx]);
+                  AS_STRUCT(obj)->name, code->sp.data[property_name_idx]);
   }
 
   Object property = AS_STRUCT(obj)->properties[*idx];
@@ -602,17 +589,16 @@ static inline void handle_op_getattr(VM *vm, BytecodeChunk *chunk,
  *
  * REFCOUNTING: Since the popped object will no longer pre-
  * sent at that location, its refcount must be decremented. */
-static inline void handle_op_getattr_ptr(VM *vm, BytecodeChunk *chunk,
-                                         uint8_t **ip) {
+static inline void handle_op_getattr_ptr(VM *vm, Bytecode *code, uint8_t **ip) {
   uint32_t property_name_idx = READ_UINT32();
   Object object = pop(vm);
 
   StructBlueprint *sb =
       table_get_unchecked(vm->blueprints, AS_STRUCT(object)->name);
-  int *idx = table_get(sb->property_indexes, chunk->sp.data[property_name_idx]);
+  int *idx = table_get(sb->property_indexes, code->sp.data[property_name_idx]);
   if (!idx) {
     RUNTIME_ERROR("struct '%s' does not have property '%s'",
-                  AS_STRUCT(object)->name, chunk->sp.data[property_name_idx]);
+                  AS_STRUCT(object)->name, code->sp.data[property_name_idx]);
   }
 
   Object *property = &AS_STRUCT(object)->properties[*idx];
@@ -625,16 +611,15 @@ static inline void handle_op_getattr_ptr(VM *vm, BytecodeChunk *chunk,
  * sp, constructs a struct object with that name and refco-
  * unt set to 1 (while making sure to initialize the prope-
  * rties table properly), and pushes it on the stack. */
-static inline void handle_op_struct(VM *vm, BytecodeChunk *chunk,
-                                    uint8_t **ip) {
+static inline void handle_op_struct(VM *vm, Bytecode *code, uint8_t **ip) {
   uint32_t structname = READ_UINT32();
 
-  StructBlueprint *sb = table_get(vm->blueprints, chunk->sp.data[structname]);
+  StructBlueprint *sb = table_get(vm->blueprints, code->sp.data[structname]);
   if (!sb) {
-    RUNTIME_ERROR("struct '%s' is not defined", chunk->sp.data[structname]);
+    RUNTIME_ERROR("struct '%s' is not defined", code->sp.data[structname]);
   }
 
-  Struct s = {.name = chunk->sp.data[structname],
+  Struct s = {.name = code->sp.data[structname],
               .propcount = sb->property_indexes->count,
               .refcount = 1,
               .properties =
@@ -657,7 +642,7 @@ static inline void handle_op_struct(VM *vm, BytecodeChunk *chunk,
  * to construct a StructBlueprint object, initialize it
  * properly, and insert it into the vm's blueprints ta-
  * ble. */
-static inline void handle_op_struct_blueprint(VM *vm, BytecodeChunk *chunk,
+static inline void handle_op_struct_blueprint(VM *vm, Bytecode *code,
                                               uint8_t **ip) {
   uint32_t name_idx = READ_UINT32();
   uint32_t propcount = READ_UINT32();
@@ -665,11 +650,11 @@ static inline void handle_op_struct_blueprint(VM *vm, BytecodeChunk *chunk,
   DynArray_char_ptr properties = {0};
   DynArray_uint32_t prop_indexes = {0};
   for (size_t i = 0; i < propcount; i++) {
-    dynarray_insert(&properties, chunk->sp.data[READ_UINT32()]);
+    dynarray_insert(&properties, code->sp.data[READ_UINT32()]);
     dynarray_insert(&prop_indexes, READ_UINT32());
   }
 
-  StructBlueprint sb = {.name = chunk->sp.data[name_idx],
+  StructBlueprint sb = {.name = code->sp.data[name_idx],
                         .property_indexes = malloc(sizeof(Table_int))};
 
   memset(sb.property_indexes, 0, sizeof(Table_int));
@@ -678,7 +663,7 @@ static inline void handle_op_struct_blueprint(VM *vm, BytecodeChunk *chunk,
     table_insert(sb.property_indexes, properties.data[i], prop_indexes.data[i]);
   }
 
-  table_insert(vm->blueprints, chunk->sp.data[name_idx], sb);
+  table_insert(vm->blueprints, code->sp.data[name_idx], sb);
 
   dynarray_free(&properties);
   dynarray_free(&prop_indexes);
@@ -692,7 +677,7 @@ static inline void handle_op_struct_blueprint(VM *vm, BytecodeChunk *chunk,
  * 4-byte operand.
  *
  * The location is where the index of the position where the frame starts. */
-static inline void handle_op_call(VM *vm, BytecodeChunk *chunk, uint8_t **ip) {
+static inline void handle_op_call(VM *vm, Bytecode *code, uint8_t **ip) {
   uint32_t argcount = READ_UINT32();
   BytecodePtr ip_obj = {.addr = *(ip) + 3, .location = vm->tos - argcount};
   vm->fp_stack[vm->fp_count++] = ip_obj;
@@ -701,7 +686,7 @@ static inline void handle_op_call(VM *vm, BytecodeChunk *chunk, uint8_t **ip) {
 /* OP_RET pops a BytecodePtr off the frame pointer stack
  * and sets the instruction pointer to point to the add-
  * ress contained in the BytecodePtr. */
-static inline void handle_op_ret(VM *vm, BytecodeChunk *chunk, uint8_t **ip) {
+static inline void handle_op_ret(VM *vm, Bytecode *code, uint8_t **ip) {
   BytecodePtr retaddr = vm->fp_stack[--vm->fp_count];
   *ip = retaddr.addr;
 }
@@ -710,19 +695,9 @@ static inline void handle_op_ret(VM *vm, BytecodeChunk *chunk, uint8_t **ip) {
  *
  * REFCOUNTING: Since the popped object might be refcounted,
  * its refcount must be decremented. */
-static inline void handle_op_pop(VM *vm, BytecodeChunk *chunk, uint8_t **ip) {
+static inline void handle_op_pop(VM *vm, Bytecode *code, uint8_t **ip) {
   Object obj = pop(vm);
   objdecref(&obj);
-}
-
-/* OP_DUP duplicates the top object on the stack.
- *
- * REFCOUNTING: Since the new object might be refcounted,
- * its refcount must be incremented. */
-static inline void handle_op_dup(VM *vm, BytecodeChunk *chunk, uint8_t **ip) {
-  Object obj = vm->stack[vm->tos - 1];
-  push(vm, obj);
-  objincref(&obj);
 }
 
 /* OP_DEREF pops an object off the stack, dereferences it
@@ -730,7 +705,7 @@ static inline void handle_op_dup(VM *vm, BytecodeChunk *chunk, uint8_t **ip) {
  *
  * REFCOUNTING: Since the object will now be present in one
  * more another location, its refcount must be incremented. */
-static inline void handle_op_deref(VM *vm, BytecodeChunk *chunk, uint8_t **ip) {
+static inline void handle_op_deref(VM *vm, Bytecode *code, uint8_t **ip) {
   Object ptrobj = pop(vm);
 
   push(vm, *AS_PTR(ptrobj));
@@ -747,8 +722,7 @@ static inline void handle_op_deref(VM *vm, BytecodeChunk *chunk, uint8_t **ip) {
  * decremented.
  *
  * The resulting string is initalized with the refcount of 1. */
-static inline void handle_op_strcat(VM *vm, BytecodeChunk *chunk,
-                                    uint8_t **ip) {
+static inline void handle_op_strcat(VM *vm, Bytecode *code, uint8_t **ip) {
   Object b = pop(vm);
   Object a = pop(vm);
 
@@ -846,8 +820,6 @@ static inline const char *print_current_instruction(uint8_t opcode) {
     return "OP_RET";
   case OP_POP:
     return "OP_POP";
-  case OP_DUP:
-    return "OP_DUP";
   case OP_DEREF:
     return "OP_DEREF";
   case OP_DEREFSET:
@@ -860,13 +832,13 @@ static inline const char *print_current_instruction(uint8_t opcode) {
 }
 #endif
 
-void run(VM *vm, BytecodeChunk *chunk) {
+void run(VM *vm, Bytecode *code) {
 #ifdef venom_debug_disassembler
   disassemble(chunk);
 #endif
 
-  for (uint8_t *ip = chunk->code.data;
-       ip < &chunk->code.data[chunk->code.count]; /* ip < addr of just beyond
+  for (uint8_t *ip = code->code.data;
+       ip < &code->code.data[code->code.count]; /* ip < addr of just beyond
                                                      the last instruction */
        ip++) {
 
@@ -876,167 +848,163 @@ void run(VM *vm, BytecodeChunk *chunk) {
 
     switch (*ip) {
     case OP_PRINT: {
-      handle_op_print(vm, chunk, &ip);
+      handle_op_print(vm, code, &ip);
       break;
     }
     case OP_ADD: {
-      handle_op_add(vm, chunk, &ip);
+      handle_op_add(vm, code, &ip);
       break;
     }
     case OP_SUB: {
-      handle_op_sub(vm, chunk, &ip);
+      handle_op_sub(vm, code, &ip);
       break;
     }
     case OP_MUL: {
-      handle_op_mul(vm, chunk, &ip);
+      handle_op_mul(vm, code, &ip);
       break;
     }
     case OP_DIV: {
-      handle_op_div(vm, chunk, &ip);
+      handle_op_div(vm, code, &ip);
       break;
     }
     case OP_MOD: {
-      handle_op_mod(vm, chunk, &ip);
+      handle_op_mod(vm, code, &ip);
       break;
     }
     case OP_EQ: {
-      handle_op_eq(vm, chunk, &ip);
+      handle_op_eq(vm, code, &ip);
       break;
     }
     case OP_GT: {
-      handle_op_gt(vm, chunk, &ip);
+      handle_op_gt(vm, code, &ip);
       break;
     }
     case OP_LT: {
-      handle_op_lt(vm, chunk, &ip);
+      handle_op_lt(vm, code, &ip);
       break;
     }
     case OP_NOT: {
-      handle_op_not(vm, chunk, &ip);
+      handle_op_not(vm, code, &ip);
       break;
     }
     case OP_NEG: {
-      handle_op_neg(vm, chunk, &ip);
+      handle_op_neg(vm, code, &ip);
       break;
     }
     case OP_TRUE: {
-      handle_op_true(vm, chunk, &ip);
+      handle_op_true(vm, code, &ip);
       break;
     }
     case OP_NULL: {
-      handle_op_null(vm, chunk, &ip);
+      handle_op_null(vm, code, &ip);
       break;
     }
     case OP_CONST: {
-      handle_op_const(vm, chunk, &ip);
+      handle_op_const(vm, code, &ip);
       break;
     }
     case OP_STR: {
-      handle_op_str(vm, chunk, &ip);
+      handle_op_str(vm, code, &ip);
       break;
     }
     case OP_JZ: {
-      handle_op_jz(vm, chunk, &ip);
+      handle_op_jz(vm, code, &ip);
       break;
     }
     case OP_JMP: {
-      handle_op_jmp(vm, chunk, &ip);
+      handle_op_jmp(vm, code, &ip);
       break;
     }
     case OP_BITAND: {
-      handle_op_bitand(vm, chunk, &ip);
+      handle_op_bitand(vm, code, &ip);
       break;
     }
     case OP_BITOR: {
-      handle_op_bitor(vm, chunk, &ip);
+      handle_op_bitor(vm, code, &ip);
       break;
     }
     case OP_BITXOR: {
-      handle_op_bitxor(vm, chunk, &ip);
+      handle_op_bitxor(vm, code, &ip);
       break;
     }
     case OP_BITNOT: {
-      handle_op_bitnot(vm, chunk, &ip);
+      handle_op_bitnot(vm, code, &ip);
       break;
     }
     case OP_BITSHL: {
-      handle_op_bitshl(vm, chunk, &ip);
+      handle_op_bitshl(vm, code, &ip);
       break;
     }
     case OP_BITSHR: {
-      handle_op_bitshr(vm, chunk, &ip);
+      handle_op_bitshr(vm, code, &ip);
       break;
     }
     case OP_SET_GLOBAL: {
-      handle_op_set_global(vm, chunk, &ip);
+      handle_op_set_global(vm, code, &ip);
       break;
     }
     case OP_GET_GLOBAL: {
-      handle_op_get_global(vm, chunk, &ip);
+      handle_op_get_global(vm, code, &ip);
       break;
     }
     case OP_GET_GLOBAL_PTR: {
-      handle_op_get_global_ptr(vm, chunk, &ip);
+      handle_op_get_global_ptr(vm, code, &ip);
       break;
     }
     case OP_DEEPSET: {
-      handle_op_deepset(vm, chunk, &ip);
+      handle_op_deepset(vm, code, &ip);
       break;
     }
     case OP_DEEPGET: {
-      handle_op_deepget(vm, chunk, &ip);
+      handle_op_deepget(vm, code, &ip);
       break;
     }
     case OP_DEEPGET_PTR: {
-      handle_op_deepget_ptr(vm, chunk, &ip);
+      handle_op_deepget_ptr(vm, code, &ip);
       break;
     }
     case OP_SETATTR: {
-      handle_op_setattr(vm, chunk, &ip);
+      handle_op_setattr(vm, code, &ip);
       break;
     }
     case OP_GETATTR: {
-      handle_op_getattr(vm, chunk, &ip);
+      handle_op_getattr(vm, code, &ip);
       break;
     }
     case OP_GETATTR_PTR: {
-      handle_op_getattr_ptr(vm, chunk, &ip);
+      handle_op_getattr_ptr(vm, code, &ip);
       break;
     }
     case OP_STRUCT: {
-      handle_op_struct(vm, chunk, &ip);
+      handle_op_struct(vm, code, &ip);
       break;
     }
     case OP_STRUCT_BLUEPRINT: {
-      handle_op_struct_blueprint(vm, chunk, &ip);
+      handle_op_struct_blueprint(vm, code, &ip);
       break;
     }
     case OP_CALL: {
-      handle_op_call(vm, chunk, &ip);
+      handle_op_call(vm, code, &ip);
       break;
     }
     case OP_RET: {
-      handle_op_ret(vm, chunk, &ip);
+      handle_op_ret(vm, code, &ip);
       break;
     }
     case OP_POP: {
-      handle_op_pop(vm, chunk, &ip);
-      break;
-    }
-    case OP_DUP: {
-      handle_op_dup(vm, chunk, &ip);
+      handle_op_pop(vm, code, &ip);
       break;
     }
     case OP_DEREF: {
-      handle_op_deref(vm, chunk, &ip);
+      handle_op_deref(vm, code, &ip);
       break;
     }
     case OP_DEREFSET: {
-      handle_op_derefset(vm, chunk, &ip);
+      handle_op_derefset(vm, code, &ip);
       break;
     }
     case OP_STRCAT: {
-      handle_op_strcat(vm, chunk, &ip);
+      handle_op_strcat(vm, code, &ip);
       break;
     }
     default:

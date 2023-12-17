@@ -17,9 +17,9 @@ void run_file(char *file) {
   Parser parser;
   init_parser(&parser);
 
-  DynArray_Statement stmts = parse(&parser, &tokenizer);
+  DynArray_Stmt stmts = parse(&parser, &tokenizer);
 
-  BytecodeChunk chunk;
+  Bytecode chunk;
   init_chunk(&chunk);
 
   Compiler compiler;

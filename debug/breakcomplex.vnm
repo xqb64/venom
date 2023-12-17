@@ -3,11 +3,11 @@ fn main() {
   while (i < 5) {
     i = i + 1;
     if (i == 2) {
-      let j = 0;
-      while (j < 5) {
+      let j = 1024;
+      while (j < 1029) {
         j = j + 1;
         print "Hello, world!";
-        if (j == 3) {
+        if (j == 1025) {
           continue;
         }
       }

@@ -3,6 +3,6 @@
 
 #include "compiler.h"
 
-void disassemble(BytecodeChunk *chunk);
+void disassemble(Bytecode *code);
 
 #endif

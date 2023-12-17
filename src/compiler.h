@@ -48,7 +48,6 @@ typedef enum {
   OP_CALL,
   OP_RET,
   OP_POP,
-  OP_DUP,
   OP_DEREF,
   OP_DEREFSET,
   OP_STRCAT,
@@ -57,11 +56,11 @@ typedef enum {
 typedef DynArray(uint8_t) DynArray_uint8_t;
 typedef DynArray(double) DynArray_double;
 
-typedef struct BytecodeChunk {
+typedef struct Bytecode {
   DynArray_uint8_t code;
   DynArray_double cp;   /* constant pool */
   DynArray_char_ptr sp; /* string pool */
-} BytecodeChunk;
+} Bytecode;
 
 typedef struct {
   char *name;
@@ -88,14 +87,15 @@ typedef struct Compiler {
   DynArray_char_ptr locals;
   DynArray_int breaks;
   DynArray_int loop_starts;
+  DynArray_int loop_depths;
   int depth;
   int pops[POPS_MAX];
 } Compiler;
 
-void init_chunk(BytecodeChunk *chunk);
-void free_chunk(BytecodeChunk *chunk);
+void init_chunk(Bytecode *code);
+void free_chunk(Bytecode *code);
 void init_compiler(Compiler *compiler);
 void free_compiler(Compiler *compiler);
-void compile(Compiler *compiler, BytecodeChunk *chunk, Statement stmt);
+void compile(Compiler *compiler, Bytecode *code, Stmt stmt);
 
 #endif

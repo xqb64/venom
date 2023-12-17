@@ -46,24 +46,23 @@ static DisassembleHandler disassemble_handler[] = {
     [OP_STRUCT] = {.opcode = "OP_STRUCT", .operands = 4},
     [OP_RET] = {.opcode = "OP_RET", .operands = 0},
     [OP_POP] = {.opcode = "OP_POP", .operands = 0},
-    [OP_DUP] = {.opcode = "OP_DUP", .operands = 0},
     [OP_DEREF] = {.opcode = "OP_DEREF", .operands = 0},
     [OP_DEREFSET] = {.opcode = "OP_DEREFSET", .operands = 0},
     [OP_CALL] = {.opcode = "OP_CALL", .operands = 4},
 };
 
-void disassemble(BytecodeChunk *chunk) {
+void disassemble(Bytecode *code) {
 #define READ_UINT8() (*++ip)
 #define READ_INT16() (ip += 2, (int16_t)((ip[-1] << 8) | ip[0]))
 
 #define READ_UINT32()                                                          \
   (ip += 4, (uint32_t)((ip[-3] << 24) | (ip[-2] << 16) | (ip[-1] << 8) | ip[0]))
 
-  for (uint8_t *ip = chunk->code.data;
-       ip < &chunk->code.data[chunk->code.count]; /* ip < addr of just beyond
+  for (uint8_t *ip = code->code.data;
+       ip < &code->code.data[code->code.count]; /* ip < addr of just beyond
                                                      the last instruction */
        ip++) {
-    printf("%ld: ", ip - chunk->code.data);
+    printf("%ld: ", ip - code->code.data);
     printf("%s", disassemble_handler[*ip].opcode);
     switch (disassemble_handler[*ip].operands) {
     case 0:
@@ -76,12 +75,12 @@ void disassemble(BytecodeChunk *chunk) {
       switch (*ip) {
       case OP_CONST: {
         uint32_t const_idx = READ_UINT32();
-        printf(" (value: %.16g)", chunk->cp.data[const_idx]);
+        printf(" (value: %.16g)", code->cp.data[const_idx]);
         break;
       }
       case OP_STR: {
         uint32_t str_idx = READ_UINT32();
-        printf(" (value: %s)", chunk->sp.data[str_idx]);
+        printf(" (value: %s)", code->sp.data[str_idx]);
         break;
       }
       case OP_DEEPGET:
@@ -95,18 +94,18 @@ void disassemble(BytecodeChunk *chunk) {
       case OP_GET_GLOBAL_PTR:
       case OP_SET_GLOBAL: {
         uint32_t name_idx = READ_UINT32();
-        printf(" (name: %s)", chunk->sp.data[name_idx]);
+        printf(" (name: %s)", code->sp.data[name_idx]);
         break;
       }
       case OP_GETATTR:
       case OP_SETATTR: {
         uint32_t property_name_idx = READ_UINT32();
-        printf(" (property: %s)", chunk->sp.data[property_name_idx]);
+        printf(" (property: %s)", code->sp.data[property_name_idx]);
         break;
       }
       case OP_STRUCT: {
         uint32_t name_idx = READ_UINT32();
-        printf(" (name: %s)", chunk->sp.data[name_idx]);
+        printf(" (name: %s)", code->sp.data[name_idx]);
         break;
       }
       case OP_CALL: {
