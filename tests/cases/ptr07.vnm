@@ -1,0 +1,11 @@
+let x = 1024;
+fn change_global(global) {
+  *global = 2048;
+  return 0;
+}
+fn main() {
+  change_global(&x);
+  print x;
+  return 0;
+}
+main();

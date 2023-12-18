@@ -1,0 +1,39 @@
+struct node {
+  next;
+  value;
+}
+
+fn change_thing(thing) {
+  **thing = true;
+  print "thing is:";
+  print thing;
+  print "*thing is:";
+  print *thing;
+  print "**thing is:";
+  print **thing;
+  return 0;
+}
+
+fn main() {
+  let egg = node {
+    value: 3.14,
+    next: node {
+      value: "Hello, world!",
+      next: node {
+        value: false,
+        next: null
+      }
+    }
+  };
+  
+  let w = &egg.next.next.value;
+  print "w is:";
+  print w;
+  print "*w is:";
+  print *w;
+  change_thing(&w);
+  print *w;
+  return 0;
+}
+
+main();

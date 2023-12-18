@@ -1,0 +1,8 @@
+fn main() {
+  let x = 16;
+  print x;
+  x = 32;
+  print x;
+  return 0;
+}
+main();

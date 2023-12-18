@@ -1,0 +1,17 @@
+struct node {
+  next;
+  value;
+}
+fn preent(thing) {
+  print thing->next->value;
+  return 0;
+}
+fn main() {
+  let bla = 3;
+  let egg = node { next: null, value: &bla };
+  let lol = node { next: &egg, value: 3.14 };
+  let z = &lol.next->value;
+  print **z;
+  return 0;
+}
+main();

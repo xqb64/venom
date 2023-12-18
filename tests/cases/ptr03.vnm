@@ -1,0 +1,17 @@
+struct node {
+  next;
+  value;
+}
+fn change_value(n) {
+  n->next->next.value = "Hello, world!";
+  return 0;
+}
+fn main() {
+  let a = node { next: null, value: 3.14 };
+  let b = node { next: a, value: false };
+  let c = node { next: &b, value: 1024 };
+  change_value(&c);
+  print a.value;
+  return 0;
+}
+main();

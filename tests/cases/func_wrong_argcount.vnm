@@ -1,0 +1,5 @@
+fn main(x, y) {
+  print x + y;
+  return 0;
+}
+main(1);

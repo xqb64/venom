@@ -1,0 +1,5 @@
+fn main(x) {
+  print x;
+  return 0;
+}
+amain();

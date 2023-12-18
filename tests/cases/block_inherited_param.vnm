@@ -1,0 +1,7 @@
+fn main(x) {
+  if (x == 0) {
+    print x;
+  }
+  return 0;
+}
+main(0);

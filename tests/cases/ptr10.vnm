@@ -1,0 +1,19 @@
+struct node {
+  next;
+  value;
+}
+
+let x = node { next: null, value: 3.14 };
+let y = node { next: &x, value: false };
+let z = node { next: &y, value: "Hello, world!" };
+
+fn change_global(x) {
+  x->next->next->value = 1.23;
+  return 0;
+}
+fn main() {
+  change_global(&z);
+  print x.value;
+  return 0;
+}
+main();

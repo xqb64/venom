@@ -1,0 +1,18 @@
+struct node {
+  next;
+  value;
+}
+
+let x = node { next: null, value: 3.14 };
+let y = node { next: &x, value: false };
+let z = node { next: &y, value: "Hello, world!" };
+
+fn preent_global(x) {
+  print x->next->next->value;
+  return 0;
+}
+fn main() {
+  preent_global(&z);
+  return 0;
+}
+main();

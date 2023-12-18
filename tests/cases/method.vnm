@@ -1,0 +1,25 @@
+struct spam {
+  x;
+  y;
+}
+
+impl spam {
+  fn say_x(self) {
+    self.say_y();
+    return 0;
+  }
+
+  fn say_y(self) {
+    print self.y;
+    return 0;
+  }
+}
+
+fn main() {
+  let s = spam { x: 64, y: 128 };
+  let egg = &s;
+  egg->say_x();
+  return 0;
+}
+
+main();

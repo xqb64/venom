@@ -1,7 +1,7 @@
 import subprocess
-from pathlib import Path
 
 from tests.util import VALGRIND_CMD
+from tests.util import CASES_PATH
 
 RESULTS = {
     "assignment.vnm": {
@@ -185,7 +185,7 @@ RESULTS = {
 def test_debug():
     for file, info in RESULTS.items():
         process = subprocess.run(
-            VALGRIND_CMD + [Path(".") / "debug" / file],
+            VALGRIND_CMD + [CASES_PATH / file],
             capture_output=True,
         )
         print(file)

@@ -1,0 +1,10 @@
+let x = 1024;
+fn preent_global(global) {
+  print *global + *global + 2048;
+  return 0;
+}
+fn main() {
+  preent_global(&x);
+  return 0;
+}
+main();

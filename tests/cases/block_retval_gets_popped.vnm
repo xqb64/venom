@@ -1,0 +1,12 @@
+fn main(x) {
+  let z = 3;
+  print x+z;
+  return 0;
+}
+main(4);
+let egg = 0;
+while (egg < 5) {
+  let wut = "Hello, world!";
+  egg = egg+1;
+  print wut;
+}

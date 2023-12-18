@@ -1,0 +1,11 @@
+fn change_thing(thing) {
+  *thing = *thing + *thing + 8;
+  return 0;
+}
+fn main() {
+  let egg = 3;
+  change_thing(&egg);
+  print egg;
+  return 0;
+}
+main();

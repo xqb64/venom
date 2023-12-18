@@ -1,0 +1,15 @@
+struct node {
+  next;
+  value;
+}
+fn change_value(x) {
+  x->value = "Hello, world!";
+  return 0;
+}
+fn main() {
+  let egg = node { next: null, value: 3.14 };
+  change_value(&egg);
+  print egg.value;
+  return 0;
+}
+main();
