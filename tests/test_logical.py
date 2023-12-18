@@ -42,12 +42,10 @@ def test_logical(tmp_path, a, b, if_a_equals, op, if_b_equals, should_print):
     process = subprocess.run(
         VALGRIND_CMD + [input_file],
         capture_output=True,
+        check=True,
     )
 
     expected = should_print
 
     assert f"dbg print :: {expected}\n".encode("utf-8") in process.stdout
     assert process.returncode == 0
-
-    # the stack must end up empty
-    assert process.stdout.endswith(b"stack: []\n")

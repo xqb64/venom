@@ -3,6 +3,7 @@ import pytest
 import textwrap
 
 from tests.util import VALGRIND_CMD
+from tests.util import assert_output
 
 
 @pytest.mark.parametrize(
@@ -32,17 +33,12 @@ def test_bitwise(tmp_path, a, op, b, expected):
     process = subprocess.run(
         VALGRIND_CMD + [input_file],
         capture_output=True,
+        check=True,
     )
 
     output = process.stdout.decode("utf-8")
 
-    assert f"dbg print :: {expected:.16g}" in output
-
-    assert process.returncode == 0
-
-    # the stack must end up empty because we're consuming the
-    # boolean value in the while condition
-    assert output.endswith("stack: []\n")
+    assert_output(output, [expected])
 
 
 def test_bitwise_not(tmp_path):
@@ -61,14 +57,9 @@ def test_bitwise_not(tmp_path):
     process = subprocess.run(
         VALGRIND_CMD + [input_file],
         capture_output=True,
+        check=True,
     )
 
     output = process.stdout.decode("utf-8")
 
-    assert f"dbg print :: {1:.16g}" in output
-
-    assert process.returncode == 0
-
-    # the stack must end up empty because we're consuming the
-    # boolean value in the while condition
-    assert output.endswith("stack: []\n")
+    assert_output(output, [1])

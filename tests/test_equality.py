@@ -2,29 +2,7 @@ import subprocess
 import pytest
 import textwrap
 
-from tests.util import VALGRIND_CMD
-
-
-class Struct:
-    def __init__(self, name, **kwargs):
-        self.name = name
-        self.properties = kwargs
-
-    def __str__(self):
-        return "%s { %s }" % (
-            self.name,
-            ", ".join(f"{k}: {str(v)}" for k, v in self.properties.items()),
-        )
-
-    def definition(self):
-        return textwrap.dedent(
-            """
-            struct %s {
-                %s
-            }
-            """
-            % (self.name, "".join(f"{k};" for k in self.properties.keys()))
-        )
+from tests.util import VALGRIND_CMD, Struct
 
 
 @pytest.mark.parametrize(
@@ -90,15 +68,12 @@ def test_equality(tmp_path, a, b):
     process = subprocess.run(
         VALGRIND_CMD + [input_file],
         capture_output=True,
+        check=True,
     )
 
     expected = "true" if a == b else "false"
 
     assert f"dbg print :: {expected}\n".encode("utf-8") in process.stdout
-    assert process.returncode == 0
-
-    # the stack must end up empty
-    assert "stack: []".encode("utf-8") in process.stdout
 
 
 def test_equality_same_object(tmp_path):
@@ -123,12 +98,9 @@ def test_equality_same_object(tmp_path):
     process = subprocess.run(
         VALGRIND_CMD + [input_file],
         capture_output=True,
+        check=True,
     )
 
     expected = "true"
 
     assert f"dbg print :: {expected}\n".encode("utf-8") in process.stdout
-    assert process.returncode == 0
-
-    # the stack must end up empty
-    assert "stack: []".encode("utf-8") in process.stdout

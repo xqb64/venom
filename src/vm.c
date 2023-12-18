@@ -1086,9 +1086,5 @@ void run(VM *vm, Bytecode *code) {
 #ifdef venom_debug_vm
     PRINT_STACK();
 #endif
-
-#ifdef venom_debug_vm
-    PRINT_FPSTACK();
-#endif
   }
 }

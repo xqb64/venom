@@ -1,165 +1,61 @@
 import subprocess
-import textwrap
 
-from tests.util import VALGRIND_CMD
+from tests.util import VALGRIND_CMD, CASES_PATH
+from tests.util import assert_output
 
 
-def test_pointers_deref_set(tmp_path):
-    source = textwrap.dedent(
-        """
-        fn change_thing(thing) {
-          *thing = *thing + *thing + 8;
-          return 0;
-        }
-        fn main() {
-          let egg = 3;
-          change_thing(&egg);
-          print egg;
-          return 0;
-        }
-        main();"""
-    )
-    input_file = tmp_path / "input.vnm"
-    input_file.write_text(source)
+def test_pointers_01():
+    input_file = CASES_PATH / "ptr01.vnm"
 
     process = subprocess.run(
         VALGRIND_CMD + [input_file],
         capture_output=True,
+        check=True,
     )
 
-    expected = "14"
+    output = process.stdout.decode("utf-8")
 
-    assert f"dbg print :: {expected}\n".encode("utf-8") in process.stdout
-    assert process.returncode == 0
-
-    # the stack must end up empty
-    assert "stack: []".encode("utf-8") in process.stdout
+    assert_output(output, [14])
 
 
-def test_pointers_arrow_set(tmp_path):
-    source = textwrap.dedent(
-        """
-        struct node {
-          next;
-          value;
-        }
-        fn change_value(x) {
-          x->value = "Hello, world!";
-          return 0;
-        }
-        fn main() {
-          let egg = node { next: null, value: 3.14 };
-          change_value(&egg);
-          print egg.value;
-          return 0;
-        }
-        main();"""
-    )
-    input_file = tmp_path / "input.vnm"
-    input_file.write_text(source)
+def test_pointers_02():
+    input_file = CASES_PATH / "ptr02.vnm"
 
     process = subprocess.run(
         VALGRIND_CMD + [input_file],
         capture_output=True,
+        check=True,
     )
 
-    expected = "Hello, world!"
+    output = process.stdout.decode("utf-8")
 
-    assert f"dbg print :: {expected}\n".encode("utf-8") in process.stdout
-    assert process.returncode == 0
-
-    # the stack must end up empty
-    assert "stack: []".encode("utf-8") in process.stdout
+    assert_output(output, ["Hello, world!"])
 
 
-def test_pointers_chained(tmp_path):
-    source = textwrap.dedent(
-        """
-        struct node {
-          next;
-          value;
-        }
-        fn change_value(n) {
-          n->next->next.value = "Hello, world!";
-          return 0;
-        }
-        fn main() {
-          let a = node { next: null, value: 3.14 };
-          let b = node { next: a, value: false };
-          let c = node { next: &b, value: 1024 };
-          change_value(&c);
-          print a.value;
-          return 0;
-        }
-        main();"""
-    )
-    input_file = tmp_path / "input.vnm"
-    input_file.write_text(source)
+def test_pointers_03():
+    input_file = CASES_PATH / "ptr03.vnm"
 
     process = subprocess.run(
         VALGRIND_CMD + [input_file],
         capture_output=True,
+        check=True,
     )
 
-    expected = "Hello, world!"
+    output = process.stdout.decode("utf-8")
 
-    assert f"dbg print :: {expected}\n".encode("utf-8") in process.stdout
-    assert process.returncode == 0
-
-    # the stack must end up empty
-    assert "stack: []".encode("utf-8") in process.stdout
+    assert_output(output, ["Hello, world!"])
 
 
-def test_pointers_double_deref(tmp_path):
-    source = textwrap.dedent(
-        """
-        struct node {
-          next;
-          value;
-        }
-        
-        fn change_thing(thing) {
-          **thing = true;
-          print "thing is:";
-          print thing;
-          print "*thing is:";
-          print *thing;
-          print "**thing is:";
-          print **thing;
-          return 0;
-        }
-        
-        fn main() {
-          let egg = node {
-            value: 3.14,
-            next: node {
-              value: "Hello, world!",
-              next: node {
-                value: false,
-                next: null
-              }
-            }
-          };
-          
-          let w = &egg.next.next.value;
-          print "w is:";
-          print w;
-          print "*w is:";
-          print *w;
-          change_thing(&w);
-          print *w;
-          return 0;
-        }
-        
-        main();"""
-    )
-    input_file = tmp_path / "input.vnm"
-    input_file.write_text(source)
+def test_pointers_04():
+    input_file = CASES_PATH / "ptr04.vnm"
 
     process = subprocess.run(
         VALGRIND_CMD + [input_file],
         capture_output=True,
+        check=True,
     )
+
+    output = process.stdout.decode("utf-8")
 
     dbg_prints = [
         "w is:",
@@ -175,297 +71,102 @@ def test_pointers_double_deref(tmp_path):
         "true",
     ]
 
-    output = process.stdout.decode("utf-8")
-    for debug_print in dbg_prints:
-        assert debug_print in output
-        output = output[
-            output.index(debug_print) + len(debug_print)
-            if not debug_print.startswith("PTR")
-            else 22 :
-        ]
-
-    assert process.returncode == 0
-
-    # the stack must end up empty
-    assert "stack: []".encode("utf-8") in process.stdout
+    assert_output(output, dbg_prints)
 
 
-def test_pointers_werid(tmp_path):
-    source = textwrap.dedent(
-        """
-        struct node {
-          next;
-          value;
-        }
-        fn preent(thing) {
-          print thing->next->value;
-          return 0;
-        }
-        fn main() {
-          let bla = 3;
-          let egg = node { next: null, value: &bla };
-          let lol = node { next: &egg, value: 3.14 };
-          let z = &lol.next->value;
-          print **z;
-          return 0;
-        }
-        main();"""
-    )
-    input_file = tmp_path / "input.vnm"
-    input_file.write_text(source)
+def test_pointers_05():
+    input_file = CASES_PATH / "ptr05.vnm"
 
     process = subprocess.run(
         VALGRIND_CMD + [input_file],
         capture_output=True,
+        check=True,
     )
-
-    expected = "3"
-
-    assert f"dbg print :: {expected}\n".encode("utf-8") in process.stdout
-    assert process.returncode == 0
-
-    # the stack must end up empty
-    assert "stack: []".encode("utf-8") in process.stdout
-
-
-def test_pointers_linked_list(tmp_path):
-    source = textwrap.dedent(
-        """
-        struct node {
-          next;
-          value;
-        }
-        fn list_preent(list) {
-          let current = *list;
-          while (current != null) {
-            print current.value;
-            current = current.next;
-          }
-          return 0;
-        }
-        fn list_insert(list, item) {
-          let new_node = node { next: null, value: item };
-          if (*list == null) {
-            *list = new_node;
-          } else {
-            let current = list;
-            while (current->next != null) {
-              current = &current->next;
-            }
-            current->next = new_node;
-          }
-          return 0;
-        }
-        fn main() {
-          let list = null;
-          list_insert(&list, 3.14);
-          list_insert(&list, false);
-          list_insert(&list, "Hello, world!");
-          list_preent(&list);
-          return 0;
-        }
-        main();"""
-    )
-    input_file = tmp_path / "input.vnm"
-    input_file.write_text(source)
-
-    process = subprocess.run(
-        VALGRIND_CMD + [input_file],
-        capture_output=True,
-    )
-
-    dbg_prints = [
-        "dbg print :: 3.14",
-        "dbg print :: false",
-        "dbg print :: Hello, world!",
-    ]
 
     output = process.stdout.decode("utf-8")
-    for debug_print in dbg_prints:
-        assert debug_print in output
-        output = output[output.index(debug_print) + len(debug_print) :]
 
-    assert process.returncode == 0
-
-    # the stack must end up empty
-    assert "stack: []".encode("utf-8") in process.stdout
+    assert_output(output, [3])
 
 
-def test_pointers_global_deref(tmp_path):
-    source = textwrap.dedent(
-        """
-        let x = 1024;
-        fn preent_global(global) {
-          print *global + *global + 2048;
-          return 0;
-        }
-        fn main() {
-          preent_global(&x);
-          return 0;
-        }
-        main();
-        """
-    )
-    input_file = tmp_path / "input.vnm"
-    input_file.write_text(source)
+def test_pointers_06():
+    input_file = CASES_PATH / "ptr06.vnm"
 
     process = subprocess.run(
         VALGRIND_CMD + [input_file],
         capture_output=True,
+        check=True,
     )
 
-    expected = "4096"
+    output = process.stdout.decode("utf-8")
 
-    assert f"dbg print :: {expected}\n".encode("utf-8") in process.stdout
-    assert process.returncode == 0
-
-    # the stack must end up empty
-    assert "stack: []".encode("utf-8") in process.stdout
+    assert_output(output, [4096])
 
 
-def test_pointers_global_deref_set(tmp_path):
-    source = textwrap.dedent(
-        """
-        let x = 1024;
-        fn change_global(global) {
-          *global = 2048;
-          return 0;
-        }
-        fn main() {
-          change_global(&x);
-          print x;
-          return 0;
-        }
-        main();
-        """
-    )
-    input_file = tmp_path / "input.vnm"
-    input_file.write_text(source)
+def test_pointers_07():
+    input_file = CASES_PATH / "ptr07.vnm"
 
     process = subprocess.run(
         VALGRIND_CMD + [input_file],
         capture_output=True,
+        check=True,
     )
 
-    expected = "2048"
+    output = process.stdout.decode("utf-8")
 
-    assert f"dbg print :: {expected}\n".encode("utf-8") in process.stdout
-    assert process.returncode == 0
-
-    # the stack must end up empty
-    assert "stack: []".encode("utf-8") in process.stdout
+    assert_output(output, [2048])
 
 
-def test_pointers_global_double_deref_set(tmp_path):
-    source = textwrap.dedent(
-        """
-        let x = 1024;
-        fn change_global(global) {
-          **global = 2048;
-          return 0;
-        }
-        fn main() {
-          let z = &x;
-          change_global(&z);
-          print x;
-          return 0;
-        }
-        main();
-        """
-    )
-    input_file = tmp_path / "input.vnm"
-    input_file.write_text(source)
+def test_pointers_08():
+    input_file = CASES_PATH / "ptr08.vnm"
 
     process = subprocess.run(
         VALGRIND_CMD + [input_file],
         capture_output=True,
+        check=True,
     )
 
-    expected = "2048"
+    output = process.stdout.decode("utf-8")
 
-    assert f"dbg print :: {expected}\n".encode("utf-8") in process.stdout
-    assert process.returncode == 0
-
-    # the stack must end up empty
-    assert "stack: []".encode("utf-8") in process.stdout
+    assert_output(output, [2048])
 
 
-def test_pointers_global_arrow(tmp_path):
-    source = textwrap.dedent(
-        """
-        struct node {
-          next;
-          value;
-        }
-        
-        let x = node { next: null, value: 3.14 };
-        let y = node { next: &x, value: false };
-        let z = node { next: &y, value: "Hello, world!" };
-        
-        fn preent_global(x) {
-          print x->next->next->value;
-          return 0;
-        }
-        fn main() {
-          preent_global(&z);
-          return 0;
-        }
-        main();
-        """
-    )
-    input_file = tmp_path / "input.vnm"
-    input_file.write_text(source)
+def test_pointers_09():
+    input_file = CASES_PATH / "ptr09.vnm"
 
     process = subprocess.run(
         VALGRIND_CMD + [input_file],
         capture_output=True,
+        check=True,
     )
 
-    expected = "3.14"
+    output = process.stdout.decode("utf-8")
 
-    assert f"dbg print :: {expected}\n".encode("utf-8") in process.stdout
-    assert process.returncode == 0
-
-    # the stack must end up empty
-    assert "stack: []".encode("utf-8") in process.stdout
+    assert_output(output, [3.14])
 
 
-def test_pointers_global_arrow_set(tmp_path):
-    source = textwrap.dedent(
-        """
-        struct node {
-          next;
-          value;
-        }
-        
-        let x = node { next: null, value: 3.14 };
-        let y = node { next: &x, value: false };
-        let z = node { next: &y, value: "Hello, world!" };
-        
-        fn change_global(x) {
-          x->next->next->value = 1.23;
-          return 0;
-        }
-        fn main() {
-          change_global(&z);
-          print x.value;
-          return 0;
-        }
-        main();
-        """
-    )
-    input_file = tmp_path / "input.vnm"
-    input_file.write_text(source)
+def test_pointers_10():
+    input_file = CASES_PATH / "ptr10.vnm"
 
     process = subprocess.run(
         VALGRIND_CMD + [input_file],
         capture_output=True,
+        check=True,
     )
 
-    expected = "1.23"
+    output = process.stdout.decode("utf-8")
 
-    assert f"dbg print :: {expected}\n".encode("utf-8") in process.stdout
-    assert process.returncode == 0
+    assert_output(output, [1.23])
 
-    # the stack must end up empty
-    assert "stack: []".encode("utf-8") in process.stdout
+
+def test_pointers_linked_list():
+    input_file = CASES_PATH / "linked_list.vnm"
+
+    process = subprocess.run(
+        VALGRIND_CMD + [input_file],
+        capture_output=True,
+        check=True,
+    )
+
+    output = process.stdout.decode("utf-8")
+
+    assert_output(output, [3.14, False, "Hello, world!"])

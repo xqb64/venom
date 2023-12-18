@@ -338,15 +338,6 @@ static void compile_expr_var(Compiler *compiler, Bytecode *code, Expr exp) {
   if (idx != -1) {
     /* print compiler->locals dynarray in the form [..., ..., ...] */
     emit_byte(code, OP_DEEPGET);
-    printf("[");
-    for (size_t i = 0; i < compiler->locals.count; i++) {
-      printf("%s", compiler->locals.data[i]);
-      if (i < compiler->locals.count - 1) {
-        printf(", ");
-      }
-    }
-    printf("]\n");
-    printf("emitting idx %d for variable name %s\n", idx, e.name);
     emit_uint32(code, idx);
     return;
   }

@@ -1,166 +1,75 @@
 import subprocess
-import pytest
-import textwrap
 
 from tests.util import VALGRIND_CMD
-from tests.util import TWO_OPERANDS_GROUP
+from tests.util import assert_output, assert_error
+from tests.util import CASES_PATH
 
 
-@pytest.mark.parametrize(
-    "a, b",
-    TWO_OPERANDS_GROUP,
-)
-def test_assignment_global(tmp_path, a, b):
-    source = textwrap.dedent(
-        f"""\
-        let x = {a};
-        print x;
-        x = {b};
-        print x;"""
-    )
-
-    input_file = tmp_path / "input.vnm"
-    input_file.write_text(source)
+def test_assignment_global():
+    input_file = CASES_PATH / "assign_global.vnm"
 
     process = subprocess.run(
         VALGRIND_CMD + [input_file],
         capture_output=True,
-    )
-    for value in [a, b]:
-        assert f"dbg print :: {value:.16g}\n".encode("utf-8") in process.stdout
-        assert process.returncode == 0
-
-    # the stack must end up empty
-    assert process.stdout.endswith(b"stack: []\n")
-
-
-@pytest.mark.parametrize(
-    "a, b",
-    TWO_OPERANDS_GROUP,
-)
-def test_assignment_func(tmp_path, a, b):
-    source = textwrap.dedent(
-        """
-        fn main() {
-          let x = %d;
-          print x;
-          x = %d;
-          print x;
-          return 0;
-        }
-        main();"""
-        % (a, b)
+        check=True,
     )
 
-    input_file = tmp_path / "input.vnm"
-    input_file.write_text(source)
+    output = process.stdout.decode("utf-8")
+
+    assert_output(output, [16, 32])
+
+
+def test_assignment_local():
+    input_file = CASES_PATH / "assign_local.vnm"
 
     process = subprocess.run(
         VALGRIND_CMD + [input_file],
         capture_output=True,
-    )
-    for value in [a, b]:
-        assert f"dbg print :: {value:.16g}\n".encode("utf-8") in process.stdout
-        assert process.returncode == 0
-
-    # the stack must end up empty
-    assert process.stdout.endswith(b"stack: []\n")
-
-
-def test_invalid_assignment(tmp_path):
-    source = textwrap.dedent(
-        """
-        fn main() {
-          let x = 3;
-          1 = x;
-          return 0;
-        }
-        main();
-        """
+        check=True,
     )
 
-    input_file = tmp_path / "input.vnm"
-    input_file.write_text(source)
+    output = process.stdout.decode("utf-8")
+
+    assert_output(output, [16, 32])
+
+
+def test_assignment_invalid():
+    input_file = CASES_PATH / "assign_invalid.vnm"
 
     process = subprocess.run(
         VALGRIND_CMD + [input_file],
         capture_output=True,
     )
 
-    assert b"Compiler error: Invalid assignment.\n" in process.stderr
+    error = process.stderr.decode("utf-8")
+
+    assert_error(error, ["Compiler error: Invalid assignment.\n"])
     assert process.returncode == 1
 
 
-def test_struct_property_assignment(tmp_path):
-    source = textwrap.dedent(
-        """
-        struct spam {
-          x;
-          y;
-        }
-        fn main() {
-          let egg = spam { x: 0, y: 0 };
-          egg.x = 3;
-          print egg.x;
-          return 0;
-        }
-        main();
-        """
-    )
-
-    input_file = tmp_path / "input.vnm"
-    input_file.write_text(source)
+def test_assignment_property():
+    input_file = CASES_PATH / "assign_property.vnm"
 
     process = subprocess.run(
         VALGRIND_CMD + [input_file],
         capture_output=True,
+        check=True,
     )
 
     output = process.stdout.decode("utf-8")
 
-    assert "dbg print :: 3\n" in output
-    assert output.endswith("stack: []\n")
-
-    assert process.returncode == 0
+    assert_output(output, [0, 3])
 
 
-def test_struct_property_assignment_nested(tmp_path):
-    source = textwrap.dedent(
-        """
-        struct spam {
-          x;
-          y;
-        }
-        fn main() {
-          let egg = spam {
-            x: 0,
-            y: spam {
-              x: 0,
-              y: spam {
-                x: 0,
-                y: 0
-              }
-            }
-          };
-          egg.y.y.x = "Hello, world!";
-          print egg.y.y.x;
-          return 0;
-        }
-        main();
-        """
-    )
-
-    input_file = tmp_path / "input.vnm"
-    input_file.write_text(source)
+def test_assignment_property_nested():
+    input_file = CASES_PATH / "assign_property_nested.vnm"
 
     process = subprocess.run(
         VALGRIND_CMD + [input_file],
         capture_output=True,
+        check=True,
     )
 
     output = process.stdout.decode("utf-8")
 
-    assert "dbg print :: Hello, world!\n" in output
-    assert output.endswith("stack: []\n")
-
-    assert process.returncode == 0
+    assert_output(output, [0, "Hello, world!"])

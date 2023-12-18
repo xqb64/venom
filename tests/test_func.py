@@ -1,52 +1,32 @@
 import subprocess
-import textwrap
 
-from tests.util import VALGRIND_CMD
+from tests.util import VALGRIND_CMD, CASES_PATH
+from tests.util import assert_error
 
 
-def test_func_undefined(tmp_path):
-    source = textwrap.dedent(
-        """
-      fn main(x) {
-        print x;
-        return 0;
-      }
-      amain();
-      """
-    )
-    input_file = tmp_path / "input.vnm"
-    input_file.write_text(source)
-
-    expected = "Compiler error: Function 'amain' is not defined."
+def test_func_undefined():
+    input_file = CASES_PATH / "func_undefined.vnm"
 
     process = subprocess.run(
         VALGRIND_CMD + [input_file],
         capture_output=True,
     )
 
-    assert f"{expected}\n".encode("utf-8") in process.stderr
+    error = process.stderr.decode("utf-8")
+
+    assert_error(error, ["Compiler error: Function 'amain' is not defined.\n"])
     assert process.returncode == 1
 
 
-def test_func_wrong_argcount(tmp_path):
-    source = textwrap.dedent(
-        """
-      fn main(x, y) {
-        print x + y;
-        return 0;
-      }
-      main(1);
-      """
-    )
-    input_file = tmp_path / "input.vnm"
-    input_file.write_text(source)
-
-    expected = "Compiler error: Function 'main' requires 2 arguments."
+def test_func_wrong_argcount():
+    input_file = CASES_PATH / "func_wrong_argcount.vnm"
 
     process = subprocess.run(
         VALGRIND_CMD + [input_file],
         capture_output=True,
     )
 
-    assert f"{expected}\n".encode("utf-8") in process.stderr
+    error = process.stderr.decode("utf-8")
+
+    assert_error(error, ["Compiler error: Function 'main' requires 2 arguments.\n"])
     assert process.returncode == 1

@@ -3,6 +3,7 @@ import pytest
 import textwrap
 
 from tests.util import VALGRIND_CMD
+from tests.util import assert_output
 
 
 @pytest.mark.parametrize(
@@ -38,22 +39,12 @@ def test_compound_assignment(tmp_path, start, cond_op, end, step, op, intermedia
     process = subprocess.run(
         VALGRIND_CMD + [input_file],
         capture_output=True,
+        check=True,
     )
 
     output = process.stdout.decode("utf-8")
 
-    asserts = intermediate
-    asserts = [f"dbg print :: {x:.16g}\n" for x in intermediate]
-
-    for _assert in asserts:
-        assert _assert in output
-        output = output[output.index(_assert) + len(_assert) :]
-
-    assert process.returncode == 0
-
-    # the stack must end up empty because we're consuming the
-    # boolean value in the while condition
-    assert output.endswith("stack: []\n")
+    assert_output(output, intermediate)
 
 
 @pytest.mark.parametrize(
@@ -84,14 +75,9 @@ def test_compound_assignment_other(tmp_path, left, op, right, expected):
     process = subprocess.run(
         VALGRIND_CMD + [input_file],
         capture_output=True,
+        check=True,
     )
 
     output = process.stdout.decode("utf-8")
 
-    assert f"dbg print :: {expected:.16g}" in output
-
-    assert process.returncode == 0
-
-    # the stack must end up empty because we're consuming the
-    # boolean value in the while condition
-    assert output.endswith("stack: []\n")
+    assert_output(output, [expected])
