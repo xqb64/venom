@@ -188,7 +188,7 @@ static char *operator(Token token) {
   }
 }
 
-static Expr finish_call(Parser *parser, Tokenizer *tokenizer, Expr exp) {
+static Expr finish_call(Parser *parser, Tokenizer *tokenizer, Expr callee) {
   DynArray_Expr arguments = {0};
   if (!check(parser, TOKEN_RIGHT_PAREN)) {
     do {
@@ -198,8 +198,8 @@ static Expr finish_call(Parser *parser, Tokenizer *tokenizer, Expr exp) {
   consume(parser, tokenizer, TOKEN_RIGHT_PAREN,
           "Expected ')' after expression.");
   ExprCall e = {
+      .callee = ALLOC(callee),
       .arguments = arguments,
-      .var = TO_EXPR_VAR(exp),
   };
   return AS_EXPR_CALL(e);
 }
@@ -647,6 +647,22 @@ static Stmt struct_statement(Parser *parser, Tokenizer *tokenizer) {
   return AS_STMT_STRUCT(stmt);
 }
 
+static Stmt impl_statement(Parser *parser, Tokenizer *tokenizer) {
+  Token name = consume(parser, tokenizer, TOKEN_IDENTIFIER,
+                       "Expected identifier after 'impl'.");
+  consume(parser, tokenizer, TOKEN_LEFT_BRACE,
+          "Expected '{' after identifier.");
+  DynArray_Stmt methods = {0};
+  while (!match(parser, tokenizer, 1, TOKEN_RIGHT_BRACE)) {
+    dynarray_insert(&methods, statement(parser, tokenizer));
+  }
+  StmtImpl stmt = {
+      .name = own_string_n(name.start, name.length),
+      .methods = methods,
+  };
+  return AS_STMT_IMPL(stmt);
+}
+
 static Stmt statement(Parser *parser, Tokenizer *tokenizer) {
   if (match(parser, tokenizer, 1, TOKEN_PRINT)) {
     return print_statement(parser, tokenizer);
@@ -670,6 +686,8 @@ static Stmt statement(Parser *parser, Tokenizer *tokenizer) {
     return return_statement(parser, tokenizer);
   } else if (match(parser, tokenizer, 1, TOKEN_STRUCT)) {
     return struct_statement(parser, tokenizer);
+  } else if (match(parser, tokenizer, 1, TOKEN_IMPL)) {
+    return impl_statement(parser, tokenizer);
   } else {
     return expression_statement(parser, tokenizer);
   }
@@ -723,7 +741,8 @@ static void free_expression(Expr e) {
   }
   case EXPR_CALL: {
     ExprCall callexpr = TO_EXPR_CALL(e);
-    free(callexpr.var.name);
+    free_expression(*callexpr.callee);
+    free(callexpr.callee);
     for (size_t i = 0; i < callexpr.arguments.count; i++) {
       free_expression(callexpr.arguments.data[i]);
     }
@@ -841,6 +860,15 @@ void free_stmt(Stmt stmt) {
       free(TO_STMT_STRUCT(stmt).properties.data[i]);
     }
     dynarray_free(&TO_STMT_STRUCT(stmt).properties);
+    break;
+  }
+  case STMT_IMPL: {
+    free(TO_STMT_IMPL(stmt).name);
+    for (size_t i = 0; i < TO_STMT_IMPL(stmt).methods.count; i++) {
+      free_stmt(TO_STMT_IMPL(stmt).methods.data[i]);
+    }
+    dynarray_free(&TO_STMT_IMPL(stmt).methods);
+    break;
   }
   default:
     break;

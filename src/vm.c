@@ -655,9 +655,11 @@ static inline void handle_op_struct_blueprint(VM *vm, Bytecode *code,
   }
 
   StructBlueprint sb = {.name = code->sp.data[name_idx],
-                        .property_indexes = malloc(sizeof(Table_int))};
+                        .property_indexes = malloc(sizeof(Table_int)),
+                        .methods = malloc(sizeof(Table_Function))};
 
   memset(sb.property_indexes, 0, sizeof(Table_int));
+  memset(sb.methods, 0, sizeof(Table_Function));
 
   for (size_t i = 0; i < properties.count; i++) {
     table_insert(sb.property_indexes, properties.data[i], prop_indexes.data[i]);
@@ -681,6 +683,51 @@ static inline void handle_op_call(VM *vm, Bytecode *code, uint8_t **ip) {
   uint32_t argcount = READ_UINT32();
   BytecodePtr ip_obj = {.addr = *(ip) + 3, .location = vm->tos - argcount};
   vm->fp_stack[vm->fp_count++] = ip_obj;
+}
+
+static inline void handle_op_call_method(VM *vm, Bytecode *code, uint8_t **ip) {
+  uint32_t method_name_idx = READ_UINT32();
+
+  /* look up the method argument count in the object's blueprint */
+  Object object = pop(vm);
+  StructBlueprint *sb =
+      table_get_unchecked(vm->blueprints, AS_STRUCT(object)->name);
+
+  Function *method = table_get(sb->methods, code->sp.data[method_name_idx]);
+
+  int argcount = method->paramcount;
+  int location = method->location;
+
+  BytecodePtr ip_obj = {.addr = *(ip) + 1, .location = vm->tos - argcount};
+  vm->fp_stack[vm->fp_count++] = ip_obj;
+
+  int16_t offset = -(code->code.count - method->location);
+
+  *ip += offset;
+
+  push(vm, object);
+}
+
+static inline void handle_op_impl(VM *vm, Bytecode *code, uint8_t **ip) {
+  uint32_t blueprint_name_idx = READ_UINT32();
+  uint32_t method_name_idx = READ_UINT32();
+  uint32_t paramcount = READ_UINT32();
+  uint32_t location = READ_UINT32();
+
+  Function method = {
+      .location = location,
+      .paramcount = paramcount,
+      .name = code->sp.data[method_name_idx],
+  };
+
+  StructBlueprint *sb =
+      table_get(vm->blueprints, code->sp.data[blueprint_name_idx]);
+  if (!sb) {
+    RUNTIME_ERROR("struct '%s' is not defined",
+                  code->sp.data[blueprint_name_idx]);
+  }
+
+  table_insert(sb->methods, code->sp.data[method_name_idx], method);
 }
 
 /* OP_RET pops a BytecodePtr off the frame pointer stack
@@ -814,8 +861,12 @@ static inline const char *print_current_instruction(uint8_t opcode) {
     return "OP_STRUCT";
   case OP_STRUCT_BLUEPRINT:
     return "OP_STRUCT_BLUEPRINT";
+  case OP_IMPL:
+    return "OP_IMPL";
   case OP_CALL:
     return "OP_CALL";
+  case OP_CALL_METHOD:
+    return "OP_CALL_METHOD";
   case OP_RET:
     return "OP_RET";
   case OP_POP:
@@ -983,8 +1034,16 @@ void run(VM *vm, Bytecode *code) {
       handle_op_struct_blueprint(vm, code, &ip);
       break;
     }
+    case OP_IMPL: {
+      handle_op_impl(vm, code, &ip);
+      break;
+    }
     case OP_CALL: {
       handle_op_call(vm, code, &ip);
+      break;
+    }
+    case OP_CALL_METHOD: {
+      handle_op_call_method(vm, code, &ip);
       break;
     }
     case OP_RET: {

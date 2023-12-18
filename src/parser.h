@@ -57,7 +57,7 @@ typedef struct ExprBin {
 } ExprBin;
 
 typedef struct ExprCall {
-  ExprVar var;
+  Expr *callee;
   DynArray_Expr arguments;
 } ExprCall;
 
@@ -144,6 +144,7 @@ typedef enum {
   STMT_FN,
   STMT_RETURN,
   STMT_STRUCT,
+  STMT_IMPL,
 } __attribute__((__packed__)) StmtKind;
 
 typedef struct Stmt Stmt;
@@ -202,6 +203,11 @@ typedef struct {
 } StmtStruct;
 
 typedef struct {
+  char *name;
+  DynArray_Stmt methods;
+} StmtImpl;
+
+typedef struct {
   char dummy;
 } StmtBreak;
 
@@ -224,6 +230,7 @@ typedef struct Stmt {
     StmtContinue stmt_continue;
     StmtRet stmt_return;
     StmtStruct stmt_struct;
+    StmtImpl stmt_impl;
   } as;
 } Stmt;
 
@@ -237,6 +244,7 @@ typedef struct Stmt {
 #define TO_STMT_FOR(stmt) ((stmt).as.stmt_for)
 #define TO_STMT_RETURN(stmt) ((stmt).as.stmt_return)
 #define TO_STMT_STRUCT(stmt) ((stmt).as.stmt_struct)
+#define TO_STMT_IMPL(stmt) ((stmt).as.stmt_impl)
 
 #define AS_STMT_PRINT(stmt)                                                    \
   ((Stmt){.kind = STMT_PRINT, .as.stmt_print = (stmt)})
@@ -257,6 +265,7 @@ typedef struct Stmt {
   ((Stmt){.kind = STMT_RETURN, .as.stmt_return = (stmt)})
 #define AS_STMT_STRUCT(stmt)                                                   \
   ((Stmt){.kind = STMT_STRUCT, .as.stmt_struct = (stmt)})
+#define AS_STMT_IMPL(stmt) ((Stmt){.kind = STMT_IMPL, .as.stmt_impl = (stmt)})
 
 typedef struct {
   Token current;

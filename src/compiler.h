@@ -45,7 +45,9 @@ typedef enum {
   OP_GETATTR_PTR,
   OP_STRUCT,
   OP_STRUCT_BLUEPRINT,
+  OP_IMPL,
   OP_CALL,
+  OP_CALL_METHOD,
   OP_RET,
   OP_POP,
   OP_DEREF,
@@ -69,13 +71,14 @@ typedef struct {
 } Function;
 
 typedef Table(int) Table_int;
+typedef Table(Function) Table_Function;
 
 typedef struct {
   char *name;
   Table_int *property_indexes;
+  Table_Function *methods;
 } StructBlueprint;
 
-typedef Table(Function) Table_Function;
 typedef Table(StructBlueprint) Table_StructBlueprint;
 void free_table_struct_blueprints(Table_StructBlueprint *table);
 void free_table_functions(Table_Function *table);

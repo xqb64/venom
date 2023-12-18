@@ -40,6 +40,8 @@ void free_table_struct_blueprints(Table_StructBlueprint *table) {
   for (size_t i = 0; i < table->count; i++) {
     free_table_int(table->items[i].property_indexes);
     free(table->items[i].property_indexes);
+    free_table_functions(table->items[i].methods);
+    free(table->items[i].methods);
   }
 }
 
@@ -459,37 +461,58 @@ static void compile_expr_bin(Compiler *compiler, Bytecode *code, Expr exp) {
 static void compile_expr_call(Compiler *compiler, Bytecode *code, Expr exp) {
   ExprCall e = TO_EXPR_CALL(exp);
 
-  /* Bail out if the function is not defined. */
-  Function *func = table_get(compiler->functions, e.var.name);
-  if (func == NULL) {
-    COMPILER_ERROR("Function '%s' is not defined.", e.var.name);
+  if (e.callee->kind == EXPR_GET) {
+    ExprGet getexp = TO_EXPR_GET(*e.callee);
+
+    /* Compile the part that comes before the member access
+     * operator. */
+    compile_expr(compiler, code, *getexp.exp);
+
+    /* Deref it if the operator is -> */
+    if (strcmp(getexp.op, "->") == 0) {
+      emit_byte(code, OP_DEREF);
+    }
+
+    char *method = getexp.property_name;
+
+    emit_byte(code, OP_CALL_METHOD);
+    emit_uint32(code, add_string(code, method));
+
+  } else if (e.callee->kind == EXPR_VAR) {
+    ExprVar var = TO_EXPR_VAR(*e.callee);
+
+    /* Bail out if the function is not defined. */
+    Function *func = table_get(compiler->functions, var.name);
+    if (func == NULL) {
+      COMPILER_ERROR("Function '%s' is not defined.", var.name);
+    }
+
+    /* Bail out if the number of arguments does not match the
+     * number of function's parameters. */
+    if (func->paramcount != e.arguments.count) {
+      COMPILER_ERROR("Function '%s' requires %ld arguments.", var.name,
+                     func->paramcount);
+    }
+
+    /* Then compile the arguments */
+    for (size_t i = 0; i < e.arguments.count; i++) {
+      compile_expr(compiler, code, e.arguments.data[i]);
+    }
+
+    /* Emit OP_CALL followed by the argument count. */
+    emit_byte(code, OP_CALL);
+    emit_uint32(code, e.arguments.count);
+
+    /* Emit the direct OP_JMP to the function's location. The
+     * length of the jump sequence (OP_JMP + two-byte offset,
+     * which is 3), needs to be taken into the account, beca-
+     * use by the time the VM executes this jump, it will ha-
+     * ve read both the jump and the offset, which means that
+     * effectively, we'll not be jumping from the current lo-
+     * cation, but three slots after it. */
+    int16_t jump = -(code->code.count + 3 - func->location);
+    emit_bytes(code, 3, OP_JMP, (jump >> 8) & 0xFF, jump & 0xFF);
   }
-
-  /* Bail out if the number of arguments does not match the
-   * number of function's parameters. */
-  if (func->paramcount != e.arguments.count) {
-    COMPILER_ERROR("Function '%s' requires %ld arguments.", e.var.name,
-                   func->paramcount);
-  }
-
-  /* Then compile the arguments */
-  for (size_t i = 0; i < e.arguments.count; i++) {
-    compile_expr(compiler, code, e.arguments.data[i]);
-  }
-
-  /* Emit OP_CALL followed by the argument count. */
-  emit_byte(code, OP_CALL);
-  emit_uint32(code, e.arguments.count);
-
-  /* Emit the direct OP_JMP to the function's location. The
-   * length of the jump sequence (OP_JMP + two-byte offset,
-   * which is 3), needs to be taken into the account, beca-
-   * use by the time the VM executes this jump, it will ha-
-   * ve read both the jump and the offset, which means that
-   * effectively, we'll not be jumping from the current lo-
-   * cation, but three slots after it. */
-  int16_t jump = -(code->code.count + 3 - func->location);
-  emit_bytes(code, 3, OP_JMP, (jump >> 8) & 0xFF, jump & 0xFF);
 }
 
 static void compile_expr_get(Compiler *compiler, Bytecode *code, Expr exp) {
@@ -1050,8 +1073,10 @@ static void compile_stmt_fn(Compiler *compiler, Bytecode *code, Stmt stmt) {
       .paramcount = s.parameters.count,
       .location = code->code.count + 3,
   };
-  table_insert(compiler->functions, func.name, func);
-  compiler->pops[1] += s.parameters.count;
+  if (compiler->depth == 0) {
+    table_insert(compiler->functions, func.name, func);
+    compiler->pops[1] += s.parameters.count;
+  }
 
   /* Copy the function parameters into the current
    * compiler's locals array. */
@@ -1088,8 +1113,9 @@ static void compile_stmt_struct(Compiler *compiler, Bytecode *code, Stmt stmt) {
   emit_uint32(code, add_string(code, s.name));
   emit_uint32(code, s.properties.count);
 
-  StructBlueprint blueprint = {
-      .name = s.name, .property_indexes = calloc(1, sizeof(Table_int))};
+  StructBlueprint blueprint = {.name = s.name,
+                               .property_indexes = calloc(1, sizeof(Table_int)),
+                               .methods = calloc(1, sizeof(Table_Function))};
 
   for (size_t i = 0; i < s.properties.count; i++) {
     emit_uint32(code, add_string(code, s.properties.data[i]));
@@ -1099,6 +1125,48 @@ static void compile_stmt_struct(Compiler *compiler, Bytecode *code, Stmt stmt) {
 
   /* Let the compiler know about the blueprint. */
   table_insert(compiler->struct_blueprints, blueprint.name, blueprint);
+}
+
+static void compile_stmt_impl(Compiler *compiler, Bytecode *code, Stmt stmt) {
+  StmtImpl s = TO_STMT_IMPL(stmt);
+
+  int jump = emit_placeholder(code, OP_JMP);
+
+  /* Look up the struct with that name in compiler->structs. */
+  StructBlueprint *blueprint = table_get(compiler->struct_blueprints, s.name);
+
+  /* If it is not found, bail out. */
+  if (!blueprint) {
+    COMPILER_ERROR("struct '%s' is not defined.\n", s.name);
+  }
+
+  for (size_t i = 0; i < s.methods.count; i++) {
+    StmtFn func = TO_STMT_FN(s.methods.data[i]);
+    Function f = {
+        .name = func.name,
+        .paramcount = func.parameters.count,
+        .location = code->code.count + 3,
+    };
+    table_insert(blueprint->methods, func.name, f);
+    compile(compiler, code, s.methods.data[i]);
+  }
+
+  patch_placeholder(code, jump);
+
+  emit_byte(code, OP_IMPL);
+
+  for (size_t i = 0; i < s.methods.count; i++) {
+    StmtFn func = TO_STMT_FN(s.methods.data[i]);
+    Function f = {
+        .name = func.name,
+        .paramcount = func.parameters.count,
+        .location = code->code.count + 3,
+    };
+    emit_uint32(code, add_string(code, blueprint->name));
+    emit_uint32(code, add_string(code, f.name));
+    emit_uint32(code, f.paramcount);
+    emit_uint32(code, f.location);
+  }
 }
 
 static void compile_stmt_return(Compiler *compiler, Bytecode *code, Stmt stmt) {
@@ -1186,6 +1254,7 @@ static CompileHandler handler[] = {
     [STMT_FOR] = {.fn = compile_stmt_for, .name = "STMT_FOR"},
     [STMT_FN] = {.fn = compile_stmt_fn, .name = "STMT_FN"},
     [STMT_STRUCT] = {.fn = compile_stmt_struct, .name = "STMT_STRUCT"},
+    [STMT_IMPL] = {.fn = compile_stmt_impl, .name = "STMT_IMPL"},
     [STMT_RETURN] = {.fn = compile_stmt_return, .name = "STMT_RETURN"},
     [STMT_BREAK] = {.fn = compile_stmt_break, .name = "STMT_BREAK"},
     [STMT_CONTINUE] = {.fn = compile_stmt_continue, .name = "STMT_CONTINUE"},
