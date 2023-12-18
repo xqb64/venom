@@ -91,6 +91,18 @@ static inline uint64_t clamp(double d) {
     printf("]\n");                                                             \
   } while (0)
 
+#define PRINT_FPSTACK()                                                        \
+  do {                                                                         \
+    printf("fp stack: [");                                                     \
+    for (size_t i = 0; i < vm->fp_count; i++) {                                \
+      printf("ptr (loc: %d)", vm->fp_stack[i].location);                       \
+      if (i < vm->fp_count - 1) {                                              \
+        printf(", ");                                                          \
+      }                                                                        \
+    }                                                                          \
+    printf("]\n");                                                             \
+  } while (0)
+
 #define RUNTIME_ERROR(...)                                                     \
   do {                                                                         \
     fprintf(stderr, "runtime error: ");                                        \
@@ -695,30 +707,19 @@ static inline void handle_op_call_method(VM *vm, Bytecode *code, uint8_t **ip) {
 
   Function *method = table_get(sb->methods, code->sp.data[method_name_idx]);
 
-  int argcount = method->paramcount;
-  int location = method->location;
+  int argcount = method->paramcount - 1;
 
   BytecodePtr ip_obj = {.addr = *(ip) + 1, .location = vm->tos - argcount};
   vm->fp_stack[vm->fp_count++] = ip_obj;
 
-  int16_t offset = -(code->code.count - method->location);
-
-  *ip += offset;
-
   push(vm, object);
+
+  *ip = &code->code.data[method->location - 1];
 }
 
 static inline void handle_op_impl(VM *vm, Bytecode *code, uint8_t **ip) {
   uint32_t blueprint_name_idx = READ_UINT32();
-  uint32_t method_name_idx = READ_UINT32();
-  uint32_t paramcount = READ_UINT32();
-  uint32_t location = READ_UINT32();
-
-  Function method = {
-      .location = location,
-      .paramcount = paramcount,
-      .name = code->sp.data[method_name_idx],
-  };
+  uint32_t method_count = READ_UINT32();
 
   StructBlueprint *sb =
       table_get(vm->blueprints, code->sp.data[blueprint_name_idx]);
@@ -727,7 +728,19 @@ static inline void handle_op_impl(VM *vm, Bytecode *code, uint8_t **ip) {
                   code->sp.data[blueprint_name_idx]);
   }
 
-  table_insert(sb->methods, code->sp.data[method_name_idx], method);
+  for (size_t i = 0; i < method_count; i++) {
+    uint32_t method_name_idx = READ_UINT32();
+    uint32_t paramcount = READ_UINT32();
+    uint32_t location = READ_UINT32();
+
+    Function method = {
+        .location = location,
+        .paramcount = paramcount,
+        .name = code->sp.data[method_name_idx],
+    };
+
+    table_insert(sb->methods, code->sp.data[method_name_idx], method);
+  }
 }
 
 /* OP_RET pops a BytecodePtr off the frame pointer stack
@@ -885,7 +898,7 @@ static inline const char *print_current_instruction(uint8_t opcode) {
 
 void run(VM *vm, Bytecode *code) {
 #ifdef venom_debug_disassembler
-  disassemble(chunk);
+  disassemble(code);
 #endif
 
   for (uint8_t *ip = code->code.data;
@@ -1072,6 +1085,10 @@ void run(VM *vm, Bytecode *code) {
 
 #ifdef venom_debug_vm
     PRINT_STACK();
+#endif
+
+#ifdef venom_debug_vm
+    PRINT_FPSTACK();
 #endif
   }
 }

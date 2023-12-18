@@ -49,6 +49,9 @@ static DisassembleHandler disassemble_handler[] = {
     [OP_DEREF] = {.opcode = "OP_DEREF", .operands = 0},
     [OP_DEREFSET] = {.opcode = "OP_DEREFSET", .operands = 0},
     [OP_CALL] = {.opcode = "OP_CALL", .operands = 4},
+    [OP_CALL_METHOD] = {.opcode = "OP_CALL_METHOD", .operands = 4},
+    [OP_IMPL] = {.opcode = "OP_IMPL", .operands = 1337},
+    [OP_STRUCT_BLUEPRINT] = {.opcode = "OP_STRUCT_BLUEPRINT", .operands = 1337},
 };
 
 void disassemble(Bytecode *code) {
@@ -113,12 +116,55 @@ void disassemble(Bytecode *code) {
         printf(" (argcount: %d)", argcount);
         break;
       }
+      case OP_CALL_METHOD: {
+        uint32_t method_name_idx = READ_UINT32();
+        printf(" (method: %s)", code->sp.data[method_name_idx]);
+        break;
+      }
       default:
         break;
       }
       break;
     }
     default:
+      switch (*ip) {
+      case OP_IMPL: {
+        uint32_t blueprint_name_idx = READ_UINT32();
+        uint32_t method_count = READ_UINT32();
+
+        printf(" (blueprint: %s, method count: %d)",
+               code->sp.data[blueprint_name_idx], method_count);
+
+        for (size_t i = 0; i < method_count; i++) {
+          uint32_t method_name_idx = READ_UINT32();
+          uint32_t paramcount = READ_UINT32();
+          uint32_t location = READ_UINT32();
+
+          printf("\n%ld: method: %s, paramcount: %d, location: %d",
+                 ip - code->code.data, code->sp.data[method_name_idx],
+                 paramcount, location);
+        }
+        break;
+      }
+      case OP_STRUCT_BLUEPRINT: {
+        uint32_t name_idx = READ_UINT32();
+        uint32_t propcount = READ_UINT32();
+
+        printf(" (name: %s, propcount: %d)", code->sp.data[name_idx],
+               propcount);
+
+        for (size_t i = 0; i < propcount; i++) {
+          uint32_t property_name_idx = READ_UINT32();
+          printf("\n%ld: property: %s, ", ip - code->code.data,
+                 code->sp.data[property_name_idx]);
+          uint32_t property_index = READ_UINT32();
+          printf("%ld: index: %d", ip - code->code.data, property_index);
+        }
+        break;
+      }
+      default:
+        break;
+      }
       break;
     }
     printf("\n");

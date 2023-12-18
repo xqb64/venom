@@ -336,7 +336,17 @@ static void compile_expr_var(Compiler *compiler, Bytecode *code, Expr exp) {
   /* Try to resolve the variable as local. */
   int idx = resolve_local(compiler, e.name);
   if (idx != -1) {
+    /* print compiler->locals dynarray in the form [..., ..., ...] */
     emit_byte(code, OP_DEEPGET);
+    printf("[");
+    for (size_t i = 0; i < compiler->locals.count; i++) {
+      printf("%s", compiler->locals.data[i]);
+      if (i < compiler->locals.count - 1) {
+        printf(", ");
+      }
+    }
+    printf("]\n");
+    printf("emitting idx %d for variable name %s\n", idx, e.name);
     emit_uint32(code, idx);
     return;
   }
@@ -1073,10 +1083,12 @@ static void compile_stmt_fn(Compiler *compiler, Bytecode *code, Stmt stmt) {
       .paramcount = s.parameters.count,
       .location = code->code.count + 3,
   };
+
   if (compiler->depth == 0) {
     table_insert(compiler->functions, func.name, func);
-    compiler->pops[1] += s.parameters.count;
   }
+
+  compiler->pops[1] += s.parameters.count;
 
   /* Copy the function parameters into the current
    * compiler's locals array. */
@@ -1130,8 +1142,6 @@ static void compile_stmt_struct(Compiler *compiler, Bytecode *code, Stmt stmt) {
 static void compile_stmt_impl(Compiler *compiler, Bytecode *code, Stmt stmt) {
   StmtImpl s = TO_STMT_IMPL(stmt);
 
-  int jump = emit_placeholder(code, OP_JMP);
-
   /* Look up the struct with that name in compiler->structs. */
   StructBlueprint *blueprint = table_get(compiler->struct_blueprints, s.name);
 
@@ -1151,21 +1161,16 @@ static void compile_stmt_impl(Compiler *compiler, Bytecode *code, Stmt stmt) {
     compile(compiler, code, s.methods.data[i]);
   }
 
-  patch_placeholder(code, jump);
-
   emit_byte(code, OP_IMPL);
+  emit_uint32(code, add_string(code, blueprint->name));
+  emit_uint32(code, s.methods.count);
 
   for (size_t i = 0; i < s.methods.count; i++) {
     StmtFn func = TO_STMT_FN(s.methods.data[i]);
-    Function f = {
-        .name = func.name,
-        .paramcount = func.parameters.count,
-        .location = code->code.count + 3,
-    };
-    emit_uint32(code, add_string(code, blueprint->name));
-    emit_uint32(code, add_string(code, f.name));
-    emit_uint32(code, f.paramcount);
-    emit_uint32(code, f.location);
+    Function *f = table_get(blueprint->methods, func.name);
+    emit_uint32(code, add_string(code, f->name));
+    emit_uint32(code, f->paramcount);
+    emit_uint32(code, f->location);
   }
 }
 
