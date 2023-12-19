@@ -721,13 +721,9 @@ static inline void handle_op_call_method(VM *vm, Bytecode *code, uint8_t **ip) {
                   code->sp.data[method_name_idx], AS_STRUCT(object)->name);
   }
 
-  /* Subtract 1 from method->paramcount because we're not
-   * passing 'self' in explicitly. */
-  int argcount = method->paramcount - 1;
-
   /* Push the instruction pointer on the frame ptr stack.
    * No need to take into account the jump sequence (+3). */
-  BytecodePtr ip_obj = {.addr = *ip, .location = vm->tos - 1 - argcount};
+  BytecodePtr ip_obj = {.addr = *ip, .location = vm->tos - method->paramcount};
   vm->fp_stack[vm->fp_count++] = ip_obj;
 
   /* Direct jump to one byte before the method location. */
