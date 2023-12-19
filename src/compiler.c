@@ -1081,12 +1081,11 @@ static void compile_stmt_fn(Compiler *compiler, Bytecode *code, Stmt stmt) {
 
   compiler->pops[1] += s.parameters.count;
 
-  /* Copy the function parameters into the current
-   * compiler's locals array. */
+  /* Copy the function parameters into the compiler->locals. */
   COPY_DYNARRAY(&compiler->locals, &s.parameters);
 
-  /* Emit the jump because we don't want to execute
-   * the code the first time we encounter it. */
+  /* Emit the jump because we don't want to execute the code
+   * the first time we encounter it. */
   int jump = emit_placeholder(code, OP_JMP);
 
   /* Compile the function body. */
