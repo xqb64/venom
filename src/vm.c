@@ -104,7 +104,7 @@ static inline uint64_t clamp(double d) {
 
 #define RUNTIME_ERROR(...)                                                     \
   do {                                                                         \
-    fprintf(stderr, "runtime error: ");                                        \
+    fprintf(stderr, "vm: ");                                                   \
     fprintf(stderr, __VA_ARGS__);                                              \
     fprintf(stderr, "\n");                                                     \
     exit(1);                                                                   \
@@ -705,6 +705,10 @@ static inline void handle_op_call_method(VM *vm, Bytecode *code, uint8_t **ip) {
       table_get_unchecked(vm->blueprints, AS_STRUCT(object)->name);
 
   Function *method = table_get(sb->methods, code->sp.data[method_name_idx]);
+  if (!method) {
+    RUNTIME_ERROR("Method '%s' is not defined on struct '%s'.",
+                  code->sp.data[method_name_idx], AS_STRUCT(object)->name);
+  }
 
   int argcount = method->paramcount - 1;
 

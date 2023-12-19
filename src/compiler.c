@@ -9,7 +9,7 @@
 
 #define COMPILER_ERROR(...)                                                    \
   do {                                                                         \
-    fprintf(stderr, "Compiler error: ");                                       \
+    fprintf(stderr, "compiler: ");                                             \
     fprintf(stderr, __VA_ARGS__);                                              \
     fprintf(stderr, "\n");                                                     \
     exit(1);                                                                   \

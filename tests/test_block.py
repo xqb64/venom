@@ -42,7 +42,7 @@ def test_block_undefined_var():
 
     error = process.stderr.decode("utf-8")
 
-    assert_error(error, ["Compiler error: Variable 'z' is not defined.\n"])
+    assert_error(error, ["compiler: Variable 'z' is not defined.\n"])
     assert process.returncode == 1
 
 

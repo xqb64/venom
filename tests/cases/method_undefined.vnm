@@ -1,0 +1,18 @@
+struct person {
+  name;
+}
+
+impl person {
+  fn greet(self) {
+    print "Hi, " ++ self.name ++ ".";
+    return 0;
+  }
+}
+
+fn main() {
+  let p = person { name: "Joe" };
+  p.goodbye();
+  return 0;
+}
+
+main();

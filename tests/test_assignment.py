@@ -43,7 +43,7 @@ def test_assignment_invalid():
 
     error = process.stderr.decode("utf-8")
 
-    assert_error(error, ["Compiler error: Invalid assignment.\n"])
+    assert_error(error, ["compiler: Invalid assignment.\n"])
     assert process.returncode == 1
 
 

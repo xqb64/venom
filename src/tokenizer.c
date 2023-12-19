@@ -17,7 +17,7 @@ static char peek(Tokenizer *tokenizer, int distance) {
 static char advance(Tokenizer *tokenizer) { return *tokenizer->current++; }
 
 static void tokenizing_error(int line) {
-  fprintf(stderr, "tokenizing error at line %d\n", line);
+  fprintf(stderr, "tokenizer: line %d\n", line);
   exit(1);
 }
 

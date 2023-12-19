@@ -13,7 +13,7 @@
 void init_parser(Parser *parser) { memset(parser, 0, sizeof(Parser)); }
 
 static void parse_error(Parser *parser, char *message) {
-  fprintf(stderr, "parse error: %s\n", message);
+  fprintf(stderr, "parser: %s\n", message);
 }
 
 static Token advance(Parser *parser, Tokenizer *tokenizer) {

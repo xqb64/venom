@@ -6,7 +6,7 @@ from tests.util import CASES_PATH
 RESULTS = {
     "assignment.vnm": {
         "debug_prints": [],
-        "ends_with": "Compiler error: Invalid assignment.",
+        "ends_with": "compiler: Invalid assignment.",
         "return_code": 1,
     },
     "big.vnm": {
@@ -16,7 +16,7 @@ RESULTS = {
     },
     "break.vnm": {
         "debug_prints": [],
-        "ends_with": "Compiler error: Variable 'y' is not defined.",
+        "ends_with": "compiler: Variable 'y' is not defined.",
         "return_code": 1,
     },
     "breakcomplex.vnm": {
@@ -48,7 +48,7 @@ RESULTS = {
     },
     "cursed_struct.vnm": {
         "debug_prints": [],
-        "ends_with": "Compiler error: struct 'spam' has no property 'z'",
+        "ends_with": "compiler: struct 'spam' has no property 'z'",
         "return_code": 1,
     },
     "doubleloop.vnm": {
@@ -161,12 +161,12 @@ RESULTS = {
     },
     "try_this.vnm": {
         "debug_prints": [],
-        "ends_with": "Compiler error: Variable 'x' is not defined.",
+        "ends_with": "compiler: Variable 'x' is not defined.",
         "return_code": 1,
     },
     "undefined.vnm": {
         "debug_prints": [],
-        "ends_with": "Compiler error: Variable 'z' is not defined.",
+        "ends_with": "compiler: Variable 'z' is not defined.",
         "return_code": 1,
     },
     "while.vnm": {

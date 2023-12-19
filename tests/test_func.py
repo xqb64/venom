@@ -14,7 +14,7 @@ def test_func_undefined():
 
     error = process.stderr.decode("utf-8")
 
-    assert_error(error, ["Compiler error: Function 'amain' is not defined.\n"])
+    assert_error(error, ["compiler: Function 'amain' is not defined.\n"])
     assert process.returncode == 1
 
 
@@ -28,7 +28,7 @@ def test_func_wrong_argcount():
 
     error = process.stderr.decode("utf-8")
 
-    assert_error(error, ["Compiler error: Function 'main' requires 2 arguments.\n"])
+    assert_error(error, ["compiler: Function 'main' requires 2 arguments.\n"])
     assert process.returncode == 1
 
 
@@ -44,3 +44,17 @@ def test_method():
     output = process.stdout.decode("utf-8")
 
     assert_output(output, [128])
+
+
+def test_method_undefined():
+    input_file = CASES_PATH / "method_undefined.vnm"
+
+    process = subprocess.run(
+        VALGRIND_CMD + [input_file],
+        capture_output=True,
+    )
+
+    error = process.stderr.decode("utf-8")
+
+    assert_error(error, ["vm: Method 'goodbye' is not defined on struct 'person'.\n"])
+    assert process.returncode == 1
