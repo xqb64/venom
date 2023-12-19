@@ -691,7 +691,7 @@ static inline void handle_op_struct_blueprint(VM *vm, Bytecode *code,
  * struction that comes after the jump following the opcode and its
  * 4-byte operand.
  *
- * The location is where the index of the position where the frame starts. */
+ * The location is the starting position of the frame on the stack. */
 static inline void handle_op_call(VM *vm, Bytecode *code, uint8_t **ip) {
   uint32_t argcount = READ_UINT32();
   BytecodePtr ip_obj = {.addr = *(ip) + 3, .location = vm->tos - argcount};
