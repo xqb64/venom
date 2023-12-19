@@ -709,7 +709,7 @@ static inline void handle_op_call_method(VM *vm, Bytecode *code, uint8_t **ip) {
 
   int argcount = method->paramcount - 1;
 
-  BytecodePtr ip_obj = {.addr = *(ip) + 1, .location = vm->tos - argcount};
+  BytecodePtr ip_obj = {.addr = *ip, .location = vm->tos - argcount};
   vm->fp_stack[vm->fp_count++] = ip_obj;
 
   push(vm, object);
@@ -1087,4 +1087,6 @@ void run(VM *vm, Bytecode *code) {
     PRINT_STACK();
 #endif
   }
+
+  assert(vm->tos == 0);
 }

@@ -17,8 +17,7 @@ impl spam {
 
 fn main() {
   let s = spam { x: 64, y: 128 };
-  let egg = &s;
-  egg->say_x();
+  s.say_x();
   return 0;
 }
 
