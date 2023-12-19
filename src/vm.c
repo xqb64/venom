@@ -696,30 +696,52 @@ static inline void handle_op_call(VM *vm, Bytecode *code, uint8_t **ip) {
   vm->fp_stack[vm->fp_count++] = ip_obj;
 }
 
+/* OP_CALL_METHOD reads a 4-byte method name idx in the sp. Then,
+ * it pops an object off the stack and looks up the method on it.
+ * If the method exists, it performs the function call dance, but
+ * this time, it uses a direct jump to one byte before the method
+ * location. Besides, the fp it pushes on the stack does not need
+ * to take into account the jump sequence ahead of it, because it
+ * is not there -- the jump is performed by this instruction. */
 static inline void handle_op_call_method(VM *vm, Bytecode *code, uint8_t **ip) {
   uint32_t method_name_idx = READ_UINT32();
 
-  /* look up the method argument count in the object's blueprint */
   Object object = pop(vm);
+
+  /* Get the blueprint from the vm->blueprints table. */
   StructBlueprint *sb =
       table_get_unchecked(vm->blueprints, AS_STRUCT(object)->name);
 
+  /* Look up the method with that name on the blueprint. */
   Function *method = table_get(sb->methods, code->sp.data[method_name_idx]);
   if (!method) {
     RUNTIME_ERROR("Method '%s' is not defined on struct '%s'.",
                   code->sp.data[method_name_idx], AS_STRUCT(object)->name);
   }
 
+  /* Subtract 1 from method->paramcount because we're not
+   * passing 'self' in explicitly. */
   int argcount = method->paramcount - 1;
 
+  /* Push the instruction pointer on the frame ptr stack.
+   * No need to take into account the jump sequence (+3). */
   BytecodePtr ip_obj = {.addr = *ip, .location = vm->tos - argcount};
   vm->fp_stack[vm->fp_count++] = ip_obj;
 
+  /* Get the object back on the stack. */
   push(vm, object);
 
+  /* Direct jump to one byte before the method location. */
   *ip = &code->code.data[method->location - 1];
 }
 
+/* OP_IMPL reads a 4-byte blueprint name idx in the sp,
+ * and a 4-byte method count. Then, for each method, it
+ * reads a 4-byte method name index, a 4-byte param co-
+ * unt for the method, and a 4-byte location of the me-
+ * thod in the bytecode. Then, it constructs a Function
+ * object with all this information and inserts it into
+ * the blueprint's methods Table. */
 static inline void handle_op_impl(VM *vm, Bytecode *code, uint8_t **ip) {
   uint32_t blueprint_name_idx = READ_UINT32();
   uint32_t method_count = READ_UINT32();
