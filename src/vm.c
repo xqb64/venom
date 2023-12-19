@@ -69,10 +69,9 @@ static inline uint64_t clamp(double d) {
    * after the opcode. The instruction pointer ne-                             \
    * eds to be incremented to point to the last of                             \
    * the two operands, and a 16-bit offset constr-                             \
-   * ucted from the two bytes. Then the instructi-                             \
-   * on pointer will be incremented in by the main                             \
-   * loop again and will point to the next instru-                             \
-   * ction that comes after the jump. */                                       \
+   * ucted from the two bytes. Then the ip will be                             \
+   * incremented by the mainloop again to point to                             \
+   * the next opcode that comes after the jump. */                             \
   (*ip += 2, (int16_t)(((*ip)[-1] << 8) | (*ip)[0]))
 
 #define READ_UINT32()                                                          \
