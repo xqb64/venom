@@ -28,6 +28,8 @@ static inline void push(VM *vm, Object obj) { vm->stack[vm->tos++] = obj; }
 
 static inline Object pop(VM *vm) { return vm->stack[--vm->tos]; }
 
+static inline Object peek(VM *vm) { return vm->stack[vm->tos - 1]; }
+
 static inline uint64_t clamp(double d) {
   if (d < 0.0) {
     return 0;
@@ -706,7 +708,7 @@ static inline void handle_op_call(VM *vm, Bytecode *code, uint8_t **ip) {
 static inline void handle_op_call_method(VM *vm, Bytecode *code, uint8_t **ip) {
   uint32_t method_name_idx = READ_UINT32();
 
-  Object object = pop(vm);
+  Object object = peek(vm);
 
   /* Get the blueprint from the vm->blueprints table. */
   StructBlueprint *sb =
@@ -725,11 +727,8 @@ static inline void handle_op_call_method(VM *vm, Bytecode *code, uint8_t **ip) {
 
   /* Push the instruction pointer on the frame ptr stack.
    * No need to take into account the jump sequence (+3). */
-  BytecodePtr ip_obj = {.addr = *ip, .location = vm->tos - argcount};
+  BytecodePtr ip_obj = {.addr = *ip, .location = vm->tos - 1 - argcount};
   vm->fp_stack[vm->fp_count++] = ip_obj;
-
-  /* Get the object back on the stack. */
-  push(vm, object);
 
   /* Direct jump to one byte before the method location. */
   *ip = &code->code.data[method->location - 1];
