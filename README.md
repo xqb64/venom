@@ -77,7 +77,7 @@ Benchmark 1: python3 fib.py
 
 ...which is faster than Python! To be fair, besides being orders of magnitude more useful, Python could also execute this code in a blink of an eye with `@functools.lru_cache()`.
 
-But in any case, this is about where I'd draw the line in terms of functionality. As I continue to improve as a programmer, I might come back to it to make it a little faster (at least as fast as the [VM I wrote in Rust](https://github.com/xqb64/synapse)). 
+But in any case, this is about where I'd draw the line in terms of functionality. As I continue to improve as a programmer, I might come back to it to make it a little faster. 
 
 ### Pi generator
 
