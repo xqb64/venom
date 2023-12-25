@@ -846,6 +846,14 @@ static inline void handle_op_array(VM *vm, Bytecode *code, uint8_t **ip) {
   push(vm, ARRAY_VAL(ALLOC(array)));
 }
 
+static inline void handle_op_subscript(VM *vm, Bytecode *code, uint8_t **ip) {
+  Object index = pop(vm);
+  Object object = pop(vm);
+  Object value = AS_ARRAY(object)->elements.data[(int)AS_NUM(index)];
+  push(vm, value);
+  objincref(&value);
+}
+
 #ifdef venom_debug_vm
 static inline const char *print_current_instruction(uint8_t opcode) {
   switch (opcode) {
@@ -935,6 +943,8 @@ static inline const char *print_current_instruction(uint8_t opcode) {
     return "OP_STRCAT";
   case OP_ARRAY:
     return "OP_ARRAY";
+  case OP_SUBSCRIPT:
+    return "OP_SUBSCRIPT";
   default:
     assert(0);
   }
@@ -1126,6 +1136,10 @@ void run(VM *vm, Bytecode *code) {
     }
     case OP_ARRAY: {
       handle_op_array(vm, code, &ip);
+      break;
+    }
+    case OP_SUBSCRIPT: {
+      handle_op_subscript(vm, code, &ip);
       break;
     }
     default:

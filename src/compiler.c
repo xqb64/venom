@@ -805,6 +805,20 @@ static void compile_expr_array(Compiler *compiler, Bytecode *code, Expr exp) {
   emit_uint32(code, e.elements.count);
 }
 
+static void compile_expr_subscript(Compiler *compiler, Bytecode *code,
+                                   Expr exp) {
+  ExprSubscript e = TO_EXPR_SUBSCRIPT(exp);
+
+  /* First, we compile the expr. */
+  compile_expr(compiler, code, *e.expr);
+
+  /* Then, we compile the index. */
+  compile_expr(compiler, code, *e.index);
+
+  /* Then, we emit OP_SUBSCRIPT. */
+  emit_byte(code, OP_SUBSCRIPT);
+}
+
 typedef void (*CompileExprHandlerFn)(Compiler *compiler, Bytecode *code,
                                      Expr exp);
 
@@ -825,6 +839,7 @@ static CompileExprHandler expression_handler[] = {
     [EXPR_STRUCT] = {.fn = compile_expr_struct, .name = "EXPR_STRUCT"},
     [EXPR_S_INIT] = {.fn = compile_expr_s_init, .name = "EXPR_S_INIT"},
     [EXPR_ARRAY] = {.fn = compile_expr_array, .name = "EXPR_ARRAY"},
+    [EXPR_SUBSCRIPT] = {.fn = compile_expr_subscript, .name = "EXPR_SUBSCRIPT"},
 };
 
 static void compile_expr(Compiler *compiler, Bytecode *code, Expr exp) {

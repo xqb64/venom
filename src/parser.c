@@ -222,6 +222,15 @@ static Expr call(Parser *parser, Tokenizer *tokenizer) {
       };
 
       expr = AS_EXPR_GET(get_expr);
+    } else if (match(parser, tokenizer, 1, TOKEN_LEFT_BRACKET)) {
+      Expr index = expression(parser, tokenizer);
+      consume(parser, tokenizer, TOKEN_RIGHT_BRACKET,
+              "Expected ']' after index.");
+      ExprSubscript subscript_expr = {
+          .expr = ALLOC(expr),
+          .index = ALLOC(index),
+      };
+      expr = AS_EXPR_SUBSCRIPT(subscript_expr);
     } else {
       break;
     }
@@ -796,6 +805,12 @@ static void free_expression(Expr e) {
       free_expression(arrayexpr.elements.data[i]);
     }
     dynarray_free(&arrayexpr.elements);
+    break;
+  }
+  case EXPR_SUBSCRIPT: {
+    ExprSubscript subscriptexpr = TO_EXPR_SUBSCRIPT(e);
+    free_expression(*subscriptexpr.expr);
+    free_expression(*subscriptexpr.index);
     break;
   }
   default:
