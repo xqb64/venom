@@ -19,6 +19,7 @@ typedef enum {
   EXPR_LOG,
   EXPR_STRUCT,
   EXPR_S_INIT,
+  EXPR_ARRAY,
 } __attribute__((__packed__)) ExprKind;
 
 typedef struct Expr Expr;
@@ -89,6 +90,10 @@ typedef struct ExprStructInit {
   Expr *value;
 } ExprStructInit;
 
+typedef struct ExprArray {
+  DynArray_Expr elements;
+} ExprArray;
+
 typedef DynArray(ExprStructInit) DynArray_ExprStructInit;
 
 typedef struct Expr {
@@ -104,6 +109,7 @@ typedef struct Expr {
     ExprLogic expr_log;
     ExprStruct expr_struct;
     ExprStructInit expr_s_init;
+    ExprArray expr_array;
   } as;
 } Expr;
 
@@ -117,6 +123,7 @@ typedef struct Expr {
 #define TO_EXPR_LOG(exp) ((exp).as.expr_log)
 #define TO_EXPR_STRUCT(exp) ((exp).as.expr_struct)
 #define TO_EXPR_S_INIT(exp) ((exp).as.expr_s_init)
+#define TO_EXPR_ARRAY(exp) ((exp).as.expr_array)
 
 #define AS_EXPR_LIT(exp) ((Expr){.kind = EXPR_LIT, .as.expr_lit = (exp)})
 #define AS_EXPR_VAR(exp) ((Expr){.kind = EXPR_VAR, .as.expr_var = (exp)})
@@ -130,6 +137,7 @@ typedef struct Expr {
   ((Expr){.kind = EXPR_STRUCT, .as.expr_struct = (exp)})
 #define AS_EXPR_S_INIT(exp)                                                    \
   ((Expr){.kind = EXPR_S_INIT, .as.expr_s_init = (exp)})
+#define AS_EXPR_ARRAY(exp) ((Expr){.kind = EXPR_ARRAY, .as.expr_array = (exp)})
 
 typedef enum {
   STMT_LET,

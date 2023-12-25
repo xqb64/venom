@@ -825,6 +825,27 @@ static inline void handle_op_strcat(VM *vm, Bytecode *code, uint8_t **ip) {
   }
 }
 
+static inline void handle_op_array(VM *vm, Bytecode *code, uint8_t **ip) {
+  uint32_t count = READ_UINT32();
+
+  DynArray_Object tmp = {0};
+  for (size_t i = 0; i < count; i++) {
+    dynarray_insert(&tmp, pop(vm));
+  }
+
+  /* push in reverse */
+  DynArray_Object elements = {0};
+  for (size_t i = 0; i < count; i++) {
+    dynarray_insert(&elements, tmp.data[tmp.count - i - 1]);
+  }
+
+  dynarray_free(&tmp);
+
+  Array array = {.refcount = 1, .elements = elements};
+
+  push(vm, ARRAY_VAL(ALLOC(array)));
+}
+
 #ifdef venom_debug_vm
 static inline const char *print_current_instruction(uint8_t opcode) {
   switch (opcode) {
@@ -912,6 +933,8 @@ static inline const char *print_current_instruction(uint8_t opcode) {
     return "OP_DEREFSET";
   case OP_STRCAT:
     return "OP_STRCAT";
+  case OP_ARRAY:
+    return "OP_ARRAY";
   default:
     assert(0);
   }
@@ -1099,6 +1122,10 @@ void run(VM *vm, Bytecode *code) {
     }
     case OP_STRCAT: {
       handle_op_strcat(vm, code, &ip);
+      break;
+    }
+    case OP_ARRAY: {
+      handle_op_array(vm, code, &ip);
       break;
     }
     default:

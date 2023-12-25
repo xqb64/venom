@@ -159,6 +159,10 @@ Token get_token(Tokenizer *tokenizer) {
     return make_token(tokenizer, TOKEN_LEFT_BRACE, 1);
   case '}':
     return make_token(tokenizer, TOKEN_RIGHT_BRACE, 1);
+  case '[':
+    return make_token(tokenizer, TOKEN_LEFT_BRACKET, 1);
+  case ']':
+    return make_token(tokenizer, TOKEN_RIGHT_BRACKET, 1);
   case ':':
     return make_token(tokenizer, TOKEN_COLON, 1);
   case ';':

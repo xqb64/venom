@@ -462,17 +462,33 @@ static Expr struct_initializer(Parser *parser, Tokenizer *tokenizer) {
   return AS_EXPR_STRUCT(structexp);
 }
 
+static Expr array_initializer(Parser *parser, Tokenizer *tokenizer) {
+  DynArray_Expr initializers = {0};
+  do {
+    dynarray_insert(&initializers, expression(parser, tokenizer));
+  } while (match(parser, tokenizer, 1, TOKEN_COMMA));
+  consume(parser, tokenizer, TOKEN_RIGHT_BRACKET,
+          "Expected ']' after array initialization.");
+  ExprArray arrayexp = {
+      .elements = initializers,
+  };
+  return AS_EXPR_ARRAY(arrayexp);
+}
+
 static Expr primary(Parser *parser, Tokenizer *tokenizer) {
   if (match(parser, tokenizer, 1, TOKEN_IDENTIFIER)) {
     if (check(parser, TOKEN_LEFT_BRACE)) {
       return struct_initializer(parser, tokenizer);
+    } else {
+      return variable(parser);
     }
-    return variable(parser);
   } else if (match(parser, tokenizer, 1, TOKEN_LEFT_PAREN)) {
     return grouping(parser, tokenizer);
   } else if (match(parser, tokenizer, 5, TOKEN_TRUE, TOKEN_FALSE, TOKEN_NULL,
                    TOKEN_NUMBER, TOKEN_STRING)) {
     return literal(parser);
+  } else if (match(parser, tokenizer, 1, TOKEN_LEFT_BRACKET)) {
+    return array_initializer(parser, tokenizer);
   } else {
     assert(0);
   }
@@ -772,6 +788,14 @@ static void free_expression(Expr e) {
     free(getexpr.property_name);
     free(getexpr.exp);
     free(getexpr.op);
+    break;
+  }
+  case EXPR_ARRAY: {
+    ExprArray arrayexpr = TO_EXPR_ARRAY(e);
+    for (size_t i = 0; i < arrayexpr.elements.count; i++) {
+      free_expression(arrayexpr.elements.data[i]);
+    }
+    dynarray_free(&arrayexpr.elements);
     break;
   }
   default:

@@ -7,6 +7,7 @@
 #include <stdio.h>
 #include <stdlib.h>
 
+#include "dynarray.h"
 #include "table.h"
 
 typedef enum {
@@ -15,6 +16,7 @@ typedef enum {
   OBJ_PTR,
   OBJ_NUMBER,
   OBJ_BOOLEAN,
+  OBJ_ARRAY,
   OBJ_NULL,
 } ObjectType;
 
@@ -95,6 +97,7 @@ typedef enum {
 #define TAG_STRUCT 4
 #define TAG_STRING 5
 #define TAG_PTR 6
+#define TAG_ARRAY 7
 
 typedef uint64_t Object;
 
@@ -125,6 +128,7 @@ typedef uint64_t Object;
 #define STRUCT_PATTERN (SIGN_BIT | QNAN | TAG_STRUCT)
 #define STRING_PATTERN (SIGN_BIT | QNAN | TAG_STRING)
 #define PTR_PATTERN (SIGN_BIT | QNAN | TAG_PTR)
+#define ARRAY_PATTERN (SIGN_BIT | QNAN | TAG_ARRAY)
 
 /* To check whether a value is a struct, we check if it's an object and
  * whether it is tagged as a Struct. */
@@ -137,6 +141,10 @@ typedef uint64_t Object;
 /* To check whether a value is a struct, we check if it's an object and
  * whether it is tagged as a pointer. */
 #define IS_PTR(value) (((value) & (SIGN_BIT | QNAN | 0x7)) == PTR_PATTERN)
+
+/* To check whether a value is an array, we check if it's an object and
+ * whether it is tagged as an array. */
+#define IS_ARRAY(value) (((value) & (SIGN_BIT | QNAN | 0x7)) == ARRAY_PATTERN)
 
 /* To convert a value to a boolean, we compare it to TRUE_VAL because
  * if we had a 'false', (false == true) will be false, and we got our
@@ -172,6 +180,13 @@ typedef uint64_t Object;
        ? (Object *)((uintptr_t)((object) & ~(SIGN_BIT | QNAN | 0x7)))          \
        : NULL)
 
+/* To convert a value to an array Object, we need to clear the SIGN_BIT,
+ * QNAN, and the tag. Finally, we cast the result to Array pointer. */
+#define AS_ARRAY(object)                                                       \
+  ((IS_ARRAY(object))                                                          \
+       ? (Array *)((uintptr_t)((object) & ~(SIGN_BIT | QNAN | 0x7)))           \
+       : NULL)
+
 #define BOOL_VAL(b) ((b) ? TRUE_VAL : FALSE_VAL)
 
 /* To construct a boolean Object with value 'false', we set QNAN and tag
@@ -186,7 +201,7 @@ typedef uint64_t Object;
 /* To construct a Struct object, we set the SIGN_BIT, QNAN, and tag it as
  * struct.
  *
- * Likewise for String and Object pointer. */
+ * Likewise for String, Array and Object pointer. */
 #define STRUCT_VAL(obj)                                                        \
   (Object)(SIGN_BIT | QNAN | ((uint64_t)(uintptr_t)(obj)) | TAG_STRUCT)
 
@@ -195,6 +210,9 @@ typedef uint64_t Object;
 
 #define PTR_VAL(obj)                                                           \
   (Object)(SIGN_BIT | QNAN | ((uint64_t)(uintptr_t)(obj)) | TAG_PTR)
+
+#define ARRAY_VAL(obj)                                                         \
+  (Object)(SIGN_BIT | QNAN | ((uint64_t)(uintptr_t)(obj)) | TAG_ARRAY)
 
 inline double object2num(Object value) {
   union {
@@ -218,6 +236,9 @@ inline Object num2object(double num) {
 
 typedef struct String String;
 typedef struct Struct Struct;
+typedef struct Array Array;
+
+typedef DynArray(struct Object) DynArray_Object;
 
 typedef struct Object {
   ObjectType type;
@@ -243,6 +264,8 @@ typedef struct Object {
      * have it at two places, and we need to INCREF. */
     Struct *structobj;
 
+    Array *array;
+
     /* Since we have two refcounted objects (Struct and String),
      * we need a handy way to access their refcounts.
      *
@@ -265,12 +288,14 @@ typedef struct Object {
 
 #define IS_FUNC(object) ((object).type == OBJ_FUNCTION)
 #define IS_STRUCT_BLUEPRINT(object) ((object).type == OBJ_STRUCT_BLUEPRINT)
+#define IS_ARRAY(object) ((object).type == OBJ_ARRAY)
 
 #define AS_NUM(object) ((object).as.dval)
 #define AS_BOOL(object) ((object).as.bval)
 #define AS_STRUCT(object) ((object).as.structobj)
 #define AS_PTR(object) ((object).as.ptr)
 #define AS_STRING(object) ((object).as.str)
+#define AS_ARRAY(object) ((object).as.array)
 
 #define AS_FUNC(object) ((object).as.func)
 #define AS_STRUCT_BLUEPRINT(object) ((object).as.struct_blueprint)
@@ -281,6 +306,7 @@ typedef struct Object {
 #define STRUCT_VAL(thing)                                                      \
   ((Object){.type = OBJ_STRUCT, .as.structobj = (thing)})
 #define PTR_VAL(thing) ((Object){.type = OBJ_PTR, .as.ptr = (thing)})
+#define ARRAY_VAL(thing) ((Object){.type = OBJ_ARRAY, .as.array = (thing)})
 #define NULL_VAL ((Object){.type = OBJ_NULL})
 
 #endif
@@ -299,6 +325,11 @@ typedef struct Struct {
   Object *properties;
 } Struct;
 
+typedef struct Array {
+  int refcount;
+  DynArray_Object elements;
+} Array;
+
 #define OBJ_TYPE(value) (AS_OBJ(value)->type)
 
 inline const char *get_object_type(Object *object) {
@@ -306,6 +337,8 @@ inline const char *get_object_type(Object *object) {
     return "string";
   } else if (IS_STRUCT(*object)) {
     return "struct";
+  } else if (IS_ARRAY(*object)) {
+    return "array";
   } else if (IS_PTR(*object)) {
     return "pointer";
   } else if (IS_BOOL(*object)) {
@@ -334,6 +367,9 @@ inline void dealloc(Object *obj) {
   } else if (IS_STRING(*obj)) {
     free(AS_STRING(*obj)->value);
     free(AS_STRING(*obj));
+  } else if (IS_ARRAY(*obj)) {
+    dynarray_free(&AS_ARRAY(*obj)->elements);
+    free(AS_ARRAY(*obj));
   }
 #else
   switch (obj->type) {
@@ -345,6 +381,11 @@ inline void dealloc(Object *obj) {
   case OBJ_STRING: {
     free(AS_STRING(*obj)->value);
     free(AS_STRING(*obj));
+    break;
+  }
+  case OBJ_ARRAY: {
+    dynarray_free(&AS_ARRAY(*obj)->elements);
+    free(AS_ARRAY(*obj));
     break;
   }
   default:
@@ -359,11 +400,14 @@ inline void objincref(Object *obj) {
     ++AS_STRING(*obj)->refcount;
   } else if (IS_STRUCT(*obj)) {
     ++AS_STRUCT(*obj)->refcount;
+  } else if (IS_ARRAY(*obj)) {
+    ++AS_ARRAY(*obj)->refcount;
   }
 #else
   switch (obj->type) {
   case OBJ_STRING:
-  case OBJ_STRUCT: {
+  case OBJ_STRUCT:
+  case OBJ_ARRAY: {
     ++*(obj)->as.refcount;
     break;
   }
@@ -386,6 +430,13 @@ inline void objdecref(Object *obj) {
       }
       dealloc(obj);
     }
+  } else if (IS_ARRAY(*obj)) {
+    if (--AS_ARRAY(*obj)->refcount == 0) {
+      for (size_t i = 0; i < AS_ARRAY(*obj)->elements.count; i++) {
+        objdecref(&AS_ARRAY(*obj)->elements.data[i]);
+      }
+      dealloc(obj);
+    }
   }
 #else
 
@@ -400,6 +451,15 @@ inline void objdecref(Object *obj) {
     if (--*(obj)->as.refcount == 0) {
       for (size_t i = 0; i < AS_STRUCT(*obj)->propcount; i++) {
         objdecref(&AS_STRUCT(*obj)->properties[i]);
+      }
+      dealloc(obj);
+    }
+    break;
+  }
+  case OBJ_ARRAY: {
+    if (--*(obj)->as.refcount == 0) {
+      for (size_t i = 0; i < AS_ARRAY(*obj)->elements.count; i++) {
+        objdecref(&AS_ARRAY(*obj)->elements.data[i]);
       }
       dealloc(obj);
     }

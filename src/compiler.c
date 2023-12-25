@@ -792,6 +792,19 @@ static void compile_expr_s_init(Compiler *compiler, Bytecode *code, Expr exp) {
   emit_uint32(code, add_string(code, property.name));
 }
 
+static void compile_expr_array(Compiler *compiler, Bytecode *code, Expr exp) {
+  ExprArray e = TO_EXPR_ARRAY(exp);
+
+  /* First, we compile the array elements. */
+  for (size_t i = 0; i < e.elements.count; i++) {
+    compile_expr(compiler, code, e.elements.data[i]);
+  }
+
+  /* Then, we emit OP_ARRAY and the number of elements. */
+  emit_byte(code, OP_ARRAY);
+  emit_uint32(code, e.elements.count);
+}
+
 typedef void (*CompileExprHandlerFn)(Compiler *compiler, Bytecode *code,
                                      Expr exp);
 
@@ -811,6 +824,7 @@ static CompileExprHandler expression_handler[] = {
     [EXPR_LOG] = {.fn = compile_expr_log, .name = "EXPR_LOG"},
     [EXPR_STRUCT] = {.fn = compile_expr_struct, .name = "EXPR_STRUCT"},
     [EXPR_S_INIT] = {.fn = compile_expr_s_init, .name = "EXPR_S_INIT"},
+    [EXPR_ARRAY] = {.fn = compile_expr_array, .name = "EXPR_ARRAY"},
 };
 
 static void compile_expr(Compiler *compiler, Bytecode *code, Expr exp) {

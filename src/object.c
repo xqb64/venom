@@ -26,6 +26,16 @@ void print_object(Object *object) {
     printf(" }");
   } else if (IS_PTR(*object)) {
     printf("PTR ('%p')", (void *)AS_PTR(*object));
+  } else if (IS_ARRAY(*object)) {
+    Array *array = AS_ARRAY(*object);
+    printf("[");
+    for (size_t i = 0; i < array->elements.count; i++) {
+      print_object(&array->elements.data[i]);
+      if (i < array->elements.count - 1) {
+        printf(", ");
+      }
+    }
+    printf("]");
   }
 }
 
@@ -34,7 +44,7 @@ void free_table_object(const Table_Object *table) {
     if (table->indexes[i] != NULL) {
       Bucket *bucket = table->indexes[i];
       Object obj = table->items[bucket->value];
-      if (IS_STRUCT(obj) || IS_STRING(obj)) {
+      if (IS_STRUCT(obj) || IS_STRING(obj) || IS_ARRAY(obj)) {
         objdecref(&obj);
       }
       list_free(bucket);
