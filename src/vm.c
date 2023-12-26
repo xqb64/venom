@@ -846,6 +846,21 @@ static inline void handle_op_array(VM *vm, Bytecode *code, uint8_t **ip) {
   push(vm, ARRAY_VAL(ALLOC(array)));
 }
 
+/* OP_ARRAYSET pops three objects off the stack: the index, the array object,
+ * and the value. Then, it reassigns the element within the array at that idx
+ * to 'value'.
+ *
+ * REFCOUNTING: We need to make sure to decrement the refcount for the popped
+ * array, since arrays are refcounted objects. */
+static inline void handle_op_arrayset(VM *vm, Bytecode *code, uint8_t **ip) {
+  Object value = pop(vm);
+  Object index = pop(vm);
+  Object subscriptee = pop(vm);
+  Array *array = AS_ARRAY(subscriptee);
+  array->elements.data[(int)AS_NUM(index)] = value;
+  objdecref(&subscriptee);
+}
+
 /* OP_SUBSCRIPT pops two objects off the stack, index, and the subscriptee
  * which is expected to be an array. Then, it accesses the object at index
  * 'index' within the array object, and pushes it on the stack.
@@ -951,6 +966,8 @@ static inline const char *print_current_instruction(uint8_t opcode) {
     return "OP_STRCAT";
   case OP_ARRAY:
     return "OP_ARRAY";
+  case OP_ARRAYSET:
+    return "OP_ARRAYSET";
   case OP_SUBSCRIPT:
     return "OP_SUBSCRIPT";
   default:
@@ -1144,6 +1161,10 @@ void run(VM *vm, Bytecode *code) {
     }
     case OP_ARRAY: {
       handle_op_array(vm, code, &ip);
+      break;
+    }
+    case OP_ARRAYSET: {
+      handle_op_arrayset(vm, code, &ip);
       break;
     }
     case OP_SUBSCRIPT: {

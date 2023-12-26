@@ -653,6 +653,26 @@ static void compile_assign_una(Compiler *compiler, Bytecode *code, ExprAssign e,
   emit_byte(code, OP_DEREFSET);
 }
 
+static void compile_assign_sub(Compiler *compiler, Bytecode *code, ExprAssign e,
+                               bool is_compound) {
+  ExprSubscript subscriptexpr = TO_EXPR_SUBSCRIPT(*e.lhs);
+
+  /* Compile the subscriptee. */
+  compile_expr(compiler, code, *subscriptexpr.expr);
+
+  /* Compile the index. */
+  compile_expr(compiler, code, *subscriptexpr.index);
+
+  if (is_compound) {
+    compile_expr(compiler, code, *e.rhs);
+    handle_specop(code, e.op);
+  } else {
+    compile_expr(compiler, code, *e.rhs);
+  }
+
+  emit_byte(code, OP_ARRAYSET);
+}
+
 static void compile_expr_ass(Compiler *compiler, Bytecode *code, Expr exp) {
   ExprAssign e = TO_EXPR_ASS(exp);
   bool compound_assign = strcmp(e.op, "=") != 0;
@@ -666,6 +686,9 @@ static void compile_expr_ass(Compiler *compiler, Bytecode *code, Expr exp) {
     break;
   case EXPR_UNA:
     compile_assign_una(compiler, code, e, compound_assign);
+    break;
+  case EXPR_SUBSCRIPT:
+    compile_assign_sub(compiler, code, e, compound_assign);
     break;
   default:
     COMPILER_ERROR("Invalid assignment.");

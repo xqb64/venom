@@ -54,6 +54,7 @@ typedef enum {
   OP_DEREFSET,
   OP_STRCAT,
   OP_ARRAY,
+  OP_ARRAYSET,
   OP_SUBSCRIPT,
 } Opcode;
 
