@@ -623,7 +623,10 @@ static inline void handle_op_getattr_ptr(VM *vm, Bytecode *code, uint8_t **ip) {
 /* OP_STRUCT reads a 4-byte index of the struct name in the
  * sp, constructs a struct object with that name and refco-
  * unt set to 1 (while making sure to initialize the prope-
- * rties table properly), and pushes it on the stack. */
+ * rties table properly), and pushes it on the stack.
+ *
+ * REFCOUNTING: Since Structs are refcounted, the newly co-
+ * nstructed object has a refcount=1. */
 static inline void handle_op_struct(VM *vm, Bytecode *code, uint8_t **ip) {
   uint32_t structname = READ_UINT32();
 
@@ -825,33 +828,38 @@ static inline void handle_op_strcat(VM *vm, Bytecode *code, uint8_t **ip) {
   }
 }
 
+/* OP_ARRAY reads a 4-byte count of the array elements, pops that many ele-
+ * ments off the stack, inserts them into a dynarray, creates an Array obj-
+ * ect, and pushes it on the stack.
+ *
+ * REFCOUNTING: Since Arrays are refcounted, the new object has refcount=1. */
 static inline void handle_op_array(VM *vm, Bytecode *code, uint8_t **ip) {
   uint32_t count = READ_UINT32();
 
-  DynArray_Object tmp = {0};
-  for (size_t i = 0; i < count; i++) {
-    dynarray_insert(&tmp, pop(vm));
-  }
-
-  /* push in reverse */
   DynArray_Object elements = {0};
   for (size_t i = 0; i < count; i++) {
-    dynarray_insert(&elements, tmp.data[tmp.count - i - 1]);
+    dynarray_insert(&elements, pop(vm));
   }
-
-  dynarray_free(&tmp);
 
   Array array = {.refcount = 1, .elements = elements};
 
   push(vm, ARRAY_VAL(ALLOC(array)));
 }
 
+/* OP_SUBSCRIPT pops two objects off the stack, index, and the subscriptee
+ * which is expected to be an array. Then, it accesses the object at index
+ * 'index' within the array object, and pushes it on the stack.
+ *
+ * REFCOUNTING: We need to make sure to decrement the refcount for the po-
+ * pped array, and increment the refcount for the object we are pushing on
+ * the stack. */
 static inline void handle_op_subscript(VM *vm, Bytecode *code, uint8_t **ip) {
   Object index = pop(vm);
   Object object = pop(vm);
   Object value = AS_ARRAY(object)->elements.data[(int)AS_NUM(index)];
   push(vm, value);
   objincref(&value);
+  objdecref(&object);
 }
 
 #ifdef venom_debug_vm

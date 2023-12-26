@@ -811,6 +811,8 @@ static void free_expression(Expr e) {
     ExprSubscript subscriptexpr = TO_EXPR_SUBSCRIPT(e);
     free_expression(*subscriptexpr.expr);
     free_expression(*subscriptexpr.index);
+    free(subscriptexpr.expr);
+    free(subscriptexpr.index);
     break;
   }
   default:

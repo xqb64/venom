@@ -795,8 +795,11 @@ static void compile_expr_s_init(Compiler *compiler, Bytecode *code, Expr exp) {
 static void compile_expr_array(Compiler *compiler, Bytecode *code, Expr exp) {
   ExprArray e = TO_EXPR_ARRAY(exp);
 
-  /* First, we compile the array elements. */
-  for (size_t i = 0; i < e.elements.count; i++) {
+  /* First, we compile the array elements in reverse. Why? If we had
+   * done [1, 2, 3], when the vm popped these elements, it would ha-
+   * ve got them in reversed order, that is, [3, 2, 1]. Compiling in
+   * reverse avoids the overhead of sorting the elements at runtime. */
+  for (int i = e.elements.count - 1; i >= 0; i--) {
     compile_expr(compiler, code, e.elements.data[i]);
   }
 
