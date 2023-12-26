@@ -664,6 +664,7 @@ static void compile_assign_sub(Compiler *compiler, Bytecode *code, ExprAssign e,
   compile_expr(compiler, code, *subscriptexpr.index);
 
   if (is_compound) {
+    compile_expr(compiler, code, *e.lhs);
     compile_expr(compiler, code, *e.rhs);
     handle_specop(code, e.op);
   } else {

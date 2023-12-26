@@ -15,4 +15,4 @@ def test_array():
 
     output = process.stdout.decode("utf-8")
 
-    assert_output(output, [128, "Hello, world!"])
+    assert_output(output, [128, "Hello, world!", 11])
