@@ -1,0 +1,18 @@
+struct spam {
+  x;
+  y;
+}
+
+fn main() {
+  let egg = spam {
+    x: spam {
+      x: [1, 2, spam { x: 64, y: 128}],
+      y: "Hello, world!"
+    },
+    y: "lol"
+  };
+  print egg.x.x[2].y;
+  return 0;
+}
+
+main();
