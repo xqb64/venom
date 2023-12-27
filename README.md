@@ -11,6 +11,7 @@ This project is my debut in the realm of programming language design. I had a bl
   - booleans
   - strings
   - structures
+  - arrays
   - pointers
   - null
 - operators for the said types
