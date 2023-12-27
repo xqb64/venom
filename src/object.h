@@ -13,10 +13,10 @@
 typedef enum {
   OBJ_STRUCT,
   OBJ_STRING,
+  OBJ_ARRAY,
   OBJ_PTR,
   OBJ_NUMBER,
   OBJ_BOOLEAN,
-  OBJ_ARRAY,
   OBJ_NULL,
 } ObjectType;
 
@@ -100,6 +100,7 @@ typedef enum {
 #define TAG_ARRAY 7
 
 typedef uint64_t Object;
+typedef DynArray(Object) DynArray_Object;
 
 #define IS_NULL(value) ((value) == NULL_VAL)
 
