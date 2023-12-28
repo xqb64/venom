@@ -65,8 +65,8 @@ The above program has been the go-to benchmark throughout the development cycle.
 ```
 ❯ hyperfine --runs 5 './venom benchmarks/fib40.vnm'
 Benchmark 1: ./venom benchmarks/fib40.vnm
-  Time (mean ± σ):     11.434 s ±  0.091 s    [User: 11.415 s, System: 0.005 s]
-  Range (min … max):   11.328 s … 11.560 s    5 runs
+  Time (mean ± σ):     12.662 s ±  0.121 s    [User: 12.606 s, System: 0.008 s]
+  Range (min … max):   12.574 s … 12.874 s    5 runs
 ```
 
 ```
