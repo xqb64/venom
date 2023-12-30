@@ -138,6 +138,7 @@ fn list_print(list) {
     print current->value;
     current = &current->next;
   }
+  return 0;
 }
 
 fn list_insert(list, item) {
@@ -151,6 +152,7 @@ fn list_insert(list, item) {
     }
     current->next = new_node;
   }
+  return 0;
 }
 
 fn main() {
@@ -159,6 +161,7 @@ fn main() {
   list_insert(&list, false);
   list_insert(&list, "Hello, world!");
   list_print(&list);
+  return 0;
 }
 
 main();
