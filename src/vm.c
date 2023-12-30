@@ -723,14 +723,14 @@ static inline void handle_op_call_method(VM *vm, Bytecode *code, uint8_t **ip) {
   /* Look up the method with that name on the blueprint. */
   Function *method = table_get(sb->methods, code->sp.data[method_name_idx]);
   if (!method) {
-    RUNTIME_ERROR("Method '%s' is not defined on struct '%s'.",
+    RUNTIME_ERROR("method '%s' is not defined on struct '%s'.",
                   code->sp.data[method_name_idx], AS_STRUCT(object)->name);
   }
 
   /* If the argcount doesn't match the paramcount (-1 for self), bail out. */
   if (argcount != method->paramcount - 1) {
-    RUNTIME_ERROR("Method '%s' expects %ld arguments, but %d were provided.",
-                  method->name, method->paramcount, argcount);
+    RUNTIME_ERROR("method '%s' expects %ld arguments, but %d were provided.",
+                  method->name, method->paramcount - 1, argcount);
   }
 
   /* Push the instruction pointer on the frame ptr stack.

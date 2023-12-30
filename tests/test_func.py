@@ -56,5 +56,5 @@ def test_method_undefined():
 
     error = process.stderr.decode("utf-8")
 
-    assert_error(error, ["vm: Method 'goodbye' is not defined on struct 'person'.\n"])
+    assert_error(error, ["vm: method 'goodbye' is not defined on struct 'person'.\n"])
     assert process.returncode == 1
