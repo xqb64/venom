@@ -476,8 +476,14 @@ static void compile_expr_call(Compiler *compiler, Bytecode *code, Expr exp) {
 
     char *method = getexp.property_name;
 
+    for (size_t i = 0; i < e.arguments.count; i++) {
+      compile_expr(compiler, code, e.arguments.data[i]);
+    }
+
     emit_byte(code, OP_CALL_METHOD);
     emit_uint32(code, add_string(code, method));
+
+    emit_uint32(code, e.arguments.count);
 
   } else if (e.callee->kind == EXPR_VAR) {
     ExprVar var = TO_EXPR_VAR(*e.callee);

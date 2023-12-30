@@ -3,15 +3,17 @@ struct person {
 }
 
 impl person {
-  fn greet(self) {
-    print "Hello, " ++ self.name ++ ".";
+  fn greet(self, prefix, suffix) {
+    print prefix ++ self.name ++ suffix;
     return 0;
   }
 }
 
 fn main() {
   let p = person { name: "Joe" };
-  p.greet();
+  let prefix = "Hello, ";
+  let suffix = ".";
+  p.greet(prefix, suffix);
   return 0;
 }
 

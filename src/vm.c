@@ -28,7 +28,7 @@ static inline void push(VM *vm, Object obj) { vm->stack[vm->tos++] = obj; }
 
 static inline Object pop(VM *vm) { return vm->stack[--vm->tos]; }
 
-static inline Object peek(VM *vm) { return vm->stack[vm->tos - 1]; }
+static inline Object peek(VM *vm, int n) { return vm->stack[vm->tos - 1 - n]; }
 
 static inline uint64_t clamp(double d) {
   if (d < 0.0) {
@@ -712,8 +712,9 @@ static inline void handle_op_call(VM *vm, Bytecode *code, uint8_t **ip) {
  * is not there -- the jump is performed by this instruction. */
 static inline void handle_op_call_method(VM *vm, Bytecode *code, uint8_t **ip) {
   uint32_t method_name_idx = READ_UINT32();
+  uint32_t argcount = READ_UINT32();
 
-  Object object = peek(vm);
+  Object object = peek(vm, argcount);
 
   /* Get the blueprint from the vm->blueprints table. */
   StructBlueprint *sb =
@@ -724,6 +725,12 @@ static inline void handle_op_call_method(VM *vm, Bytecode *code, uint8_t **ip) {
   if (!method) {
     RUNTIME_ERROR("Method '%s' is not defined on struct '%s'.",
                   code->sp.data[method_name_idx], AS_STRUCT(object)->name);
+  }
+
+  /* If the argcount doesn't match the paramcount (-1 for self), bail out. */
+  if (argcount != method->paramcount - 1) {
+    RUNTIME_ERROR("Method '%s' expects %ld arguments, but %d were provided.",
+                  method->name, method->paramcount, argcount);
   }
 
   /* Push the instruction pointer on the frame ptr stack.
