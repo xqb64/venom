@@ -1,0 +1,9 @@
+use "tests/cases/dummy_fn.vnm";
+
+let x = 0;
+
+while (true) {
+    if (x == 5) break;
+    print add_one(2);
+    x += 1;
+}

@@ -311,6 +311,12 @@ Token get_token(Tokenizer *tokenizer) {
     }
     return identifier(tokenizer);
   }
+  case 'u': {
+    if (lookahead(tokenizer, 2, "se")) {
+      return make_token(tokenizer, TOKEN_USE, 3);
+    }
+    return identifier(tokenizer);
+  }
   case 'w': {
     if (lookahead(tokenizer, 4, "hile")) {
       return make_token(tokenizer, TOKEN_WHILE, 5);

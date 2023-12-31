@@ -1,0 +1,9 @@
+use "tests/cases/cycle/a.vnm";
+
+fn main() {
+    let x = 1;
+    print x;
+    return 0;
+}
+
+main();

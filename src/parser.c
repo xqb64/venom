@@ -688,6 +688,15 @@ static Stmt impl_statement(Parser *parser, Tokenizer *tokenizer) {
   return AS_STMT_IMPL(stmt);
 }
 
+static Stmt use_statement(Parser *parser, Tokenizer *tokenizer) {
+  Token path = consume(parser, tokenizer, TOKEN_STRING,
+                       "Module path should be a string");
+  consume(parser, tokenizer, TOKEN_SEMICOLON,
+          "expected semicolon at the end of use statement");
+  StmtUse stmt = {.path = own_string_n(path.start, path.length - 1)};
+  return AS_STMT_USE(stmt);
+}
+
 static Stmt statement(Parser *parser, Tokenizer *tokenizer) {
   if (match(parser, tokenizer, 1, TOKEN_PRINT)) {
     return print_statement(parser, tokenizer);
@@ -713,6 +722,8 @@ static Stmt statement(Parser *parser, Tokenizer *tokenizer) {
     return struct_statement(parser, tokenizer);
   } else if (match(parser, tokenizer, 1, TOKEN_IMPL)) {
     return impl_statement(parser, tokenizer);
+  } else if (match(parser, tokenizer, 1, TOKEN_USE)) {
+    return use_statement(parser, tokenizer);
   } else {
     return expression_statement(parser, tokenizer);
   }
@@ -909,6 +920,10 @@ void free_stmt(Stmt stmt) {
       free_stmt(TO_STMT_IMPL(stmt).methods.data[i]);
     }
     dynarray_free(&TO_STMT_IMPL(stmt).methods);
+    break;
+  }
+  case STMT_USE: {
+    free(TO_STMT_USE(stmt).path);
     break;
   }
   default:

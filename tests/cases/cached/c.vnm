@@ -1,0 +1,4 @@
+fn spam(x) {
+    print x;
+    return 0;
+}

@@ -163,6 +163,7 @@ typedef enum {
   STMT_RETURN,
   STMT_STRUCT,
   STMT_IMPL,
+  STMT_USE,
 } __attribute__((__packed__)) StmtKind;
 
 typedef struct Stmt Stmt;
@@ -233,6 +234,10 @@ typedef struct {
   char dummy;
 } StmtContinue;
 
+typedef struct {
+  char *path;
+} StmtUse;
+
 typedef struct Stmt {
   StmtKind kind;
   union {
@@ -249,6 +254,7 @@ typedef struct Stmt {
     StmtRet stmt_return;
     StmtStruct stmt_struct;
     StmtImpl stmt_impl;
+    StmtUse stmt_use;
   } as;
 } Stmt;
 
@@ -263,6 +269,7 @@ typedef struct Stmt {
 #define TO_STMT_RETURN(stmt) ((stmt).as.stmt_return)
 #define TO_STMT_STRUCT(stmt) ((stmt).as.stmt_struct)
 #define TO_STMT_IMPL(stmt) ((stmt).as.stmt_impl)
+#define TO_STMT_USE(stmt) ((stmt).as.stmt_use)
 
 #define AS_STMT_PRINT(stmt)                                                    \
   ((Stmt){.kind = STMT_PRINT, .as.stmt_print = (stmt)})
@@ -284,6 +291,7 @@ typedef struct Stmt {
 #define AS_STMT_STRUCT(stmt)                                                   \
   ((Stmt){.kind = STMT_STRUCT, .as.stmt_struct = (stmt)})
 #define AS_STMT_IMPL(stmt) ((Stmt){.kind = STMT_IMPL, .as.stmt_impl = (stmt)})
+#define AS_STMT_USE(stmt) ((Stmt){.kind = STMT_USE, .as.stmt_use = (stmt)})
 
 typedef struct {
   Token current;

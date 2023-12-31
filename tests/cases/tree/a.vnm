@@ -1,0 +1,4 @@
+use "tests/cases/tree/b.vnm";
+use "tests/cases/tree/c.vnm";
+use "tests/cases/tree/d.vnm";
+

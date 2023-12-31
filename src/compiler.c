@@ -7,6 +7,42 @@
 
 #include "compiler.h"
 
+static bool is_last(struct module *parent, struct module *child) {
+  return strcmp(parent->imports.data[parent->imports.count - 1]->path,
+                child->path) == 0;
+}
+
+static void print_prefix(int depth, bool is_grandparent_last) {
+  for (int i = 0; i < depth; i++) {
+    if (i == 0)
+      continue;
+    if (is_grandparent_last)
+      printf("  ");
+    else
+      printf("┃ ");
+  }
+}
+
+static void print_module_tree(Compiler *compiler, struct module *parent,
+                              struct module *mod, int depth,
+                              bool is_parent_last) {
+  bool last = is_last(parent, mod);
+
+  if (depth == 0) {
+    printf("%s\n", mod->path);
+  } else {
+    bool is_grandparent_last =
+        parent->parent && is_last(parent->parent, parent);
+    print_prefix(depth, is_grandparent_last);
+    char *prefix = last ? "┗━" : "┣━";
+    printf("%s %s\n", prefix, mod->path);
+  }
+
+  for (size_t i = 0; i < mod->imports.count; i++) {
+    print_module_tree(compiler, mod, mod->imports.data[i], depth + 1, last);
+  }
+}
+
 #define COMPILER_ERROR(...)                                                    \
   do {                                                                         \
     fprintf(stderr, "compiler: ");                                             \
@@ -19,6 +55,7 @@ void init_compiler(Compiler *compiler) {
   memset(compiler, 0, sizeof(Compiler));
   compiler->functions = calloc(1, sizeof(Table_Function));
   compiler->struct_blueprints = calloc(1, sizeof(Table_StructBlueprint));
+  compiler->compiled_modules = calloc(1, sizeof(Table_module_ptr));
 }
 
 void free_table_int(Table_int *table) {
@@ -54,6 +91,20 @@ void free_table_functions(Table_Function *table) {
   }
 }
 
+void free_table_compiled_modules(Table_module_ptr *table) {
+  for (size_t i = 0; i < TABLE_MAX; i++) {
+    if (table->indexes[i] != NULL) {
+      Bucket *bucket = table->indexes[i];
+      list_free(bucket);
+    }
+  }
+  for (size_t i = 0; i < table->count; i++) {
+    free(table->items[i]->path);
+    dynarray_free(&table->items[i]->imports);
+    free(table->items[i]);
+  }
+}
+
 void free_compiler(Compiler *compiler) {
   dynarray_free(&compiler->globals);
   dynarray_free(&compiler->locals);
@@ -62,8 +113,10 @@ void free_compiler(Compiler *compiler) {
   dynarray_free(&compiler->loop_depths);
   free_table_struct_blueprints(compiler->struct_blueprints);
   free_table_functions(compiler->functions);
+  free_table_compiled_modules(compiler->compiled_modules);
   free(compiler->struct_blueprints);
   free(compiler->functions);
+  free(compiler->compiled_modules);
 }
 
 void init_chunk(Bytecode *code) { memset(code, 0, sizeof(Bytecode)); }
@@ -1294,6 +1347,77 @@ static void compile_stmt_continue(Compiler *compiler, Bytecode *code,
   }
 }
 
+static bool is_cyclic(Compiler *compiler, struct module *mod) {
+  struct module *current = mod;
+  while (current->parent) {
+    if (strcmp(current->parent->path, mod->path) == 0)
+      return true;
+    current = current->parent;
+  }
+  return false;
+}
+
+static void compile_stmt_use(Compiler *compiler, Bytecode *code, Stmt stmt) {
+  StmtUse stmt_use = TO_STMT_USE(stmt);
+
+  struct module **cached_module =
+      table_get(compiler->compiled_modules, stmt_use.path);
+  if (!cached_module) {
+    char *source = read_file(stmt_use.path);
+
+    struct module *importee = calloc(1, sizeof(struct module));
+
+    Tokenizer tokenizer;
+    init_tokenizer(&tokenizer, source);
+
+    Parser parser;
+    init_parser(&parser);
+
+    DynArray_Stmt stmts = parse(&parser, &tokenizer);
+
+    struct module *old_module = compiler->current_mod;
+
+    importee->path = own_string(stmt_use.path);
+    importee->parent = old_module;
+
+    compiler->current_mod = importee;
+
+    dynarray_insert(&importee->parent->imports, importee);
+
+    table_insert(compiler->compiled_modules, stmt_use.path, importee);
+
+    if (is_cyclic(compiler, importee))
+      COMPILER_ERROR("Cycle.");
+
+    for (size_t i = 0; i < stmts.count; i++) {
+      compile(compiler, code, stmts.data[i]);
+    }
+
+    compiler->current_mod = old_module;
+
+    for (size_t i = 0; i < stmts.count; i++) {
+      free_stmt(stmts.data[i]);
+    }
+    dynarray_free(&stmts);
+
+    free(source);
+  } else {
+    dynarray_insert(&compiler->current_mod->imports, *cached_module);
+    compiler->current_mod->imports
+        .data[compiler->current_mod->imports.count - 1]
+        ->parent = compiler->current_mod;
+
+    if (is_cyclic(compiler, *cached_module))
+      COMPILER_ERROR("Cycle.");
+
+    printf("using cached import for: %s\n", (*cached_module)->path);
+  }
+
+  struct module **root_mod =
+      table_get(compiler->compiled_modules, compiler->root_mod);
+  print_module_tree(compiler, *root_mod, *root_mod, 0, false);
+}
+
 typedef void (*CompileHandlerFn)(Compiler *compiler, Bytecode *code, Stmt stmt);
 
 typedef struct {
@@ -1315,6 +1439,7 @@ static CompileHandler handler[] = {
     [STMT_RETURN] = {.fn = compile_stmt_return, .name = "STMT_RETURN"},
     [STMT_BREAK] = {.fn = compile_stmt_break, .name = "STMT_BREAK"},
     [STMT_CONTINUE] = {.fn = compile_stmt_continue, .name = "STMT_CONTINUE"},
+    [STMT_USE] = {.fn = compile_stmt_use, .name = "STMT_USE"},
 };
 
 void compile(Compiler *compiler, Bytecode *code, Stmt stmt) {

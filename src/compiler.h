@@ -86,9 +86,21 @@ typedef Table(StructBlueprint) Table_StructBlueprint;
 void free_table_struct_blueprints(Table_StructBlueprint *table);
 void free_table_functions(Table_Function *table);
 
+typedef DynArray(struct module *) DynArray_module_ptr;
+
+struct module {
+  char *path;
+  DynArray_module_ptr imports;
+  struct module *parent;
+  Bytecode code;
+};
+
+typedef Table(struct module *) Table_module_ptr;
+
 typedef struct Compiler {
   Table_Function *functions;
   Table_StructBlueprint *struct_blueprints;
+  Table_module_ptr *compiled_modules;
   DynArray_char_ptr globals;
   DynArray_char_ptr locals;
   DynArray_int breaks;
@@ -96,6 +108,8 @@ typedef struct Compiler {
   DynArray_int loop_depths;
   int depth;
   int pops[POPS_MAX];
+  struct module *current_mod;
+  char *root_mod;
 } Compiler;
 
 void init_chunk(Bytecode *code);

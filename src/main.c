@@ -24,9 +24,19 @@ void run_file(char *file) {
 
   Compiler compiler;
   init_compiler(&compiler);
+
+  struct module current_mod =
+      (struct module){.path = own_string(file), .imports = {0}, .parent = NULL};
+
+  compiler.current_mod = ALLOC(current_mod);
+  compiler.root_mod = compiler.current_mod->path;
+
+  table_insert(compiler.compiled_modules, file, compiler.current_mod);
+
   for (size_t i = 0; i < stmts.count; i++) {
     compile(&compiler, &chunk, stmts.data[i]);
   }
+
   free_compiler(&compiler);
 
   VM vm;
