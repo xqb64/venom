@@ -7,6 +7,7 @@
 
 #include "compiler.h"
 
+#ifdef venom_debug_compiler
 static bool is_last(struct module *parent, struct module *child) {
   return strcmp(parent->imports.data[parent->imports.count - 1]->path,
                 child->path) == 0;
@@ -42,6 +43,7 @@ static void print_module_tree(Compiler *compiler, struct module *parent,
     print_module_tree(compiler, mod, mod->imports.data[i], depth + 1, last);
   }
 }
+#endif
 
 #define COMPILER_ERROR(...)                                                    \
   do {                                                                         \
@@ -1410,12 +1412,16 @@ static void compile_stmt_use(Compiler *compiler, Bytecode *code, Stmt stmt) {
     if (is_cyclic(compiler, *cached_module))
       COMPILER_ERROR("Cycle.");
 
+#ifdef venom_debug_compiler
     printf("using cached import for: %s\n", (*cached_module)->path);
   }
 
   struct module **root_mod =
       table_get(compiler->compiled_modules, compiler->root_mod);
   print_module_tree(compiler, *root_mod, *root_mod, 0, false);
+#else
+  }
+#endif
 }
 
 typedef void (*CompileHandlerFn)(Compiler *compiler, Bytecode *code, Stmt stmt);

@@ -23,7 +23,7 @@ fi
 
 # Run tests
 make clean
-make -j$(nproc) debug=vm
+make -j$(nproc) debug=vm,compiler
 make test
 if [ $? -ne 0 ]; then
   echo "Tests failed."
