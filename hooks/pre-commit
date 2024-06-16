@@ -8,7 +8,7 @@ if [ $? -ne 0 ]; then
 fi
 
 # Run ruff on the tests
-ruff tests/
+ruff check tests/
 if [ $? -ne 0 ]; then
   echo "ruff check failed."
   exit 1
