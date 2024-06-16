@@ -32,6 +32,7 @@ This project is my debut in the realm of programming language design. I had a bl
 - `print` statement
 - methods
 - global scope
+- import subsystem
 - reference counting
 - optional NaN boxing
 
