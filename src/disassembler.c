@@ -61,6 +61,12 @@ void disassemble(Bytecode *code) {
 #define READ_UINT32()                                                          \
   (ip += 4, (uint32_t)((ip[-3] << 24) | (ip[-2] << 16) | (ip[-1] << 8) | ip[0]))
 
+#define READ_DOUBLE()                                                          \
+  (ip += 8, (double)(((uint64_t)ip[-7] << 56) | ((uint64_t)ip[-6] << 48) |     \
+                     ((uint64_t)ip[-5] << 40) | ((uint64_t)ip[-4] << 32) |     \
+                     ((uint64_t)ip[-3] << 24) | ((uint64_t)ip[-2] << 16) |     \
+                     ((uint64_t)ip[-1] << 8) | (uint64_t)ip[0]))
+
   for (uint8_t *ip = code->code.data;
        ip < &code->code.data[code->code.count]; /* ip < addr of just beyond
                                                      the last instruction */
@@ -77,8 +83,8 @@ void disassemble(Bytecode *code) {
     case 4: {
       switch (*ip) {
       case OP_CONST: {
-        uint32_t const_idx = READ_UINT32();
-        printf(" (value: %.16g)", code->cp.data[const_idx]);
+        double d = READ_DOUBLE();
+        printf(" (value: %.16g)", d);
         break;
       }
       case OP_STR: {

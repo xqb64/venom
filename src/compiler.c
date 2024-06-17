@@ -126,7 +126,6 @@ void init_chunk(Bytecode *code) { memset(code, 0, sizeof(Bytecode)); }
 void free_chunk(Bytecode *code) {
   dynarray_free(&code->code);
   dynarray_free(&code->sp);
-  dynarray_free(&code->cp);
 }
 
 static void begin_scope(Compiler *compiler) { compiler->depth++; }
@@ -151,18 +150,6 @@ static uint32_t add_string(Bytecode *code, char *string) {
   return code->sp.count - 1;
 }
 
-/* Check if the uint32 is already present in the cp.
- * If not, add it first, and finally return the idx. */
-static uint32_t add_constant(Bytecode *code, double constant) {
-  for (size_t idx = 0; idx < code->cp.count; idx++) {
-    if (code->cp.data[idx] == constant) {
-      return idx;
-    }
-  }
-  dynarray_insert(&code->cp, constant);
-  return code->cp.count - 1;
-}
-
 static void emit_byte(Bytecode *code, uint8_t byte) {
   dynarray_insert(&code->code, byte);
 }
@@ -180,6 +167,20 @@ static void emit_bytes(Bytecode *code, int n, ...) {
 static void emit_uint32(Bytecode *code, uint32_t idx) {
   emit_bytes(code, 4, (idx >> 24) & 0xFF, (idx >> 16) & 0xFF, (idx >> 8) & 0xFF,
              idx & 0xFF);
+}
+
+static void emit_double(Bytecode *code, double x) {
+  union {
+    double d;
+    uint64_t raw;
+  } num;
+  num.d = x;
+  emit_bytes(
+      code, 8, (uint8_t)((num.raw >> 56) & 0xFF),
+      (uint8_t)((num.raw >> 48) & 0xFF), (uint8_t)((num.raw >> 40) & 0xFF),
+      (uint8_t)((num.raw >> 32) & 0xFF), (uint8_t)((num.raw >> 24) & 0xFF),
+      (uint8_t)((num.raw >> 16) & 0xFF), (uint8_t)((num.raw >> 8) & 0xFF),
+      (uint8_t)(num.raw & 0xFF));
 }
 
 static int emit_placeholder(Bytecode *code, Opcode op) {
@@ -365,9 +366,8 @@ static void compile_expr_lit(Compiler *compiler, Bytecode *code, Expr exp) {
     break;
   }
   case LIT_NUM: {
-    uint32_t const_idx = add_constant(code, e.as.dval);
     emit_byte(code, OP_CONST);
-    emit_uint32(code, const_idx);
+    emit_double(code, e.as.dval);
     break;
   }
   case LIT_STR: {

@@ -63,7 +63,6 @@ typedef DynArray(double) DynArray_double;
 
 typedef struct Bytecode {
   DynArray_uint8_t code;
-  DynArray_double cp;   /* constant pool */
   DynArray_char_ptr sp; /* string pool */
 } Bytecode;
 
