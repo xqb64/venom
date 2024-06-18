@@ -36,6 +36,7 @@ void run_file(char *file) {
   for (size_t i = 0; i < stmts.count; i++) {
     compile(&compiler, &chunk, stmts.data[i]);
   }
+  dynarray_insert(&chunk.code, OP_HLT);
 
   free_compiler(&compiler);
 

@@ -986,6 +986,8 @@ static inline const char *print_current_instruction(uint8_t opcode) {
     return "OP_ARRAYSET";
   case OP_SUBSCRIPT:
     return "OP_SUBSCRIPT";
+  case OP_HLT:
+    return "OP_HLT";
   default:
     assert(0);
   }
@@ -997,204 +999,229 @@ void run(VM *vm, Bytecode *code) {
   disassemble(code);
 #endif
 
-  for (uint8_t *ip = code->code.data;
-       ip < &code->code.data[code->code.count]; /* ip < addr of just beyond
-                                                     the last instruction */
-       ip++) {
+  static void *dispatch_table[] = {
+      &&op_print,       &&op_add,
+      &&op_sub,         &&op_mul,
+      &&op_div,         &&op_mod,
+      &&op_eq,          &&op_gt,
+      &&op_lt,          &&op_not,
+      &&op_neg,         &&op_true,
+      &&op_null,        &&op_const,
+      &&op_str,         &&op_jmp,
+      &&op_jz,          &&op_bitand,
+      &&op_bitor,       &&op_bitxor,
+      &&op_bitnot,      &&op_bitshl,
+      &&op_bitshr,      &&op_set_global,
+      &&op_get_global,  &&op_get_global_ptr,
+      &&op_deepset,     &&op_deepget,
+      &&op_deepget_ptr, &&op_setattr,
+      &&op_getattr,     &&op_getattr_ptr,
+      &&op_struct,      &&op_struct_blueprint,
+      &&op_impl,        &&op_call,
+      &&op_call_method, &&op_ret,
+      &&op_pop,         &&op_deref,
+      &&op_derefset,    &&op_strcat,
+      &&op_array,       &&op_arrayset,
+      &&op_subscript,   &&op_hlt,
+  };
 
-#ifdef venom_debug_vm
-    printf("%s\n", print_current_instruction(*ip));
-#endif
+#define DISPATCH()                                                             \
+  do {                                                                         \
+    goto *dispatch_table[*ip];                                                 \
+  } while (0)
 
-    switch (*ip) {
-    case OP_PRINT: {
-      handle_op_print(vm, code, &ip);
-      break;
-    }
-    case OP_ADD: {
-      handle_op_add(vm, code, &ip);
-      break;
-    }
-    case OP_SUB: {
-      handle_op_sub(vm, code, &ip);
-      break;
-    }
-    case OP_MUL: {
-      handle_op_mul(vm, code, &ip);
-      break;
-    }
-    case OP_DIV: {
-      handle_op_div(vm, code, &ip);
-      break;
-    }
-    case OP_MOD: {
-      handle_op_mod(vm, code, &ip);
-      break;
-    }
-    case OP_EQ: {
-      handle_op_eq(vm, code, &ip);
-      break;
-    }
-    case OP_GT: {
-      handle_op_gt(vm, code, &ip);
-      break;
-    }
-    case OP_LT: {
-      handle_op_lt(vm, code, &ip);
-      break;
-    }
-    case OP_NOT: {
-      handle_op_not(vm, code, &ip);
-      break;
-    }
-    case OP_NEG: {
-      handle_op_neg(vm, code, &ip);
-      break;
-    }
-    case OP_TRUE: {
-      handle_op_true(vm, code, &ip);
-      break;
-    }
-    case OP_NULL: {
-      handle_op_null(vm, code, &ip);
-      break;
-    }
-    case OP_CONST: {
-      handle_op_const(vm, code, &ip);
-      break;
-    }
-    case OP_STR: {
-      handle_op_str(vm, code, &ip);
-      break;
-    }
-    case OP_JZ: {
-      handle_op_jz(vm, code, &ip);
-      break;
-    }
-    case OP_JMP: {
-      handle_op_jmp(vm, code, &ip);
-      break;
-    }
-    case OP_BITAND: {
-      handle_op_bitand(vm, code, &ip);
-      break;
-    }
-    case OP_BITOR: {
-      handle_op_bitor(vm, code, &ip);
-      break;
-    }
-    case OP_BITXOR: {
-      handle_op_bitxor(vm, code, &ip);
-      break;
-    }
-    case OP_BITNOT: {
-      handle_op_bitnot(vm, code, &ip);
-      break;
-    }
-    case OP_BITSHL: {
-      handle_op_bitshl(vm, code, &ip);
-      break;
-    }
-    case OP_BITSHR: {
-      handle_op_bitshr(vm, code, &ip);
-      break;
-    }
-    case OP_SET_GLOBAL: {
-      handle_op_set_global(vm, code, &ip);
-      break;
-    }
-    case OP_GET_GLOBAL: {
-      handle_op_get_global(vm, code, &ip);
-      break;
-    }
-    case OP_GET_GLOBAL_PTR: {
-      handle_op_get_global_ptr(vm, code, &ip);
-      break;
-    }
-    case OP_DEEPSET: {
-      handle_op_deepset(vm, code, &ip);
-      break;
-    }
-    case OP_DEEPGET: {
-      handle_op_deepget(vm, code, &ip);
-      break;
-    }
-    case OP_DEEPGET_PTR: {
-      handle_op_deepget_ptr(vm, code, &ip);
-      break;
-    }
-    case OP_SETATTR: {
-      handle_op_setattr(vm, code, &ip);
-      break;
-    }
-    case OP_GETATTR: {
-      handle_op_getattr(vm, code, &ip);
-      break;
-    }
-    case OP_GETATTR_PTR: {
-      handle_op_getattr_ptr(vm, code, &ip);
-      break;
-    }
-    case OP_STRUCT: {
-      handle_op_struct(vm, code, &ip);
-      break;
-    }
-    case OP_STRUCT_BLUEPRINT: {
-      handle_op_struct_blueprint(vm, code, &ip);
-      break;
-    }
-    case OP_IMPL: {
-      handle_op_impl(vm, code, &ip);
-      break;
-    }
-    case OP_CALL: {
-      handle_op_call(vm, code, &ip);
-      break;
-    }
-    case OP_CALL_METHOD: {
-      handle_op_call_method(vm, code, &ip);
-      break;
-    }
-    case OP_RET: {
-      handle_op_ret(vm, code, &ip);
-      break;
-    }
-    case OP_POP: {
-      handle_op_pop(vm, code, &ip);
-      break;
-    }
-    case OP_DEREF: {
-      handle_op_deref(vm, code, &ip);
-      break;
-    }
-    case OP_DEREFSET: {
-      handle_op_derefset(vm, code, &ip);
-      break;
-    }
-    case OP_STRCAT: {
-      handle_op_strcat(vm, code, &ip);
-      break;
-    }
-    case OP_ARRAY: {
-      handle_op_array(vm, code, &ip);
-      break;
-    }
-    case OP_ARRAYSET: {
-      handle_op_arrayset(vm, code, &ip);
-      break;
-    }
-    case OP_SUBSCRIPT: {
-      handle_op_subscript(vm, code, &ip);
-      break;
-    }
-    default:
-      break;
-    }
+  uint8_t *ip = code->code.data;
 
-#ifdef venom_debug_vm
-    PRINT_STACK();
-#endif
+  DISPATCH();
+
+  for (;;) {
+  op_print:
+    handle_op_print(vm, code, &ip);
+    ip++;
+    DISPATCH();
+  op_add:
+    handle_op_add(vm, code, &ip);
+    ip++;
+    DISPATCH();
+  op_sub:
+    handle_op_sub(vm, code, &ip);
+    ip++;
+    DISPATCH();
+  op_mul:
+    handle_op_mul(vm, code, &ip);
+    ip++;
+    DISPATCH();
+  op_div:
+    handle_op_div(vm, code, &ip);
+    ip++;
+    DISPATCH();
+  op_mod:
+    handle_op_mod(vm, code, &ip);
+    ip++;
+    DISPATCH();
+  op_eq:
+    handle_op_eq(vm, code, &ip);
+    ip++;
+    DISPATCH();
+  op_gt:
+    handle_op_gt(vm, code, &ip);
+    ip++;
+    DISPATCH();
+  op_lt:
+    handle_op_lt(vm, code, &ip);
+    ip++;
+    DISPATCH();
+  op_not:
+    handle_op_not(vm, code, &ip);
+    ip++;
+    DISPATCH();
+  op_neg:
+    handle_op_neg(vm, code, &ip);
+    ip++;
+    DISPATCH();
+  op_true:
+    handle_op_true(vm, code, &ip);
+    ip++;
+    DISPATCH();
+  op_null:
+    handle_op_null(vm, code, &ip);
+    ip++;
+    DISPATCH();
+  op_const:
+    handle_op_const(vm, code, &ip);
+    ip++;
+    DISPATCH();
+  op_str:
+    handle_op_str(vm, code, &ip);
+    ip++;
+    DISPATCH();
+  op_jmp:
+    handle_op_jmp(vm, code, &ip);
+    ip++;
+    DISPATCH();
+  op_jz:
+    handle_op_jz(vm, code, &ip);
+    ip++;
+    DISPATCH();
+  op_bitand:
+    handle_op_bitand(vm, code, &ip);
+    ip++;
+    DISPATCH();
+  op_bitor:
+    handle_op_bitor(vm, code, &ip);
+    ip++;
+    DISPATCH();
+  op_bitxor:
+    handle_op_bitxor(vm, code, &ip);
+    ip++;
+    DISPATCH();
+  op_bitnot:
+    handle_op_bitnot(vm, code, &ip);
+    ip++;
+    DISPATCH();
+  op_bitshl:
+    handle_op_bitshl(vm, code, &ip);
+    ip++;
+    DISPATCH();
+  op_bitshr:
+    handle_op_bitshr(vm, code, &ip);
+    ip++;
+    DISPATCH();
+  op_set_global:
+    handle_op_set_global(vm, code, &ip);
+    ip++;
+    DISPATCH();
+  op_get_global:
+    handle_op_get_global(vm, code, &ip);
+    ip++;
+    DISPATCH();
+  op_get_global_ptr:
+    handle_op_get_global_ptr(vm, code, &ip);
+    ip++;
+    DISPATCH();
+  op_deepset:
+    handle_op_deepset(vm, code, &ip);
+    ip++;
+    DISPATCH();
+  op_deepget:
+    handle_op_deepget(vm, code, &ip);
+    ip++;
+    DISPATCH();
+  op_deepget_ptr:
+    handle_op_deepget_ptr(vm, code, &ip);
+    ip++;
+    DISPATCH();
+  op_setattr:
+    handle_op_setattr(vm, code, &ip);
+    ip++;
+    DISPATCH();
+  op_getattr:
+    handle_op_getattr(vm, code, &ip);
+    ip++;
+    DISPATCH();
+  op_getattr_ptr:
+    handle_op_getattr_ptr(vm, code, &ip);
+    ip++;
+    DISPATCH();
+  op_struct:
+    handle_op_struct(vm, code, &ip);
+    ip++;
+    DISPATCH();
+  op_struct_blueprint:
+    handle_op_struct_blueprint(vm, code, &ip);
+    ip++;
+    DISPATCH();
+  op_impl:
+    handle_op_impl(vm, code, &ip);
+    ip++;
+    DISPATCH();
+  op_call:
+    handle_op_call(vm, code, &ip);
+    ip++;
+    DISPATCH();
+  op_call_method:
+    handle_op_call_method(vm, code, &ip);
+    ip++;
+    DISPATCH();
+  op_ret:
+    handle_op_ret(vm, code, &ip);
+    ip++;
+    DISPATCH();
+  op_pop:
+    handle_op_pop(vm, code, &ip);
+    ip++;
+    DISPATCH();
+  op_deref:
+    handle_op_deref(vm, code, &ip);
+    ip++;
+    DISPATCH();
+  op_derefset:
+    handle_op_derefset(vm, code, &ip);
+    ip++;
+    DISPATCH();
+  op_strcat:
+    handle_op_strcat(vm, code, &ip);
+    ip++;
+    DISPATCH();
+  op_array:
+    handle_op_array(vm, code, &ip);
+    ip++;
+    DISPATCH();
+  op_arrayset:
+    handle_op_arrayset(vm, code, &ip);
+    ip++;
+    DISPATCH();
+  op_subscript:
+    handle_op_subscript(vm, code, &ip);
+    ip++;
+    DISPATCH();
+  op_hlt:
+    return;
   }
+
+#ifdef venom_debug_vm
+  PRINT_STACK();
+#endif
 
   assert(vm->tos == 0);
 }
