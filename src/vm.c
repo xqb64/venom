@@ -1025,152 +1025,150 @@ void run(VM *vm, Bytecode *code) {
       &&op_subscript,   &&op_hlt,
   };
 
-#define DISPATCH()                                                             \
-  do {                                                                         \
-    goto *dispatch_table[*++ip];                                               \
-  } while (0)
+#define DISPATCH() goto *dispatch_table[*++ip]
 
   uint8_t *ip = code->code.data;
 
   goto *dispatch_table[*ip];
 
-op_print:
-  handle_op_print(vm, code, &ip);
-  DISPATCH();
-op_add:
-  handle_op_add(vm, code, &ip);
-  DISPATCH();
-op_sub:
-  handle_op_sub(vm, code, &ip);
-  DISPATCH();
-op_mul:
-  handle_op_mul(vm, code, &ip);
-  DISPATCH();
-op_div:
-  handle_op_div(vm, code, &ip);
-  DISPATCH();
-op_mod:
-  handle_op_mod(vm, code, &ip);
-  DISPATCH();
-op_eq:
-  handle_op_eq(vm, code, &ip);
-  DISPATCH();
-op_gt:
-  handle_op_gt(vm, code, &ip);
-  DISPATCH();
-op_lt:
-  handle_op_lt(vm, code, &ip);
-  DISPATCH();
-op_not:
-  handle_op_not(vm, code, &ip);
-  DISPATCH();
-op_neg:
-  handle_op_neg(vm, code, &ip);
-  DISPATCH();
-op_true:
-  handle_op_true(vm, code, &ip);
-  DISPATCH();
-op_null:
-  handle_op_null(vm, code, &ip);
-  DISPATCH();
-op_const:
-  handle_op_const(vm, code, &ip);
-  DISPATCH();
-op_str:
-  handle_op_str(vm, code, &ip);
-  DISPATCH();
-op_jmp:
-  handle_op_jmp(vm, code, &ip);
-  DISPATCH();
-op_jz:
-  handle_op_jz(vm, code, &ip);
-  DISPATCH();
-op_bitand:
-  handle_op_bitand(vm, code, &ip);
-  DISPATCH();
-op_bitor:
-  handle_op_bitor(vm, code, &ip);
-  DISPATCH();
-op_bitxor:
-  handle_op_bitxor(vm, code, &ip);
-  DISPATCH();
-op_bitnot:
-  handle_op_bitnot(vm, code, &ip);
-  DISPATCH();
-op_bitshl:
-  handle_op_bitshl(vm, code, &ip);
-  DISPATCH();
-op_bitshr:
-  handle_op_bitshr(vm, code, &ip);
-  DISPATCH();
-op_set_global:
-  handle_op_set_global(vm, code, &ip);
-  DISPATCH();
-op_get_global:
-  handle_op_get_global(vm, code, &ip);
-  DISPATCH();
-op_get_global_ptr:
-  handle_op_get_global_ptr(vm, code, &ip);
-  DISPATCH();
-op_deepset:
-  handle_op_deepset(vm, code, &ip);
-  DISPATCH();
-op_deepget:
-  handle_op_deepget(vm, code, &ip);
-  DISPATCH();
-op_deepget_ptr:
-  handle_op_deepget_ptr(vm, code, &ip);
-  DISPATCH();
-op_setattr:
-  handle_op_setattr(vm, code, &ip);
-  DISPATCH();
-op_getattr:
-  handle_op_getattr(vm, code, &ip);
-  DISPATCH();
-op_getattr_ptr:
-  handle_op_getattr_ptr(vm, code, &ip);
-  DISPATCH();
-op_struct:
-  handle_op_struct(vm, code, &ip);
-  DISPATCH();
-op_struct_blueprint:
-  handle_op_struct_blueprint(vm, code, &ip);
-  DISPATCH();
-op_impl:
-  handle_op_impl(vm, code, &ip);
-  DISPATCH();
-op_call:
-  handle_op_call(vm, code, &ip);
-  DISPATCH();
-op_call_method:
-  handle_op_call_method(vm, code, &ip);
-  DISPATCH();
-op_ret:
-  handle_op_ret(vm, code, &ip);
-  DISPATCH();
-op_pop:
-  handle_op_pop(vm, code, &ip);
-  DISPATCH();
-op_deref:
-  handle_op_deref(vm, code, &ip);
-  DISPATCH();
-op_derefset:
-  handle_op_derefset(vm, code, &ip);
-  DISPATCH();
-op_strcat:
-  handle_op_strcat(vm, code, &ip);
-  DISPATCH();
-op_array:
-  handle_op_array(vm, code, &ip);
-  DISPATCH();
-op_arrayset:
-  handle_op_arrayset(vm, code, &ip);
-  DISPATCH();
-op_subscript:
-  handle_op_subscript(vm, code, &ip);
-  DISPATCH();
-op_hlt:
-  return;
-
+  while (1) {
+  op_print:
+    handle_op_print(vm, code, &ip);
+    DISPATCH();
+  op_add:
+    handle_op_add(vm, code, &ip);
+    DISPATCH();
+  op_sub:
+    handle_op_sub(vm, code, &ip);
+    DISPATCH();
+  op_mul:
+    handle_op_mul(vm, code, &ip);
+    DISPATCH();
+  op_div:
+    handle_op_div(vm, code, &ip);
+    DISPATCH();
+  op_mod:
+    handle_op_mod(vm, code, &ip);
+    DISPATCH();
+  op_eq:
+    handle_op_eq(vm, code, &ip);
+    DISPATCH();
+  op_gt:
+    handle_op_gt(vm, code, &ip);
+    DISPATCH();
+  op_lt:
+    handle_op_lt(vm, code, &ip);
+    DISPATCH();
+  op_not:
+    handle_op_not(vm, code, &ip);
+    DISPATCH();
+  op_neg:
+    handle_op_neg(vm, code, &ip);
+    DISPATCH();
+  op_true:
+    handle_op_true(vm, code, &ip);
+    DISPATCH();
+  op_null:
+    handle_op_null(vm, code, &ip);
+    DISPATCH();
+  op_const:
+    handle_op_const(vm, code, &ip);
+    DISPATCH();
+  op_str:
+    handle_op_str(vm, code, &ip);
+    DISPATCH();
+  op_jmp:
+    handle_op_jmp(vm, code, &ip);
+    DISPATCH();
+  op_jz:
+    handle_op_jz(vm, code, &ip);
+    DISPATCH();
+  op_bitand:
+    handle_op_bitand(vm, code, &ip);
+    DISPATCH();
+  op_bitor:
+    handle_op_bitor(vm, code, &ip);
+    DISPATCH();
+  op_bitxor:
+    handle_op_bitxor(vm, code, &ip);
+    DISPATCH();
+  op_bitnot:
+    handle_op_bitnot(vm, code, &ip);
+    DISPATCH();
+  op_bitshl:
+    handle_op_bitshl(vm, code, &ip);
+    DISPATCH();
+  op_bitshr:
+    handle_op_bitshr(vm, code, &ip);
+    DISPATCH();
+  op_set_global:
+    handle_op_set_global(vm, code, &ip);
+    DISPATCH();
+  op_get_global:
+    handle_op_get_global(vm, code, &ip);
+    DISPATCH();
+  op_get_global_ptr:
+    handle_op_get_global_ptr(vm, code, &ip);
+    DISPATCH();
+  op_deepset:
+    handle_op_deepset(vm, code, &ip);
+    DISPATCH();
+  op_deepget:
+    handle_op_deepget(vm, code, &ip);
+    DISPATCH();
+  op_deepget_ptr:
+    handle_op_deepget_ptr(vm, code, &ip);
+    DISPATCH();
+  op_setattr:
+    handle_op_setattr(vm, code, &ip);
+    DISPATCH();
+  op_getattr:
+    handle_op_getattr(vm, code, &ip);
+    DISPATCH();
+  op_getattr_ptr:
+    handle_op_getattr_ptr(vm, code, &ip);
+    DISPATCH();
+  op_struct:
+    handle_op_struct(vm, code, &ip);
+    DISPATCH();
+  op_struct_blueprint:
+    handle_op_struct_blueprint(vm, code, &ip);
+    DISPATCH();
+  op_impl:
+    handle_op_impl(vm, code, &ip);
+    DISPATCH();
+  op_call:
+    handle_op_call(vm, code, &ip);
+    DISPATCH();
+  op_call_method:
+    handle_op_call_method(vm, code, &ip);
+    DISPATCH();
+  op_ret:
+    handle_op_ret(vm, code, &ip);
+    DISPATCH();
+  op_pop:
+    handle_op_pop(vm, code, &ip);
+    DISPATCH();
+  op_deref:
+    handle_op_deref(vm, code, &ip);
+    DISPATCH();
+  op_derefset:
+    handle_op_derefset(vm, code, &ip);
+    DISPATCH();
+  op_strcat:
+    handle_op_strcat(vm, code, &ip);
+    DISPATCH();
+  op_array:
+    handle_op_array(vm, code, &ip);
+    DISPATCH();
+  op_arrayset:
+    handle_op_arrayset(vm, code, &ip);
+    DISPATCH();
+  op_subscript:
+    handle_op_subscript(vm, code, &ip);
+    DISPATCH();
+  op_hlt:
+    return;
+  }
   assert(vm->tos == 0);
 }
