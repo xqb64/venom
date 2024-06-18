@@ -1025,7 +1025,15 @@ void run(VM *vm, Bytecode *code) {
       &&op_subscript,   &&op_hlt,
   };
 
+#ifndef venom_debug_vm
 #define DISPATCH() goto *dispatch_table[*++ip]
+#else
+#define DISPATCH() do { \
+  printf("current instruction: %s\n", print_current_instruction(*++ip)); \
+  PRINT_STACK(); \
+  goto *dispatch_table[*ip]; \
+} while (0)
+#endif
 
   uint8_t *ip = code->code.data;
 
