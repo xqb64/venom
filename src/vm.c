@@ -1177,7 +1177,7 @@ void run(VM *vm, Bytecode *code) {
     handle_op_subscript(vm, code, &ip);
     DISPATCH();
   op_hlt:
+    assert(vm->tos == 0);
     return;
   }
-  assert(vm->tos == 0);
 }
