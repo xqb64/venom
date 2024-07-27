@@ -1,180 +1,167 @@
+#include "disassembler.h"
+
 #include <stdint.h>
 #include <stdio.h>
 
-#include "disassembler.h"
 #include "dynarray.h"
 
-typedef struct {
-  char *opcode;
-  size_t operands;
+typedef struct
+{
+    char *opcode;
 } DisassembleHandler;
 
 static DisassembleHandler disassemble_handler[] = {
-    [OP_PRINT] = {.opcode = "OP_PRINT", .operands = 0},
-    [OP_ADD] = {.opcode = "OP_ADD", .operands = 0},
-    [OP_SUB] = {.opcode = "OP_SUB", .operands = 0},
-    [OP_MUL] = {.opcode = "OP_MUL", .operands = 0},
-    [OP_DIV] = {.opcode = "OP_DIV", .operands = 0},
-    [OP_MOD] = {.opcode = "OP_MOD", .operands = 0},
-    [OP_EQ] = {.opcode = "OP_EQ", .operands = 0},
-    [OP_GT] = {.opcode = "OP_GT", .operands = 0},
-    [OP_LT] = {.opcode = "OP_LT", .operands = 0},
-    [OP_BITAND] = {.opcode = "OP_BITAND", .operands = 0},
-    [OP_BITOR] = {.opcode = "OP_BITOR", .operands = 0},
-    [OP_BITXOR] = {.opcode = "OP_BITXOR", .operands = 0},
-    [OP_BITNOT] = {.opcode = "OP_BITNOT", .operands = 0},
-    [OP_BITSHL] = {.opcode = "OP_BITSHL", .operands = 0},
-    [OP_BITSHR] = {.opcode = "OP_BITSHR", .operands = 0},
-    [OP_NOT] = {.opcode = "OP_NOT", .operands = 0},
-    [OP_NEG] = {.opcode = "OP_NEG", .operands = 0},
-    [OP_TRUE] = {.opcode = "OP_TRUE", .operands = 0},
-    [OP_NULL] = {.opcode = "OP_NULL", .operands = 0},
-    [OP_CONST] = {.opcode = "OP_CONST", .operands = 4},
-    [OP_STR] = {.opcode = "OP_STR", .operands = 4},
-    [OP_STRCAT] = {.opcode = "OP_STRCAT", .operands = 0},
-    [OP_JZ] = {.opcode = "OP_JZ", .operands = 2},
-    [OP_JMP] = {.opcode = "OP_JMP", .operands = 2},
-    [OP_SET_GLOBAL] = {.opcode = "OP_SET_GLOBAL", .operands = 4},
-    [OP_GET_GLOBAL] = {.opcode = "OP_GET_GLOBAL", .operands = 4},
-    [OP_GET_GLOBAL_PTR] = {.opcode = "OP_GET_GLOBAL_PTR", .operands = 4},
-    [OP_DEEPSET] = {.opcode = "OP_DEEPSET", .operands = 4},
-    [OP_DEEPGET] = {.opcode = "OP_DEEPGET", .operands = 4},
-    [OP_DEEPGET_PTR] = {.opcode = "OP_DEEPGET_PTR", .operands = 4},
-    [OP_SETATTR] = {.opcode = "OP_SETATTR", .operands = 4},
-    [OP_GETATTR] = {.opcode = "OP_GETATTR", .operands = 4},
-    [OP_GETATTR_PTR] = {.opcode = "OP_GETATTR_PTR", .operands = 4},
-    [OP_STRUCT] = {.opcode = "OP_STRUCT", .operands = 4},
-    [OP_RET] = {.opcode = "OP_RET", .operands = 0},
-    [OP_POP] = {.opcode = "OP_POP", .operands = 0},
-    [OP_DEREF] = {.opcode = "OP_DEREF", .operands = 0},
-    [OP_DEREFSET] = {.opcode = "OP_DEREFSET", .operands = 0},
-    [OP_CALL] = {.opcode = "OP_CALL", .operands = 4},
-    [OP_CALL_METHOD] = {.opcode = "OP_CALL_METHOD", .operands = 4},
-    [OP_IMPL] = {.opcode = "OP_IMPL", .operands = 1337},
-    [OP_STRUCT_BLUEPRINT] = {.opcode = "OP_STRUCT_BLUEPRINT", .operands = 1337},
+    [OP_PRINT] = {.opcode = "OP_PRINT"},
+    [OP_ADD] = {.opcode = "OP_ADD"},
+    [OP_SUB] = {.opcode = "OP_SUB"},
+    [OP_MUL] = {.opcode = "OP_MUL"},
+    [OP_DIV] = {.opcode = "OP_DIV"},
+    [OP_MOD] = {.opcode = "OP_MOD"},
+    [OP_EQ] = {.opcode = "OP_EQ"},
+    [OP_GT] = {.opcode = "OP_GT"},
+    [OP_LT] = {.opcode = "OP_LT"},
+    [OP_BITAND] = {.opcode = "OP_BITAND"},
+    [OP_BITOR] = {.opcode = "OP_BITOR"},
+    [OP_BITXOR] = {.opcode = "OP_BITXOR"},
+    [OP_BITNOT] = {.opcode = "OP_BITNOT"},
+    [OP_BITSHL] = {.opcode = "OP_BITSHL"},
+    [OP_BITSHR] = {.opcode = "OP_BITSHR"},
+    [OP_NOT] = {.opcode = "OP_NOT"},
+    [OP_NEG] = {.opcode = "OP_NEG"},
+    [OP_TRUE] = {.opcode = "OP_TRUE"},
+    [OP_NULL] = {.opcode = "OP_NULL"},
+    [OP_CONST] = {.opcode = "OP_CONST"},
+    [OP_STR] = {.opcode = "OP_STR"},
+    [OP_STRCAT] = {.opcode = "OP_STRCAT"},
+    [OP_JZ] = {.opcode = "OP_JZ"},
+    [OP_JMP] = {.opcode = "OP_JMP"},
+    [OP_SET_GLOBAL] = {.opcode = "OP_SET_GLOBAL"},
+    [OP_GET_GLOBAL] = {.opcode = "OP_GET_GLOBAL"},
+    [OP_GET_GLOBAL_PTR] = {.opcode = "OP_GET_GLOBAL_PTR"},
+    [OP_DEEPSET] = {.opcode = "OP_DEEPSET"},
+    [OP_DEEPGET] = {.opcode = "OP_DEEPGET"},
+    [OP_DEEPGET_PTR] = {.opcode = "OP_DEEPGET_PTR"},
+    [OP_SETATTR] = {.opcode = "OP_SETATTR"},
+    [OP_GETATTR] = {.opcode = "OP_GETATTR"},
+    [OP_GETATTR_PTR] = {.opcode = "OP_GETATTR_PTR"},
+    [OP_STRUCT] = {.opcode = "OP_STRUCT"},
+    [OP_RET] = {.opcode = "OP_RET"},
+    [OP_POP] = {.opcode = "OP_POP"},
+    [OP_DEREF] = {.opcode = "OP_DEREF"},
+    [OP_DEREFSET] = {.opcode = "OP_DEREFSET"},
+    [OP_CALL] = {.opcode = "OP_CALL"},
+    [OP_STRUCT_BLUEPRINT] = {.opcode = "OP_STRUCT_BLUEPRINT"},
+    [OP_GET_UPVALUE] = {.opcode = "OP_GET_UPVALUE"},
+    [OP_GET_UPVALUE_PTR] = {.opcode = "OP_GET_UPVALUE_PTR"},
+    [OP_SET_UPVALUE] = {.opcode = "OP_SET_UPVALUE"},
+    [OP_CLOSURE] = {.opcode = "OP_CLOSURE"},
+    [OP_HLT] = {.opcode = "OP_HLT"},
 };
 
-void disassemble(Bytecode *code) {
+void disassemble(Bytecode *code)
+{
 #define READ_UINT8() (*++ip)
-#define READ_INT16() (ip += 2, (int16_t)((ip[-1] << 8) | ip[0]))
+#define READ_INT16() (ip += 2, (int16_t) ((ip[-1] << 8) | ip[0]))
 
-#define READ_UINT32()                                                          \
-  (ip += 4, (uint32_t)((ip[-3] << 24) | (ip[-2] << 16) | (ip[-1] << 8) | ip[0]))
+#define READ_UINT32() \
+    (ip += 4, (uint32_t) ((ip[-3] << 24) | (ip[-2] << 16) | (ip[-1] << 8) | ip[0]))
 
-#define READ_DOUBLE()                                                          \
-  (ip += 8, (double)(((uint64_t)ip[-7] << 56) | ((uint64_t)ip[-6] << 48) |     \
-                     ((uint64_t)ip[-5] << 40) | ((uint64_t)ip[-4] << 32) |     \
-                     ((uint64_t)ip[-3] << 24) | ((uint64_t)ip[-2] << 16) |     \
-                     ((uint64_t)ip[-1] << 8) | (uint64_t)ip[0]))
+#define READ_DOUBLE()                                                                              \
+    (ip += 8,                                                                                      \
+     (double) (((uint64_t) ip[-7] << 56) | ((uint64_t) ip[-6] << 48) | ((uint64_t) ip[-5] << 40) | \
+               ((uint64_t) ip[-4] << 32) | ((uint64_t) ip[-3] << 24) | ((uint64_t) ip[-2] << 16) | \
+               ((uint64_t) ip[-1] << 8) | (uint64_t) ip[0]))
 
-  for (uint8_t *ip = code->code.data;
-       ip < &code->code.data[code->code.count]; /* ip < addr of just beyond
-                                                     the last instruction */
-       ip++) {
-    printf("%ld: ", ip - code->code.data);
-    printf("%s", disassemble_handler[*ip].opcode);
-    switch (disassemble_handler[*ip].operands) {
-    case 0:
-      break;
-    case 2: {
-      printf(" + 2-byte offset: %d", READ_INT16());
-      break;
-    }
-    case 4: {
-      switch (*ip) {
-      case OP_CONST: {
-        double d = READ_DOUBLE();
-        printf(" (value: %.16g)", d);
-        break;
-      }
-      case OP_STR: {
-        uint32_t str_idx = READ_UINT32();
-        printf(" (value: %s)", code->sp.data[str_idx]);
-        break;
-      }
-      case OP_DEEPGET:
-      case OP_DEEPGET_PTR:
-      case OP_DEEPSET: {
-        uint32_t idx = READ_UINT32();
-        printf(" (index: %d)", idx);
-        break;
-      }
-      case OP_GET_GLOBAL:
-      case OP_GET_GLOBAL_PTR:
-      case OP_SET_GLOBAL: {
-        uint32_t name_idx = READ_UINT32();
-        printf(" (name: %s)", code->sp.data[name_idx]);
-        break;
-      }
-      case OP_GETATTR:
-      case OP_SETATTR: {
-        uint32_t property_name_idx = READ_UINT32();
-        printf(" (property: %s)", code->sp.data[property_name_idx]);
-        break;
-      }
-      case OP_STRUCT: {
-        uint32_t name_idx = READ_UINT32();
-        printf(" (name: %s)", code->sp.data[name_idx]);
-        break;
-      }
-      case OP_CALL: {
-        uint32_t argcount = READ_UINT32();
-        printf(" (argcount: %d)", argcount);
-        break;
-      }
-      case OP_CALL_METHOD: {
-        uint32_t method_name_idx = READ_UINT32();
-        printf(" (method: %s)", code->sp.data[method_name_idx]);
-        break;
-      }
-      default:
-        break;
-      }
-      break;
-    }
-    default:
-      switch (*ip) {
-      case OP_IMPL: {
-        uint32_t blueprint_name_idx = READ_UINT32();
-        uint32_t method_count = READ_UINT32();
+    for (uint8_t *ip = code->code.data; ip < &code->code.data[code->code.count]; ip++)
+    {
+        printf("%ld: ", ip - code->code.data);
+        printf("%s", disassemble_handler[*ip].opcode);
 
-        printf(" (blueprint: %s, method count: %d)",
-               code->sp.data[blueprint_name_idx], method_count);
+        switch (*ip)
+        {
+            case OP_CONST: {
+                union {
+                    double d;
+                    uint64_t raw;
+                } num;
+                num.raw = READ_DOUBLE();
+                printf(" (%.16g)", num.d);
+                break;
+            }
+            case OP_CLOSURE: {
+                uint32_t name_idx, paramcount, location, upvalue_count;
 
-        for (size_t i = 0; i < method_count; i++) {
-          uint32_t method_name_idx = READ_UINT32();
-          uint32_t paramcount = READ_UINT32();
-          uint32_t location = READ_UINT32();
+                name_idx = READ_UINT32();
+                paramcount = READ_UINT32();
+                location = READ_UINT32();
+                upvalue_count = READ_UINT32();
 
-          printf("\n%ld: method: %s, paramcount: %d, location: %d",
-                 ip - code->code.data, code->sp.data[method_name_idx],
-                 paramcount, location);
+                printf(" (name: %s, paramcount: %d, location: %d, upvalue_count: %d)",
+                       code->sp.data[name_idx], paramcount, location, upvalue_count);
+
+                for (size_t i = 0; i < upvalue_count; i++)
+                    READ_UINT32();
+
+                break;
+            }
+            case OP_JMP:
+            case OP_JZ: {
+                int16_t offset = READ_INT16();
+                printf(" (offset: %d)", offset);
+                break;
+            }
+            case OP_DEEPGET:
+            case OP_DEEPGET_PTR:
+            case OP_DEEPSET: {
+                uint32_t idx;
+
+                idx = READ_UINT32();
+
+                printf(" (idx: %d)", idx);
+                break;
+            }
+            case OP_CALL: {
+                uint32_t argcount, callee_idx;
+
+                argcount = READ_UINT32();
+                callee_idx = READ_UINT32();
+
+                printf(" (callee: %s, argcount: %d)", code->sp.data[callee_idx], argcount);
+                break;
+            }
+            case OP_GET_GLOBAL:
+            case OP_SET_GLOBAL: {
+                uint32_t name_idx;
+
+                name_idx = READ_UINT32();
+
+                printf(" (name: %s)", code->sp.data[name_idx]);
+                break;
+            }
+            case OP_GET_UPVALUE:
+            case OP_GET_UPVALUE_PTR:
+            case OP_SET_UPVALUE: {
+                uint32_t idx;
+
+                idx = READ_UINT32();
+
+                printf(" (idx: %d)", idx);
+                break;
+            }
+            case OP_RET: {
+                uint32_t popcount;
+
+                popcount = READ_UINT32();
+
+                printf(" (popcount: %d)", popcount);
+                break;
+            }
+            default:
+                break;
         }
-        break;
-      }
-      case OP_STRUCT_BLUEPRINT: {
-        uint32_t name_idx = READ_UINT32();
-        uint32_t propcount = READ_UINT32();
 
-        printf(" (name: %s, propcount: %d)", code->sp.data[name_idx],
-               propcount);
-
-        for (size_t i = 0; i < propcount; i++) {
-          uint32_t property_name_idx = READ_UINT32();
-          printf("\n%ld: property: %s, ", ip - code->code.data,
-                 code->sp.data[property_name_idx]);
-          uint32_t property_index = READ_UINT32();
-          printf("%ld: index: %d", ip - code->code.data, property_index);
-        }
-        break;
-      }
-      default:
-        break;
-      }
-      break;
+        printf("\n");
     }
-    printf("\n");
-  }
 #undef READ_UINT8
 #undef READ_INT16
 #undef READ_UINT32

@@ -9,18 +9,20 @@
 
 #define TABLE_MAX 1024
 
-typedef struct Bucket {
-  char *key;
-  int value;
-  struct Bucket *next;
+typedef struct Bucket
+{
+    char *key;
+    int value;
+    struct Bucket *next;
 } Bucket;
 
-#define Table(T)                                                               \
-  struct {                                                                     \
-    Bucket *indexes[TABLE_MAX];                                                \
-    T items[TABLE_MAX];                                                        \
-    size_t count;                                                              \
-  }
+#define Table(T)                    \
+    struct                          \
+    {                               \
+        Bucket *indexes[TABLE_MAX]; \
+        T items[TABLE_MAX];         \
+        size_t count;               \
+    }
 
 uint32_t hash(const char *key, int length);
 void list_free(Bucket *head);
@@ -37,32 +39,34 @@ The disadvantage is that this always evaluates to a void*.
 void *access_if_idx_not_null(void *array, size_t itemsize, int *i);
 
 // Never returns NULL. Assumes that the table has the given key.
-#define table_get_unchecked(table, key)                                        \
-  (&(table)->items[*list_find(                                                 \
-      (table)->indexes[hash((key), strlen((key))) % TABLE_MAX], (key))])
+#define table_get_unchecked(table, key) \
+    (&(table)->items[*list_find((table)->indexes[hash((key), strlen((key))) % TABLE_MAX], (key))])
 
 /*
 Returns NULL for not found.
 Return type is void*, so make sure to use a pointer of the correct type.
 */
-#define table_get(table, key)                                                  \
-  access_if_idx_not_null(                                                      \
-      &(table)->items[0], sizeof((table)->items[0]),                           \
-      list_find((table)->indexes[hash((key), strlen((key))) % TABLE_MAX],      \
-                (key)))
+#define table_get(table, key)                          \
+    access_if_idx_not_null(                            \
+        &(table)->items[0], sizeof((table)->items[0]), \
+        list_find((table)->indexes[hash((key), strlen((key))) % TABLE_MAX], (key)))
 
-#define table_insert(table, key, item)                                         \
-  do {                                                                         \
-    int bucket_idx = hash(key, strlen(key)) % TABLE_MAX;                       \
-    int *item_idx = list_find((table)->indexes[bucket_idx], key);              \
-    if (item_idx == NULL) {                                                    \
-      char *k = own_string((key));                                             \
-      list_insert(&(table)->indexes[bucket_idx], k, (table)->count);           \
-      (table)->items[(table)->count] = (item);                                 \
-      (table)->count++;                                                        \
-    } else {                                                                   \
-      (table)->items[*item_idx] = (item);                                      \
-    }                                                                          \
-  } while (0)
+#define table_insert(table, key, item)                                     \
+    do                                                                     \
+    {                                                                      \
+        int bucket_idx = hash(key, strlen(key)) % TABLE_MAX;               \
+        int *item_idx = list_find((table)->indexes[bucket_idx], key);      \
+        if (item_idx == NULL)                                              \
+        {                                                                  \
+            char *k = own_string((key));                                   \
+            list_insert(&(table)->indexes[bucket_idx], k, (table)->count); \
+            (table)->items[(table)->count] = (item);                       \
+            (table)->count++;                                              \
+        }                                                                  \
+        else                                                               \
+        {                                                                  \
+            (table)->items[*item_idx] = (item);                            \
+        }                                                                  \
+    } while (0)
 
 #endif

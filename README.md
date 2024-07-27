@@ -30,7 +30,6 @@ This project is my debut in the realm of programming language design. I had a bl
   - `return` is mandatory
   - recursion!
 - `print` statement
-- methods
 - global scope
 - import subsystem
 - reference counting
@@ -158,29 +157,6 @@ fn main() {
   list_insert(&list, false);
   list_insert(&list, "Hello, world!");
   list_print(&list);
-  return 0;
-}
-
-main();
-```
-
-### Methods
-
-```rust
-struct person {
-  name;
-}
-
-impl person {
-  fn greet(self) {
-    print "Hello, " ++ self.name ++ ".";
-    return 0;
-  }
-}
-
-fn main() {
-  let p = person { name: "Joe" };
-  p.greet();
   return 0;
 }
 

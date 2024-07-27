@@ -1,6 +1,6 @@
 let x = 0;
 
-while (x < 5) { 
+while (x < 3) { 
   let y = x+1;
   print y;
   if (y == 3) { 
@@ -8,7 +8,6 @@ while (x < 5) {
     print z;
   }
   x=x+1;
-  return 0;
 }
 
 print y;

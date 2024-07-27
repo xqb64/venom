@@ -11,8 +11,8 @@ RESULTS = {
     },
     "big.vnm": {
         "debug_prints": [],
-        "ends_with": "stack: []",
-        "return_code": 0,
+        "ends_with": "compiler: Maximum 256 locals.",
+        "return_code": 1,
     },
     "break.vnm": {
         "debug_prints": [],
@@ -29,21 +29,21 @@ RESULTS = {
             "dbg print :: Hello, world!",
             "dbg print :: 3",
         ],
-        "ends_with": "stack: []",
+        "ends_with": "current instruction: OP_HLT",
         "return_code": 0,
     },
     "call.vnm": {
         "debug_prints": [
             "dbg print :: 7",
         ],
-        "ends_with": "stack: []",
+        "ends_with": "current instruction: OP_HLT",
         "return_code": 0,
     },
     "comparison.vnm": {
         "debug_prints": [
             "dbg print :: false",
         ],
-        "ends_with": "stack: []",
+        "ends_with": "current instruction: OP_HLT",
         "return_code": 0,
     },
     "cursed_struct.vnm": {
@@ -58,14 +58,14 @@ RESULTS = {
             "dbg print :: Printing i...",
             "dbg print :: 2",
         ],
-        "ends_with": "stack: []",
+        "ends_with": "current instruction: OP_HLT",
         "return_code": 0,
     },
     "empty.vnm": {
         "debug_prints": [
             "dbg print :: 1",
         ],
-        "ends_with": "stack: []",
+        "ends_with": "current instruction: OP_HLT",
         "return_code": 0,
     },
     "for.vnm": {
@@ -75,7 +75,7 @@ RESULTS = {
             "dbg print :: 2",
             "dbg print :: 4",
         ],
-        "ends_with": "stack: []",
+        "ends_with": "current instruction: OP_HLT",
         "return_code": 0,
     },
     "for_local.vnm": {
@@ -86,7 +86,7 @@ RESULTS = {
             "dbg print :: 12",
             "dbg print :: 13",
         ],
-        "ends_with": "stack: []",
+        "ends_with": "current instruction: OP_HLT",
         "return_code": 0,
     },
     "global_loop.vnm": {
@@ -98,21 +98,21 @@ RESULTS = {
             "dbg print :: Hello world!",
             "dbg print :: Hello world!",
         ],
-        "ends_with": "stack: []",
+        "ends_with": "current instruction: OP_HLT",
         "return_code": 0,
     },
     "if.vnm": {
         "debug_prints": [
             "dbg print :: null",
         ],
-        "ends_with": "stack: []",
+        "ends_with": "current instruction: OP_HLT",
         "return_code": 0,
     },
     "logical.vnm": {
         "debug_prints": [
             "dbg print :: Run!",
         ],
-        "ends_with": "stack: []",
+        "ends_with": "current instruction: OP_HLT",
         "return_code": 0,
     },
     "loop.vnm": {
@@ -121,42 +121,42 @@ RESULTS = {
             "dbg print :: 1",
             "dbg print :: 2",
         ],
-        "ends_with": "stack: []",
+        "ends_with": "current instruction: OP_HLT",
         "return_code": 0,
     },
     "null.vnm": {
         "debug_prints": [
             "dbg print :: true",
         ],
-        "ends_with": "stack: []",
+        "ends_with": "current instruction: OP_HLT",
         "return_code": 0,
     },
     "pytest.vnm": {
         "debug_prints": [
             "dbg print :: false",
         ],
-        "ends_with": "stack: []",
+        "ends_with": "current instruction: OP_HLT",
         "return_code": 0,
     },
     "recursion.vnm": {
         "debug_prints": [
             "dbg print :: 0",
         ],
-        "ends_with": "stack: []",
+        "ends_with": "current instruction: OP_HLT",
         "return_code": 0,
     },
     "simple_fn.vnm": {
         "debug_prints": [
             "dbg print :: 10",
         ],
-        "ends_with": "stack: []",
+        "ends_with": "current instruction: OP_HLT",
         "return_code": 0,
     },
     "strcat.vnm": {
         "debug_prints": [
             "dbg print :: Hello, world!",
         ],
-        "ends_with": "stack: []",
+        "ends_with": "current instruction: OP_HLT",
         "return_code": 0,
     },
     "try_this.vnm": {
@@ -176,7 +176,7 @@ RESULTS = {
             "dbg print :: Hello, world!",
             "dbg print :: null",
         ],
-        "ends_with": "stack: []",
+        "ends_with": "current instruction: OP_HLT",
         "return_code": 0,
     },
 }

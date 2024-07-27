@@ -1,0 +1,17 @@
+fn add_one(func) {
+    print 16;
+    let z = 32;
+    fn inner(x) {
+        print 1024;
+        return func(x+z) + 1;
+    }
+    return inner;
+}
+
+fn spam(x) {
+    return x;
+}
+
+let spam = add_one(spam);
+
+print spam(3);
