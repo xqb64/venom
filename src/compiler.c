@@ -1572,6 +1572,8 @@ static void compile_stmt_deco(Bytecode *code, Stmt stmt)
     
     if (f) {
         argcount = f->paramcount;
+    } else {
+        COMPILER_ERROR("...");
     }
 
     emit_byte(code, argcount);

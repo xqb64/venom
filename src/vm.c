@@ -867,9 +867,6 @@ static inline void handle_op_call(VM *vm, Bytecode *code, uint8_t **ip)
 
     Closure *f = AS_CLOSURE(obj);
 
-    printf("vm->tos: %ld\n", vm->tos);
-    printf("argcount: %d\n", argcount);
-
     BytecodePtr ip_obj = {.addr = *(ip), .location = vm->tos - argcount, .fn = f};
     vm->fp_stack[vm->fp_count++] = ip_obj;
 
