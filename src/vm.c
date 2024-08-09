@@ -513,9 +513,8 @@ static inline void handle_op_jmp(VM *vm, Bytecode *code, uint8_t **ip)
  * merely moving it from one location to another.
  *
  * REFCOUNTING: However, we /DO/ need to decrement the ref-
- * fount of the target object, in case we're overwriting an
- * object. I learned this the hard way. ;-)
- * */
+ * fcount of the target, in case we're overwriting an obje-
+ * ct with the same name. Don't ask me how I learned this. ;-) */
 static inline void handle_op_set_global(VM *vm, Bytecode *code, uint8_t **ip)
 {
     uint32_t name_idx = READ_UINT32();
