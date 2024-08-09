@@ -126,8 +126,7 @@ static inline uint64_t clamp(double d)
         printf("fp stack: [");                                                \
         for (size_t i = 0; i < vm->fp_count; i++)                             \
         {                                                                     \
-            printf("<%ld> (loc: %d)", vm->fp_stack[i].addr - code->code.data, \
-                   vm->fp_stack[i].location);                                 \
+            printf("<%s>", vm->fp_stack[i].fn->func->name);         \
             if (i < vm->fp_count - 1)                                         \
             {                                                                 \
                 printf(", ");                                                 \
@@ -517,6 +516,11 @@ static inline void handle_op_set_global(VM *vm, Bytecode *code, uint8_t **ip)
 {
     uint32_t name_idx = READ_UINT32();
     Object obj = pop(vm);
+
+    Object *target = table_get(&vm->globals, code->sp.data[name_idx]);
+    if (target) {
+        objdecref(target);
+    } 
     table_insert(&vm->globals, code->sp.data[name_idx], obj);
 }
 
@@ -876,10 +880,10 @@ static inline void handle_op_ret(VM *vm, Bytecode *code, uint8_t **ip)
 {
     BytecodePtr ptr = vm->fp_stack[--vm->fp_count];
 
-    for (int i = 0; i < ptr.fn->upvalue_count; i++)
-    {
-        objdecref(ptr.fn->upvalues[i]->location);
-    }
+    // for (int i = 0; i < ptr.fn->upvalue_count; i++)
+    // {
+    //     objdecref(ptr.fn->upvalues[i]->location);
+    // }
 
     *ip = ptr.addr;
 }
