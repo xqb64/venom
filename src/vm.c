@@ -593,9 +593,7 @@ static inline void handle_op_derefset(VM *vm, Bytecode *code, uint8_t **ip)
 static inline void handle_op_deepget(VM *vm, Bytecode *code, uint8_t **ip)
 {
     uint32_t idx = READ_UINT32();
-    printf("idx is: %d\n", idx);
     uint32_t adjusted_idx = adjust_idx(vm, idx);
-    printf("adjusted_idx is: %d\n", adjusted_idx);
     Object obj = vm->stack[adjusted_idx];
     push(vm, obj);
     objincref(&obj);
