@@ -1,11 +1,15 @@
 struct lolwoot {
     x;
+    y;
 }
 
 fn add_one(func) {
-    let s = lolwoot { x: 128 };
+    print 16;
+    let s = lolwoot { x: 128, y: 256 };
+    print s.x;
     let z = 32;
     fn inner(x) {
+        print 1024;
         return func(x + s.x) + 1;
     }
     return inner;

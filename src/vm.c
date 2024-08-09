@@ -126,7 +126,7 @@ static inline uint64_t clamp(double d)
         printf("fp stack: [");                                                \
         for (size_t i = 0; i < vm->fp_count; i++)                             \
         {                                                                     \
-            printf("<%s>", vm->fp_stack[i].fn->func->name);         \
+            printf("<%s (loc: %d)>", vm->fp_stack[i].fn->func->name, vm->fp_stack[i].location);         \
             if (i < vm->fp_count - 1)                                         \
             {                                                                 \
                 printf(", ");                                                 \
@@ -593,7 +593,9 @@ static inline void handle_op_derefset(VM *vm, Bytecode *code, uint8_t **ip)
 static inline void handle_op_deepget(VM *vm, Bytecode *code, uint8_t **ip)
 {
     uint32_t idx = READ_UINT32();
+    printf("idx is: %d\n", idx);
     uint32_t adjusted_idx = adjust_idx(vm, idx);
+    printf("adjusted_idx is: %d\n", adjusted_idx);
     Object obj = vm->stack[adjusted_idx];
     push(vm, obj);
     objincref(&obj);
@@ -866,6 +868,9 @@ static inline void handle_op_call(VM *vm, Bytecode *code, uint8_t **ip)
     objdecref(&obj);
 
     Closure *f = AS_CLOSURE(obj);
+
+    printf("vm->tos: %ld\n", vm->tos);
+    printf("argcount: %d\n", argcount);
 
     BytecodePtr ip_obj = {.addr = *(ip), .location = vm->tos - argcount, .fn = f};
     vm->fp_stack[vm->fp_count++] = ip_obj;

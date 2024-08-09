@@ -1565,7 +1565,16 @@ static void compile_stmt_deco(Bytecode *code, Stmt stmt)
     emit_uint32(code, add_string(code, stmt.as.stmt_deco.name));
 
     emit_byte(code, OP_CALL);
-    emit_uint32(code, stmt.as.stmt_deco.fn->as.stmt_fn.parameters.count);
+
+    uint32_t argcount;
+
+    Function *f = resolve_func(stmt.as.stmt_deco.name);
+    
+    if (f) {
+        argcount = f->paramcount;
+    }
+
+    emit_byte(code, argcount);
 
     emit_byte(code, OP_SET_GLOBAL);
     emit_uint32(code, add_string(code, stmt.as.stmt_deco.fn->as.stmt_fn.name));
