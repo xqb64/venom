@@ -511,6 +511,10 @@ static inline void handle_op_jmp(VM *vm, Bytecode *code, uint8_t **ip)
  * REFCOUNTING: We do NOT need to increment the refcount of
  * the object we are inserting into the table because we're
  * merely moving it from one location to another.
+ *
+ * REFCOUNTING: However, we /DO/ need to decrement the ref-
+ * fount of the target object, in case we're overwriting an
+ * object. I learned this the hard way. ;-)
  * */
 static inline void handle_op_set_global(VM *vm, Bytecode *code, uint8_t **ip)
 {
