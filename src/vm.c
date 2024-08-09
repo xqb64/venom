@@ -120,19 +120,19 @@ static inline uint64_t clamp(double d)
         printf("]\n");                       \
     } while (0)
 
-#define PRINT_FPSTACK()                                                       \
-    do                                                                        \
-    {                                                                         \
-        printf("fp stack: [");                                                \
-        for (size_t i = 0; i < vm->fp_count; i++)                             \
-        {                                                                     \
-            printf("<%s (loc: %d)>", vm->fp_stack[i].fn->func->name, vm->fp_stack[i].location);         \
-            if (i < vm->fp_count - 1)                                         \
-            {                                                                 \
-                printf(", ");                                                 \
-            }                                                                 \
-        }                                                                     \
-        printf("]\n");                                                        \
+#define PRINT_FPSTACK()                                                                         \
+    do                                                                                          \
+    {                                                                                           \
+        printf("fp stack: [");                                                                  \
+        for (size_t i = 0; i < vm->fp_count; i++)                                               \
+        {                                                                                       \
+            printf("<%s (loc: %d)>", vm->fp_stack[i].fn->func->name, vm->fp_stack[i].location); \
+            if (i < vm->fp_count - 1)                                                           \
+            {                                                                                   \
+                printf(", ");                                                                   \
+            }                                                                                   \
+        }                                                                                       \
+        printf("]\n");                                                                          \
     } while (0)
 
 #define RUNTIME_ERROR(...)            \
@@ -521,9 +521,11 @@ static inline void handle_op_set_global(VM *vm, Bytecode *code, uint8_t **ip)
     Object obj = pop(vm);
 
     Object *target = table_get(&vm->globals, code->sp.data[name_idx]);
-    if (target) {
+    if (target)
+    {
         objdecref(target);
-    } 
+    }
+    
     table_insert(&vm->globals, code->sp.data[name_idx], obj);
 }
 

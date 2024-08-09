@@ -700,7 +700,7 @@ static void compile_expr_bin(Bytecode *code, Expr exp)
 static void compile_expr_call(Bytecode *code, Expr exp)
 {
     ExprCall e = TO_EXPR_CALL(exp);
-    
+
     if (e.callee->kind == EXPR_VAR)
     {
         ExprVar var = TO_EXPR_VAR(*e.callee);
@@ -1569,10 +1569,13 @@ static void compile_stmt_deco(Bytecode *code, Stmt stmt)
     uint32_t argcount;
 
     Function *f = resolve_func(stmt.as.stmt_deco.name);
-    
-    if (f) {
+
+    if (f)
+    {
         argcount = f->paramcount;
-    } else {
+    }
+    else
+    {
         COMPILER_ERROR("...");
     }
 
@@ -1598,8 +1601,7 @@ static void compile_stmt_struct(Bytecode *code, Stmt stmt)
     emit_uint32(code, add_string(code, s.name));
     emit_uint32(code, s.properties.count);
 
-    StructBlueprint blueprint = {.name = s.name,
-                                 .property_indexes = calloc(1, sizeof(Table_int))};
+    StructBlueprint blueprint = {.name = s.name, .property_indexes = calloc(1, sizeof(Table_int))};
 
     for (size_t i = 0; i < s.properties.count; i++)
     {

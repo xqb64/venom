@@ -547,7 +547,8 @@ inline void objdecref(Object *obj)
             break;
         }
         case OBJ_CLOSURE: {
-            // printf("dec refcount for %s to %d\n", AS_CLOSURE(*obj)->func->name, *obj->as.refcount - 1);
+            // printf("dec refcount for %s to %d\n", AS_CLOSURE(*obj)->func->name, *obj->as.refcount
+            // - 1);
             if (--*(obj)->as.refcount == 0)
             {
                 for (int i = 0; i < AS_CLOSURE(*obj)->upvalue_count; i++)
