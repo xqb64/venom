@@ -1014,7 +1014,6 @@ static inline void handle_op_close_upvalue(VM *vm, Bytecode *code, uint8_t **ip)
     Object result = pop(vm);
     close_upvalues(vm, &vm->stack[vm->tos - 1]);
     pop(vm);
-    // objdecref(&obj);
     push(vm, result);
 }
 
