@@ -516,9 +516,7 @@ static inline void handle_op_set_global(VM *vm, Bytecode *code, uint8_t **ip)
 
     Object *target = table_get(&vm->globals, code->sp.data[name_idx]);
     if (target)
-    {
         objdecref(target);
-    }
 
     table_insert(&vm->globals, code->sp.data[name_idx], obj);
 }
