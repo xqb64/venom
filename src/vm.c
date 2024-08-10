@@ -876,12 +876,6 @@ static inline void handle_op_call(VM *vm, Bytecode *code, uint8_t **ip)
 static inline void handle_op_ret(VM *vm, Bytecode *code, uint8_t **ip)
 {
     BytecodePtr ptr = vm->fp_stack[--vm->fp_count];
-
-    // for (int i = 0; i < ptr.fn->upvalue_count; i++)
-    // {
-    //     objdecref(ptr.fn->upvalues[i]->location);
-    // }
-
     *ip = ptr.addr;
 }
 
