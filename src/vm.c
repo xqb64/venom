@@ -45,17 +45,11 @@ static inline Object peek(VM *vm, int n)
 static inline uint64_t clamp(double d)
 {
     if (d < 0.0)
-    {
         return 0;
-    }
     else if (d > UINT64_MAX)
-    {
         return UINT64_MAX;
-    }
     else
-    {
         return (uint64_t) d;
-    }
 }
 
 #define BINARY_OP(op, wrapper)                        \
@@ -525,7 +519,7 @@ static inline void handle_op_set_global(VM *vm, Bytecode *code, uint8_t **ip)
     {
         objdecref(target);
     }
-    
+
     table_insert(&vm->globals, code->sp.data[name_idx], obj);
 }
 
