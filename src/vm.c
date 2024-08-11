@@ -722,10 +722,19 @@ static inline void handle_op_struct(VM *vm, Bytecode *code, uint8_t **ip)
 
     for (size_t i = 0; i < sb->methods->count; i++)
     {
-        Closure c = {.func = ALLOC(sb->methods->items[i]),
-                     .refcount = 1,
-                     .upvalue_count = 0,
-                     .upvalues = NULL};
+        Function f = {
+            .location = sb->methods->items[i]->location,
+            .name = sb->methods->items[i]->name,
+            .paramcount = sb->methods->items[i]->paramcount,
+            .upvalue_count = 0,
+        };
+
+        printf("LOCATION is: %ld\n", f.location);
+
+        Closure c = {.func = ALLOC(f), .refcount = 1, .upvalue_count = 0, .upvalues = NULL};
+
+        printf("inserting into struct under name: %s\n", sb->methods->items[i]->name);
+
         table_insert(s.properties, sb->methods->items[i]->name, CLOSURE_VAL(ALLOC(c)));
     }
 
@@ -756,10 +765,8 @@ static inline void handle_op_struct_blueprint(VM *vm, Bytecode *code, uint8_t **
     }
 
     StructBlueprint sb = {.name = code->sp.data[name_idx],
-                          .property_indexes = malloc(sizeof(Table_int)),
+                          .property_indexes = calloc(1, sizeof(Table_int)),
                           .methods = calloc(1, sizeof(Table_Function))};
-
-    memset(sb.property_indexes, 0, sizeof(Table_int));
 
     for (size_t i = 0; i < properties.count; i++)
     {
@@ -777,6 +784,8 @@ static inline void handle_op_impl(VM *vm, Bytecode *code, uint8_t **ip)
     uint32_t blueprint_name_idx = READ_UINT32();
     uint32_t method_count = READ_UINT32();
 
+    printf("method count is: %d\n", method_count);
+
     StructBlueprint *sb = table_get(vm->blueprints, code->sp.data[blueprint_name_idx]);
     if (!sb)
     {
@@ -786,6 +795,9 @@ static inline void handle_op_impl(VM *vm, Bytecode *code, uint8_t **ip)
     for (size_t i = 0; i < method_count; i++)
     {
         uint32_t method_name_idx = READ_UINT32();
+
+        printf("method: %s\n", code->sp.data[method_name_idx]);
+
         uint32_t paramcount = READ_UINT32();
         uint32_t location = READ_UINT32();
 
@@ -795,6 +807,7 @@ static inline void handle_op_impl(VM *vm, Bytecode *code, uint8_t **ip)
             .name = code->sp.data[method_name_idx],
         };
 
+        printf("inserting into table under name: %s\n", code->sp.data[method_name_idx]);
         table_insert(sb->methods, code->sp.data[method_name_idx], ALLOC(method));
     }
 }
@@ -1049,26 +1062,32 @@ static inline void handle_op_close_upvalue(VM *vm, Bytecode *code, uint8_t **ip)
     push(vm, result);
 }
 
-static inline void handle_op_call_method(VM *vm, Bytecode *code, uint8_t **ip) {
-  uint32_t method_name_idx = READ_UINT32();
-  uint32_t argcount = READ_UINT32();
+static inline void handle_op_call_method(VM *vm, Bytecode *code, uint8_t **ip)
+{
+    uint32_t method_name_idx = READ_UINT32();
+    uint32_t argcount = READ_UINT32();
 
-  Object object = peek(vm, argcount);
+    Object object = peek(vm, argcount);
 
-  /* Look up the method with that name on the blueprint. */
-  Closure *method = table_get(AS_STRUCT(object)->properties, code->sp.data[method_name_idx]);
-  if (!method) {
-    RUNTIME_ERROR("method '%s' is not defined on struct '%s'.",
-                  code->sp.data[method_name_idx], AS_STRUCT(object)->name);
-  }
+    /* Look up the method with that name on the blueprint. */
+    Object *methodobj = table_get(AS_STRUCT(object)->properties, code->sp.data[method_name_idx]);
+    if (!methodobj)
+    {
+        RUNTIME_ERROR("method '%s' is not defined on struct '%s'.", code->sp.data[method_name_idx],
+                      AS_STRUCT(object)->name);
+    }
 
-  /* Push the instruction pointer on the frame ptr stack.
-   * No need to take into account the jump sequence (+3). */
-  BytecodePtr ip_obj = {.addr = *ip, .location = vm->tos - method->func->paramcount};
-  vm->fp_stack[vm->fp_count++] = ip_obj;
+    Closure *c = AS_CLOSURE(*methodobj);
 
-  /* Direct jump to one byte before the method location. */
-  *ip = &code->code.data[method->func->location - 1];
+    /* Push the instruction pointer on the frame ptr stack.
+     * No need to take into account the jump sequence (+3). */
+    BytecodePtr ip_obj = {.addr = *ip, .location = vm->tos - c->func->paramcount, .fn = c};
+    vm->fp_stack[vm->fp_count++] = ip_obj;
+
+    printf("method->func->location is: %ld\n", c->func->location);
+
+    /* Direct jump to one byte before the method location. */
+    *ip = &code->code.data[c->func->location - 1];
 }
 
 #ifdef venom_debug_vm

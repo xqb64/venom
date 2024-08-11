@@ -1746,12 +1746,14 @@ static void compile_stmt_impl(Bytecode *code, Stmt stmt)
     {
         StmtFn func = TO_STMT_FN(s.methods.data[i]);
         Function f = {
-            .name = func.name,
+            .name = own_string(func.name),
             .paramcount = func.parameters.count,
             .location = code->code.count + 3,
         };
         table_insert(blueprint->methods, func.name, ALLOC(f));
         compile(code, s.methods.data[i]);
+
+        printf("f.name is: %s\n", f.name);
     }
 
     emit_byte(code, OP_IMPL);
@@ -1761,10 +1763,11 @@ static void compile_stmt_impl(Bytecode *code, Stmt stmt)
     for (size_t i = 0; i < s.methods.count; i++)
     {
         StmtFn func = TO_STMT_FN(s.methods.data[i]);
-        Function *f = table_get(blueprint->methods, func.name);
-        emit_uint32(code, add_string(code, f->name));
-        emit_uint32(code, f->paramcount);
-        emit_uint32(code, f->location);
+        Function **f = table_get(blueprint->methods, func.name);
+        printf("f->name is: %s\n", (*f)->name);
+        emit_uint32(code, add_string(code, (*f)->name));
+        emit_uint32(code, (*f)->paramcount);
+        emit_uint32(code, (*f)->location);
     }
 }
 
