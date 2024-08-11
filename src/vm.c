@@ -632,7 +632,7 @@ static inline void handle_op_setattr(VM *vm, Bytecode *code, uint8_t **ip)
                       code->sp.data[property_name_idx]);
     }
 
-    AS_STRUCT(obj)->properties[*idx] = value;
+    table_insert(AS_STRUCT(obj)->properties, code->sp.data[property_name_idx], value);
 
     push(vm, obj);
 }
@@ -655,18 +655,18 @@ static inline void handle_op_getattr(VM *vm, Bytecode *code, uint8_t **ip)
     uint32_t property_name_idx = READ_UINT32();
     Object obj = pop(vm);
 
-    StructBlueprint *sb = table_get_unchecked(vm->blueprints, AS_STRUCT(obj)->name);
-    int *idx = table_get(sb->property_indexes, code->sp.data[property_name_idx]);
-    if (!idx)
-    {
-        RUNTIME_ERROR("struct '%s' does not have property '%s'", AS_STRUCT(obj)->name,
-                      code->sp.data[property_name_idx]);
-    }
+    // StructBlueprint *sb = table_get_unchecked(vm->blueprints, AS_STRUCT(obj)->name);
+    // int *idx = table_get(sb->property_indexes, code->sp.data[property_name_idx]);
+    // if (!idx)
+    // {
+    //     RUNTIME_ERROR("struct '%s' does not have property '%s'", AS_STRUCT(obj)->name,
+    //                   code->sp.data[property_name_idx]);
+    // }
 
-    Object property = AS_STRUCT(obj)->properties[*idx];
+    Object *property = table_get(AS_STRUCT(obj)->properties, code->sp.data[property_name_idx]);
 
-    push(vm, property);
-    objincref(&property);
+    push(vm, *property);
+    objincref(property);
     objdecref(&obj);
 }
 
@@ -692,7 +692,7 @@ static inline void handle_op_getattr_ptr(VM *vm, Bytecode *code, uint8_t **ip)
                       code->sp.data[property_name_idx]);
     }
 
-    Object *property = &AS_STRUCT(object)->properties[*idx];
+    Object *property = table_get(AS_STRUCT(object)->properties, code->sp.data[property_name_idx]);
     push(vm, PTR_VAL(property));
 
     objdecref(&object);
@@ -718,11 +718,15 @@ static inline void handle_op_struct(VM *vm, Bytecode *code, uint8_t **ip)
     Struct s = {.name = code->sp.data[structname],
                 .propcount = sb->property_indexes->count,
                 .refcount = 1,
-                .properties = malloc(sizeof(Object) * sb->property_indexes->count)};
+                .properties = calloc(1, sizeof(Table_Object))};
 
-    for (size_t i = 0; i < s.propcount; i++)
+    for (size_t i = 0; i < sb->methods->count; i++)
     {
-        s.properties[i] = NULL_VAL;
+        Closure c = {.func = ALLOC(sb->methods->items[i]),
+                     .refcount = 1,
+                     .upvalue_count = 0,
+                     .upvalues = NULL};
+        table_insert(s.properties, sb->methods->items[i]->name, CLOSURE_VAL(ALLOC(c)));
     }
 
     push(vm, STRUCT_VAL(ALLOC(s)));
@@ -791,7 +795,7 @@ static inline void handle_op_impl(VM *vm, Bytecode *code, uint8_t **ip)
             .name = code->sp.data[method_name_idx],
         };
 
-        table_insert(sb->methods, code->sp.data[method_name_idx], method);
+        table_insert(sb->methods, code->sp.data[method_name_idx], ALLOC(method));
     }
 }
 
@@ -1045,6 +1049,28 @@ static inline void handle_op_close_upvalue(VM *vm, Bytecode *code, uint8_t **ip)
     push(vm, result);
 }
 
+static inline void handle_op_call_method(VM *vm, Bytecode *code, uint8_t **ip) {
+  uint32_t method_name_idx = READ_UINT32();
+  uint32_t argcount = READ_UINT32();
+
+  Object object = peek(vm, argcount);
+
+  /* Look up the method with that name on the blueprint. */
+  Closure *method = table_get(AS_STRUCT(object)->properties, code->sp.data[method_name_idx]);
+  if (!method) {
+    RUNTIME_ERROR("method '%s' is not defined on struct '%s'.",
+                  code->sp.data[method_name_idx], AS_STRUCT(object)->name);
+  }
+
+  /* Push the instruction pointer on the frame ptr stack.
+   * No need to take into account the jump sequence (+3). */
+  BytecodePtr ip_obj = {.addr = *ip, .location = vm->tos - method->func->paramcount};
+  vm->fp_stack[vm->fp_count++] = ip_obj;
+
+  /* Direct jump to one byte before the method location. */
+  *ip = &code->code.data[method->func->location - 1];
+}
+
 #ifdef venom_debug_vm
 static inline const char *print_current_instruction(uint8_t opcode)
 {
@@ -1122,6 +1148,8 @@ static inline const char *print_current_instruction(uint8_t opcode)
             return "OP_CLOSURE";
         case OP_CALL:
             return "OP_CALL";
+        case OP_CALL_METHOD:
+            return "OP_CALL_METHOD";
         case OP_RET:
             return "OP_RET";
         case OP_POP:
@@ -1163,31 +1191,57 @@ void run(VM *vm, Bytecode *code)
 #endif
 
     static void *dispatch_table[] = {
-        &&op_print,       &&op_add,
-        &&op_sub,         &&op_mul,
-        &&op_div,         &&op_mod,
-        &&op_eq,          &&op_gt,
-        &&op_lt,          &&op_not,
-        &&op_neg,         &&op_true,
-        &&op_null,        &&op_const,
-        &&op_str,         &&op_jmp,
-        &&op_jz,          &&op_bitand,
-        &&op_bitor,       &&op_bitxor,
-        &&op_bitnot,      &&op_bitshl,
-        &&op_bitshr,      &&op_set_global,
-        &&op_get_global,  &&op_get_global_ptr,
-        &&op_deepset,     &&op_deepget,
-        &&op_deepget_ptr, &&op_setattr,
-        &&op_getattr,     &&op_getattr_ptr,
-        &&op_struct,      &&op_struct_blueprint,
-        &&op_closure,     &&op_call,
-        &&op_ret,         &&op_pop,
-        &&op_deref,       &&op_derefset,
-        &&op_strcat,      &&op_array,
-        &&op_arrayset,    &&op_subscript,
-        &&op_get_upvalue, &&op_get_upvalue_ptr,
-        &&op_set_upvalue, &&op_close_upvalue,
-        &&op_impl,        &&op_hlt,
+        &&op_print,
+        &&op_add,
+        &&op_sub,
+        &&op_mul,
+        &&op_div,
+        &&op_mod,
+        &&op_eq,
+        &&op_gt,
+        &&op_lt,
+        &&op_not,
+        &&op_neg,
+        &&op_true,
+        &&op_null,
+        &&op_const,
+        &&op_str,
+        &&op_jmp,
+        &&op_jz,
+        &&op_bitand,
+        &&op_bitor,
+        &&op_bitxor,
+        &&op_bitnot,
+        &&op_bitshl,
+        &&op_bitshr,
+        &&op_set_global,
+        &&op_get_global,
+        &&op_get_global_ptr,
+        &&op_deepset,
+        &&op_deepget,
+        &&op_deepget_ptr,
+        &&op_setattr,
+        &&op_getattr,
+        &&op_getattr_ptr,
+        &&op_struct,
+        &&op_struct_blueprint,
+        &&op_closure,
+        &&op_call,
+        &&op_call_method,
+        &&op_ret,
+        &&op_pop,
+        &&op_deref,
+        &&op_derefset,
+        &&op_strcat,
+        &&op_array,
+        &&op_arrayset,
+        &&op_subscript,
+        &&op_get_upvalue,
+        &&op_get_upvalue_ptr,
+        &&op_set_upvalue,
+        &&op_close_upvalue,
+        &&op_impl,
+        &&op_hlt,
     };
 
 #ifndef venom_debug_vm
@@ -1317,6 +1371,9 @@ void run(VM *vm, Bytecode *code)
         DISPATCH();
     op_call:
         handle_op_call(vm, code, &ip);
+        DISPATCH();
+    op_call_method:
+        handle_op_call_method(vm, code, &ip);
         DISPATCH();
     op_ret:
         handle_op_ret(vm, code, &ip);

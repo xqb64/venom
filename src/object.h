@@ -343,14 +343,6 @@ typedef struct String
     char *value;
 } String;
 
-typedef struct Struct
-{
-    int refcount;
-    char *name;
-    size_t propcount;
-    Object *properties;
-} Struct;
-
 typedef struct Array
 {
     int refcount;
@@ -423,6 +415,14 @@ inline const char *get_object_type(Object *object)
 
 typedef Table(Object) Table_Object;
 void free_table_object(const Table_Object *table);
+
+typedef struct Struct
+{
+    int refcount;
+    char *name;
+    size_t propcount;
+    Table_Object *properties;
+} Struct;
 
 typedef struct
 {
@@ -529,7 +529,7 @@ inline void objdecref(Object *obj)
             {
                 for (size_t i = 0; i < AS_STRUCT(*obj)->propcount; i++)
                 {
-                    objdecref(&AS_STRUCT(*obj)->properties[i]);
+                    // objdecref(&AS_STRUCT(*obj)->properties[i]);
                 }
                 dealloc(obj);
             }

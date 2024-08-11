@@ -719,13 +719,12 @@ static void compile_expr_call(Bytecode *code, Expr exp)
 
         for (size_t i = 0; i < e.arguments.count; i++)
         {
+            printf("running\n");
             compile_expr(code, e.arguments.data[i]);
         }
 
-        emit_byte(code, OP_GETATTR);
+        emit_byte(code, OP_CALL_METHOD);
         emit_uint32(code, add_string(code, method));
-
-        emit_byte(code, OP_CALL);
         emit_uint32(code, e.arguments.count);
     }
     else if (e.callee->kind == EXPR_VAR)
@@ -1628,7 +1627,9 @@ static void compile_stmt_struct(Bytecode *code, Stmt stmt)
     emit_uint32(code, add_string(code, s.name));
     emit_uint32(code, s.properties.count);
 
-    StructBlueprint blueprint = {.name = s.name, .property_indexes = calloc(1, sizeof(Table_int)), .methods = calloc(1, sizeof(Table_Function))};
+    StructBlueprint blueprint = {.name = s.name,
+                                 .property_indexes = calloc(1, sizeof(Table_int)),
+                                 .methods = calloc(1, sizeof(Table_Function))};
 
     for (size_t i = 0; i < s.properties.count; i++)
     {
@@ -1749,7 +1750,7 @@ static void compile_stmt_impl(Bytecode *code, Stmt stmt)
             .paramcount = func.parameters.count,
             .location = code->code.count + 3,
         };
-        table_insert(blueprint->methods, func.name, f);
+        table_insert(blueprint->methods, func.name, ALLOC(f));
         compile(code, s.methods.data[i]);
     }
 
