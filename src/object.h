@@ -526,7 +526,9 @@ inline void objdecref(Object *obj)
         case OBJ_STRUCT: {
             if (--*(obj)->as.refcount == 0)
             {
-                /* Already does decref. */
+                for (size_t i = 0; i < AS_STRUCT(*obj)->properties->count; i++) {
+                    objdecref(&AS_STRUCT(*obj)->properties->items[i]);
+                }
                 dealloc(obj);
             }
             break;
@@ -591,7 +593,15 @@ inline void dealloc(Object *obj)
     switch (obj->type)
     {
         case OBJ_STRUCT: {
-            free_table_object(AS_STRUCT(*obj)->properties);
+            for (size_t i = 0; i < TABLE_MAX; i++)
+            {
+                if (AS_STRUCT(*obj)->properties->indexes[i] != NULL)
+                {
+                    Bucket *bucket = AS_STRUCT(*obj)->properties->indexes[i];
+                    list_free(bucket);
+                }
+            }
+
             free(AS_STRUCT(*obj)->properties);
             free(AS_STRUCT(*obj));
             break;
