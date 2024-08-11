@@ -524,13 +524,9 @@ inline void objdecref(Object *obj)
             break;
         }
         case OBJ_STRUCT: {
-            // printf("dec refcount for %s to %d\n", AS_STRUCT(*obj)->name, *obj->as.refcount - 1);
             if (--*(obj)->as.refcount == 0)
             {
-                for (size_t i = 0; i < AS_STRUCT(*obj)->propcount; i++)
-                {
-                    // objdecref(&AS_STRUCT(*obj)->properties[i]);
-                }
+                /* Already does decref. */
                 dealloc(obj);
             }
             break;
@@ -547,8 +543,6 @@ inline void objdecref(Object *obj)
             break;
         }
         case OBJ_CLOSURE: {
-            // printf("dec refcount for %s to %d\n", AS_CLOSURE(*obj)->func->name, *obj->as.refcount
-            // - 1);
             if (--*(obj)->as.refcount == 0)
             {
                 for (int i = 0; i < AS_CLOSURE(*obj)->upvalue_count; i++)
@@ -597,6 +591,7 @@ inline void dealloc(Object *obj)
     switch (obj->type)
     {
         case OBJ_STRUCT: {
+            free_table_object(AS_STRUCT(*obj)->properties);
             free(AS_STRUCT(*obj)->properties);
             free(AS_STRUCT(*obj));
             break;

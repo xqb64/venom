@@ -958,6 +958,15 @@ void free_stmt(Stmt stmt)
             free_expression(TO_STMT_PRINT(stmt).exp);
             break;
         }
+        case STMT_IMPL: {
+            free(TO_STMT_IMPL(stmt).name);
+            for (size_t i = 0; i < TO_STMT_IMPL(stmt).methods.count; i++)
+            {
+                free_stmt(TO_STMT_IMPL(stmt).methods.data[i]);
+            }
+            dynarray_free(&TO_STMT_IMPL(stmt).methods);
+            break;
+        }
         case STMT_LET: {
             free_expression(TO_STMT_LET(stmt).initializer);
             free(stmt.as.stmt_let.name);

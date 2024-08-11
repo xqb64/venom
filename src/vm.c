@@ -784,8 +784,6 @@ static inline void handle_op_impl(VM *vm, Bytecode *code, uint8_t **ip)
     uint32_t blueprint_name_idx = READ_UINT32();
     uint32_t method_count = READ_UINT32();
 
-    printf("method count is: %d\n", method_count);
-
     StructBlueprint *sb = table_get(vm->blueprints, code->sp.data[blueprint_name_idx]);
     if (!sb)
     {
@@ -796,8 +794,6 @@ static inline void handle_op_impl(VM *vm, Bytecode *code, uint8_t **ip)
     {
         uint32_t method_name_idx = READ_UINT32();
 
-        printf("method: %s\n", code->sp.data[method_name_idx]);
-
         uint32_t paramcount = READ_UINT32();
         uint32_t location = READ_UINT32();
 
@@ -807,7 +803,6 @@ static inline void handle_op_impl(VM *vm, Bytecode *code, uint8_t **ip)
             .name = code->sp.data[method_name_idx],
         };
 
-        printf("inserting into table under name: %s\n", code->sp.data[method_name_idx]);
         table_insert(sb->methods, code->sp.data[method_name_idx], ALLOC(method));
     }
 }

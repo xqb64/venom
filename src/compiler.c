@@ -73,6 +73,22 @@ void free_table_int(Table_int *table)
     }
 }
 
+void free_table_function_ptr(Table_FunctionPtr *table)
+{
+    for (size_t i = 0; i < TABLE_MAX; i++)
+    {
+        if (table->indexes[i] != NULL)
+        {
+            Bucket *bucket = table->indexes[i];
+            list_free(bucket);
+        }
+    }
+    for (size_t i = 0; i < table->count; i++)
+    {
+        free(table->items[i]);
+    }
+}
+
 void free_table_struct_blueprints(Table_StructBlueprint *table)
 {
     for (size_t i = 0; i < TABLE_MAX; i++)
@@ -87,6 +103,9 @@ void free_table_struct_blueprints(Table_StructBlueprint *table)
     {
         free_table_int(table->items[i].property_indexes);
         free(table->items[i].property_indexes);
+
+        free_table_function_ptr(table->items[i].methods);
+        free(table->items[i].methods);
     }
 }
 
@@ -1746,14 +1765,12 @@ static void compile_stmt_impl(Bytecode *code, Stmt stmt)
     {
         StmtFn func = TO_STMT_FN(s.methods.data[i]);
         Function f = {
-            .name = own_string(func.name),
+            .name = func.name,
             .paramcount = func.parameters.count,
             .location = code->code.count + 3,
         };
         table_insert(blueprint->methods, func.name, ALLOC(f));
         compile(code, s.methods.data[i]);
-
-        printf("f.name is: %s\n", f.name);
     }
 
     emit_byte(code, OP_IMPL);
