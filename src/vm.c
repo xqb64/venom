@@ -752,7 +752,8 @@ static inline void handle_op_struct_blueprint(VM *vm, Bytecode *code, uint8_t **
     }
 
     StructBlueprint sb = {.name = code->sp.data[name_idx],
-                          .property_indexes = malloc(sizeof(Table_int))};
+                          .property_indexes = malloc(sizeof(Table_int)),
+                          .methods = calloc(1, sizeof(Table_Function))};
 
     memset(sb.property_indexes, 0, sizeof(Table_int));
 
@@ -765,6 +766,33 @@ static inline void handle_op_struct_blueprint(VM *vm, Bytecode *code, uint8_t **
 
     dynarray_free(&properties);
     dynarray_free(&prop_indexes);
+}
+
+static inline void handle_op_impl(VM *vm, Bytecode *code, uint8_t **ip)
+{
+    uint32_t blueprint_name_idx = READ_UINT32();
+    uint32_t method_count = READ_UINT32();
+
+    StructBlueprint *sb = table_get(vm->blueprints, code->sp.data[blueprint_name_idx]);
+    if (!sb)
+    {
+        RUNTIME_ERROR("struct '%s' is not defined", code->sp.data[blueprint_name_idx]);
+    }
+
+    for (size_t i = 0; i < method_count; i++)
+    {
+        uint32_t method_name_idx = READ_UINT32();
+        uint32_t paramcount = READ_UINT32();
+        uint32_t location = READ_UINT32();
+
+        Function method = {
+            .location = location,
+            .paramcount = paramcount,
+            .name = code->sp.data[method_name_idx],
+        };
+
+        table_insert(sb->methods, code->sp.data[method_name_idx], method);
+    }
 }
 
 static Upvalue *new_upvalue(Object *slot)
@@ -1118,6 +1146,8 @@ static inline const char *print_current_instruction(uint8_t opcode)
             return "OP_SET_UPVALUE";
         case OP_CLOSE_UPVALUE:
             return "OP_CLOSE_UPVALUE";
+        case OP_IMPL:
+            return "OP_IMPL";
         case OP_HLT:
             return "OP_HLT";
         default:
@@ -1157,7 +1187,7 @@ void run(VM *vm, Bytecode *code)
         &&op_arrayset,    &&op_subscript,
         &&op_get_upvalue, &&op_get_upvalue_ptr,
         &&op_set_upvalue, &&op_close_upvalue,
-        &&op_hlt,
+        &&op_impl,        &&op_hlt,
     };
 
 #ifndef venom_debug_vm
@@ -1323,6 +1353,9 @@ void run(VM *vm, Bytecode *code)
         DISPATCH();
     op_close_upvalue:
         handle_op_close_upvalue(vm, code, &ip);
+        DISPATCH();
+    op_impl:
+        handle_op_impl(vm, code, &ip);
         DISPATCH();
     op_hlt:
         assert(vm->tos == 0);

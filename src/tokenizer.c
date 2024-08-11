@@ -328,6 +328,10 @@ Token get_token(Tokenizer *tokenizer)
             return identifier(tokenizer);
         }
         case 'i': {
+            if (lookahead(tokenizer, 3, "mpl"))
+            {
+                return make_token(tokenizer, TOKEN_IMPL, 4);
+            }
             if (lookahead(tokenizer, 1, "f"))
             {
                 return make_token(tokenizer, TOKEN_IF, 2);

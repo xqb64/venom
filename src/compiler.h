@@ -60,6 +60,7 @@ typedef enum
     OP_GET_UPVALUE_PTR,
     OP_SET_UPVALUE,
     OP_CLOSE_UPVALUE,
+    OP_IMPL,
     OP_HLT,
 } Opcode;
 
@@ -78,6 +79,7 @@ typedef struct
 {
     char *name;
     Table_int *property_indexes;
+    Table_Function *methods;
 } StructBlueprint;
 
 typedef Table(StructBlueprint) Table_StructBlueprint;

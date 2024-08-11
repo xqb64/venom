@@ -701,7 +701,34 @@ static void compile_expr_call(Bytecode *code, Expr exp)
 {
     ExprCall e = TO_EXPR_CALL(exp);
 
-    if (e.callee->kind == EXPR_VAR)
+    if (e.callee->kind == EXPR_GET)
+    {
+        ExprGet getexp = TO_EXPR_GET(*e.callee);
+
+        /* Compile the part that comes before the member access
+         * operator. */
+        compile_expr(code, *getexp.exp);
+
+        /* Deref it if the operator is -> */
+        if (strcmp(getexp.op, "->") == 0)
+        {
+            emit_byte(code, OP_DEREF);
+        }
+
+        char *method = getexp.property_name;
+
+        for (size_t i = 0; i < e.arguments.count; i++)
+        {
+            compile_expr(code, e.arguments.data[i]);
+        }
+
+        emit_byte(code, OP_GETATTR);
+        emit_uint32(code, add_string(code, method));
+
+        emit_byte(code, OP_CALL);
+        emit_uint32(code, e.arguments.count);
+    }
+    else if (e.callee->kind == EXPR_VAR)
     {
         ExprVar var = TO_EXPR_VAR(*e.callee);
 
@@ -1601,7 +1628,7 @@ static void compile_stmt_struct(Bytecode *code, Stmt stmt)
     emit_uint32(code, add_string(code, s.name));
     emit_uint32(code, s.properties.count);
 
-    StructBlueprint blueprint = {.name = s.name, .property_indexes = calloc(1, sizeof(Table_int))};
+    StructBlueprint blueprint = {.name = s.name, .property_indexes = calloc(1, sizeof(Table_int)), .methods = calloc(1, sizeof(Table_Function))};
 
     for (size_t i = 0; i < s.properties.count; i++)
     {
@@ -1698,6 +1725,45 @@ static void compile_stmt_continue(Bytecode *code, Stmt stmt)
     else
     {
         COMPILER_ERROR("'continue' outside of loop.");
+    }
+}
+
+static void compile_stmt_impl(Bytecode *code, Stmt stmt)
+{
+    StmtImpl s = TO_STMT_IMPL(stmt);
+
+    /* Look up the struct with that name in compiler->structs. */
+    StructBlueprint *blueprint = table_get(current_compiler->struct_blueprints, s.name);
+
+    /* If it is not found, bail out. */
+    if (!blueprint)
+    {
+        COMPILER_ERROR("struct '%s' is not defined.\n", s.name);
+    }
+
+    for (size_t i = 0; i < s.methods.count; i++)
+    {
+        StmtFn func = TO_STMT_FN(s.methods.data[i]);
+        Function f = {
+            .name = func.name,
+            .paramcount = func.parameters.count,
+            .location = code->code.count + 3,
+        };
+        table_insert(blueprint->methods, func.name, f);
+        compile(code, s.methods.data[i]);
+    }
+
+    emit_byte(code, OP_IMPL);
+    emit_uint32(code, add_string(code, blueprint->name));
+    emit_uint32(code, s.methods.count);
+
+    for (size_t i = 0; i < s.methods.count; i++)
+    {
+        StmtFn func = TO_STMT_FN(s.methods.data[i]);
+        Function *f = table_get(blueprint->methods, func.name);
+        emit_uint32(code, add_string(code, f->name));
+        emit_uint32(code, f->paramcount);
+        emit_uint32(code, f->location);
     }
 }
 
@@ -1800,6 +1866,7 @@ static CompileHandler handler[] = {
     [STMT_WHILE] = {.fn = compile_stmt_while, .name = "STMT_WHILE"},
     [STMT_FOR] = {.fn = compile_stmt_for, .name = "STMT_FOR"},
     [STMT_FN] = {.fn = compile_stmt_fn, .name = "STMT_FN"},
+    [STMT_IMPL] = {.fn = compile_stmt_impl, .name = "STMT_IMPL"},
     [STMT_DECO] = {.fn = compile_stmt_deco, .name = "STMT_DECO"},
     [STMT_STRUCT] = {.fn = compile_stmt_struct, .name = "STMT_STRUCT"},
     [STMT_RETURN] = {.fn = compile_stmt_return, .name = "STMT_RETURN"},

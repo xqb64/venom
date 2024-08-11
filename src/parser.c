@@ -754,6 +754,22 @@ static Stmt struct_statement(Parser *parser, Tokenizer *tokenizer)
     return AS_STMT_STRUCT(stmt);
 }
 
+static Stmt impl_statement(Parser *parser, Tokenizer *tokenizer)
+{
+    Token name = consume(parser, tokenizer, TOKEN_IDENTIFIER, "Expected identifier after 'impl'.");
+    consume(parser, tokenizer, TOKEN_LEFT_BRACE, "Expected '{' after identifier.");
+    DynArray_Stmt methods = {0};
+    while (!match(parser, tokenizer, 1, TOKEN_RIGHT_BRACE))
+    {
+        dynarray_insert(&methods, statement(parser, tokenizer));
+    }
+    StmtImpl stmt = {
+        .name = own_string_n(name.start, name.length),
+        .methods = methods,
+    };
+    return AS_STMT_IMPL(stmt);
+}
+
 static Stmt use_statement(Parser *parser, Tokenizer *tokenizer)
 {
     Token path = consume(parser, tokenizer, TOKEN_STRING, "Module path should be a string");
@@ -815,6 +831,10 @@ static Stmt statement(Parser *parser, Tokenizer *tokenizer)
     else if (match(parser, tokenizer, 1, TOKEN_AT))
     {
         return decorator_statement(parser, tokenizer);
+    }
+    else if (match(parser, tokenizer, 1, TOKEN_IMPL))
+    {
+        return impl_statement(parser, tokenizer);
     }
     else
     {

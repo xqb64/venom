@@ -61,6 +61,7 @@ typedef enum
     TOKEN_FOR,
     TOKEN_BREAK,
     TOKEN_CONTINUE,
+    TOKEN_IMPL,
     TOKEN_FN,
     TOKEN_RETURN,
     TOKEN_TRUE,
