@@ -615,8 +615,8 @@ static inline void handle_op_deepget_ptr(VM *vm, Bytecode *code, uint8_t **ip)
  * en it pushes the modified object back on the stack.
  *
  * SAFETY: The handler won't try to ensure that the acces-
- * sed property is defined on the object being modified. 
- * 
+ * sed property is defined on the object being modified.
+ *
  * REFCOUNTING: If the modified attribute already exists, we
  * need to make sure to decrement the refcount before overw-
  * riting it. */
@@ -660,7 +660,8 @@ static inline void handle_op_getattr(VM *vm, Bytecode *code, uint8_t **ip)
 
     if (!property)
     {
-        RUNTIME_ERROR("Property '%s' is not defined on struct '%s'.", code->sp.data[property_name_idx], AS_STRUCT(obj)->name);
+        RUNTIME_ERROR("Property '%s' is not defined on struct '%s'.",
+                      code->sp.data[property_name_idx], AS_STRUCT(obj)->name);
     }
 
     push(vm, *property);
@@ -901,10 +902,10 @@ static inline void handle_op_closure(VM *vm, Bytecode *code, uint8_t **ip)
  * nce that comes after the opcode and its 4-byte operand.
  *
  * The location is the starting position of the frame on the stack.
- * 
+ *
  * The called function will be located on the top of the stack, so we
  * need to pop it.
- * 
+ *
  * REFCOUNTING: Since the called function is a closure, and therefore
  * refcounted, we need to make sure to call objdecref on it. */
 static inline void handle_op_call(VM *vm, Bytecode *code, uint8_t **ip)
@@ -921,7 +922,6 @@ static inline void handle_op_call(VM *vm, Bytecode *code, uint8_t **ip)
 
     *ip = &code->code.data[f->func->location - 1];
 }
-
 
 /* OP_CALL_METHOD reads a 4-byte number, method_name_idx, which is the
  * index of the method name in the sp, and another 4-byte number, arg-

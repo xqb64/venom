@@ -483,7 +483,8 @@ inline void objdecref(Object *obj)
     {
         if (--AS_STRUCT(*obj)->refcount == 0)
         {
-            for (size_t i = 0; i < AS_STRUCT(*obj)->properties->count; i++) {
+            for (size_t i = 0; i < AS_STRUCT(*obj)->properties->count; i++)
+            {
                 objdecref(&AS_STRUCT(*obj)->properties->items[i]);
             }
             dealloc(obj);
@@ -525,7 +526,8 @@ inline void objdecref(Object *obj)
         case OBJ_STRUCT: {
             if (--*(obj)->as.refcount == 0)
             {
-                for (size_t i = 0; i < AS_STRUCT(*obj)->properties->count; i++) {
+                for (size_t i = 0; i < AS_STRUCT(*obj)->properties->count; i++)
+                {
                     objdecref(&AS_STRUCT(*obj)->properties->items[i]);
                 }
                 dealloc(obj);
