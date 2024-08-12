@@ -623,15 +623,6 @@ static inline void handle_op_setattr(VM *vm, Bytecode *code, uint8_t **ip)
     Object value = pop(vm);
     Object obj = pop(vm);
 
-    StructBlueprint *sb = table_get_unchecked(vm->blueprints, AS_STRUCT(obj)->name);
-
-    int *idx = table_get(sb->property_indexes, code->sp.data[property_name_idx]);
-    if (!idx)
-    {
-        RUNTIME_ERROR("struct '%s' does not have property '%s'", AS_STRUCT(obj)->name,
-                      code->sp.data[property_name_idx]);
-    }
-
     table_insert(AS_STRUCT(obj)->properties, code->sp.data[property_name_idx], value);
 
     push(vm, obj);
@@ -654,14 +645,6 @@ static inline void handle_op_getattr(VM *vm, Bytecode *code, uint8_t **ip)
 {
     uint32_t property_name_idx = READ_UINT32();
     Object obj = pop(vm);
-
-    StructBlueprint *sb = table_get_unchecked(vm->blueprints, AS_STRUCT(obj)->name);
-    int *idx = table_get(sb->property_indexes, code->sp.data[property_name_idx]);
-    if (!idx)
-    {
-        RUNTIME_ERROR("struct '%s' does not have property '%s'", AS_STRUCT(obj)->name,
-                      code->sp.data[property_name_idx]);
-    }
 
     Object *property = table_get(AS_STRUCT(obj)->properties, code->sp.data[property_name_idx]);
 
