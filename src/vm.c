@@ -623,6 +623,12 @@ static inline void handle_op_setattr(VM *vm, Bytecode *code, uint8_t **ip)
     Object value = pop(vm);
     Object obj = pop(vm);
 
+    Object *target = table_get(AS_STRUCT(obj)->properties, code->sp.data[property_name_idx]);
+    if (target)
+    {
+        objdecref(target);
+    }
+
     table_insert(AS_STRUCT(obj)->properties, code->sp.data[property_name_idx], value);
 
     push(vm, obj);
