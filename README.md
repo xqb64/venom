@@ -27,6 +27,7 @@ This project is my debut in the realm of programming language design. I had a bl
   - `for` (C-style)
   - `break` and `continue`
 - functions
+  - first-class citizens
   - `return` is mandatory
   - recursion!
 - `print` statement
