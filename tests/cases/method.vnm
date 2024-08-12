@@ -1,0 +1,14 @@
+struct Person {
+    name;
+    age;
+}
+
+impl Person {
+    fn greet(self, name) {
+        print "Hello, " ++ name ++ ". I'm " ++ self.name ++ ".";
+        return 0;
+    }
+}
+
+let p = Person { name: "Jimmy", age: 30};
+p.greet("Jane");

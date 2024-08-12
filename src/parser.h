@@ -254,7 +254,7 @@ typedef struct
 typedef struct
 {
     char *name;
-    DynArray_Stmt s;
+    DynArray_Stmt methods;
 } StmtImpl;
 
 typedef struct

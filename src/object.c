@@ -32,10 +32,10 @@ void print_object(Object *object)
         Struct *structobj = AS_STRUCT(*object);
         printf("<%s", structobj->name);
         printf(" { ");
-        for (size_t i = 0; i < structobj->propcount; i++)
+        for (size_t i = 0; i < structobj->properties->count; i++)
         {
-            print_object(&structobj->properties[i]);
-            if (i < structobj->propcount - 1)
+            print_object(&structobj->properties->items[i]);
+            if (i < structobj->properties->count - 1)
             {
                 printf(", ");
             }

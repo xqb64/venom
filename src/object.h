@@ -343,14 +343,6 @@ typedef struct String
     char *value;
 } String;
 
-typedef struct Struct
-{
-    int refcount;
-    char *name;
-    size_t propcount;
-    Object *properties;
-} Struct;
-
 typedef struct Array
 {
     int refcount;
@@ -424,6 +416,14 @@ inline const char *get_object_type(Object *object)
 typedef Table(Object) Table_Object;
 void free_table_object(const Table_Object *table);
 
+typedef struct Struct
+{
+    int refcount;
+    char *name;
+    size_t propcount;
+    Table_Object *properties;
+} Struct;
+
 typedef struct
 {
     uint8_t *addr;
@@ -483,9 +483,8 @@ inline void objdecref(Object *obj)
     {
         if (--AS_STRUCT(*obj)->refcount == 0)
         {
-            for (size_t i = 0; i < AS_STRUCT(*obj)->propcount; i++)
-            {
-                objdecref(&AS_STRUCT(*obj)->properties[i]);
+            for (size_t i = 0; i < AS_STRUCT(*obj)->properties->count; i++) {
+                objdecref(&AS_STRUCT(*obj)->properties->items[i]);
             }
             dealloc(obj);
         }
@@ -524,12 +523,10 @@ inline void objdecref(Object *obj)
             break;
         }
         case OBJ_STRUCT: {
-            // printf("dec refcount for %s to %d\n", AS_STRUCT(*obj)->name, *obj->as.refcount - 1);
             if (--*(obj)->as.refcount == 0)
             {
-                for (size_t i = 0; i < AS_STRUCT(*obj)->propcount; i++)
-                {
-                    objdecref(&AS_STRUCT(*obj)->properties[i]);
+                for (size_t i = 0; i < AS_STRUCT(*obj)->properties->count; i++) {
+                    objdecref(&AS_STRUCT(*obj)->properties->items[i]);
                 }
                 dealloc(obj);
             }
@@ -547,8 +544,6 @@ inline void objdecref(Object *obj)
             break;
         }
         case OBJ_CLOSURE: {
-            // printf("dec refcount for %s to %d\n", AS_CLOSURE(*obj)->func->name, *obj->as.refcount
-            // - 1);
             if (--*(obj)->as.refcount == 0)
             {
                 for (int i = 0; i < AS_CLOSURE(*obj)->upvalue_count; i++)
@@ -570,6 +565,15 @@ inline void dealloc(Object *obj)
 #ifdef NAN_BOXING
     if (IS_STRUCT(*obj))
     {
+        for (size_t i = 0; i < TABLE_MAX; i++)
+        {
+            if (AS_STRUCT(*obj)->properties->indexes[i] != NULL)
+            {
+                Bucket *bucket = AS_STRUCT(*obj)->properties->indexes[i];
+                list_free(bucket);
+            }
+        }
+
         free(AS_STRUCT(*obj)->properties);
         free(AS_STRUCT(*obj));
     }
@@ -597,6 +601,15 @@ inline void dealloc(Object *obj)
     switch (obj->type)
     {
         case OBJ_STRUCT: {
+            for (size_t i = 0; i < TABLE_MAX; i++)
+            {
+                if (AS_STRUCT(*obj)->properties->indexes[i] != NULL)
+                {
+                    Bucket *bucket = AS_STRUCT(*obj)->properties->indexes[i];
+                    list_free(bucket);
+                }
+            }
+
             free(AS_STRUCT(*obj)->properties);
             free(AS_STRUCT(*obj));
             break;

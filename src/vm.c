@@ -632,7 +632,7 @@ static inline void handle_op_setattr(VM *vm, Bytecode *code, uint8_t **ip)
                       code->sp.data[property_name_idx]);
     }
 
-    AS_STRUCT(obj)->properties[*idx] = value;
+    table_insert(AS_STRUCT(obj)->properties, code->sp.data[property_name_idx], value);
 
     push(vm, obj);
 }
@@ -663,10 +663,10 @@ static inline void handle_op_getattr(VM *vm, Bytecode *code, uint8_t **ip)
                       code->sp.data[property_name_idx]);
     }
 
-    Object property = AS_STRUCT(obj)->properties[*idx];
+    Object *property = table_get(AS_STRUCT(obj)->properties, code->sp.data[property_name_idx]);
 
-    push(vm, property);
-    objincref(&property);
+    push(vm, *property);
+    objincref(property);
     objdecref(&obj);
 }
 
@@ -692,7 +692,7 @@ static inline void handle_op_getattr_ptr(VM *vm, Bytecode *code, uint8_t **ip)
                       code->sp.data[property_name_idx]);
     }
 
-    Object *property = &AS_STRUCT(object)->properties[*idx];
+    Object *property = table_get(AS_STRUCT(object)->properties, code->sp.data[property_name_idx]);
     push(vm, PTR_VAL(property));
 
     objdecref(&object);
@@ -718,11 +718,20 @@ static inline void handle_op_struct(VM *vm, Bytecode *code, uint8_t **ip)
     Struct s = {.name = code->sp.data[structname],
                 .propcount = sb->property_indexes->count,
                 .refcount = 1,
-                .properties = malloc(sizeof(Object) * sb->property_indexes->count)};
+                .properties = calloc(1, sizeof(Table_Object))};
 
-    for (size_t i = 0; i < s.propcount; i++)
+    for (size_t i = 0; i < sb->methods->count; i++)
     {
-        s.properties[i] = NULL_VAL;
+        Function f = {
+            .location = sb->methods->items[i]->location,
+            .name = sb->methods->items[i]->name,
+            .paramcount = sb->methods->items[i]->paramcount,
+            .upvalue_count = 0,
+        };
+
+        Closure c = {.func = ALLOC(f), .refcount = 1, .upvalue_count = 0, .upvalues = NULL};
+
+        table_insert(s.properties, sb->methods->items[i]->name, CLOSURE_VAL(ALLOC(c)));
     }
 
     push(vm, STRUCT_VAL(ALLOC(s)));
@@ -752,9 +761,8 @@ static inline void handle_op_struct_blueprint(VM *vm, Bytecode *code, uint8_t **
     }
 
     StructBlueprint sb = {.name = code->sp.data[name_idx],
-                          .property_indexes = malloc(sizeof(Table_int))};
-
-    memset(sb.property_indexes, 0, sizeof(Table_int));
+                          .property_indexes = calloc(1, sizeof(Table_int)),
+                          .methods = calloc(1, sizeof(Table_Function))};
 
     for (size_t i = 0; i < properties.count; i++)
     {
@@ -765,6 +773,41 @@ static inline void handle_op_struct_blueprint(VM *vm, Bytecode *code, uint8_t **
 
     dynarray_free(&properties);
     dynarray_free(&prop_indexes);
+}
+
+/* OP_IMPL reads a 4-byte blueprint name idx in the sp,
+ * and a 4-byte method count. Then, for each method, it
+ * reads a 4-byte method name index, a 4-byte param co-
+ * unt for the method, and a 4-byte location of the me-
+ * thod in the bytecode. Then, it constructs a Function
+ * object with all this information and inserts it into
+ * the blueprint's methods Table. */
+static inline void handle_op_impl(VM *vm, Bytecode *code, uint8_t **ip)
+{
+    uint32_t blueprint_name_idx = READ_UINT32();
+    uint32_t method_count = READ_UINT32();
+
+    StructBlueprint *sb = table_get(vm->blueprints, code->sp.data[blueprint_name_idx]);
+    if (!sb)
+    {
+        RUNTIME_ERROR("struct '%s' is not defined", code->sp.data[blueprint_name_idx]);
+    }
+
+    for (size_t i = 0; i < method_count; i++)
+    {
+        uint32_t method_name_idx = READ_UINT32();
+
+        uint32_t paramcount = READ_UINT32();
+        uint32_t location = READ_UINT32();
+
+        Function method = {
+            .location = location,
+            .paramcount = paramcount,
+            .name = code->sp.data[method_name_idx],
+        };
+
+        table_insert(sb->methods, code->sp.data[method_name_idx], ALLOC(method));
+    }
 }
 
 static Upvalue *new_upvalue(Object *slot)
@@ -813,6 +856,11 @@ static void close_upvalues(VM *vm, Object *last)
     }
 }
 
+/* OP_CLOSURE reads a function name idx in the sp, a parameter
+ * count, a function location in the bytecode, and the upvalue
+ * count. Then, for each upvalue, it reads the upvalue index,
+ * and captures it. Then, it constructs a Closure object with
+ * all this information and pushes it on the stack. */
 static inline void handle_op_closure(VM *vm, Bytecode *code, uint8_t **ip)
 {
     uint32_t name_idx, paramcount, location, upvalue_count;
@@ -847,14 +895,20 @@ static inline void handle_op_closure(VM *vm, Bytecode *code, uint8_t **ip)
     push(vm, obj);
 }
 
-/* OP_CALL reads a 4-byte number uses it to construct a BytecodePtr
- * object and push it on the frame pointer stack.
+/* OP_CALL reads a 4-byte number, argcount, and uses it to construct a
+ * BytecodePtr object and push it on the frame pointer stack. The 'ar-
+ * gcount' number is the number of argumentss the function was passed.
  *
- * The address the BytecodePtr points to is the one of the next in-
- * struction that comes after the jump following the opcode and its
- * 4-byte operand.
+ * The address BytecodePtr points to is the next instruction in seque-
+ * nce that comes after the opcode and its 4-byte operand.
  *
- * The location is the starting position of the frame on the stack. */
+ * The location is the starting position of the frame on the stack.
+ * 
+ * The called function will be located on the top of the stack, so we
+ * need to pop it.
+ * 
+ * REFCOUNTING: Since the called function is a closure, and therefore
+ * refcounted, we need to make sure to call objdecref on it. */
 static inline void handle_op_call(VM *vm, Bytecode *code, uint8_t **ip)
 {
     uint8_t argcount = READ_UINT8();
@@ -868,6 +922,42 @@ static inline void handle_op_call(VM *vm, Bytecode *code, uint8_t **ip)
     vm->fp_stack[vm->fp_count++] = ip_obj;
 
     *ip = &code->code.data[f->func->location - 1];
+}
+
+
+/* OP_CALL_METHOD reads a 4-byte number, method_name_idx, which is the
+ * index of the method name in the sp, and another 4-byte number, arg-
+ * count, which it uses to construct a BytecodePtr object and push it
+ * on the frame pointer stack.
+ *
+ * The address BytecodePtr points to is the next instruction in seque-
+ * nce that comes after the opcode and its 4-byte operand.
+ *
+ * The location is the starting position of the frame on the stack. */
+static inline void handle_op_call_method(VM *vm, Bytecode *code, uint8_t **ip)
+{
+    uint32_t method_name_idx = READ_UINT32();
+    uint32_t argcount = READ_UINT32();
+
+    Object object = peek(vm, argcount);
+
+    /* Look up the method with that name on the blueprint. */
+    Object *methodobj = table_get(AS_STRUCT(object)->properties, code->sp.data[method_name_idx]);
+    if (!methodobj)
+    {
+        RUNTIME_ERROR("method '%s' is not defined on struct '%s'.", code->sp.data[method_name_idx],
+                      AS_STRUCT(object)->name);
+    }
+
+    Closure *c = AS_CLOSURE(*methodobj);
+
+    /* Push the instruction pointer on the frame ptr stack.
+     * No need to take into account the jump sequence (+3). */
+    BytecodePtr ip_obj = {.addr = *ip, .location = vm->tos - c->func->paramcount, .fn = c};
+    vm->fp_stack[vm->fp_count++] = ip_obj;
+
+    /* Direct jump to one byte before the method location. */
+    *ip = &code->code.data[c->func->location - 1];
 }
 
 /* OP_RET pops a BytecodePtr off the frame pointer stack
@@ -986,6 +1076,11 @@ static inline void handle_op_subscript(VM *vm, Bytecode *code, uint8_t **ip)
     objdecref(&object);
 }
 
+/* OP_GET_UPVALUE reads a 4-byte index of the upvalue and pushes it on the
+ * stack.
+ *
+ * REFCOUNTING: Since the pushed value is now present in one mor eplace, we
+ * need to make sure to increment the refcount. */
 static inline void handle_op_get_upvalue(VM *vm, Bytecode *code, uint8_t **ip)
 {
     uint32_t idx = READ_UINT32();
@@ -994,6 +1089,9 @@ static inline void handle_op_get_upvalue(VM *vm, Bytecode *code, uint8_t **ip)
     push(vm, *obj);
 }
 
+/* OP_GET_UPVALUE_PTR reads a 4-byte index of the upvalue and pushes it
+ * on the stack. It's exactly like OP_GET_UPVALUE, differing in that it
+ * pushes /the address/ of the object instead of the object itself. */
 static inline void handle_op_get_upvalue_ptr(VM *vm, Bytecode *code, uint8_t **ip)
 {
     uint32_t idx = READ_UINT32();
@@ -1001,6 +1099,11 @@ static inline void handle_op_get_upvalue_ptr(VM *vm, Bytecode *code, uint8_t **i
     push(vm, PTR_VAL(obj));
 }
 
+/* OP_SET_UPVALUE reads a 4-byte index of the upvalue and sets it to the
+ * previously popped object.
+ *
+ * REFCOUNTING: Since the target value will now be gone from that place,
+ * we need to make sure to decrement its refcount. */
 static inline void handle_op_set_upvalue(VM *vm, Bytecode *code, uint8_t **ip)
 {
     uint32_t idx = READ_UINT32();
@@ -1009,6 +1112,9 @@ static inline void handle_op_set_upvalue(VM *vm, Bytecode *code, uint8_t **ip)
     *vm->fp_stack[vm->fp_count - 1].fn->upvalues[idx]->location = obj;
 }
 
+/* OP_CLOSE_UPVALUE is a part of the stack cleanup procedure and runs upon
+ * returning from the function. The push/pop dance is to preserve the ret-
+ * urn value. */
 static inline void handle_op_close_upvalue(VM *vm, Bytecode *code, uint8_t **ip)
 {
     Object result = pop(vm);
@@ -1094,6 +1200,8 @@ static inline const char *print_current_instruction(uint8_t opcode)
             return "OP_CLOSURE";
         case OP_CALL:
             return "OP_CALL";
+        case OP_CALL_METHOD:
+            return "OP_CALL_METHOD";
         case OP_RET:
             return "OP_RET";
         case OP_POP:
@@ -1118,6 +1226,8 @@ static inline const char *print_current_instruction(uint8_t opcode)
             return "OP_SET_UPVALUE";
         case OP_CLOSE_UPVALUE:
             return "OP_CLOSE_UPVALUE";
+        case OP_IMPL:
+            return "OP_IMPL";
         case OP_HLT:
             return "OP_HLT";
         default:
@@ -1133,30 +1243,56 @@ void run(VM *vm, Bytecode *code)
 #endif
 
     static void *dispatch_table[] = {
-        &&op_print,       &&op_add,
-        &&op_sub,         &&op_mul,
-        &&op_div,         &&op_mod,
-        &&op_eq,          &&op_gt,
-        &&op_lt,          &&op_not,
-        &&op_neg,         &&op_true,
-        &&op_null,        &&op_const,
-        &&op_str,         &&op_jmp,
-        &&op_jz,          &&op_bitand,
-        &&op_bitor,       &&op_bitxor,
-        &&op_bitnot,      &&op_bitshl,
-        &&op_bitshr,      &&op_set_global,
-        &&op_get_global,  &&op_get_global_ptr,
-        &&op_deepset,     &&op_deepget,
-        &&op_deepget_ptr, &&op_setattr,
-        &&op_getattr,     &&op_getattr_ptr,
-        &&op_struct,      &&op_struct_blueprint,
-        &&op_closure,     &&op_call,
-        &&op_ret,         &&op_pop,
-        &&op_deref,       &&op_derefset,
-        &&op_strcat,      &&op_array,
-        &&op_arrayset,    &&op_subscript,
-        &&op_get_upvalue, &&op_get_upvalue_ptr,
-        &&op_set_upvalue, &&op_close_upvalue,
+        &&op_print,
+        &&op_add,
+        &&op_sub,
+        &&op_mul,
+        &&op_div,
+        &&op_mod,
+        &&op_eq,
+        &&op_gt,
+        &&op_lt,
+        &&op_not,
+        &&op_neg,
+        &&op_true,
+        &&op_null,
+        &&op_const,
+        &&op_str,
+        &&op_jmp,
+        &&op_jz,
+        &&op_bitand,
+        &&op_bitor,
+        &&op_bitxor,
+        &&op_bitnot,
+        &&op_bitshl,
+        &&op_bitshr,
+        &&op_set_global,
+        &&op_get_global,
+        &&op_get_global_ptr,
+        &&op_deepset,
+        &&op_deepget,
+        &&op_deepget_ptr,
+        &&op_setattr,
+        &&op_getattr,
+        &&op_getattr_ptr,
+        &&op_struct,
+        &&op_struct_blueprint,
+        &&op_closure,
+        &&op_call,
+        &&op_call_method,
+        &&op_ret,
+        &&op_pop,
+        &&op_deref,
+        &&op_derefset,
+        &&op_strcat,
+        &&op_array,
+        &&op_arrayset,
+        &&op_subscript,
+        &&op_get_upvalue,
+        &&op_get_upvalue_ptr,
+        &&op_set_upvalue,
+        &&op_close_upvalue,
+        &&op_impl,
         &&op_hlt,
     };
 
@@ -1288,6 +1424,9 @@ void run(VM *vm, Bytecode *code)
     op_call:
         handle_op_call(vm, code, &ip);
         DISPATCH();
+    op_call_method:
+        handle_op_call_method(vm, code, &ip);
+        DISPATCH();
     op_ret:
         handle_op_ret(vm, code, &ip);
         DISPATCH();
@@ -1323,6 +1462,9 @@ void run(VM *vm, Bytecode *code)
         DISPATCH();
     op_close_upvalue:
         handle_op_close_upvalue(vm, code, &ip);
+        DISPATCH();
+    op_impl:
+        handle_op_impl(vm, code, &ip);
         DISPATCH();
     op_hlt:
         assert(vm->tos == 0);
