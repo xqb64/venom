@@ -614,8 +614,12 @@ static inline void handle_op_deepget_ptr(VM *vm, Bytecode *code, uint8_t **ip)
  * serts the value into the object's properties Table. Th-
  * en it pushes the modified object back on the stack.
  *
- * SAFETY: the handler will try to ensure that the accessed
- * property is defined on the object being modified. */
+ * SAFETY: The handler won't try to ensure that the acces-
+ * sed property is defined on the object being modified. 
+ * 
+ * REFCOUNTING: If the modified attribute already exists, we
+ * need to make sure to decrement the refcount before overw-
+ * riting it. */
 static inline void handle_op_setattr(VM *vm, Bytecode *code, uint8_t **ip)
 {
     uint32_t property_name_idx = READ_UINT32();
