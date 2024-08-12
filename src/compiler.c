@@ -738,7 +738,6 @@ static void compile_expr_call(Bytecode *code, Expr exp)
 
         for (size_t i = 0; i < e.arguments.count; i++)
         {
-            printf("running\n");
             compile_expr(code, e.arguments.data[i]);
         }
 
@@ -1781,7 +1780,6 @@ static void compile_stmt_impl(Bytecode *code, Stmt stmt)
     {
         StmtFn func = TO_STMT_FN(s.methods.data[i]);
         Function **f = table_get(blueprint->methods, func.name);
-        printf("f->name is: %s\n", (*f)->name);
         emit_uint32(code, add_string(code, (*f)->name));
         emit_uint32(code, (*f)->paramcount);
         emit_uint32(code, (*f)->location);

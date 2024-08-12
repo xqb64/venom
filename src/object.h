@@ -483,9 +483,8 @@ inline void objdecref(Object *obj)
     {
         if (--AS_STRUCT(*obj)->refcount == 0)
         {
-            for (size_t i = 0; i < AS_STRUCT(*obj)->propcount; i++)
-            {
-                objdecref(&AS_STRUCT(*obj)->properties[i]);
+            for (size_t i = 0; i < AS_STRUCT(*obj)->properties->count; i++) {
+                objdecref(&AS_STRUCT(*obj)->properties->items[i]);
             }
             dealloc(obj);
         }
@@ -566,6 +565,15 @@ inline void dealloc(Object *obj)
 #ifdef NAN_BOXING
     if (IS_STRUCT(*obj))
     {
+        for (size_t i = 0; i < TABLE_MAX; i++)
+        {
+            if (AS_STRUCT(*obj)->properties->indexes[i] != NULL)
+            {
+                Bucket *bucket = AS_STRUCT(*obj)->properties->indexes[i];
+                list_free(bucket);
+            }
+        }
+
         free(AS_STRUCT(*obj)->properties);
         free(AS_STRUCT(*obj));
     }

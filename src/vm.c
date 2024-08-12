@@ -655,13 +655,13 @@ static inline void handle_op_getattr(VM *vm, Bytecode *code, uint8_t **ip)
     uint32_t property_name_idx = READ_UINT32();
     Object obj = pop(vm);
 
-    // StructBlueprint *sb = table_get_unchecked(vm->blueprints, AS_STRUCT(obj)->name);
-    // int *idx = table_get(sb->property_indexes, code->sp.data[property_name_idx]);
-    // if (!idx)
-    // {
-    //     RUNTIME_ERROR("struct '%s' does not have property '%s'", AS_STRUCT(obj)->name,
-    //                   code->sp.data[property_name_idx]);
-    // }
+    StructBlueprint *sb = table_get_unchecked(vm->blueprints, AS_STRUCT(obj)->name);
+    int *idx = table_get(sb->property_indexes, code->sp.data[property_name_idx]);
+    if (!idx)
+    {
+        RUNTIME_ERROR("struct '%s' does not have property '%s'", AS_STRUCT(obj)->name,
+                      code->sp.data[property_name_idx]);
+    }
 
     Object *property = table_get(AS_STRUCT(obj)->properties, code->sp.data[property_name_idx]);
 
@@ -729,11 +729,7 @@ static inline void handle_op_struct(VM *vm, Bytecode *code, uint8_t **ip)
             .upvalue_count = 0,
         };
 
-        printf("LOCATION is: %ld\n", f.location);
-
         Closure c = {.func = ALLOC(f), .refcount = 1, .upvalue_count = 0, .upvalues = NULL};
-
-        printf("inserting into struct under name: %s\n", sb->methods->items[i]->name);
 
         table_insert(s.properties, sb->methods->items[i]->name, CLOSURE_VAL(ALLOC(c)));
     }
@@ -779,6 +775,13 @@ static inline void handle_op_struct_blueprint(VM *vm, Bytecode *code, uint8_t **
     dynarray_free(&prop_indexes);
 }
 
+/* OP_IMPL reads a 4-byte blueprint name idx in the sp,
+ * and a 4-byte method count. Then, for each method, it
+ * reads a 4-byte method name index, a 4-byte param co-
+ * unt for the method, and a 4-byte location of the me-
+ * thod in the bytecode. Then, it constructs a Function
+ * object with all this information and inserts it into
+ * the blueprint's methods Table. */
 static inline void handle_op_impl(VM *vm, Bytecode *code, uint8_t **ip)
 {
     uint32_t blueprint_name_idx = READ_UINT32();
@@ -853,6 +856,11 @@ static void close_upvalues(VM *vm, Object *last)
     }
 }
 
+/* OP_CLOSURE reads a function name idx in the sp, a parameter
+ * count, a function location in the bytecode, and the upvalue
+ * count. Then, for each upvalue, it reads the upvalue index,
+ * and captures it. Then, it constructs a Closure object with
+ * all this information and pushes it on the stack. */
 static inline void handle_op_closure(VM *vm, Bytecode *code, uint8_t **ip)
 {
     uint32_t name_idx, paramcount, location, upvalue_count;
@@ -887,14 +895,20 @@ static inline void handle_op_closure(VM *vm, Bytecode *code, uint8_t **ip)
     push(vm, obj);
 }
 
-/* OP_CALL reads a 4-byte number uses it to construct a BytecodePtr
- * object and push it on the frame pointer stack.
+/* OP_CALL reads a 4-byte number, argcount, and uses it to construct a
+ * BytecodePtr object and push it on the frame pointer stack. The 'ar-
+ * gcount' number is the number of argumentss the function was passed.
  *
- * The address the BytecodePtr points to is the one of the next in-
- * struction that comes after the jump following the opcode and its
- * 4-byte operand.
+ * The address BytecodePtr points to is the next instruction in seque-
+ * nce that comes after the opcode and its 4-byte operand.
  *
- * The location is the starting position of the frame on the stack. */
+ * The location is the starting position of the frame on the stack.
+ * 
+ * The called function will be located on the top of the stack, so we
+ * need to pop it.
+ * 
+ * REFCOUNTING: Since the called function is a closure, and therefore
+ * refcounted, we need to make sure to call objdecref on it. */
 static inline void handle_op_call(VM *vm, Bytecode *code, uint8_t **ip)
 {
     uint8_t argcount = READ_UINT8();
@@ -908,6 +922,42 @@ static inline void handle_op_call(VM *vm, Bytecode *code, uint8_t **ip)
     vm->fp_stack[vm->fp_count++] = ip_obj;
 
     *ip = &code->code.data[f->func->location - 1];
+}
+
+
+/* OP_CALL_METHOD reads a 4-byte number, method_name_idx, which is the
+ * index of the method name in the sp, and another 4-byte number, arg-
+ * count, which it uses to construct a BytecodePtr object and push it
+ * on the frame pointer stack.
+ *
+ * The address BytecodePtr points to is the next instruction in seque-
+ * nce that comes after the opcode and its 4-byte operand.
+ *
+ * The location is the starting position of the frame on the stack. */
+static inline void handle_op_call_method(VM *vm, Bytecode *code, uint8_t **ip)
+{
+    uint32_t method_name_idx = READ_UINT32();
+    uint32_t argcount = READ_UINT32();
+
+    Object object = peek(vm, argcount);
+
+    /* Look up the method with that name on the blueprint. */
+    Object *methodobj = table_get(AS_STRUCT(object)->properties, code->sp.data[method_name_idx]);
+    if (!methodobj)
+    {
+        RUNTIME_ERROR("method '%s' is not defined on struct '%s'.", code->sp.data[method_name_idx],
+                      AS_STRUCT(object)->name);
+    }
+
+    Closure *c = AS_CLOSURE(*methodobj);
+
+    /* Push the instruction pointer on the frame ptr stack.
+     * No need to take into account the jump sequence (+3). */
+    BytecodePtr ip_obj = {.addr = *ip, .location = vm->tos - c->func->paramcount, .fn = c};
+    vm->fp_stack[vm->fp_count++] = ip_obj;
+
+    /* Direct jump to one byte before the method location. */
+    *ip = &code->code.data[c->func->location - 1];
 }
 
 /* OP_RET pops a BytecodePtr off the frame pointer stack
@@ -1026,6 +1076,11 @@ static inline void handle_op_subscript(VM *vm, Bytecode *code, uint8_t **ip)
     objdecref(&object);
 }
 
+/* OP_GET_UPVALUE reads a 4-byte index of the upvalue and pushes it on the
+ * stack.
+ *
+ * REFCOUNTING: Since the pushed value is now present in one mor eplace, we
+ * need to make sure to increment the refcount. */
 static inline void handle_op_get_upvalue(VM *vm, Bytecode *code, uint8_t **ip)
 {
     uint32_t idx = READ_UINT32();
@@ -1034,6 +1089,9 @@ static inline void handle_op_get_upvalue(VM *vm, Bytecode *code, uint8_t **ip)
     push(vm, *obj);
 }
 
+/* OP_GET_UPVALUE_PTR reads a 4-byte index of the upvalue and pushes it
+ * on the stack. It's exactly like OP_GET_UPVALUE, differing in that it
+ * pushes /the address/ of the object instead of the object itself. */
 static inline void handle_op_get_upvalue_ptr(VM *vm, Bytecode *code, uint8_t **ip)
 {
     uint32_t idx = READ_UINT32();
@@ -1041,6 +1099,11 @@ static inline void handle_op_get_upvalue_ptr(VM *vm, Bytecode *code, uint8_t **i
     push(vm, PTR_VAL(obj));
 }
 
+/* OP_SET_UPVALUE reads a 4-byte index of the upvalue and sets it to the
+ * previously popped object.
+ *
+ * REFCOUNTING: Since the target value will now be gone from that place,
+ * we need to make sure to decrement its refcount. */
 static inline void handle_op_set_upvalue(VM *vm, Bytecode *code, uint8_t **ip)
 {
     uint32_t idx = READ_UINT32();
@@ -1049,40 +1112,15 @@ static inline void handle_op_set_upvalue(VM *vm, Bytecode *code, uint8_t **ip)
     *vm->fp_stack[vm->fp_count - 1].fn->upvalues[idx]->location = obj;
 }
 
+/* OP_CLOSE_UPVALUE is a part of the stack cleanup procedure and runs upon
+ * returning from the function. The push/pop dance is to preserve the ret-
+ * urn value. */
 static inline void handle_op_close_upvalue(VM *vm, Bytecode *code, uint8_t **ip)
 {
     Object result = pop(vm);
     close_upvalues(vm, &vm->stack[vm->tos - 1]);
     pop(vm);
     push(vm, result);
-}
-
-static inline void handle_op_call_method(VM *vm, Bytecode *code, uint8_t **ip)
-{
-    uint32_t method_name_idx = READ_UINT32();
-    uint32_t argcount = READ_UINT32();
-
-    Object object = peek(vm, argcount);
-
-    /* Look up the method with that name on the blueprint. */
-    Object *methodobj = table_get(AS_STRUCT(object)->properties, code->sp.data[method_name_idx]);
-    if (!methodobj)
-    {
-        RUNTIME_ERROR("method '%s' is not defined on struct '%s'.", code->sp.data[method_name_idx],
-                      AS_STRUCT(object)->name);
-    }
-
-    Closure *c = AS_CLOSURE(*methodobj);
-
-    /* Push the instruction pointer on the frame ptr stack.
-     * No need to take into account the jump sequence (+3). */
-    BytecodePtr ip_obj = {.addr = *ip, .location = vm->tos - c->func->paramcount, .fn = c};
-    vm->fp_stack[vm->fp_count++] = ip_obj;
-
-    printf("method->func->location is: %ld\n", c->func->location);
-
-    /* Direct jump to one byte before the method location. */
-    *ip = &code->code.data[c->func->location - 1];
 }
 
 #ifdef venom_debug_vm
