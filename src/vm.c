@@ -658,6 +658,11 @@ static inline void handle_op_getattr(VM *vm, Bytecode *code, uint8_t **ip)
 
     Object *property = table_get(AS_STRUCT(obj)->properties, code->sp.data[property_name_idx]);
 
+    if (!property)
+    {
+        RUNTIME_ERROR("Property '%s' is not defined on struct '%s'.", code->sp.data[property_name_idx], AS_STRUCT(obj)->name);
+    }
+
     push(vm, *property);
     objincref(property);
     objdecref(&obj);
