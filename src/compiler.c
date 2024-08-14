@@ -330,14 +330,6 @@ static void emit_loop(Bytecode *code, int loop_start)
     emit_byte(code, offset & 0xFF);
 }
 
-void emit_stack_cleanup(Bytecode *code)
-{
-    // int pop_count = current_compiler->locals_count;
-    // for (int i = 0; i < pop_count; i++) {
-    //   emit_byte(code, OP_POP);
-    // }
-}
-
 static void emit_loop_cleanup(Bytecode *code)
 {
     /* Example:
