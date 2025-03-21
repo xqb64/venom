@@ -144,6 +144,9 @@ static inline bool check_equality(Object *left, Object *right)
     if (IS_NUM(*left) && IS_NUM(*right))
     {
         return AS_NUM(*left) == AS_NUM(*right);
+    } else if (IS_STRING(*left) && IS_STRING(*right))
+    {
+        return strcmp(AS_STRING(*left)->value, AS_STRING(*right)->value) == 0;
     }
     return *left == *right;
 #else

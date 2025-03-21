@@ -38,8 +38,6 @@ void run_file(char *file)
         compile(&chunk, stmts.data[i]);
     }
 
-    emit_stack_cleanup(&chunk);
-
     dynarray_insert(&chunk.code, OP_HLT);
 
     free_compiler(compiler);

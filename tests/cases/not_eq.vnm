@@ -1,0 +1,9 @@
+fn main() {
+  let a = "Hello, world!";
+  let b = "Goodbye, world!";
+  print a == b;
+  return 0;
+}
+
+main();
+

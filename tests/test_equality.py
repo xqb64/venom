@@ -14,6 +14,9 @@ from tests.util import VALGRIND_CMD, Struct
         (-3.14, -3.14),
         (1024, -3.14),
         (1024, 1024),
+        # Strings
+        ('"Hello, world."', '"Hello, world."'),
+        ('"Hello, world."', '"Goodbye, world."'),
         # Booleans
         ("true", "true"),
         ("true", "false"),
