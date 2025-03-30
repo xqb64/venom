@@ -778,6 +778,14 @@ static Stmt use_statement(Parser *parser, Tokenizer *tokenizer)
     return AS_STMT_USE(stmt);
 }
 
+static Stmt yield_statement(Parser *parser, Tokenizer *tokenizer)
+{
+    Expr expr = expression(parser, tokenizer);
+    consume(parser, tokenizer, TOKEN_SEMICOLON, "Expected ';' after yield statement.");
+    StmtYield stmt = {.exp = expr};
+    return AS_STMT_YIELD(stmt);
+}
+
 static Stmt statement(Parser *parser, Tokenizer *tokenizer)
 {
     if (match(parser, tokenizer, 1, TOKEN_PRINT))
@@ -835,6 +843,10 @@ static Stmt statement(Parser *parser, Tokenizer *tokenizer)
     else if (match(parser, tokenizer, 1, TOKEN_IMPL))
     {
         return impl_statement(parser, tokenizer);
+    }
+    else if (match(parser, tokenizer, 1, TOKEN_YIELD))
+    {
+        return yield_statement(parser, tokenizer);
     }
     else
     {
@@ -1056,6 +1068,10 @@ void free_stmt(Stmt stmt)
         }
         case STMT_USE: {
             free(TO_STMT_USE(stmt).path);
+            break;
+        }
+        case STMT_YIELD: {
+            free_expression(TO_STMT_YIELD(stmt).exp);
             break;
         }
         default:

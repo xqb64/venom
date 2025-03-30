@@ -1,0 +1,26 @@
+fn gen() {
+    yield 1;
+    yield 2;
+    yield 3;
+    return 0;
+}
+
+fn gen2() {
+    let x = "Hello, world!";
+    print x;
+    yield 4;
+    yield 5;
+    yield 6;
+    return 0;
+}
+
+fn main() {
+    print "Starting...";
+    let g = gen();
+    let h = gen2();
+    let first = next(h);
+    print first;
+    return 0;
+}
+
+main();

@@ -8,11 +8,12 @@
 #include <string.h>
 
 #include "compiler.h"
-#include "disassembler.h"
 #include "dynarray.h"
 #include "math.h"
+#include "object.h"
 #include "table.h"
 #include "util.h"
+#include "disassembler.h"
 
 void init_vm(VM *vm)
 {
@@ -1124,6 +1125,76 @@ static inline void handle_op_close_upvalue(VM *vm, Bytecode *code, uint8_t **ip)
     push(vm, result);
 }
 
+static inline void handle_op_mkgen(VM *vm, Bytecode *code, uint8_t **ip)
+{
+    Object closure = pop(vm);
+    objdecref(&closure);
+    Generator gen = {.refcount = 1, .fn = AS_CLOSURE(closure), .tos = 0, .fp_count = 0, .state = STATE_NEW};
+    gen.ip = &code->code.data[AS_CLOSURE(closure)->func->location - 1];
+    push(vm, GENERATOR_VAL(ALLOC(gen)));
+}
+
+static inline void handle_op_yield(VM *vm, Bytecode *code, uint8_t **ip)
+{
+    Generator *gen = vm->gen_stack[--vm->gen_count];
+    FrameSnapshot *fs = vm->fs_stack[--vm->fs_count];
+
+    Object yielded = pop(vm);
+
+    memcpy(gen->stack, vm->stack, sizeof(Object) * vm->tos);
+    gen->tos = vm->tos;
+    memcpy(gen->fp_stack, vm->fp_stack, sizeof(BytecodePtr) * vm->fp_count);
+    gen->fp_count = vm->fp_count;
+
+    memcpy(vm->stack, fs->stack, sizeof(Object) * fs->tos);
+    vm->tos = fs->tos;
+    memcpy(vm->fp_stack, fs->fp_stack, sizeof(BytecodePtr) * fs->fp_count);
+    vm->fp_count = fs->fp_count;
+
+    uint8_t *tmp = *ip;
+    *ip = gen->ip;
+    gen->ip = tmp;
+
+    push(vm, yielded);
+
+    gen->state = STATE_SUSPENDED;
+
+    free(fs);
+}
+
+static inline void handle_op_resume(VM *vm, Bytecode *code, uint8_t **ip)
+{
+    Object obj = pop(vm);
+    objdecref(&obj);
+
+    Generator *gen = AS_GENERATOR(obj);
+
+    if (gen->state == STATE_NEW)
+    {
+        BytecodePtr ptr = {.addr = vm->fp_stack[vm->fp_count-1].addr, .fn = gen->fn, .location = vm->tos - 1};
+        vm->fp_stack[vm->fp_count++] = ptr;
+    }
+
+    FrameSnapshot fs = {.tos = vm->tos, .ip = *ip, .fp_count = vm->fp_count};
+    memcpy(fs.stack, vm->stack, sizeof(Object) * vm->tos);
+    memcpy(fs.fp_stack, vm->fp_stack, sizeof(BytecodePtr) * vm->fp_count);
+    vm->fs_stack[vm->fs_count++] = ALLOC(fs);
+
+    memcpy(vm->stack, gen->stack, sizeof(Object) * gen->tos);
+    vm->tos = gen->tos; 
+    memcpy(vm->fp_stack, gen->fp_stack, sizeof(BytecodePtr) * gen->fp_count);
+    vm->fp_count = gen->fp_count;
+
+    uint8_t *tmp_ip = *ip;
+    *ip = gen->ip;
+    gen->ip = tmp_ip;
+
+    gen->state = STATE_ACTIVE;
+
+    vm->gen_stack[vm->gen_count++] = gen;
+}
+    
+
 #ifdef venom_debug_vm
 static inline const char *print_current_instruction(uint8_t opcode)
 {
@@ -1229,6 +1300,12 @@ static inline const char *print_current_instruction(uint8_t opcode)
             return "OP_CLOSE_UPVALUE";
         case OP_IMPL:
             return "OP_IMPL";
+        case OP_MKGEN:
+            return "OP_MKGEN";
+        case OP_YIELD:
+            return "OP_YIELD";
+        case OP_RESUME:
+            return "OP_RESUME";
         case OP_HLT:
             return "OP_HLT";
         default:
@@ -1240,7 +1317,7 @@ static inline const char *print_current_instruction(uint8_t opcode)
 void run(VM *vm, Bytecode *code)
 {
 #ifdef venom_debug_disassembler
-    disassemble(code);
+  disassemble(code);
 #endif
 
     static void *dispatch_table[] = {
@@ -1294,6 +1371,9 @@ void run(VM *vm, Bytecode *code)
         &&op_set_upvalue,
         &&op_close_upvalue,
         &&op_impl,
+        &&op_mkgen,
+        &&op_yield,
+        &&op_resume,
         &&op_hlt,
     };
 
@@ -1466,6 +1546,15 @@ void run(VM *vm, Bytecode *code)
         DISPATCH();
     op_impl:
         handle_op_impl(vm, code, &ip);
+        DISPATCH();
+    op_mkgen:
+        handle_op_mkgen(vm, code, &ip);
+        DISPATCH();
+    op_yield:
+        handle_op_yield(vm, code, &ip);
+        DISPATCH();
+    op_resume:
+        handle_op_resume(vm, code, &ip);
         DISPATCH();
     op_hlt:
         assert(vm->tos == 0);

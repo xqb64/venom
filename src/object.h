@@ -20,6 +20,7 @@ typedef enum
     OBJ_BOOLEAN,
     OBJ_NULL,
     OBJ_CLOSURE,
+    OBJ_GENERATOR,
 } ObjectType;
 
 #ifdef NAN_BOXING
@@ -254,6 +255,7 @@ typedef struct Array Array;
 typedef struct Function Function;
 typedef struct Closure Closure;
 typedef struct Upvalue Upvalue;
+typedef struct Generator Generator;
 
 typedef DynArray(struct Object) DynArray_Object;
 
@@ -286,6 +288,7 @@ typedef struct Object
 
         Closure *closure;
 
+        Generator *generator;
         /* Since we have four refcounted objects (Struct, String,
          * Array, Closure), we need a handy way to access their
          * refcounts.
@@ -310,6 +313,7 @@ typedef struct Object
 #define IS_UPVALUE(object)          ((object).type == OBJ_UPVALUE)
 #define IS_STRUCT_BLUEPRINT(object) ((object).type == OBJ_STRUCT_BLUEPRINT)
 #define IS_ARRAY(object)            ((object).type == OBJ_ARRAY)
+#define IS_GENERATOR(object)        ((object).type == OBJ_GENERATOR)
 
 #define AS_NUM(object)              ((object).as.dval)
 #define AS_BOOL(object)             ((object).as.bval)
@@ -321,6 +325,7 @@ typedef struct Object
 #define AS_CLOSURE(object)          ((object).as.closure)
 #define AS_UPVALUE(object)          ((object).as.upvalue)
 #define AS_STRUCT_BLUEPRINT(object) ((object).as.struct_blueprint)
+#define AS_GENERATOR(object)        ((object).as.generator)
 
 #define NUM_VAL(thing)     ((Object){.type = OBJ_NUMBER, .as.dval = (thing)})
 #define BOOL_VAL(thing)    ((Object){.type = OBJ_BOOLEAN, .as.bval = (thing)})
@@ -331,6 +336,7 @@ typedef struct Object
 #define FUNC_VAL(thing)    ((Object){.type = OBJ_FUNC, .as.func = (thing)})
 #define CLOSURE_VAL(thing) ((Object){.type = OBJ_CLOSURE, .as.closure = (thing)})
 #define UPVALUE_VAL(thing) ((Object){.type = OBJ_UPVALUE, .as.upvalue = (thing)})
+#define GENERATOR_VAL(thing) ((Object){.type = OBJ_GENERATOR, .as.generator = (thing)})
 #define NULL_VAL           ((Object){.type = OBJ_NULL})
 
 #endif
@@ -355,6 +361,7 @@ typedef struct Function
     size_t location;
     size_t paramcount;
     int upvalue_count;
+    bool is_gen;
 } Function;
 
 typedef struct Upvalue
@@ -410,6 +417,10 @@ inline const char *get_object_type(Object *object)
     {
         return "null";
     }
+    else if (IS_GENERATOR(*object))
+    {
+        return "generator";
+    }
     assert(0);
 }
 
@@ -430,6 +441,25 @@ typedef struct
     int location;
     Closure *fn;
 } BytecodePtr;
+
+typedef enum {
+    STATE_NEW,
+    STATE_SUSPENDED,
+    STATE_ACTIVE,
+    STATE_DONE,
+} GeneratorState;
+
+typedef struct Generator
+{
+    int refcount;
+    uint8_t *ip;
+    Object stack[1024];
+    size_t tos;
+    BytecodePtr fp_stack[1024];
+    size_t fp_count;
+    Closure *fn;
+    GeneratorState state;
+} Generator;
 
 inline void objincref(Object *obj)
 {
@@ -456,7 +486,8 @@ inline void objincref(Object *obj)
         case OBJ_STRING:
         case OBJ_ARRAY:
         case OBJ_CLOSURE:
-        case OBJ_STRUCT: {
+        case OBJ_STRUCT:
+        case OBJ_GENERATOR: {
             ++*(obj)->as.refcount;
             break;
         }
@@ -556,6 +587,17 @@ inline void objdecref(Object *obj)
             }
             break;
         }
+        case OBJ_GENERATOR: {
+            if (--*(obj)->as.refcount == 0)
+            {
+                for (size_t i = 0; i < AS_GENERATOR(*obj)->tos; i++)
+                {
+                    objdecref(&AS_GENERATOR(*obj)->stack[i]);
+                }
+                dealloc(obj);
+            }
+            break;
+        }
         default:
             break;
     }
@@ -634,6 +676,10 @@ inline void dealloc(Object *obj)
             free(AS_CLOSURE(*obj)->upvalues);
             free(AS_CLOSURE(*obj)->func);
             free(AS_CLOSURE(*obj));
+            break;
+        }
+        case OBJ_GENERATOR: {
+            free(AS_GENERATOR(*obj));
             break;
         }
         default:

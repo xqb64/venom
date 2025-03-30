@@ -60,6 +60,11 @@ void print_object(Object *object)
         }
         printf("]");
     }
+    else if (IS_GENERATOR(*object))
+    {
+        Generator *gen = AS_GENERATOR(*object);
+        printf("<gen [%s] [ip: %p]>", gen->fn->func->name, gen->ip);
+    }
 }
 
 void free_table_object(const Table_Object *table)

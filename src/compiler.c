@@ -6,6 +6,8 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
+#include "parser.h"
+#include "table.h"
 
 #ifdef venom_debug_compiler
 static bool is_last(struct module *parent, struct module *child)
@@ -151,6 +153,8 @@ void free_compiler(Compiler *compiler)
     free(compiler->functions);
     free_table_compiled_modules(compiler->compiled_modules);
     free(compiler->compiled_modules);
+    free_table_function_ptr(compiler->builtins);
+    free(compiler->builtins);
 }
 
 void init_chunk(Bytecode *code)
@@ -387,6 +391,21 @@ static void end_scope(Bytecode *code)
         emit_byte(code, OP_POP);
         c->locals_count--;
     }
+}
+
+/* Check if 'name' is present in the builtins table.
+ * If it is, return its index in the sp, otherwise -1. */
+static Function *resolve_builtin(Bytecode *code, char *name)
+{
+    struct Compiler *current = current_compiler;
+    while (current)
+    {
+        Function **f = table_get(current->builtins, name);
+        if (f)
+            return *f;
+        current = current->next;
+    }
+    return NULL;
 }
 
 /* Check if 'name' is present in the globals dynarray.
@@ -740,6 +759,15 @@ static void compile_expr_call(Bytecode *code, Expr exp)
     else if (e.callee->kind == EXPR_VAR)
     {
         ExprVar var = TO_EXPR_VAR(*e.callee);
+        
+        Function *b = resolve_builtin(code, var.name);
+        if (b)
+        {    
+            for (size_t i = 0; i < e.arguments.count; i++)
+                compile_expr(code, e.arguments.data[i]);
+            emit_byte(code, OP_RESUME);
+            return;
+        }
 
         Function *f = resolve_func(var.name);
         if (f && f->paramcount != e.arguments.count)
@@ -799,9 +827,12 @@ static void compile_expr_call(Bytecode *code, Expr exp)
             emit_uint32(code, idx);
         }
 
-        /* Emit OP_CALL followed by the argument count. */
-        emit_bytes(code, 2, OP_CALL, e.arguments.count);
-    }
+        if (f->is_gen)
+            emit_byte(code, OP_MKGEN);
+        else
+            /* Emit OP_CALL followed by the argument count. */
+            emit_bytes(code, 2, OP_CALL, e.arguments.count);
+   }
 }
 
 static void compile_expr_get(Bytecode *code, Expr exp)
@@ -1506,6 +1537,15 @@ Compiler *new_compiler(void)
     compiler.functions = calloc(1, sizeof(Table_Function));
     compiler.struct_blueprints = calloc(1, sizeof(Table_StructBlueprint));
     compiler.compiled_modules = calloc(1, sizeof(Table_module_ptr));
+    compiler.builtins = calloc(1, sizeof(Table_FunctionPtr));
+    
+    Function f = {0};
+
+    f.name = "next";
+    f.paramcount = 1;
+    
+    table_insert(compiler.builtins, "next", ALLOC(f));
+
     return ALLOC(compiler);
 }
 
@@ -1860,6 +1900,20 @@ static void compile_stmt_use(Bytecode *code, Stmt stmt)
 #endif
 }
 
+static void compile_stmt_yield(Bytecode *code, Stmt stmt)
+{
+    StmtYield stmt_yield = TO_STMT_YIELD(stmt);
+    compile_expr(code, stmt_yield.exp);
+    emit_byte(code, OP_YIELD);
+    
+    Function *f = resolve_func(current_compiler->current_fn->name);
+
+    f->is_gen = true;
+    
+    // Update the function in the table
+    table_insert(current_compiler->functions, f->name, *f);
+}
+
 typedef void (*CompileHandlerFn)(Bytecode *code, Stmt stmt);
 
 typedef struct
@@ -1884,6 +1938,7 @@ static CompileHandler handler[] = {
     [STMT_BREAK] = {.fn = compile_stmt_break, .name = "STMT_BREAK"},
     [STMT_CONTINUE] = {.fn = compile_stmt_continue, .name = "STMT_CONTINUE"},
     [STMT_USE] = {.fn = compile_stmt_use, .name = "STMT_USE"},
+    [STMT_YIELD] = {.fn = compile_stmt_yield, .name = "STMT_YIELD"},
 };
 
 void compile(Bytecode *code, Stmt stmt)

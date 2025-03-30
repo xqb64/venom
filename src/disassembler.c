@@ -3,6 +3,7 @@
 #include <stdint.h>
 #include <stdio.h>
 
+#include "compiler.h"
 #include "dynarray.h"
 
 typedef struct
@@ -55,6 +56,9 @@ static DisassembleHandler disassemble_handler[] = {
     [OP_GET_UPVALUE_PTR] = {.opcode = "OP_GET_UPVALUE_PTR"},
     [OP_SET_UPVALUE] = {.opcode = "OP_SET_UPVALUE"},
     [OP_CLOSURE] = {.opcode = "OP_CLOSURE"},
+    [OP_IMPL] = {.opcode = "OP_IMPL"},
+    [OP_YIELD] = {.opcode = "OP_YIELD"},
+    [OP_RESUME] = {.opcode = "OP_RESUME"},
     [OP_HLT] = {.opcode = "OP_HLT"},
 };
 

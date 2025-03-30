@@ -62,6 +62,9 @@ typedef enum
     OP_SET_UPVALUE,
     OP_CLOSE_UPVALUE,
     OP_IMPL,
+    OP_MKGEN,
+    OP_YIELD,
+    OP_RESUME,
     OP_HLT,
 } Opcode;
 
@@ -125,6 +128,7 @@ typedef struct Compiler
     Function *current_fn;
     struct Compiler *next;
     DynArray_int upvalues;
+    Table_FunctionPtr *builtins;
 } Compiler;
 
 void init_chunk(Bytecode *code);

@@ -394,6 +394,13 @@ Token get_token(Tokenizer *tokenizer)
             }
             return identifier(tokenizer);
         }
+        case 'y': {
+            if (lookahead(tokenizer, 4, "ield"))
+            {
+                return make_token(tokenizer, TOKEN_YIELD, 5);
+            }
+            return identifier(tokenizer);
+        }
         default:
             return identifier(tokenizer);
     }
