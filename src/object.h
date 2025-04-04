@@ -327,17 +327,17 @@ typedef struct Object
 #define AS_STRUCT_BLUEPRINT(object) ((object).as.struct_blueprint)
 #define AS_GENERATOR(object)        ((object).as.generator)
 
-#define NUM_VAL(thing)     ((Object){.type = OBJ_NUMBER, .as.dval = (thing)})
-#define BOOL_VAL(thing)    ((Object){.type = OBJ_BOOLEAN, .as.bval = (thing)})
-#define STRING_VAL(thing)  ((Object){.type = OBJ_STRING, .as.str = (thing)})
-#define STRUCT_VAL(thing)  ((Object){.type = OBJ_STRUCT, .as.structobj = (thing)})
-#define PTR_VAL(thing)     ((Object){.type = OBJ_PTR, .as.ptr = (thing)})
-#define ARRAY_VAL(thing)   ((Object){.type = OBJ_ARRAY, .as.array = (thing)})
-#define FUNC_VAL(thing)    ((Object){.type = OBJ_FUNC, .as.func = (thing)})
-#define CLOSURE_VAL(thing) ((Object){.type = OBJ_CLOSURE, .as.closure = (thing)})
-#define UPVALUE_VAL(thing) ((Object){.type = OBJ_UPVALUE, .as.upvalue = (thing)})
-#define GENERATOR_VAL(thing) ((Object){.type = OBJ_GENERATOR, .as.generator = (thing)})
-#define NULL_VAL           ((Object){.type = OBJ_NULL})
+#define NUM_VAL(thing)       ((Object) {.type = OBJ_NUMBER, .as.dval = (thing)})
+#define BOOL_VAL(thing)      ((Object) {.type = OBJ_BOOLEAN, .as.bval = (thing)})
+#define STRING_VAL(thing)    ((Object) {.type = OBJ_STRING, .as.str = (thing)})
+#define STRUCT_VAL(thing)    ((Object) {.type = OBJ_STRUCT, .as.structobj = (thing)})
+#define PTR_VAL(thing)       ((Object) {.type = OBJ_PTR, .as.ptr = (thing)})
+#define ARRAY_VAL(thing)     ((Object) {.type = OBJ_ARRAY, .as.array = (thing)})
+#define FUNC_VAL(thing)      ((Object) {.type = OBJ_FUNC, .as.func = (thing)})
+#define CLOSURE_VAL(thing)   ((Object) {.type = OBJ_CLOSURE, .as.closure = (thing)})
+#define UPVALUE_VAL(thing)   ((Object) {.type = OBJ_UPVALUE, .as.upvalue = (thing)})
+#define GENERATOR_VAL(thing) ((Object) {.type = OBJ_GENERATOR, .as.generator = (thing)})
+#define NULL_VAL             ((Object) {.type = OBJ_NULL})
 
 #endif
 
@@ -442,7 +442,8 @@ typedef struct
     Closure *fn;
 } BytecodePtr;
 
-typedef enum {
+typedef enum
+{
     STATE_NEW,
     STATE_SUSPENDED,
     STATE_ACTIVE,

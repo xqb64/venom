@@ -6,6 +6,7 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
+
 #include "parser.h"
 #include "table.h"
 
@@ -759,10 +760,10 @@ static void compile_expr_call(Bytecode *code, Expr exp)
     else if (e.callee->kind == EXPR_VAR)
     {
         ExprVar var = TO_EXPR_VAR(*e.callee);
-        
+
         Function *b = resolve_builtin(code, var.name);
         if (b)
-        {    
+        {
             for (size_t i = 0; i < e.arguments.count; i++)
                 compile_expr(code, e.arguments.data[i]);
             emit_byte(code, OP_RESUME);
@@ -832,7 +833,7 @@ static void compile_expr_call(Bytecode *code, Expr exp)
         else
             /* Emit OP_CALL followed by the argument count. */
             emit_bytes(code, 2, OP_CALL, e.arguments.count);
-   }
+    }
 }
 
 static void compile_expr_get(Bytecode *code, Expr exp)
@@ -1277,7 +1278,7 @@ static void compile_stmt_let(Bytecode *code, Stmt stmt)
 
     if (current_compiler->depth == 0)
     {
-        current_compiler->globals[current_compiler->globals_count++] = (Local){
+        current_compiler->globals[current_compiler->globals_count++] = (Local) {
             .name = code->sp.data[name_idx],
             .captured = false,
             .depth = current_compiler->depth,
@@ -1285,7 +1286,7 @@ static void compile_stmt_let(Bytecode *code, Stmt stmt)
     }
     else
     {
-        current_compiler->locals[current_compiler->locals_count++] = (Local){
+        current_compiler->locals[current_compiler->locals_count++] = (Local) {
             .name = code->sp.data[name_idx],
             .captured = false,
             .depth = current_compiler->depth,
@@ -1441,7 +1442,7 @@ static void compile_stmt_for(Bytecode *code, Stmt stmt)
     /* Insert the initializer variable name into the current_compiler->locals
      * dynarray, since the condition that follows the initializer ex-
      * pects it to be there. */
-    current_compiler->locals[current_compiler->locals_count++] = (Local){
+    current_compiler->locals[current_compiler->locals_count++] = (Local) {
         .name = variable.name,
         .captured = false,
         .depth = current_compiler->depth,
@@ -1538,12 +1539,12 @@ Compiler *new_compiler(void)
     compiler.struct_blueprints = calloc(1, sizeof(Table_StructBlueprint));
     compiler.compiled_modules = calloc(1, sizeof(Table_module_ptr));
     compiler.builtins = calloc(1, sizeof(Table_FunctionPtr));
-    
+
     Function f = {0};
 
     f.name = "next";
     f.paramcount = 1;
-    
+
     table_insert(compiler.builtins, "next", ALLOC(f));
 
     return ALLOC(compiler);
@@ -1574,7 +1575,7 @@ static void compile_stmt_fn(Bytecode *code, Stmt stmt)
                                                 : current_compiler->next->locals;
     size_t *count = current_compiler->depth == 0 ? &current_compiler->next->globals_count
                                                  : &current_compiler->next->locals_count;
-    array[(*count)++] = (Local){
+    array[(*count)++] = (Local) {
         .name = func.name,
         .depth = current_compiler->depth,
         .captured = false,
@@ -1582,7 +1583,7 @@ static void compile_stmt_fn(Bytecode *code, Stmt stmt)
 
     for (size_t i = 0; i < s.parameters.count; i++)
     {
-        current_compiler->locals[current_compiler->locals_count++] = (Local){
+        current_compiler->locals[current_compiler->locals_count++] = (Local) {
             .name = s.parameters.data[i],
             .depth = current_compiler->depth,
             .captured = false,
@@ -1905,11 +1906,11 @@ static void compile_stmt_yield(Bytecode *code, Stmt stmt)
     StmtYield stmt_yield = TO_STMT_YIELD(stmt);
     compile_expr(code, stmt_yield.exp);
     emit_byte(code, OP_YIELD);
-    
+
     Function *f = resolve_func(current_compiler->current_fn->name);
 
     f->is_gen = true;
-    
+
     // Update the function in the table
     table_insert(current_compiler->functions, f->name, *f);
 }

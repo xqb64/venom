@@ -78,7 +78,7 @@ static bool lookahead(Tokenizer *tokenizer, int length, char *rest)
 
 static Token make_token(Tokenizer *tokenizer, TokenType type, int length)
 {
-    return (Token){
+    return (Token) {
         .type = type,
         .start = tokenizer->current - length,
         .length = length,

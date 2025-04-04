@@ -26,7 +26,7 @@ void run_file(char *file)
     Compiler *compiler = current_compiler = new_compiler();
 
     struct module current_mod =
-        (struct module){.path = own_string(file), .imports = {0}, .parent = NULL};
+        (struct module) {.path = own_string(file), .imports = {0}, .parent = NULL};
 
     compiler->current_mod = ALLOC(current_mod);
     compiler->root_mod = compiler->current_mod->path;

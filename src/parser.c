@@ -92,7 +92,7 @@ static Expr boolean(Parser *parser)
 
 static Expr null(Parser *parser)
 {
-    return AS_EXPR_LIT((ExprLit){.kind = LIT_NULL});
+    return AS_EXPR_LIT((ExprLit) {.kind = LIT_NULL});
 }
 
 static Expr number(Parser *parser)
