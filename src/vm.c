@@ -1126,6 +1126,11 @@ static inline void handle_op_close_upvalue(VM *vm, Bytecode *code, uint8_t **ip)
     push(vm, result);
 }
 
+/* OP_MKGEN pops the closure off of the stack, makes a generator object
+ * out of it, and pushes it on the stack.
+ *
+ * REFCOUNTING: Since the popped object is a closure and therefore ref-
+ * counted, it is necessary to decrement the refcount. */
 static inline void handle_op_mkgen(VM *vm, Bytecode *code, uint8_t **ip)
 {
     Object closure = pop(vm);
@@ -1136,6 +1141,10 @@ static inline void handle_op_mkgen(VM *vm, Bytecode *code, uint8_t **ip)
     push(vm, GENERATOR_VAL(ALLOC(gen)));
 }
 
+/* OP_YIELD takes a snapshot of the running generator's stacks (main stack
+ * and frame pointer stack), and then restores the caller's context onto the
+ * main VM stack.  Finally, it continues the execution from where the caller
+ * was suspended. */
 static inline void handle_op_yield(VM *vm, Bytecode *code, uint8_t **ip)
 {
     Generator *gen = vm->gen_stack[--vm->gen_count];
@@ -1164,6 +1173,10 @@ static inline void handle_op_yield(VM *vm, Bytecode *code, uint8_t **ip)
     free(fs);
 }
 
+/* OP_RESUME pops a generator object off of the main VM stack, and if it's
+ * a fresh, new generator, it will push the frame pointer onto the fp stack.
+ * Then it takes a snapshot of the main VM stack, and restores the resumed
+ * generator's context. */
 static inline void handle_op_resume(VM *vm, Bytecode *code, uint8_t **ip)
 {
     Object obj = pop(vm);
