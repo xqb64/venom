@@ -396,7 +396,7 @@ static void end_scope(Bytecode *code)
 
 /* Check if 'name' is present in the builtins table.
  * If it is, return its index in the sp, otherwise -1. */
-static Function *resolve_builtin(Bytecode *code, char *name)
+static Function *resolve_builtin(char *name)
 {
     struct Compiler *current = current_compiler;
     while (current)
@@ -761,7 +761,7 @@ static void compile_expr_call(Bytecode *code, Expr exp)
     {
         ExprVar var = TO_EXPR_VAR(*e.callee);
 
-        Function *b = resolve_builtin(code, var.name);
+        Function *b = resolve_builtin(var.name);
         if (b)
         {
             for (size_t i = 0; i < e.arguments.count; i++)
@@ -828,7 +828,7 @@ static void compile_expr_call(Bytecode *code, Expr exp)
             emit_uint32(code, idx);
         }
 
-        if (f->is_gen)
+        if (f && f->is_gen)
             emit_byte(code, OP_MKGEN);
         else
             /* Emit OP_CALL followed by the argument count. */
