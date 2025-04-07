@@ -304,11 +304,11 @@ typedef struct Object
         Closure *closure;
 
         Generator *generator;
-        /* Since we have four refcounted objects (Struct, String,
-         * Array, Closure), we need a handy way to access their
-         * refcounts.
+        /* Since we have five refcounted objects (Struct, String,
+         * Array, Closure, Generator), we need a handy way to access
+         * their refcounts.
          *
-         * For example, when one of these two types of refcounted
+         * For example, when one of these five types of refcounted
          * objects is at some address, we will (ab)use the fact that
          * the first member of those (int refcount;) will also be
          * lying at the same address, and choose to interpret the
