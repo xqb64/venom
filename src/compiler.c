@@ -62,6 +62,17 @@ static void print_module_tree(Compiler *compiler, struct module *parent, struct 
         exit(1);                       \
     } while (0)
 
+typedef struct
+{
+    char *name;
+    size_t argcount;
+} Builtin;
+
+Builtin builtins[] = {
+    {"next", 1},
+    {"len", 1},
+};
+
 Compiler *current_compiler = NULL;
 
 void free_table_int(Table_int *table)
@@ -1545,18 +1556,14 @@ Compiler *new_compiler(void)
     compiler.compiled_modules = calloc(1, sizeof(Table_module_ptr));
     compiler.builtins = calloc(1, sizeof(Table_FunctionPtr));
 
-    Function builtin_next = {0};
+    for (size_t i = 0; i < sizeof(builtins) / sizeof(builtins[0]); i++)
+    {
+        Function builtin = {0};
+        builtin.name = builtins[i].name;
+        builtin.paramcount = builtins[i].argcount;
 
-    builtin_next.name = "next";
-    builtin_next.paramcount = 1;
-
-    table_insert(compiler.builtins, "next", ALLOC(builtin_next));
-
-    Function builtin_len = {0};
-    builtin_len.name = "len";
-    builtin_len.paramcount = 1;
-
-    table_insert(compiler.builtins, "len", ALLOC(builtin_len));
+        table_insert(compiler.builtins, builtin.name, ALLOC(builtin));
+    }
 
     return ALLOC(compiler);
 }
