@@ -9,6 +9,8 @@ This project is my debut in the realm of programming language design. I had a bl
   - structures
   - arrays
   - pointers
+  - closures
+  - generators
   - null
 - operators for the said types
   - `==`, `!=`, `<`, `>`, `<=`, `>=`
@@ -26,6 +28,13 @@ This project is my debut in the realm of programming language design. I had a bl
   - `while`
   - `for` (C-style)
   - `break` and `continue`
+  - `yield`
+- a few useful builtins:
+  - `next()` (for generator resumption)
+  - `len()` (a la Python)
+  - `hasattr()`
+  - `getattr()`
+  - `setattr()`
 - functions
   - first-class citizens
   - methods
@@ -33,13 +42,13 @@ This project is my debut in the realm of programming language design. I had a bl
   - recursion!
 - `print` statement
 - global scope
-- import subsystem
+- import subsystem that caches imports and detects and prevents import cycles
 - reference counting
 - optional NaN boxing
 
 The system includes what you would expect from a programming language implementation:
 
-  - tokenizer
+  - a lexer based on finite state machines
   - recursive-descent parser
   - bytecode compiler
   - virtual machine
@@ -77,93 +86,6 @@ Benchmark 1: python3 fib.py
 ...which is faster than Python! To be fair, besides being orders of magnitude more useful, Python could also execute this code in a blink of an eye with `@functools.lru_cache()`.
 
 But in any case, this is about where I'd draw the line in terms of functionality. As I continue to improve as a programmer, I might come back to it to make it a little faster. 
-
-### Pi generator
-
-```rust
-let sum = 0;
-let flip = -1;
-let n = 100000000;
-for (let i = 1; i < n; i += 1) {
-  flip *= -1;
-  sum += flip / (2 * i - 1);
-}
-print sum * 4;
-```
-
-```
-❯ time ./venom benchmarks/100MPi_global.vnm
-3.141592663589326
-
-real	0m19,206s
-user	0m19,070s
-sys	0m0,004s
-```
-
-```
-❯ time python3 benchmarks/py/100MPi_global.py
-3.141592663589326
-
-real	0m22,397s
-user	0m22,365s
-sys	0m0,012s
-```
-
-## Examples
-
-### Fizzbuzz
-
-```rust
-for (let i = 1; i <= 20; i += 1) {
-    if (i % 15 == 0) print "fizzbuzz";
-    else if (i % 3 == 0) print "fizz";
-    else if (i % 5 == 0) print "buzz";
-    else print i;
-}
-```
-
-### Linked list
-
-```rust
-struct node {
-  next;
-  value;
-}
-
-fn list_print(list) {
-  let current = list;
-  while (*current != null) {
-    print current->value;
-    current = &current->next;
-  }
-  return 0;
-}
-
-fn list_insert(list, item) {
-  let new_node = node { next: null, value: item };
-  if (*list == null) {
-    *list = new_node;
-  } else {
-    let current = list;
-    while (current->next != null) {
-      current = &current->next;
-    }
-    current->next = new_node;
-  }
-  return 0;
-}
-
-fn main() {
-  let list = null;
-  list_insert(&list, 3.14);
-  list_insert(&list, false);
-  list_insert(&list, "Hello, world!");
-  list_print(&list);
-  return 0;
-}
-
-main();
-```
 
 ## Compiling
 
