@@ -1220,6 +1220,8 @@ static inline void handle_op_len(VM *vm, Bytecode *code, uint8_t **ip)
         push(vm, NUM_VAL(strlen(AS_STRING(obj)->value)));
     else if (IS_ARRAY(obj))
         push(vm, NUM_VAL(AS_ARRAY(obj)->elements.count));
+    else
+        RUNTIME_ERROR("cannot get len() of type '%s'.", get_object_type(&obj));
 }
 
 #ifdef venom_debug_vm
@@ -1335,8 +1337,6 @@ static inline const char *print_current_instruction(uint8_t opcode)
             return "OP_RESUME";
         case OP_LEN:
             return "OP_LEN";
-        case OP_ISINSTANCE:
-            return "OP_ISINSTANCE";
         case OP_HLT:
             return "OP_HLT";
         default:
