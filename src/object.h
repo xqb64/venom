@@ -94,14 +94,14 @@ typedef enum
 #define SIGN_BIT ((uint64_t) 0x8000000000000000)
 #define QNAN     ((uint64_t) 0x7ffc000000000000)
 
-#define TAG_NULL    1
-#define TAG_FALSE   2
-#define TAG_TRUE    3
-#define TAG_STRUCT  4
-#define TAG_STRING  5
-#define TAG_PTR     6
-#define TAG_ARRAY   7
-#define TAG_CLOSURE 0x2000000000000
+#define TAG_NULL      1
+#define TAG_FALSE     2
+#define TAG_TRUE      3
+#define TAG_STRUCT    4
+#define TAG_STRING    5
+#define TAG_PTR       6
+#define TAG_ARRAY     7
+#define TAG_CLOSURE   0x2000000000000
 #define TAG_GENERATOR 0x2000000000001
 
 typedef uint64_t Object;
@@ -131,11 +131,11 @@ typedef DynArray(Object) DynArray_Object;
  * have some object other than numbers, booleans, and nulls. */
 #define IS_OBJ(value) (((value) & (SIGN_BIT | QNAN)) == (SIGN_BIT | QNAN))
 
-#define STRUCT_PATTERN  (SIGN_BIT | QNAN | TAG_STRUCT)
-#define STRING_PATTERN  (SIGN_BIT | QNAN | TAG_STRING)
-#define PTR_PATTERN     (SIGN_BIT | QNAN | TAG_PTR)
-#define ARRAY_PATTERN   (SIGN_BIT | QNAN | TAG_ARRAY)
-#define CLOSURE_PATTERN (SIGN_BIT | QNAN | TAG_CLOSURE)
+#define STRUCT_PATTERN    (SIGN_BIT | QNAN | TAG_STRUCT)
+#define STRING_PATTERN    (SIGN_BIT | QNAN | TAG_STRING)
+#define PTR_PATTERN       (SIGN_BIT | QNAN | TAG_PTR)
+#define ARRAY_PATTERN     (SIGN_BIT | QNAN | TAG_ARRAY)
+#define CLOSURE_PATTERN   (SIGN_BIT | QNAN | TAG_CLOSURE)
 #define GENERATOR_PATTERN (SIGN_BIT | QNAN | TAG_GENERATOR)
 
 /* To check whether a value is a struct, we check if it's an object and
@@ -240,7 +240,8 @@ typedef DynArray(Object) DynArray_Object;
 
 #define CLOSURE_VAL(obj) (Object)(SIGN_BIT | QNAN | ((uint64_t) (uintptr_t) (obj)) | TAG_CLOSURE)
 
-#define GENERATOR_VAL(obj) (Object)(SIGN_BIT | QNAN | ((uint64_t) (uintptr_t) (obj)) | TAG_GENERATOR)
+#define GENERATOR_VAL(obj) \
+    (Object)(SIGN_BIT | QNAN | ((uint64_t) (uintptr_t) (obj)) | TAG_GENERATOR)
 
 inline double object2num(Object value)
 {
@@ -563,7 +564,8 @@ inline void objdecref(Object *obj)
             dealloc(obj);
         }
     }
-    else if (IS_GENERATOR(*obj)) {
+    else if (IS_GENERATOR(*obj))
+    {
         if (--AS_GENERATOR(*obj)->refcount == 0)
         {
             for (size_t i = 0; i < AS_GENERATOR(*obj)->tos; i++)
@@ -573,7 +575,7 @@ inline void objdecref(Object *obj)
             dealloc(obj);
         }
     }
- 
+
 #else
 
     switch (obj->type)

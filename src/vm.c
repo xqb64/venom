@@ -6,6 +6,7 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
+#include <sys/types.h>
 
 #include "compiler.h"
 #include "disassembler.h"
@@ -1210,6 +1211,17 @@ static inline void handle_op_resume(VM *vm, Bytecode *code, uint8_t **ip)
     vm->gen_stack[vm->gen_count++] = gen;
 }
 
+static inline void handle_op_len(VM *vm, Bytecode *code, uint8_t **ip)
+{
+    Object obj = pop(vm);
+    objdecref(&obj);
+
+    if (IS_STRING(obj))
+        push(vm, NUM_VAL(strlen(AS_STRING(obj)->value)));
+    else if (IS_ARRAY(obj))
+        push(vm, NUM_VAL(AS_ARRAY(obj)->elements.count));
+}
+
 #ifdef venom_debug_vm
 static inline const char *print_current_instruction(uint8_t opcode)
 {
@@ -1321,6 +1333,10 @@ static inline const char *print_current_instruction(uint8_t opcode)
             return "OP_YIELD";
         case OP_RESUME:
             return "OP_RESUME";
+        case OP_LEN:
+            return "OP_LEN";
+        case OP_ISINSTANCE:
+            return "OP_ISINSTANCE";
         case OP_HLT:
             return "OP_HLT";
         default:
@@ -1389,6 +1405,7 @@ void run(VM *vm, Bytecode *code)
         &&op_mkgen,
         &&op_yield,
         &&op_resume,
+        &&op_len,
         &&op_hlt,
     };
 
@@ -1570,6 +1587,9 @@ void run(VM *vm, Bytecode *code)
         DISPATCH();
     op_resume:
         handle_op_resume(vm, code, &ip);
+        DISPATCH();
+    op_len:
+        handle_op_len(vm, code, &ip);
         DISPATCH();
     op_hlt:
         assert(vm->tos == 0);

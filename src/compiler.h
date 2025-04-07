@@ -65,6 +65,7 @@ typedef enum
     OP_MKGEN,
     OP_YIELD,
     OP_RESUME,
+    OP_LEN,
     OP_HLT,
 } Opcode;
 

@@ -766,7 +766,12 @@ static void compile_expr_call(Bytecode *code, Expr exp)
         {
             for (size_t i = 0; i < e.arguments.count; i++)
                 compile_expr(code, e.arguments.data[i]);
-            emit_byte(code, OP_RESUME);
+
+            if (strcmp(b->name, "next") == 0)
+                emit_byte(code, OP_RESUME);
+            else if (strcmp(b->name, "len") == 0)
+                emit_byte(code, OP_LEN);
+
             return;
         }
 
@@ -1540,12 +1545,18 @@ Compiler *new_compiler(void)
     compiler.compiled_modules = calloc(1, sizeof(Table_module_ptr));
     compiler.builtins = calloc(1, sizeof(Table_FunctionPtr));
 
-    Function f = {0};
+    Function builtin_next = {0};
 
-    f.name = "next";
-    f.paramcount = 1;
+    builtin_next.name = "next";
+    builtin_next.paramcount = 1;
 
-    table_insert(compiler.builtins, "next", ALLOC(f));
+    table_insert(compiler.builtins, "next", ALLOC(builtin_next));
+
+    Function builtin_len = {0};
+    builtin_len.name = "len";
+    builtin_len.paramcount = 1;
+
+    table_insert(compiler.builtins, "len", ALLOC(builtin_len));
 
     return ALLOC(compiler);
 }
