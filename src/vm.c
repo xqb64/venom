@@ -1224,6 +1224,22 @@ static inline void handle_op_len(VM *vm, Bytecode *code, uint8_t **ip)
         RUNTIME_ERROR("cannot get len() of type '%s'.", get_object_type(&obj));
 }
 
+static inline void handle_op_hasattr(VM *vm, Bytecode *code, uint8_t **ip)
+{
+    Object attr = pop(vm);
+    Object obj = pop(vm);
+
+    if (obj.type != OBJ_STRUCT)
+        RUNTIME_ERROR("can only hasattr() structs");
+    
+    Object *found = table_get(AS_STRUCT(obj)->properties, AS_STRING(attr)->value);
+
+    push(vm, !found ? BOOL_VAL(false) : BOOL_VAL(true));
+
+    objdecref(&obj);
+    objdecref(&attr);
+}
+
 #ifdef venom_debug_vm
 static inline const char *print_current_instruction(uint8_t opcode)
 {
@@ -1337,6 +1353,8 @@ static inline const char *print_current_instruction(uint8_t opcode)
             return "OP_RESUME";
         case OP_LEN:
             return "OP_LEN";
+        case OP_HASATTR:
+            return "OP_HASATTR";
         case OP_HLT:
             return "OP_HLT";
         default:
@@ -1406,6 +1424,7 @@ void run(VM *vm, Bytecode *code)
         &&op_yield,
         &&op_resume,
         &&op_len,
+        &&op_hasattr,
         &&op_hlt,
     };
 
@@ -1590,6 +1609,9 @@ void run(VM *vm, Bytecode *code)
         DISPATCH();
     op_len:
         handle_op_len(vm, code, &ip);
+        DISPATCH();
+    op_hasattr:
+        handle_op_hasattr(vm, code, &ip);
         DISPATCH();
     op_hlt:
         assert(vm->tos == 0);

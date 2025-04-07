@@ -71,6 +71,7 @@ typedef struct
 Builtin builtins[] = {
     {"next", 1},
     {"len", 1},
+    {"hasattr", 2},
 };
 
 Compiler *current_compiler = NULL;
@@ -782,6 +783,8 @@ static void compile_expr_call(Bytecode *code, Expr exp)
                 emit_byte(code, OP_RESUME);
             else if (strcmp(b->name, "len") == 0)
                 emit_byte(code, OP_LEN);
+            else if (strcmp(b->name, "hasattr") == 0)
+                emit_byte(code, OP_HASATTR);
 
             return;
         }
