@@ -73,6 +73,7 @@ Builtin builtins[] = {
     {"len", 1},
     {"hasattr", 2},
     {"getattr", 2},
+    {"setattr", 3},
 };
 
 Compiler *current_compiler = NULL;
@@ -777,18 +778,36 @@ static void compile_expr_call(Bytecode *code, Expr exp)
         Function *b = resolve_builtin(var.name);
         if (b)
         {
-            for (size_t i = 0; i < e.arguments.count; i++)
-                compile_expr(code, e.arguments.data[i]);
-
             if (strcmp(b->name, "next") == 0)
+            {
+                for (size_t i = 0; i < e.arguments.count; i++)
+                    compile_expr(code, e.arguments.data[i]);
                 emit_byte(code, OP_RESUME);
+            }
             else if (strcmp(b->name, "len") == 0)
+            {
+                for (size_t i = 0; i < e.arguments.count; i++)
+                    compile_expr(code, e.arguments.data[i]);
                 emit_byte(code, OP_LEN);
+            }
             else if (strcmp(b->name, "hasattr") == 0)
+            {
+                for (size_t i = 0; i < e.arguments.count; i++)
+                    compile_expr(code, e.arguments.data[i]);
                 emit_byte(code, OP_HASATTR);
+            }
             else if (strcmp(b->name, "getattr") == 0)
             {
-                emit_bytes(code, 2, OP_POP, OP_GETATTR);
+                compile_expr(code, e.arguments.data[0]);
+                emit_bytes(code, 1, OP_GETATTR);
+                emit_uint32(code, add_string(code, e.arguments.data[1].as.expr_lit.as.sval));
+            }
+            else if (strcmp(b->name, "setattr") == 0)
+            {
+                compile_expr(code, e.arguments.data[0]);
+                compile_expr(code, e.arguments.data[2]);
+
+                emit_byte(code, OP_SETATTR);
                 emit_uint32(code, add_string(code, e.arguments.data[1].as.expr_lit.as.sval));
             }
 
