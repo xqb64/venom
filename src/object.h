@@ -102,6 +102,7 @@ typedef enum
 #define TAG_PTR     6
 #define TAG_ARRAY   7
 #define TAG_CLOSURE 0x2000000000000
+#define TAG_GENERATOR 0x2000000000001
 
 typedef uint64_t Object;
 typedef DynArray(Object) DynArray_Object;
@@ -135,6 +136,7 @@ typedef DynArray(Object) DynArray_Object;
 #define PTR_PATTERN     (SIGN_BIT | QNAN | TAG_PTR)
 #define ARRAY_PATTERN   (SIGN_BIT | QNAN | TAG_ARRAY)
 #define CLOSURE_PATTERN (SIGN_BIT | QNAN | TAG_CLOSURE)
+#define GENERATOR_PATTERN (SIGN_BIT | QNAN | TAG_GENERATOR)
 
 /* To check whether a value is a struct, we check if it's an object and
  * whether it is tagged as a Struct. */
@@ -155,6 +157,10 @@ typedef DynArray(Object) DynArray_Object;
 /* To check whether a value is a closure, we check if it's an object and
  * whether it is tagged as a closure. */
 #define IS_CLOSURE(value) (((value) & (SIGN_BIT | QNAN | 0x2000000000007)) == CLOSURE_PATTERN)
+
+/* To check whether a value is a generator, we check if it's an object and
+ * whether it is tagged as a generator. */
+#define IS_GENERATOR(value) (((value) & (SIGN_BIT | QNAN | 0x2000000000007)) == GENERATOR_PATTERN)
 
 /* To convert a value to a boolean, we compare it to TRUE_VAL because
  * if we had a 'false', (false == true) will be false, and we got our
@@ -202,6 +208,13 @@ typedef DynArray(Object) DynArray_Object;
          ? (Closure *) ((uintptr_t) ((object) & ~(SIGN_BIT | QNAN | 0x2000000000007))) \
          : NULL)
 
+/* To convert a value to a generator Object, we need to clear the SIGN_BIT,
+ * QNAN, and the tag. Finally, we cast the result to Generator pointer. */
+#define AS_GENERATOR(object)                                                             \
+    ((IS_GENERATOR(object))                                                              \
+         ? (Generator *) ((uintptr_t) ((object) & ~(SIGN_BIT | QNAN | 0x2000000000007))) \
+         : NULL)
+
 #define BOOL_VAL(b) ((b) ? TRUE_VAL : FALSE_VAL)
 
 /* To construct a boolean Object with value 'false', we set QNAN and tag
@@ -226,6 +239,8 @@ typedef DynArray(Object) DynArray_Object;
 #define ARRAY_VAL(obj) (Object)(SIGN_BIT | QNAN | ((uint64_t) (uintptr_t) (obj)) | TAG_ARRAY)
 
 #define CLOSURE_VAL(obj) (Object)(SIGN_BIT | QNAN | ((uint64_t) (uintptr_t) (obj)) | TAG_CLOSURE)
+
+#define GENERATOR_VAL(obj) (Object)(SIGN_BIT | QNAN | ((uint64_t) (uintptr_t) (obj)) | TAG_GENERATOR)
 
 inline double object2num(Object value)
 {
@@ -481,6 +496,10 @@ inline void objincref(Object *obj)
     {
         ++AS_CLOSURE(*obj)->refcount;
     }
+    else if (IS_GENERATOR(*obj))
+    {
+        ++AS_GENERATOR(*obj)->refcount;
+    }
 #else
     switch (obj->type)
     {
@@ -544,6 +563,17 @@ inline void objdecref(Object *obj)
             dealloc(obj);
         }
     }
+    else if (IS_GENERATOR(*obj)) {
+        if (--AS_GENERATOR(*obj)->refcount == 0)
+        {
+            for (size_t i = 0; i < AS_GENERATOR(*obj)->tos; i++)
+            {
+                objdecref(&AS_GENERATOR(*obj)->stack[i]);
+            }
+            dealloc(obj);
+        }
+    }
+ 
 #else
 
     switch (obj->type)
@@ -641,6 +671,10 @@ inline void dealloc(Object *obj)
         free(AS_CLOSURE(*obj)->upvalues);
         free(AS_CLOSURE(*obj)->func);
         free(AS_CLOSURE(*obj));
+    }
+    else if (IS_GENERATOR(*obj))
+    {
+        free(AS_GENERATOR(*obj));
     }
 #else
     switch (obj->type)
