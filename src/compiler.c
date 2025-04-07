@@ -72,6 +72,7 @@ Builtin builtins[] = {
     {"next", 1},
     {"len", 1},
     {"hasattr", 2},
+    {"getattr", 2},
 };
 
 Compiler *current_compiler = NULL;
@@ -785,6 +786,11 @@ static void compile_expr_call(Bytecode *code, Expr exp)
                 emit_byte(code, OP_LEN);
             else if (strcmp(b->name, "hasattr") == 0)
                 emit_byte(code, OP_HASATTR);
+            else if (strcmp(b->name, "getattr") == 0)
+            {
+                emit_bytes(code, 2, OP_POP, OP_GETATTR);
+                emit_uint32(code, add_string(code, e.arguments.data[1].as.expr_lit.as.sval));
+            }
 
             return;
         }
