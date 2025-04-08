@@ -154,8 +154,9 @@ There is also a pre-commit hook in the `hooks` folder that you could copy/paste 
 
 ## See also
 
-[synapse](https://github.com/xqb64/synapse) - My second attempt, written in Rust
-
+- [synapse](https://github.com/xqb64/synapse) - My second attempt, written in Rust
+- [viper](https://github.com/xqb64/viper) - My third attempt, a tree-walk interpreter for a dynamic language, written in Python
+- [ucc](https://github.com/xqb64/ucc) - My fourth attempt, an optimizing compiler for a large subset of the C programming language, written in Rust
 ## Licensing
 
 Licensed under the [MIT License](https://opensource.org/licenses/MIT). For details, see [LICENSE](https://github.com/xqb64/venom/blob/master/LICENSE).
