@@ -68,7 +68,7 @@ typedef struct
     size_t argcount;
 } Builtin;
 
-Builtin builtins[] = {
+static Builtin builtins[] = {
     {"next", 1},
     {"len", 1},
     {"hasattr", 2},
