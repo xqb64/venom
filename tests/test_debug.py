@@ -89,7 +89,25 @@ RESULTS = {
         "ends_with": "current instruction: OP_HLT",
         "return_code": 0,
     },
-    "global_loop.vnm": {
+    "gen.vnm": {
+        "debug_prints": [
+            "dbg print :: 1",
+            "dbg print :: spam",
+            "dbg print :: 2",
+            "dbg print :: eggs",
+            "dbg print :: 3",
+        ],
+        "ends_with": "current instruction: OP_HLT",
+        "return_code": 0,
+     },
+     "getattr.vnm": {
+        "debug_prints": [
+            "dbg print :: 26",
+        ],
+        "ends_with": "current instruction: OP_HLT",
+        "return_code": 0,
+      },
+     "global_loop.vnm": {
         "debug_prints": [
             "dbg print :: 7",
             "dbg print :: Hello world!",
@@ -101,12 +119,29 @@ RESULTS = {
         "ends_with": "current instruction: OP_HLT",
         "return_code": 0,
     },
+    "hasattr.vnm": {
+        "debug_prints": [
+            "dbg print :: true",
+            "dbg print :: true",
+            "dbg print :: false",
+        ],
+        "ends_with": "current instruction: OP_HLT",
+        "return_code": 0,
+    },
     "if.vnm": {
         "debug_prints": [
             "dbg print :: null",
         ],
         "ends_with": "current instruction: OP_HLT",
         "return_code": 0,
+    },
+    "len.vnm": {
+        "debug_prints": [
+            "dbg print :: 6",
+            "dbg print :: 3",
+        ],
+        "ends_with": "vm: cannot get len() of type 'struct'.",
+        "return_code": 1,
     },
     "logical.vnm": {
         "debug_prints": [
@@ -141,6 +176,13 @@ RESULTS = {
     "recursion.vnm": {
         "debug_prints": [
             "dbg print :: 0",
+        ],
+        "ends_with": "current instruction: OP_HLT",
+        "return_code": 0,
+    },
+    "setattr.vnm": {
+        "debug_prints": [
+            "dbg print :: 36",
         ],
         "ends_with": "current instruction: OP_HLT",
         "return_code": 0,
