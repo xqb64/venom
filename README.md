@@ -54,39 +54,6 @@ The system includes what you would expect from a programming language implementa
   - virtual machine
   - disassembler
 
-## Let's talk numbers
-
-### Fibonacci:
-
-```rust
-fn fib(n) { 
-  if (n < 2) return n;
-  return fib(n-1) + fib(n-2);
-}
-
-print fib(40);
-```
-
-The above program has been the go-to benchmark throughout the development cycle. The running time on my system (AMD Ryzen 3 3200G with Radeon Vega Graphics) for this program is...wait for it:
-
-```
-❯ hyperfine --runs 5 './venom benchmarks/fib40.vnm'
-Benchmark 1: ./venom benchmarks/fib40.vnm
-  Time (mean ± σ):     12.662 s ±  0.121 s    [User: 12.606 s, System: 0.008 s]
-  Range (min … max):   12.574 s … 12.874 s    5 runs
-```
-
-```
-❯ hyperfine --runs 5 'python3 fib.py'
-Benchmark 1: python3 fib.py
-  Time (mean ± σ):     27.132 s ±  0.152 s    [User: 27.057 s, System: 0.038 s]
-  Range (min … max):   26.964 s … 27.335 s    5 runs
-```
-
-...which is faster than Python! To be fair, besides being orders of magnitude more useful, Python could also execute this code in a blink of an eye with `@functools.lru_cache()`.
-
-But in any case, this is about where I'd draw the line in terms of functionality. As I continue to improve as a programmer, I might come back to it to make it a little faster. 
-
 ## Compiling
 
 Clone the repository and run:
@@ -129,7 +96,7 @@ However, note that I've found this to not improve the performance, at all.
 
 The tests are written in Python and venom's behavior is tested externally.
 
-The test suite relies on venom being compiled with `debug=vm` (because of the prefix in debug prints). To run the test suite, create a Python virtual environment and activate it, install `pytest` (ideally also install `pytest-xdist` because it's a time-consuming process), then execute the command below:
+The test suite relies on venom being compiled with `debug=vm,compiler` (because of the prefix in debug prints). To run the test suite, create a Python virtual environment and activate it, install `pytest` (ideally also install `pytest-xdist` because it's a time-consuming process), then execute the command below:
 
 ```
 make test
