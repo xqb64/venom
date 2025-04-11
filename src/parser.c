@@ -1,6 +1,7 @@
 #include "parser.h"
 
 #include <assert.h>
+#include <math.h>
 #include <stdarg.h>
 #include <stdbool.h>
 #include <stdio.h>
@@ -786,6 +787,14 @@ static Stmt yield_statement(Parser *parser, Tokenizer *tokenizer)
     return AS_STMT_YIELD(stmt);
 }
 
+static Stmt assert_statement(Parser *parser, Tokenizer *tokenizer)
+{
+    Expr expr = expression(parser, tokenizer);
+    consume(parser, tokenizer, TOKEN_SEMICOLON, "Expected ';' after assert statement.");
+    StmtAssert stmt = {.exp = expr};
+    return AS_STMT_ASSERT(stmt);
+}
+
 static Stmt statement(Parser *parser, Tokenizer *tokenizer)
 {
     if (match(parser, tokenizer, 1, TOKEN_PRINT))
@@ -847,6 +856,10 @@ static Stmt statement(Parser *parser, Tokenizer *tokenizer)
     else if (match(parser, tokenizer, 1, TOKEN_YIELD))
     {
         return yield_statement(parser, tokenizer);
+    }
+    else if (match(parser, tokenizer, 1, TOKEN_ASSERT))
+    {
+        return assert_statement(parser, tokenizer);
     }
     else
     {

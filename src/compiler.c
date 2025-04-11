@@ -1961,6 +1961,13 @@ static void compile_stmt_yield(Bytecode *code, Stmt stmt)
     table_insert(current_compiler->functions, f->name, *f);
 }
 
+static void compile_stmt_assert(Bytecode *code, Stmt stmt)
+{
+    StmtAssert stmt_assert = TO_STMT_ASSERT(stmt);
+    compile_expr(code, stmt_assert.exp);
+    emit_byte(code, OP_ASSERT);
+}
+
 typedef void (*CompileHandlerFn)(Bytecode *code, Stmt stmt);
 
 typedef struct
@@ -1986,6 +1993,7 @@ static CompileHandler handler[] = {
     [STMT_CONTINUE] = {.fn = compile_stmt_continue, .name = "STMT_CONTINUE"},
     [STMT_USE] = {.fn = compile_stmt_use, .name = "STMT_USE"},
     [STMT_YIELD] = {.fn = compile_stmt_yield, .name = "STMT_YIELD"},
+    [STMT_ASSERT] = {.fn = compile_stmt_assert, .name = "STMT_ASSERT"},
 };
 
 void compile(Bytecode *code, Stmt stmt)

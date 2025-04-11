@@ -100,6 +100,8 @@ TokenType check_keyword(Tokenizer *tokenizer, int start_pos, int length)
         return TOKEN_TRUE;
     if (strncmp(lexeme, "false", 5) == 0 && length == 5)
         return TOKEN_FALSE;
+    if (strncmp(lexeme, "assert", 6) == 0 && length == 6)
+        return TOKEN_ASSERT;
     if (strncmp(lexeme, "null", 4) == 0 && length == 4)
         return TOKEN_NULL;
 

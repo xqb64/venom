@@ -68,6 +68,7 @@ typedef enum
     TOKEN_FALSE,
     TOKEN_NULL,
     TOKEN_YIELD,
+    TOKEN_ASSERT,
     TOKEN_ERROR,
     TOKEN_EOF,
 } TokenType;

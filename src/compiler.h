@@ -67,6 +67,7 @@ typedef enum
     OP_RESUME,
     OP_LEN,
     OP_HASATTR,
+    OP_ASSERT,
     OP_HLT,
 } Opcode;
 

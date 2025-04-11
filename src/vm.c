@@ -1240,6 +1240,14 @@ static inline void handle_op_hasattr(VM *vm, Bytecode *code, uint8_t **ip)
     objdecref(&attr);
 }
 
+static inline void handle_op_assert(VM *vm, Bytecode *code, uint8_t **ip)
+{
+    Object assertion = pop(vm);
+
+    if (!AS_BOOL(assertion))
+        RUNTIME_ERROR("assertion failed");
+}
+
 #ifdef venom_debug_vm
 static inline const char *print_current_instruction(uint8_t opcode)
 {
@@ -1355,6 +1363,8 @@ static inline const char *print_current_instruction(uint8_t opcode)
             return "OP_LEN";
         case OP_HASATTR:
             return "OP_HASATTR";
+        case OP_ASSERT:
+            return "OP_ASSERT";
         case OP_HLT:
             return "OP_HLT";
         default:
@@ -1425,6 +1435,7 @@ void run(VM *vm, Bytecode *code)
         &&op_resume,
         &&op_len,
         &&op_hasattr,
+        &&op_assert,
         &&op_hlt,
     };
 
@@ -1612,6 +1623,9 @@ void run(VM *vm, Bytecode *code)
         DISPATCH();
     op_hasattr:
         handle_op_hasattr(vm, code, &ip);
+        DISPATCH();
+    op_assert:
+        handle_op_assert(vm, code, &ip);
         DISPATCH();
     op_hlt:
         assert(vm->tos == 0);
