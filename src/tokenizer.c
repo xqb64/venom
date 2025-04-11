@@ -413,11 +413,6 @@ Token get_token(Tokenizer *tokenizer)
                     state = STATE_DONE;
                     return make_token(tokenizer, TOKEN_STRING, length + 1);
                 }
-                else if (peek(tokenizer, 0) == '\0')
-                {
-                    state = STATE_DONE;
-                    return make_token(tokenizer, TOKEN_ERROR, 0);
-                }
                 else
                 {
                     advance(tokenizer);
