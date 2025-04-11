@@ -69,11 +69,7 @@ typedef struct
 } Builtin;
 
 static Builtin builtins[] = {
-    {"next", 1},
-    {"len", 1},
-    {"hasattr", 2},
-    {"getattr", 2},
-    {"setattr", 3},
+    {"next", 1}, {"len", 1}, {"hasattr", 2}, {"getattr", 2}, {"setattr", 3},
 };
 
 Compiler *current_compiler = NULL;
