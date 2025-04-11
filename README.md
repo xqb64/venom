@@ -41,6 +41,7 @@ This project is my debut in the realm of programming language design. I had a bl
   - `return` is mandatory
   - recursion!
 - `print` statement
+- `assert` statement
 - global scope
 - import subsystem that caches imports and detects and prevents import cycles
 - reference counting
