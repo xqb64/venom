@@ -115,6 +115,14 @@ typedef struct
     bool captured;
 } Local;
 
+typedef struct
+{
+    int location;
+    int patch_with;
+} Label;
+
+typedef Table(Label) Table_Label;
+
 typedef struct Compiler
 {
     Local locals[256];
@@ -122,8 +130,7 @@ typedef struct Compiler
     Local globals[256];
     size_t globals_count;
     Table_Function *functions;
-    DynArray_int breaks;
-    DynArray_int loop_starts;
+    Table_Label *labels;
     DynArray_int loop_depths;
     Table_StructBlueprint *struct_blueprints;
     Table_module_ptr *compiled_modules;
@@ -145,6 +152,8 @@ void free_compiler(Compiler *compiler);
 void compile(Bytecode *code, Stmt stmt);
 
 void emit_stack_cleanup(Bytecode *code);
+
+void patch_jumps(Bytecode *code);
 
 extern Compiler *current_compiler;
 

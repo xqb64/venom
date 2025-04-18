@@ -1020,6 +1020,7 @@ void free_stmt(Stmt stmt)
             break;
         }
         case STMT_WHILE: {
+            free(TO_STMT_WHILE(stmt).label);
             free_expression(TO_STMT_WHILE(stmt).condition);
             for (size_t i = 0; i < TO_STMT_BLOCK(TO_STMT_WHILE(stmt).body).stmts.count; i++)
             {
@@ -1030,6 +1031,7 @@ void free_stmt(Stmt stmt)
             break;
         }
         case STMT_FOR: {
+            free(TO_STMT_FOR(stmt).label);
             free_expression(TO_STMT_FOR(stmt).initializer);
             free_expression(TO_STMT_FOR(stmt).condition);
             free_expression(TO_STMT_FOR(stmt).advancement);

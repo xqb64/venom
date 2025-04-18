@@ -232,6 +232,7 @@ typedef struct
 {
     Expr condition;
     Stmt *body;
+    char *label;
 } StmtWhile;
 
 typedef struct
@@ -240,6 +241,7 @@ typedef struct
     Expr condition;
     Expr advancement;
     Stmt *body;
+    char *label;
 } StmtFor;
 
 typedef struct
@@ -261,12 +263,12 @@ typedef struct
 
 typedef struct
 {
-    char dummy;
+    char *label;
 } StmtBreak;
 
 typedef struct
 {
-    char dummy;
+    char *label;
 } StmtContinue;
 
 typedef struct

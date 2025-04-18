@@ -4,6 +4,7 @@
 #include "compiler.h"
 #include "dynarray.h"
 #include "parser.h"
+#include "semantics.h"
 #include "tokenizer.h"
 #include "util.h"
 #include "vm.h"
@@ -18,7 +19,7 @@ void run_file(char *file)
     Parser parser;
     init_parser(&parser);
 
-    DynArray_Stmt stmts = parse(&parser, &tokenizer);
+    DynArray_Stmt stmts = loop_label_program(parse(&parser, &tokenizer), NULL);
 
     Bytecode chunk;
     init_chunk(&chunk);

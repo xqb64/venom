@@ -7,6 +7,7 @@
 #include <stdlib.h>
 #include <string.h>
 
+#include "dynarray.h"
 #include "parser.h"
 #include "table.h"
 
@@ -29,8 +30,8 @@ static void print_prefix(int depth, bool is_grandparent_last)
     }
 }
 
-static void print_module_tree(Compiler *compiler, Module *parent, Module *mod,
-                              int depth, bool is_parent_last)
+static void print_module_tree(Compiler *compiler, Module *parent, Module *mod, int depth,
+                              bool is_parent_last)
 {
     bool last = is_last(parent, mod);
 
@@ -152,11 +153,21 @@ void free_table_compiled_modules(Table_module_ptr *table)
     }
 }
 
+void free_table_labels(Table_Label *table)
+{
+    for (size_t i = 0; i < TABLE_MAX; i++)
+    {
+        if (table->indexes[i] != NULL)
+        {
+            Bucket *bucket = table->indexes[i];
+            list_free(bucket);
+        }
+    }
+}
+
 void free_compiler(Compiler *compiler)
 {
-    dynarray_free(&compiler->breaks);
     dynarray_free(&compiler->upvalues);
-    dynarray_free(&compiler->loop_starts);
     dynarray_free(&compiler->loop_depths);
     free_table_struct_blueprints(compiler->struct_blueprints);
     free(compiler->struct_blueprints);
@@ -166,6 +177,8 @@ void free_compiler(Compiler *compiler)
     free(compiler->compiled_modules);
     free_table_function_ptr(compiler->builtins);
     free(compiler->builtins);
+    free_table_labels(compiler->labels);
+    free(compiler->labels);
 }
 
 void init_chunk(Bytecode *code)
@@ -1419,9 +1432,11 @@ static void compile_stmt_while(Bytecode *code, Stmt stmt)
     /* We need to mark the beginning of the loop before we compile
      * the conditional expression, so that we know where to return
      * after the body of the loop is executed. */
+
     int loop_start = code->code.count;
-    dynarray_insert(&current_compiler->loop_starts, loop_start);
-    size_t breakcount = current_compiler->breaks.count;
+
+    Label label = {.location = loop_start, .patch_with = -1};
+    table_insert(current_compiler->labels, s.label, label);
 
     /* We then compile the condition because the VM expects a bool
      * placed on the stack by the time it encounters a conditional
@@ -1449,27 +1464,26 @@ static void compile_stmt_while(Bytecode *code, Stmt stmt)
      * see if we need to continue looping. */
     emit_loop(code, loop_start);
 
-    /* Now we can also patch any 'break' statements that might have
-     * occurred in the loop body, because now we know where the br-
-     * eaks should be jumping to. */
-    int to_pop = current_compiler->breaks.count - breakcount;
-    for (int i = 0; i < to_pop; i++)
-    {
-        int break_jump = dynarray_pop(&current_compiler->breaks);
-        patch_placeholder(code, break_jump);
-    }
+    char *exit_label = malloc(256);
+    snprintf(exit_label, 256, "%s_exit", s.label);
 
-    /* Pop the loop start. */
-    dynarray_pop(&current_compiler->loop_starts);
+    Label *loop_exit = table_get(current_compiler->labels, exit_label);
+    if (!loop_exit)
+    {
+        Label le = {.location = code->code.count, .patch_with = -1};
+        table_insert(current_compiler->labels, exit_label, le);
+    }
+    else
+    {
+        loop_exit->patch_with = code->code.count;
+        table_insert(current_compiler->labels, exit_label, *loop_exit);
+    }
 
     /* Finally, we patch the exit jump. */
     patch_placeholder(code, exit_jump);
+    patch_jumps(code);
 
-    if (current_compiler->depth == 0)
-    {
-        assert(current_compiler->breaks.count == 0);
-        assert(current_compiler->loop_starts.count == 0);
-    }
+    free(exit_label);
 }
 
 static void compile_stmt_for(Bytecode *code, Stmt stmt)
@@ -1494,8 +1508,9 @@ static void compile_stmt_for(Bytecode *code, Stmt stmt)
     /* Mark the beginning of the loop before compiling the condition,
      * so that we know where to jump after the loop body is executed. */
     int loop_start = code->code.count;
-    dynarray_insert(&current_compiler->loop_starts, loop_start);
-    size_t breakcount = current_compiler->breaks.count;
+
+    Label label = {.location = loop_start, .patch_with = -1};
+    table_insert(current_compiler->labels, s.label, label);
 
     /* Compile the conditional expression. */
     compile_expr(code, s.condition);
@@ -1529,7 +1544,9 @@ static void compile_stmt_for(Bytecode *code, Stmt stmt)
 
     /* Patch the loop_start we inserted to point to loop_continuation.
      * This is the place just before the advancement. */
-    current_compiler->loop_starts.data[current_compiler->loop_starts.count - 1] = loop_continuation;
+    Label *ls = table_get(current_compiler->labels, s.label);
+    ls->location = loop_continuation;
+    table_insert(current_compiler->labels, s.label, *ls);
 
     /* Mark the loop depth (needed for break and continue). */
     dynarray_insert(&current_compiler->loop_depths, current_compiler->depth);
@@ -1543,32 +1560,31 @@ static void compile_stmt_for(Bytecode *code, Stmt stmt)
     /* Emit backward jump back to the advancement. */
     emit_loop(code, loop_continuation);
 
-    /* Now we can also patch any 'break' statements that might have
-     * occurred in the loop body, because now we know where the br-
-     * eaks should be jumping to. */
-    int to_pop = current_compiler->breaks.count - breakcount;
-    for (int i = 0; i < to_pop; i++)
-    {
-        int break_jump = dynarray_pop(&current_compiler->breaks);
-        patch_placeholder(code, break_jump);
-    }
-
     current_compiler->locals_count--;
 
-    /* Pop the loop_start. */
-    dynarray_pop(&current_compiler->loop_starts);
+    char *exit_label = malloc(256);
+    snprintf(exit_label, 256, "%s_exit", s.label);
+
+    Label *loop_exit = table_get(current_compiler->labels, exit_label);
+    if (!loop_exit)
+    {
+        Label l = {.location = code->code.count, .patch_with = -1};
+        table_insert(current_compiler->labels, exit_label, l);
+    }
+    else
+    {
+        loop_exit->patch_with = code->code.count;
+        table_insert(current_compiler->labels, exit_label, *loop_exit);
+    }
 
     /* Finally, we patch the exit jump. */
     patch_placeholder(code, exit_jump);
+    patch_jumps(code);
 
     /* Pop the initializer from the stack. */
     emit_byte(code, OP_POP);
 
-    if (current_compiler->depth == 0)
-    {
-        assert(current_compiler->breaks.count == 0);
-        assert(current_compiler->loop_starts.count == 0);
-    }
+    free(exit_label);
 }
 
 Compiler *new_compiler(void)
@@ -1579,6 +1595,7 @@ Compiler *new_compiler(void)
     compiler.struct_blueprints = calloc(1, sizeof(Table_StructBlueprint));
     compiler.compiled_modules = calloc(1, sizeof(Table_module_ptr));
     compiler.builtins = calloc(1, sizeof(Table_FunctionPtr));
+    compiler.labels = calloc(1, sizeof(Table_Label));
 
     for (size_t i = 0; i < sizeof(builtins) / sizeof(builtins[0]); i++)
     {
@@ -1662,10 +1679,6 @@ static void compile_stmt_fn(Bytecode *code, Stmt stmt)
         emit_byte(code, OP_SET_GLOBAL);
         emit_uint32(code, add_string(code, func.name));
     }
-
-    assert(current_compiler->breaks.count == 0);
-    assert(current_compiler->loop_starts.count == 0);
-    // assert(current_compiler->locals.count == 0);
 
     free_compiler(current_compiler);
     free(current_compiler);
@@ -1776,50 +1789,27 @@ static void compile_stmt_return(Bytecode *code, Stmt stmt)
     emit_byte(code, OP_RET);
 }
 
+static void emit_named_jump(Bytecode *code, char *label)
+{
+    int jmp = emit_placeholder(code, OP_JMP);
+    Label exit_label = {.location = jmp, .patch_with = -1};
+    table_insert(current_compiler->labels, label, exit_label);
+}
+
 static void compile_stmt_break(Bytecode *code, Stmt stmt)
 {
-    /* 'current_compiler->loop_starts' will contain at least one loop_start
-     * if this code runs as part of compiling one of the loop stat-
-     * ements. */
-    if (current_compiler->loop_starts.count > 0)
-    {
-        /* First, clean up the stack. */
-        emit_loop_cleanup(code);
-
-        /* Then, emit the OP_JMP placeholder because we don't know yet
-         * where in the bytecode we want to jump (we'll know that when
-         * we compile the loop body and find out where the loop ends). */
-        int break_jump = emit_placeholder(code, OP_JMP);
-        dynarray_insert(&current_compiler->breaks, break_jump);
-    }
-    else
-    {
-        COMPILER_ERROR("'break' outside of loop.");
-    }
+    char *exit_label = malloc(256);
+    snprintf(exit_label, 256, "%s_exit", stmt.as.stmt_break.label);
+    emit_loop_cleanup(code);
+    emit_named_jump(code, exit_label);
+    free(exit_label);
 }
 
 static void compile_stmt_continue(Bytecode *code, Stmt stmt)
 {
-    /* 'current_compiler->loop_starts' will contain at least one loop_start
-     * if this code runs as part of compiling one of the loop stat-
-     * ements. */
-    if (current_compiler->loop_starts.count > 0)
-    {
-        /* Use the most recent loop_start to emit a backwards jump to
-         * the beginning of the most recent loop. */
-        int loop_start = dynarray_peek(&current_compiler->loop_starts);
-
-        /* Clean up the stack before the next iteration. */
-        emit_loop_cleanup(code);
-
-        /* Jump back to the beginning of the loop and evalute the co-
-         * ndition one more time. */
-        emit_loop(code, loop_start);
-    }
-    else
-    {
-        COMPILER_ERROR("'continue' outside of loop.");
-    }
+    Label *loop_start = table_get(current_compiler->labels, stmt.as.stmt_continue.label);
+    emit_loop_cleanup(code);
+    emit_loop(code, loop_start->location);
 }
 
 static void compile_stmt_impl(Bytecode *code, Stmt stmt)
@@ -1962,6 +1952,27 @@ static void compile_stmt_assert(Bytecode *code, Stmt stmt)
     StmtAssert stmt_assert = TO_STMT_ASSERT(stmt);
     compile_expr(code, stmt_assert.exp);
     emit_byte(code, OP_ASSERT);
+}
+
+void patch_jumps(Bytecode *code)
+{
+    for (size_t i = 0; i < TABLE_MAX; i++)
+    {
+        if (current_compiler->labels->indexes[i])
+        {
+            Label *l =
+                table_get(current_compiler->labels, current_compiler->labels->indexes[i]->key);
+
+            int location = l->location;
+            int patch_with = l->patch_with;
+
+            if (patch_with == -1)
+                continue;
+
+            code->code.data[location + 1] = ((patch_with - location - 3) >> 8) & 0xFF;
+            code->code.data[location + 2] = ((patch_with) - (location) -3) & 0xFF;
+        }
+    }
 }
 
 typedef void (*CompileHandlerFn)(Bytecode *code, Stmt stmt);
