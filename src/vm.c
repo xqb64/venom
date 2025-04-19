@@ -1229,7 +1229,7 @@ static inline void handle_op_hasattr(VM *vm, Bytecode *code, uint8_t **ip)
     Object attr = pop(vm);
     Object obj = pop(vm);
 
-    if (obj.type != OBJ_STRUCT)
+    if (!IS_STRUCT(obj))
         RUNTIME_ERROR("can only hasattr() structs");
 
     Object *found = table_get(AS_STRUCT(obj)->properties, AS_STRING(attr)->value);
