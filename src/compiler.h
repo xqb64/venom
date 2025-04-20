@@ -94,17 +94,19 @@ typedef Table(StructBlueprint) Table_StructBlueprint;
 void free_table_struct_blueprints(Table_StructBlueprint *table);
 void free_table_functions(Table_Function *table);
 
-typedef DynArray(struct module *) DynArray_module_ptr;
+typedef struct Module Module;
 
-struct module
+typedef DynArray(Module *) DynArray_module_ptr;
+
+typedef struct Module
 {
     char *path;
     DynArray_module_ptr imports;
-    struct module *parent;
+    struct Module *parent;
     Bytecode code;
-};
+} Module;
 
-typedef Table(struct module *) Table_module_ptr;
+typedef Table(Module *) Table_module_ptr;
 
 typedef struct
 {
@@ -126,7 +128,7 @@ typedef struct Compiler
     Table_StructBlueprint *struct_blueprints;
     Table_module_ptr *compiled_modules;
     int depth;
-    struct module *current_mod;
+    Module *current_mod;
     char *root_mod;
     Function *current_fn;
     struct Compiler *next;

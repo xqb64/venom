@@ -11,7 +11,7 @@
 #include "table.h"
 
 #ifdef venom_debug_compiler
-static bool is_last(struct module *parent, struct module *child)
+static bool is_last(Module *parent, Module *child)
 {
     return strcmp(parent->imports.data[parent->imports.count - 1]->path, child->path) == 0;
 }
@@ -29,7 +29,7 @@ static void print_prefix(int depth, bool is_grandparent_last)
     }
 }
 
-static void print_module_tree(Compiler *compiler, struct module *parent, struct module *mod,
+static void print_module_tree(Compiler *compiler, Module *parent, Module *mod,
                               int depth, bool is_parent_last)
 {
     bool last = is_last(parent, mod);
@@ -479,12 +479,12 @@ static StructBlueprint *resolve_blueprint(char *name)
     return NULL;
 }
 
-static struct module **resolve_module(char *name)
+static Module **resolve_module(char *name)
 {
     Compiler *current = current_compiler;
     while (current)
     {
-        struct module **mp = table_get(current->compiled_modules, name);
+        Module **mp = table_get(current->compiled_modules, name);
         if (mp)
             return mp;
         current = current->next;
@@ -1861,9 +1861,9 @@ static void compile_stmt_impl(Bytecode *code, Stmt stmt)
     }
 }
 
-static bool is_cyclic(Compiler *compiler, struct module *mod)
+static bool is_cyclic(Compiler *compiler, Module *mod)
 {
-    struct module *current = mod;
+    Module *current = mod;
     while (current->parent)
     {
         if (strcmp(current->parent->path, mod->path) == 0)
@@ -1877,13 +1877,13 @@ static void compile_stmt_use(Bytecode *code, Stmt stmt)
 {
     StmtUse stmt_use = TO_STMT_USE(stmt);
 
-    struct module **cached_module = resolve_module(stmt_use.path);
+    Module **cached_module = resolve_module(stmt_use.path);
 
     if (!cached_module)
     {
         char *source = read_file(stmt_use.path);
 
-        struct module *importee = calloc(1, sizeof(struct module));
+        Module *importee = calloc(1, sizeof(Module));
 
         Tokenizer tokenizer;
         init_tokenizer(&tokenizer, source);
@@ -1893,7 +1893,7 @@ static void compile_stmt_use(Bytecode *code, Stmt stmt)
 
         DynArray_Stmt stmts = parse(&parser, &tokenizer);
 
-        struct module *old_module = current_compiler->current_mod;
+        Module *old_module = current_compiler->current_mod;
 
         importee->path = own_string(stmt_use.path);
         importee->parent = old_module;
@@ -1936,7 +1936,7 @@ static void compile_stmt_use(Bytecode *code, Stmt stmt)
         printf("using cached import for: %s\n", (*cached_module)->path);
     }
 
-    struct module **root_mod = resolve_module(current_compiler->root_mod);
+    Module **root_mod = resolve_module(current_compiler->root_mod);
     print_module_tree(current_compiler, *root_mod, *root_mod, 0, false);
 #else
     }
