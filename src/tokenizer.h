@@ -1,6 +1,8 @@
 #ifndef venom_tokenizer_h
 #define venom_tokenizer_h
 
+#include "dynarray.h"
+
 typedef enum
 {
     TOKEN_PRINT,
@@ -86,8 +88,12 @@ typedef struct
     int line;
 } Tokenizer;
 
+typedef DynArray(Token) DynArray_Token;
+
 void init_tokenizer(Tokenizer *tokenizer, char *source);
 void print_token(Token *token);
+void print_tokens(DynArray_Token *tokens);
 Token get_token(Tokenizer *tokenizer);
+DynArray_Token tokenize(Tokenizer *tokenizer);
 
 #endif

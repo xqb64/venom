@@ -12,9 +12,15 @@
 #include "tokenizer.h"
 #include "util.h"
 
-void init_parser(Parser *parser)
+void init_parser(Parser *parser, DynArray_Token *tokens)
 {
     memset(parser, 0, sizeof(Parser));
+    parser->tokens = tokens;
+}
+
+void free_parser(Parser *parser)
+{
+    dynarray_free(parser->tokens);
 }
 
 static void parse_error(Parser *parser, char *message)
@@ -22,15 +28,22 @@ static void parse_error(Parser *parser, char *message)
     fprintf(stderr, "parser: %s\n", message);
 }
 
-static Token advance(Parser *parser, Tokenizer *tokenizer)
+static Token pop_front(Parser *parser)
+{
+    if (parser->idx < parser->tokens->count)
+        return parser->tokens->data[parser->idx++];
+    return (Token) {.type = TOKEN_EOF};
+}
+
+static Token next_token(Parser *parser)
+{
+    return pop_front(parser);
+}
+
+static Token advance(Parser *parser)
 {
     parser->previous = parser->current;
-    parser->current = get_token(tokenizer);
-
-#ifdef venom_debug_tokenizer
-    print_token(&parser->current);
-#endif
-
+    parser->current = next_token(parser);
     return parser->previous;
 }
 
@@ -39,7 +52,7 @@ static bool check(Parser *parser, TokenType type)
     return parser->current.type == type;
 }
 
-static bool match(Parser *parser, Tokenizer *tokenizer, int size, ...)
+static bool match(Parser *parser, int size, ...)
 {
     va_list ap;
     va_start(ap, size);
@@ -48,7 +61,7 @@ static bool match(Parser *parser, Tokenizer *tokenizer, int size, ...)
         TokenType type = va_arg(ap, TokenType);
         if (check(parser, type))
         {
-            advance(parser, tokenizer);
+            advance(parser);
             va_end(ap);
             return true;
         }
@@ -57,10 +70,10 @@ static bool match(Parser *parser, Tokenizer *tokenizer, int size, ...)
     return false;
 }
 
-static Token consume(Parser *parser, Tokenizer *tokenizer, TokenType type, char *message)
+static Token consume(Parser *parser, TokenType type, char *message)
 {
     if (check(parser, type))
-        return advance(parser, tokenizer);
+        return advance(parser);
     else
     {
         parse_error(parser, message);
@@ -141,8 +154,8 @@ static Expr literal(Parser *parser)
 }
 
 static Expr primary();
-static Expr expression(Parser *parser, Tokenizer *tokenizer);
-static Stmt statement(Parser *parser, Tokenizer *tokenizer);
+static Expr expression(Parser *parser);
+static Stmt statement(Parser *parser);
 
 static char *operator(Token token)
 {
@@ -209,17 +222,17 @@ static char *operator(Token token)
     }
 }
 
-static Expr finish_call(Parser *parser, Tokenizer *tokenizer, Expr callee)
+static Expr finish_call(Parser *parser, Expr callee)
 {
     DynArray_Expr arguments = {0};
     if (!check(parser, TOKEN_RIGHT_PAREN))
     {
         do
         {
-            dynarray_insert(&arguments, expression(parser, tokenizer));
-        } while (match(parser, tokenizer, 1, TOKEN_COMMA));
+            dynarray_insert(&arguments, expression(parser));
+        } while (match(parser, 1, TOKEN_COMMA));
     }
-    consume(parser, tokenizer, TOKEN_RIGHT_PAREN, "Expected ')' after expression.");
+    consume(parser, TOKEN_RIGHT_PAREN, "Expected ')' after expression.");
     ExprCall e = {
         .callee = ALLOC(callee),
         .arguments = arguments,
@@ -227,20 +240,20 @@ static Expr finish_call(Parser *parser, Tokenizer *tokenizer, Expr callee)
     return AS_EXPR_CALL(e);
 }
 
-static Expr call(Parser *parser, Tokenizer *tokenizer)
+static Expr call(Parser *parser)
 {
-    Expr expr = primary(parser, tokenizer);
+    Expr expr = primary(parser);
     for (;;)
     {
-        if (match(parser, tokenizer, 1, TOKEN_LEFT_PAREN))
+        if (match(parser, 1, TOKEN_LEFT_PAREN))
         {
-            expr = finish_call(parser, tokenizer, expr);
+            expr = finish_call(parser, expr);
         }
-        else if (match(parser, tokenizer, 2, TOKEN_DOT, TOKEN_ARROW))
+        else if (match(parser, 2, TOKEN_DOT, TOKEN_ARROW))
         {
             char *op = own_string_n(parser->previous.start, parser->previous.length);
             Token property_name =
-                consume(parser, tokenizer, TOKEN_IDENTIFIER, "Expected property name after '.'");
+                consume(parser, TOKEN_IDENTIFIER, "Expected property name after '.'");
 
             ExprGet get_expr = {
                 .exp = ALLOC(expr),
@@ -250,10 +263,10 @@ static Expr call(Parser *parser, Tokenizer *tokenizer)
 
             expr = AS_EXPR_GET(get_expr);
         }
-        else if (match(parser, tokenizer, 1, TOKEN_LEFT_BRACKET))
+        else if (match(parser, 1, TOKEN_LEFT_BRACKET))
         {
-            Expr index = expression(parser, tokenizer);
-            consume(parser, tokenizer, TOKEN_RIGHT_BRACKET, "Expected ']' after index.");
+            Expr index = expression(parser);
+            consume(parser, TOKEN_RIGHT_BRACKET, "Expected ']' after index.");
             ExprSubscript subscript_expr = {
                 .expr = ALLOC(expr),
                 .index = ALLOC(index),
@@ -268,26 +281,26 @@ static Expr call(Parser *parser, Tokenizer *tokenizer)
     return expr;
 }
 
-static Expr unary(Parser *parser, Tokenizer *tokenizer)
+static Expr unary(Parser *parser)
 {
-    if (match(parser, tokenizer, 5, TOKEN_MINUS, TOKEN_AMPERSAND, TOKEN_STAR, TOKEN_BANG,
+    if (match(parser, 5, TOKEN_MINUS, TOKEN_AMPERSAND, TOKEN_STAR, TOKEN_BANG,
               TOKEN_TILDE))
     {
         char *op = own_string_n(parser->previous.start, parser->previous.length);
-        Expr right = unary(parser, tokenizer);
+        Expr right = unary(parser);
         ExprUnary e = {.exp = ALLOC(right), .op = op};
         return AS_EXPR_UNA(e);
     }
-    return call(parser, tokenizer);
+    return call(parser);
 }
 
-static Expr factor(Parser *parser, Tokenizer *tokenizer)
+static Expr factor(Parser *parser)
 {
-    Expr expr = unary(parser, tokenizer);
-    while (match(parser, tokenizer, 3, TOKEN_STAR, TOKEN_SLASH, TOKEN_MOD))
+    Expr expr = unary(parser);
+    while (match(parser, 3, TOKEN_STAR, TOKEN_SLASH, TOKEN_MOD))
     {
         char *op = operator(parser->previous);
-        Expr right = unary(parser, tokenizer);
+        Expr right = unary(parser);
         ExprBin binexp = {
             .lhs = ALLOC(expr),
             .rhs = ALLOC(right),
@@ -298,13 +311,13 @@ static Expr factor(Parser *parser, Tokenizer *tokenizer)
     return expr;
 }
 
-static Expr term(Parser *parser, Tokenizer *tokenizer)
+static Expr term(Parser *parser)
 {
-    Expr expr = factor(parser, tokenizer);
-    while (match(parser, tokenizer, 3, TOKEN_PLUS, TOKEN_MINUS, TOKEN_PLUSPLUS))
+    Expr expr = factor(parser);
+    while (match(parser, 3, TOKEN_PLUS, TOKEN_MINUS, TOKEN_PLUSPLUS))
     {
         char *op = operator(parser->previous);
-        Expr right = factor(parser, tokenizer);
+        Expr right = factor(parser);
         ExprBin binexp = {
             .lhs = ALLOC(expr),
             .rhs = ALLOC(right),
@@ -315,13 +328,13 @@ static Expr term(Parser *parser, Tokenizer *tokenizer)
     return expr;
 }
 
-static Expr bitwise_shift(Parser *parser, Tokenizer *tokenizer)
+static Expr bitwise_shift(Parser *parser)
 {
-    Expr expr = term(parser, tokenizer);
-    while (match(parser, tokenizer, 2, TOKEN_GREATER_GREATER, TOKEN_LESS_LESS))
+    Expr expr = term(parser);
+    while (match(parser, 2, TOKEN_GREATER_GREATER, TOKEN_LESS_LESS))
     {
         char *op = operator(parser->previous);
-        Expr right = term(parser, tokenizer);
+        Expr right = term(parser);
         ExprBin binexp = {
             .lhs = ALLOC(expr),
             .rhs = ALLOC(right),
@@ -332,14 +345,14 @@ static Expr bitwise_shift(Parser *parser, Tokenizer *tokenizer)
     return expr;
 }
 
-static Expr comparison(Parser *parser, Tokenizer *tokenizer)
+static Expr comparison(Parser *parser)
 {
-    Expr expr = bitwise_shift(parser, tokenizer);
-    while (match(parser, tokenizer, 4, TOKEN_GREATER, TOKEN_LESS, TOKEN_GREATER_EQUAL,
+    Expr expr = bitwise_shift(parser);
+    while (match(parser, 4, TOKEN_GREATER, TOKEN_LESS, TOKEN_GREATER_EQUAL,
                  TOKEN_LESS_EQUAL))
     {
         char *op = operator(parser->previous);
-        Expr right = bitwise_shift(parser, tokenizer);
+        Expr right = bitwise_shift(parser);
         ExprBin binexp = {
             .lhs = ALLOC(expr),
             .rhs = ALLOC(right),
@@ -350,13 +363,13 @@ static Expr comparison(Parser *parser, Tokenizer *tokenizer)
     return expr;
 }
 
-static Expr equality(Parser *parser, Tokenizer *tokenizer)
+static Expr equality(Parser *parser)
 {
-    Expr expr = comparison(parser, tokenizer);
-    while (match(parser, tokenizer, 2, TOKEN_DOUBLE_EQUAL, TOKEN_BANG_EQUAL))
+    Expr expr = comparison(parser);
+    while (match(parser, 2, TOKEN_DOUBLE_EQUAL, TOKEN_BANG_EQUAL))
     {
         char *op = operator(parser->previous);
-        Expr right = comparison(parser, tokenizer);
+        Expr right = comparison(parser);
         ExprBin binexp = {
             .lhs = ALLOC(expr),
             .rhs = ALLOC(right),
@@ -367,13 +380,13 @@ static Expr equality(Parser *parser, Tokenizer *tokenizer)
     return expr;
 }
 
-static Expr bitwise_and(Parser *parser, Tokenizer *tokenizer)
+static Expr bitwise_and(Parser *parser)
 {
-    Expr expr = equality(parser, tokenizer);
-    while (match(parser, tokenizer, 1, TOKEN_AMPERSAND))
+    Expr expr = equality(parser);
+    while (match(parser, 1, TOKEN_AMPERSAND))
     {
         char *op = operator(parser->previous);
-        Expr right = equality(parser, tokenizer);
+        Expr right = equality(parser);
         ExprBin binexp = {
             .lhs = ALLOC(expr),
             .rhs = ALLOC(right),
@@ -384,13 +397,13 @@ static Expr bitwise_and(Parser *parser, Tokenizer *tokenizer)
     return expr;
 }
 
-static Expr bitwise_xor(Parser *parser, Tokenizer *tokenizer)
+static Expr bitwise_xor(Parser *parser)
 {
-    Expr expr = bitwise_and(parser, tokenizer);
-    while (match(parser, tokenizer, 1, TOKEN_CARET))
+    Expr expr = bitwise_and(parser);
+    while (match(parser, 1, TOKEN_CARET))
     {
         char *op = operator(parser->previous);
-        Expr right = bitwise_and(parser, tokenizer);
+        Expr right = bitwise_and(parser);
         ExprBin binexp = {
             .lhs = ALLOC(expr),
             .rhs = ALLOC(right),
@@ -401,13 +414,13 @@ static Expr bitwise_xor(Parser *parser, Tokenizer *tokenizer)
     return expr;
 }
 
-static Expr bitwise_or(Parser *parser, Tokenizer *tokenizer)
+static Expr bitwise_or(Parser *parser)
 {
-    Expr expr = bitwise_xor(parser, tokenizer);
-    while (match(parser, tokenizer, 1, TOKEN_PIPE))
+    Expr expr = bitwise_xor(parser);
+    while (match(parser, 1, TOKEN_PIPE))
     {
         char *op = operator(parser->previous);
-        Expr right = bitwise_xor(parser, tokenizer);
+        Expr right = bitwise_xor(parser);
         ExprBin binexp = {
             .lhs = ALLOC(expr),
             .rhs = ALLOC(right),
@@ -418,13 +431,13 @@ static Expr bitwise_or(Parser *parser, Tokenizer *tokenizer)
     return expr;
 }
 
-static Expr and_(Parser *parser, Tokenizer *tokenizer)
+static Expr and_(Parser *parser)
 {
-    Expr expr = bitwise_or(parser, tokenizer);
-    while (match(parser, tokenizer, 1, TOKEN_DOUBLE_AMPERSAND))
+    Expr expr = bitwise_or(parser);
+    while (match(parser, 1, TOKEN_DOUBLE_AMPERSAND))
     {
         char *op = own_string_n(parser->previous.start, parser->previous.length);
-        Expr right = bitwise_or(parser, tokenizer);
+        Expr right = bitwise_or(parser);
         ExprLogic logexp = {
             .lhs = ALLOC(expr),
             .rhs = ALLOC(right),
@@ -435,13 +448,13 @@ static Expr and_(Parser *parser, Tokenizer *tokenizer)
     return expr;
 }
 
-static Expr or_(Parser *parser, Tokenizer *tokenizer)
+static Expr or_(Parser *parser)
 {
-    Expr expr = and_(parser, tokenizer);
-    while (match(parser, tokenizer, 1, TOKEN_DOUBLE_PIPE))
+    Expr expr = and_(parser);
+    while (match(parser, 1, TOKEN_DOUBLE_PIPE))
     {
         char *op = own_string_n(parser->previous.start, parser->previous.length);
-        Expr right = and_(parser, tokenizer);
+        Expr right = and_(parser);
         ExprLogic logexp = {
             .lhs = ALLOC(expr),
             .rhs = ALLOC(right),
@@ -452,16 +465,16 @@ static Expr or_(Parser *parser, Tokenizer *tokenizer)
     return expr;
 }
 
-static Expr assignment(Parser *parser, Tokenizer *tokenizer)
+static Expr assignment(Parser *parser)
 {
-    Expr expr = or_(parser, tokenizer);
-    if (match(parser, tokenizer, 11, TOKEN_EQUAL, TOKEN_PLUS_EQUAL, TOKEN_MINUS_EQUAL,
+    Expr expr = or_(parser);
+    if (match(parser, 11, TOKEN_EQUAL, TOKEN_PLUS_EQUAL, TOKEN_MINUS_EQUAL,
               TOKEN_STAR_EQUAL, TOKEN_SLASH_EQUAL, TOKEN_MOD_EQUAL, TOKEN_AMPERSAND_EQUAL,
               TOKEN_PIPE_EQUAL, TOKEN_CARET_EQUAL, TOKEN_GREATER_GREATER_EQUAL,
               TOKEN_LESS_LESS_EQUAL))
     {
         char *op = operator(parser->previous);
-        Expr right = or_(parser, tokenizer);
+        Expr right = or_(parser);
         ExprAssign assignexp = {
             .lhs = ALLOC(expr),
             .rhs = ALLOC(right),
@@ -472,27 +485,27 @@ static Expr assignment(Parser *parser, Tokenizer *tokenizer)
     return expr;
 }
 
-static Expr expression(Parser *parser, Tokenizer *tokenizer)
+static Expr expression(Parser *parser)
 {
-    return assignment(parser, tokenizer);
+    return assignment(parser);
 }
 
-static Expr grouping(Parser *parser, Tokenizer *tokenizer)
+static Expr grouping(Parser *parser)
 {
-    Expr exp = expression(parser, tokenizer);
-    consume(parser, tokenizer, TOKEN_RIGHT_PAREN, "Unmatched closing parentheses.");
+    Expr exp = expression(parser);
+    consume(parser, TOKEN_RIGHT_PAREN, "Unmatched closing parentheses.");
     return exp;
 }
 
-static Stmt block(Parser *parser, Tokenizer *tokenizer)
+static Stmt block(Parser *parser)
 {
     parser->depth++;
     DynArray_Stmt stmts = {0};
     while (!check(parser, TOKEN_RIGHT_BRACE) && !check(parser, TOKEN_EOF))
     {
-        dynarray_insert(&stmts, statement(parser, tokenizer));
+        dynarray_insert(&stmts, statement(parser));
     }
-    consume(parser, tokenizer, TOKEN_RIGHT_BRACE, "Expected '}' at the end of the block.");
+    consume(parser, TOKEN_RIGHT_BRACE, "Expected '}' at the end of the block.");
     StmtBlock body = {
         .depth = parser->depth,
         .stmts = stmts,
@@ -501,23 +514,23 @@ static Stmt block(Parser *parser, Tokenizer *tokenizer)
     return AS_STMT_BLOCK(body);
 }
 
-static Expr struct_initializer(Parser *parser, Tokenizer *tokenizer)
+static Expr struct_initializer(Parser *parser)
 {
     char *name = own_string_n(parser->previous.start, parser->previous.length);
-    consume(parser, tokenizer, TOKEN_LEFT_BRACE, "Expected '{' after struct name.");
+    consume(parser, TOKEN_LEFT_BRACE, "Expected '{' after struct name.");
     DynArray_Expr initializers = {0};
     do
     {
-        Expr property = expression(parser, tokenizer);
-        consume(parser, tokenizer, TOKEN_COLON, "Expected ':' after property name.");
-        Expr value = expression(parser, tokenizer);
+        Expr property = expression(parser);
+        consume(parser, TOKEN_COLON, "Expected ':' after property name.");
+        Expr value = expression(parser);
         ExprStructInit structinitexp = {
             .property = ALLOC(property),
             .value = ALLOC(value),
         };
         dynarray_insert(&initializers, AS_EXPR_S_INIT(structinitexp));
-    } while (match(parser, tokenizer, 1, TOKEN_COMMA));
-    consume(parser, tokenizer, TOKEN_RIGHT_BRACE, "Expected '}' after struct initialization.");
+    } while (match(parser, 1, TOKEN_COMMA));
+    consume(parser, TOKEN_RIGHT_BRACE, "Expected '}' after struct initialization.");
     ExprStruct structexp = {
         .initializers = initializers,
         .name = name,
@@ -525,45 +538,45 @@ static Expr struct_initializer(Parser *parser, Tokenizer *tokenizer)
     return AS_EXPR_STRUCT(structexp);
 }
 
-static Expr array_initializer(Parser *parser, Tokenizer *tokenizer)
+static Expr array_initializer(Parser *parser)
 {
     DynArray_Expr initializers = {0};
     do
     {
-        dynarray_insert(&initializers, expression(parser, tokenizer));
-    } while (match(parser, tokenizer, 1, TOKEN_COMMA));
-    consume(parser, tokenizer, TOKEN_RIGHT_BRACKET, "Expected ']' after array initialization.");
+        dynarray_insert(&initializers, expression(parser));
+    } while (match(parser, 1, TOKEN_COMMA));
+    consume(parser, TOKEN_RIGHT_BRACKET, "Expected ']' after array initialization.");
     ExprArray arrayexp = {
         .elements = initializers,
     };
     return AS_EXPR_ARRAY(arrayexp);
 }
 
-static Expr primary(Parser *parser, Tokenizer *tokenizer)
+static Expr primary(Parser *parser)
 {
-    if (match(parser, tokenizer, 1, TOKEN_IDENTIFIER))
+    if (match(parser, 1, TOKEN_IDENTIFIER))
     {
         if (check(parser, TOKEN_LEFT_BRACE))
         {
-            return struct_initializer(parser, tokenizer);
+            return struct_initializer(parser);
         }
         else
         {
             return variable(parser);
         }
     }
-    else if (match(parser, tokenizer, 1, TOKEN_LEFT_PAREN))
+    else if (match(parser, 1, TOKEN_LEFT_PAREN))
     {
-        return grouping(parser, tokenizer);
+        return grouping(parser);
     }
-    else if (match(parser, tokenizer, 5, TOKEN_TRUE, TOKEN_FALSE, TOKEN_NULL, TOKEN_NUMBER,
+    else if (match(parser, 5, TOKEN_TRUE, TOKEN_FALSE, TOKEN_NULL, TOKEN_NUMBER,
                    TOKEN_STRING))
     {
         return literal(parser);
     }
-    else if (match(parser, tokenizer, 1, TOKEN_LEFT_BRACKET))
+    else if (match(parser, 1, TOKEN_LEFT_BRACKET))
     {
-        return array_initializer(parser, tokenizer);
+        return array_initializer(parser);
     }
     else
     {
@@ -571,52 +584,52 @@ static Expr primary(Parser *parser, Tokenizer *tokenizer)
     }
 }
 
-static Stmt print_statement(Parser *parser, Tokenizer *tokenizer)
+static Stmt print_statement(Parser *parser)
 {
-    Expr exp = expression(parser, tokenizer);
-    consume(parser, tokenizer, TOKEN_SEMICOLON, "Expected semicolon at the end of the expression.");
+    Expr exp = expression(parser);
+    consume(parser, TOKEN_SEMICOLON, "Expected semicolon at the end of the expression.");
     StmtPrint stmt = {.exp = exp};
     return AS_STMT_PRINT(stmt);
 }
 
-static Stmt let_statement(Parser *parser, Tokenizer *tokenizer)
+static Stmt let_statement(Parser *parser)
 {
     Token identifier =
-        consume(parser, tokenizer, TOKEN_IDENTIFIER, "Expected identifier after 'let'.");
+        consume(parser, TOKEN_IDENTIFIER, "Expected identifier after 'let'.");
     char *name = own_string_n(identifier.start, identifier.length);
 
-    consume(parser, tokenizer, TOKEN_EQUAL, "Expected '=' after variable name.");
+    consume(parser, TOKEN_EQUAL, "Expected '=' after variable name.");
 
-    Expr initializer = expression(parser, tokenizer);
+    Expr initializer = expression(parser);
 
-    consume(parser, tokenizer, TOKEN_SEMICOLON, "Expected semicolon at the end of the statement.");
+    consume(parser, TOKEN_SEMICOLON, "Expected semicolon at the end of the statement.");
     StmtLet stmt = {.name = name, .initializer = initializer};
     return AS_STMT_LET(stmt);
 }
 
-static Stmt expression_statement(Parser *parser, Tokenizer *tokenizer)
+static Stmt expression_statement(Parser *parser)
 {
-    Expr expr = expression(parser, tokenizer);
-    consume(parser, tokenizer, TOKEN_SEMICOLON, "Expected ';' after expression");
+    Expr expr = expression(parser);
+    consume(parser, TOKEN_SEMICOLON, "Expected ';' after expression");
     StmtExpr stmt = {.exp = expr};
     return AS_STMT_EXPR(stmt);
 }
 
-static Stmt if_statement(Parser *parser, Tokenizer *tokenizer)
+static Stmt if_statement(Parser *parser)
 {
-    consume(parser, tokenizer, TOKEN_LEFT_PAREN, "Expected '(' after if.");
-    Expr condition = expression(parser, tokenizer);
-    consume(parser, tokenizer, TOKEN_RIGHT_PAREN, "Expected ')' after the condition.");
+    consume(parser, TOKEN_LEFT_PAREN, "Expected '(' after if.");
+    Expr condition = expression(parser);
+    consume(parser, TOKEN_RIGHT_PAREN, "Expected ')' after the condition.");
 
     Stmt *then_branch = malloc(sizeof(Stmt));
     Stmt *else_branch = NULL;
 
-    *then_branch = statement(parser, tokenizer);
+    *then_branch = statement(parser);
 
-    if (match(parser, tokenizer, 1, TOKEN_ELSE))
+    if (match(parser, 1, TOKEN_ELSE))
     {
         else_branch = malloc(sizeof(Stmt));
-        *else_branch = statement(parser, tokenizer);
+        *else_branch = statement(parser);
     }
 
     StmtIf stmt = {
@@ -627,16 +640,16 @@ static Stmt if_statement(Parser *parser, Tokenizer *tokenizer)
     return AS_STMT_IF(stmt);
 }
 
-static Stmt while_statement(Parser *parser, Tokenizer *tokenizer)
+static Stmt while_statement(Parser *parser)
 {
-    consume(parser, tokenizer, TOKEN_LEFT_PAREN, "Expected '(' after while.");
+    consume(parser, TOKEN_LEFT_PAREN, "Expected '(' after while.");
 
-    Expr condition = expression(parser, tokenizer);
-    consume(parser, tokenizer, TOKEN_RIGHT_PAREN, "Expected ')' after condition.");
+    Expr condition = expression(parser);
+    consume(parser, TOKEN_RIGHT_PAREN, "Expected ')' after condition.");
 
-    consume(parser, tokenizer, TOKEN_LEFT_BRACE, "Expected '{' after the while condition.");
+    consume(parser, TOKEN_LEFT_BRACE, "Expected '{' after the while condition.");
 
-    Stmt body = block(parser, tokenizer);
+    Stmt body = block(parser);
 
     StmtWhile stmt = {
         .condition = condition,
@@ -645,24 +658,24 @@ static Stmt while_statement(Parser *parser, Tokenizer *tokenizer)
     return AS_STMT_WHILE(stmt);
 }
 
-static Stmt for_statement(Parser *parser, Tokenizer *tokenizer)
+static Stmt for_statement(Parser *parser)
 {
-    consume(parser, tokenizer, TOKEN_LEFT_PAREN, "Expected '(' after for.");
+    consume(parser, TOKEN_LEFT_PAREN, "Expected '(' after for.");
 
-    consume(parser, tokenizer, TOKEN_LET, "Expected 'let' in initializer");
+    consume(parser, TOKEN_LET, "Expected 'let' in initializer");
 
-    Expr initializer = expression(parser, tokenizer);
-    consume(parser, tokenizer, TOKEN_SEMICOLON, "Expected ';' after initializer.");
+    Expr initializer = expression(parser);
+    consume(parser, TOKEN_SEMICOLON, "Expected ';' after initializer.");
 
-    Expr condition = expression(parser, tokenizer);
-    consume(parser, tokenizer, TOKEN_SEMICOLON, "Expected ';' after condition.");
+    Expr condition = expression(parser);
+    consume(parser, TOKEN_SEMICOLON, "Expected ';' after condition.");
 
-    Expr advancement = expression(parser, tokenizer);
-    consume(parser, tokenizer, TOKEN_RIGHT_PAREN, "Expected ')' after advancement.");
+    Expr advancement = expression(parser);
+    consume(parser, TOKEN_RIGHT_PAREN, "Expected ')' after advancement.");
 
-    consume(parser, tokenizer, TOKEN_LEFT_BRACE, "Expected '{' after ')'.");
+    consume(parser, TOKEN_LEFT_BRACE, "Expected '{' after ')'.");
 
-    Stmt body = block(parser, tokenizer);
+    Stmt body = block(parser);
 
     StmtFor stmt = {
         .initializer = initializer,
@@ -674,23 +687,23 @@ static Stmt for_statement(Parser *parser, Tokenizer *tokenizer)
     return AS_STMT_FOR(stmt);
 }
 
-static Stmt function_statement(Parser *parser, Tokenizer *tokenizer)
+static Stmt function_statement(Parser *parser)
 {
-    Token name = consume(parser, tokenizer, TOKEN_IDENTIFIER, "Expected identifier after 'fn'.");
-    consume(parser, tokenizer, TOKEN_LEFT_PAREN, "Expected '(' after identifier.");
+    Token name = consume(parser, TOKEN_IDENTIFIER, "Expected identifier after 'fn'.");
+    consume(parser, TOKEN_LEFT_PAREN, "Expected '(' after identifier.");
     DynArray_char_ptr parameters = {0};
     if (!check(parser, TOKEN_RIGHT_PAREN))
     {
         do
         {
             Token parameter =
-                consume(parser, tokenizer, TOKEN_IDENTIFIER, "Expected parameter name.");
+                consume(parser, TOKEN_IDENTIFIER, "Expected parameter name.");
             dynarray_insert(&parameters, own_string_n(parameter.start, parameter.length));
-        } while (match(parser, tokenizer, 1, TOKEN_COMMA));
+        } while (match(parser, 1, TOKEN_COMMA));
     }
-    consume(parser, tokenizer, TOKEN_RIGHT_PAREN, "Expected ')' after the parameter list.");
-    consume(parser, tokenizer, TOKEN_LEFT_BRACE, "Expected '{' after the ')'.");
-    Stmt body = block(parser, tokenizer);
+    consume(parser, TOKEN_RIGHT_PAREN, "Expected ')' after the parameter list.");
+    consume(parser, TOKEN_LEFT_BRACE, "Expected '{' after the ')'.");
+    Stmt body = block(parser);
     StmtFn stmt = {
         .name = own_string_n(name.start, name.length),
         .body = ALLOC(body),
@@ -699,12 +712,12 @@ static Stmt function_statement(Parser *parser, Tokenizer *tokenizer)
     return AS_STMT_FN(stmt);
 }
 
-static Stmt decorator_statement(Parser *parser, Tokenizer *tokenizer)
+static Stmt decorator_statement(Parser *parser)
 {
     Token decorator =
-        consume(parser, tokenizer, TOKEN_IDENTIFIER, "Expected identifier after '@'.");
-    consume(parser, tokenizer, TOKEN_FN, "Expected 'fn' after '@deco'.");
-    Stmt fn = function_statement(parser, tokenizer);
+        consume(parser, TOKEN_IDENTIFIER, "Expected identifier after '@'.");
+    consume(parser, TOKEN_FN, "Expected 'fn' after '@deco'.");
+    Stmt fn = function_statement(parser);
     StmtDeco stmt = {
         .name = own_string_n(decorator.start, decorator.length),
         .fn = ALLOC(fn),
@@ -712,42 +725,42 @@ static Stmt decorator_statement(Parser *parser, Tokenizer *tokenizer)
     return AS_STMT_DECO(stmt);
 }
 
-static Stmt return_statement(Parser *parser, Tokenizer *tokenizer)
+static Stmt return_statement(Parser *parser)
 {
-    Expr expr = expression(parser, tokenizer);
-    consume(parser, tokenizer, TOKEN_SEMICOLON, "Expected ';' after return.");
+    Expr expr = expression(parser);
+    consume(parser, TOKEN_SEMICOLON, "Expected ';' after return.");
     StmtRet stmt = {
         .returnval = expr,
     };
     return AS_STMT_RETURN(stmt);
 }
 
-static Stmt break_statement(Parser *parser, Tokenizer *tokenizer)
+static Stmt break_statement(Parser *parser)
 {
-    consume(parser, tokenizer, TOKEN_SEMICOLON, "Expected ';' after break.");
+    consume(parser, TOKEN_SEMICOLON, "Expected ';' after break.");
     StmtBreak stmt = {0};
     return AS_STMT_BREAK(stmt);
 }
 
-static Stmt continue_statement(Parser *parser, Tokenizer *tokenizer)
+static Stmt continue_statement(Parser *parser)
 {
-    consume(parser, tokenizer, TOKEN_SEMICOLON, "Expected ';' after continue.");
+    consume(parser, TOKEN_SEMICOLON, "Expected ';' after continue.");
     StmtContinue stmt = {0};
     return AS_STMT_CONTINUE(stmt);
 }
 
-static Stmt struct_statement(Parser *parser, Tokenizer *tokenizer)
+static Stmt struct_statement(Parser *parser)
 {
     Token name =
-        consume(parser, tokenizer, TOKEN_IDENTIFIER, "Expected identifier after 'struct'.");
-    consume(parser, tokenizer, TOKEN_LEFT_BRACE, "Expected '{' after 'struct'.");
+        consume(parser, TOKEN_IDENTIFIER, "Expected identifier after 'struct'.");
+    consume(parser, TOKEN_LEFT_BRACE, "Expected '{' after 'struct'.");
     DynArray_char_ptr properties = {0};
     do
     {
-        Token property = consume(parser, tokenizer, TOKEN_IDENTIFIER, "Expected property name.");
-        consume(parser, tokenizer, TOKEN_SEMICOLON, "Expected semicolon after property.");
+        Token property = consume(parser, TOKEN_IDENTIFIER, "Expected property name.");
+        consume(parser, TOKEN_SEMICOLON, "Expected semicolon after property.");
         dynarray_insert(&properties, own_string_n(property.start, property.length));
-    } while (!match(parser, tokenizer, 1, TOKEN_RIGHT_BRACE));
+    } while (!match(parser, 1, TOKEN_RIGHT_BRACE));
     StmtStruct stmt = {
         .name = own_string_n(name.start, name.length),
         .properties = properties,
@@ -755,14 +768,14 @@ static Stmt struct_statement(Parser *parser, Tokenizer *tokenizer)
     return AS_STMT_STRUCT(stmt);
 }
 
-static Stmt impl_statement(Parser *parser, Tokenizer *tokenizer)
+static Stmt impl_statement(Parser *parser)
 {
-    Token name = consume(parser, tokenizer, TOKEN_IDENTIFIER, "Expected identifier after 'impl'.");
-    consume(parser, tokenizer, TOKEN_LEFT_BRACE, "Expected '{' after identifier.");
+    Token name = consume(parser, TOKEN_IDENTIFIER, "Expected identifier after 'impl'.");
+    consume(parser, TOKEN_LEFT_BRACE, "Expected '{' after identifier.");
     DynArray_Stmt methods = {0};
-    while (!match(parser, tokenizer, 1, TOKEN_RIGHT_BRACE))
+    while (!match(parser, 1, TOKEN_RIGHT_BRACE))
     {
-        dynarray_insert(&methods, statement(parser, tokenizer));
+        dynarray_insert(&methods, statement(parser));
     }
     StmtImpl stmt = {
         .name = own_string_n(name.start, name.length),
@@ -771,99 +784,99 @@ static Stmt impl_statement(Parser *parser, Tokenizer *tokenizer)
     return AS_STMT_IMPL(stmt);
 }
 
-static Stmt use_statement(Parser *parser, Tokenizer *tokenizer)
+static Stmt use_statement(Parser *parser)
 {
-    Token path = consume(parser, tokenizer, TOKEN_STRING, "Module path should be a string");
-    consume(parser, tokenizer, TOKEN_SEMICOLON, "expected semicolon at the end of use statement");
+    Token path = consume(parser, TOKEN_STRING, "Module path should be a string");
+    consume(parser, TOKEN_SEMICOLON, "expected semicolon at the end of use statement");
     StmtUse stmt = {.path = own_string_n(path.start, path.length - 1)};
     return AS_STMT_USE(stmt);
 }
 
-static Stmt yield_statement(Parser *parser, Tokenizer *tokenizer)
+static Stmt yield_statement(Parser *parser)
 {
-    Expr expr = expression(parser, tokenizer);
-    consume(parser, tokenizer, TOKEN_SEMICOLON, "Expected ';' after yield statement.");
+    Expr expr = expression(parser);
+    consume(parser, TOKEN_SEMICOLON, "Expected ';' after yield statement.");
     StmtYield stmt = {.exp = expr};
     return AS_STMT_YIELD(stmt);
 }
 
-static Stmt assert_statement(Parser *parser, Tokenizer *tokenizer)
+static Stmt assert_statement(Parser *parser)
 {
-    Expr expr = expression(parser, tokenizer);
-    consume(parser, tokenizer, TOKEN_SEMICOLON, "Expected ';' after assert statement.");
+    Expr expr = expression(parser);
+    consume(parser, TOKEN_SEMICOLON, "Expected ';' after assert statement.");
     StmtAssert stmt = {.exp = expr};
     return AS_STMT_ASSERT(stmt);
 }
 
-static Stmt statement(Parser *parser, Tokenizer *tokenizer)
+static Stmt statement(Parser *parser)
 {
-    if (match(parser, tokenizer, 1, TOKEN_PRINT))
+    if (match(parser, 1, TOKEN_PRINT))
     {
-        return print_statement(parser, tokenizer);
+        return print_statement(parser);
     }
-    else if (match(parser, tokenizer, 1, TOKEN_LET))
+    else if (match(parser, 1, TOKEN_LET))
     {
-        return let_statement(parser, tokenizer);
+        return let_statement(parser);
     }
-    else if (match(parser, tokenizer, 1, TOKEN_LEFT_BRACE))
+    else if (match(parser, 1, TOKEN_LEFT_BRACE))
     {
-        return block(parser, tokenizer);
+        return block(parser);
     }
-    else if (match(parser, tokenizer, 1, TOKEN_IF))
+    else if (match(parser, 1, TOKEN_IF))
     {
-        return if_statement(parser, tokenizer);
+        return if_statement(parser);
     }
-    else if (match(parser, tokenizer, 1, TOKEN_WHILE))
+    else if (match(parser, 1, TOKEN_WHILE))
     {
-        return while_statement(parser, tokenizer);
+        return while_statement(parser);
     }
-    else if (match(parser, tokenizer, 1, TOKEN_FOR))
+    else if (match(parser, 1, TOKEN_FOR))
     {
-        return for_statement(parser, tokenizer);
+        return for_statement(parser);
     }
-    else if (match(parser, tokenizer, 1, TOKEN_BREAK))
+    else if (match(parser, 1, TOKEN_BREAK))
     {
-        return break_statement(parser, tokenizer);
+        return break_statement(parser);
     }
-    else if (match(parser, tokenizer, 1, TOKEN_CONTINUE))
+    else if (match(parser, 1, TOKEN_CONTINUE))
     {
-        return continue_statement(parser, tokenizer);
+        return continue_statement(parser);
     }
-    else if (match(parser, tokenizer, 1, TOKEN_FN))
+    else if (match(parser, 1, TOKEN_FN))
     {
-        return function_statement(parser, tokenizer);
+        return function_statement(parser);
     }
-    else if (match(parser, tokenizer, 1, TOKEN_RETURN))
+    else if (match(parser, 1, TOKEN_RETURN))
     {
-        return return_statement(parser, tokenizer);
+        return return_statement(parser);
     }
-    else if (match(parser, tokenizer, 1, TOKEN_STRUCT))
+    else if (match(parser, 1, TOKEN_STRUCT))
     {
-        return struct_statement(parser, tokenizer);
+        return struct_statement(parser);
     }
-    else if (match(parser, tokenizer, 1, TOKEN_USE))
+    else if (match(parser, 1, TOKEN_USE))
     {
-        return use_statement(parser, tokenizer);
+        return use_statement(parser);
     }
-    else if (match(parser, tokenizer, 1, TOKEN_AT))
+    else if (match(parser, 1, TOKEN_AT))
     {
-        return decorator_statement(parser, tokenizer);
+        return decorator_statement(parser);
     }
-    else if (match(parser, tokenizer, 1, TOKEN_IMPL))
+    else if (match(parser, 1, TOKEN_IMPL))
     {
-        return impl_statement(parser, tokenizer);
+        return impl_statement(parser);
     }
-    else if (match(parser, tokenizer, 1, TOKEN_YIELD))
+    else if (match(parser, 1, TOKEN_YIELD))
     {
-        return yield_statement(parser, tokenizer);
+        return yield_statement(parser);
     }
-    else if (match(parser, tokenizer, 1, TOKEN_ASSERT))
+    else if (match(parser, 1, TOKEN_ASSERT))
     {
-        return assert_statement(parser, tokenizer);
+        return assert_statement(parser);
     }
     else
     {
-        return expression_statement(parser, tokenizer);
+        return expression_statement(parser);
     }
 }
 
@@ -1094,13 +1107,15 @@ void free_stmt(Stmt stmt)
     }
 }
 
-DynArray_Stmt parse(Parser *parser, Tokenizer *tokenizer)
+DynArray_Stmt parse(Parser *parser)
 {
     DynArray_Stmt stmts = {0};
-    advance(parser, tokenizer);
+    advance(parser);
     while (parser->current.type != TOKEN_EOF)
     {
-        dynarray_insert(&stmts, statement(parser, tokenizer));
+        dynarray_insert(&stmts, statement(parser));
     }
     return stmts;
 }
+
+void print_ast(DynArray_Stmt *stmts) {}

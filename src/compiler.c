@@ -10,6 +10,7 @@
 #include "dynarray.h"
 #include "parser.h"
 #include "table.h"
+#include "tokenizer.h"
 
 #ifdef venom_debug_compiler
 static bool is_last(Module *parent, Module *child)
@@ -1877,11 +1878,13 @@ static void compile_stmt_use(Bytecode *code, Stmt stmt)
 
         Tokenizer tokenizer;
         init_tokenizer(&tokenizer, source);
+        
+        DynArray_Token tokens = tokenize(&tokenizer);
 
         Parser parser;
-        init_parser(&parser);
+        init_parser(&parser, &tokens);
 
-        DynArray_Stmt stmts = parse(&parser, &tokenizer);
+        DynArray_Stmt stmts = parse(&parser);
 
         Module *old_module = current_compiler->current_mod;
 
@@ -1903,6 +1906,8 @@ static void compile_stmt_use(Bytecode *code, Stmt stmt)
         }
 
         current_compiler->current_mod = old_module;
+
+        free_parser(&parser);
 
         for (size_t i = 0; i < stmts.count; i++)
         {

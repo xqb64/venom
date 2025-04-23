@@ -3,6 +3,7 @@
 #include <stdbool.h>
 #include <stdio.h>
 #include <string.h>
+#include <stdlib.h>
 
 void init_tokenizer(Tokenizer *tokenizer, char *source)
 {
@@ -428,4 +429,21 @@ Token get_token(Tokenizer *tokenizer)
         }
     }
     return make_token(tokenizer, TOKEN_ERROR, 0);
+}
+
+void print_tokens(DynArray_Token *tokens)
+{
+    for (size_t i = 0; i < tokens->count; i++)
+        print_token(&tokens->data[i]);
+}
+
+DynArray_Token tokenize(Tokenizer *tokenizer)
+{
+    DynArray_Token tokens = {0};
+    Token t;
+    while ((t = get_token(tokenizer)).type != TOKEN_EOF)
+    {
+        dynarray_insert(&tokens, t);
+    }
+    return tokens;
 }
