@@ -11,7 +11,6 @@ typedef enum
 {
     EXPR_LIT,
     EXPR_VAR,
-    EXPR_STR,
     EXPR_UNA,
     EXPR_BIN,
     EXPR_CALL,
