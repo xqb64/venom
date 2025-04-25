@@ -74,8 +74,7 @@ void print_expression(Expr *expr, int indent)
             printf("initializers: [\n");
             for (size_t i = 0; i < expr->as.expr_struct.initializers.count; i++)
             {
-                for (int j = 0; j < indent+8; j++)
-                    printf(" ");
+                INDENT(indent+8);
                 print_expression(&expr->as.expr_struct.initializers.data[i], indent+8);
                 if (i < expr->as.expr_struct.initializers.count - 1)
                     printf(",\n");
