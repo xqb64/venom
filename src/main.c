@@ -2,6 +2,7 @@
 #include <stdio.h>
 #include <stdlib.h>
 
+#include "ast.h"
 #include "compiler.h"
 #include "disassembler.h"
 #include "dynarray.h"
@@ -42,7 +43,7 @@ void run_file(Arguments *args)
 
     if (args->parse)
     {
-        print_ast(&cooked_ast);
+        pretty_print(&cooked_ast);
         exit(0);
     }
 
