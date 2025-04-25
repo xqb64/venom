@@ -31,7 +31,7 @@ void print_literal(ExprLit *literal)
 
 #define INDENT(n)                       \
     do {                                \
-        for (int i = 0; i < (n); i++)   \
+        for (int s = 0; s < (n); s++)   \
             putchar(' ');               \
     } while (0)
 

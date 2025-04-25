@@ -9,7 +9,6 @@
 #include <sys/types.h>
 
 #include "compiler.h"
-#include "disassembler.h"
 #include "dynarray.h"
 #include "math.h"
 #include "object.h"
@@ -1375,10 +1374,6 @@ static inline const char *print_current_instruction(uint8_t opcode)
 
 void run(VM *vm, Bytecode *code)
 {
-#ifdef venom_debug_disassembler
-    disassemble(code);
-#endif
-
     static void *dispatch_table[] = {
         &&op_print,
         &&op_add,
