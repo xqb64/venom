@@ -1,0 +1,14 @@
+struct Person {
+    name;
+    age;
+}
+
+fn main() {
+    let s = Person { name: "John", age: 26 };
+    print hasattr(s, "name");
+    print hasattr(s, "age");
+    print hasattr(s, "lolwoot");
+    return 0;
+}
+
+main();

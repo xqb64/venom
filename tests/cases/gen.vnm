@@ -1,0 +1,33 @@
+fn h() {
+    yield "spam";
+    yield "eggs";
+    yield "quxz";
+    return 0;
+}
+
+fn f() {
+    yield 1;
+    let spam = h();
+    let first = next(spam);
+    print first;
+    yield 2;
+    let second = next(spam);
+    print second;
+    yield 3;
+    let third = next(spam);
+    print third;
+    return 0;
+}
+
+fn main() {
+    let a = f();
+    let one = next(a);
+    print one;
+    let two = next(a);
+    print two;
+    let three = next(a);
+    print three;
+    return 0;
+}
+
+main();

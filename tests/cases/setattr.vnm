@@ -1,0 +1,13 @@
+struct Person {
+    name;
+    age;
+}
+
+fn main() {
+    let s = Person { name: "John", age: 26};
+    setattr(s, "age", 36);
+    print s.age;
+    return 0;
+}
+
+main();

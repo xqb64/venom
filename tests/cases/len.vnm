@@ -1,0 +1,19 @@
+struct Person {
+    x;
+    y;
+}
+
+fn main() {
+    let str = "Hello!";
+    print len(str);
+    let arr = [1, 2, 3];
+    print len(arr);
+
+    let s = Person { x: 0, y: 1 };
+
+    print len(s);
+
+    return 0;
+}
+
+main();
