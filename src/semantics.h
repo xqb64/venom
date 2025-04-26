@@ -1,5 +1,5 @@
-#ifndef VENOM_SEMANTICS_H
-#define VENOM_SEMANTICS_H
+#ifndef venom_semantics_h
+#define venom_semantics_h
 
 #include "parser.h"
 

@@ -1,5 +1,5 @@
-#ifndef VENOM_AST_H
-#define VENOM_AST_H
+#ifndef venom_ast_h
+#define venom_ast_h
 
 #include <stdbool.h>
 
