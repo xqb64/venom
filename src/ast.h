@@ -19,7 +19,7 @@ typedef enum
     EXPR_S_INIT,
     EXPR_ARRAY,
     EXPR_SUBSCRIPT,
-} __attribute__((__packed__)) ExprKind;
+} ExprKind;
 
 typedef struct Expr Expr;
 
