@@ -62,7 +62,7 @@ static Token make_token(Tokenizer *tokenizer, TokenType type, int length)
 
 void print_token(Token *token)
 {
-    printf("current token: %.*s\n", token->length, token->start);
+    printf("%.*s", token->length, token->start);
 }
 
 TokenType check_keyword(Tokenizer *tokenizer, int start_pos, int length)
@@ -433,8 +433,14 @@ Token get_token(Tokenizer *tokenizer)
 
 void print_tokens(DynArray_Token *tokens)
 {
+    printf("Tokens: [");
     for (size_t i = 0; i < tokens->count; i++)
+    {
         print_token(&tokens->data[i]);
+        if (i < tokens->count - 1)
+            printf(", ");
+    }
+    printf("]\n");
 }
 
 DynArray_Token tokenize(Tokenizer *tokenizer)
