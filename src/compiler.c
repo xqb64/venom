@@ -1878,7 +1878,7 @@ static void compile_stmt_use(Bytecode *code, Stmt stmt)
 
         Tokenizer tokenizer;
         init_tokenizer(&tokenizer, source);
-        
+
         DynArray_Token tokens = tokenize(&tokenizer);
 
         Parser parser;

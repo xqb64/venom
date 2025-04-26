@@ -2,6 +2,7 @@
 #define VENOM_AST_H
 
 #include <stdbool.h>
+
 #include "dynarray.h"
 
 typedef enum

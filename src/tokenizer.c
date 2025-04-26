@@ -2,8 +2,8 @@
 
 #include <stdbool.h>
 #include <stdio.h>
-#include <string.h>
 #include <stdlib.h>
+#include <string.h>
 
 void init_tokenizer(Tokenizer *tokenizer, char *source)
 {

@@ -283,8 +283,7 @@ static Expr call(Parser *parser)
 
 static Expr unary(Parser *parser)
 {
-    if (match(parser, 5, TOKEN_MINUS, TOKEN_AMPERSAND, TOKEN_STAR, TOKEN_BANG,
-              TOKEN_TILDE))
+    if (match(parser, 5, TOKEN_MINUS, TOKEN_AMPERSAND, TOKEN_STAR, TOKEN_BANG, TOKEN_TILDE))
     {
         char *op = own_string_n(parser->previous.start, parser->previous.length);
         Expr right = unary(parser);
@@ -348,8 +347,7 @@ static Expr bitwise_shift(Parser *parser)
 static Expr comparison(Parser *parser)
 {
     Expr expr = bitwise_shift(parser);
-    while (match(parser, 4, TOKEN_GREATER, TOKEN_LESS, TOKEN_GREATER_EQUAL,
-                 TOKEN_LESS_EQUAL))
+    while (match(parser, 4, TOKEN_GREATER, TOKEN_LESS, TOKEN_GREATER_EQUAL, TOKEN_LESS_EQUAL))
     {
         char *op = operator(parser->previous);
         Expr right = bitwise_shift(parser);
@@ -468,10 +466,9 @@ static Expr or_(Parser *parser)
 static Expr assignment(Parser *parser)
 {
     Expr expr = or_(parser);
-    if (match(parser, 11, TOKEN_EQUAL, TOKEN_PLUS_EQUAL, TOKEN_MINUS_EQUAL,
-              TOKEN_STAR_EQUAL, TOKEN_SLASH_EQUAL, TOKEN_MOD_EQUAL, TOKEN_AMPERSAND_EQUAL,
-              TOKEN_PIPE_EQUAL, TOKEN_CARET_EQUAL, TOKEN_GREATER_GREATER_EQUAL,
-              TOKEN_LESS_LESS_EQUAL))
+    if (match(parser, 11, TOKEN_EQUAL, TOKEN_PLUS_EQUAL, TOKEN_MINUS_EQUAL, TOKEN_STAR_EQUAL,
+              TOKEN_SLASH_EQUAL, TOKEN_MOD_EQUAL, TOKEN_AMPERSAND_EQUAL, TOKEN_PIPE_EQUAL,
+              TOKEN_CARET_EQUAL, TOKEN_GREATER_GREATER_EQUAL, TOKEN_LESS_LESS_EQUAL))
     {
         char *op = operator(parser->previous);
         Expr right = or_(parser);
@@ -569,8 +566,7 @@ static Expr primary(Parser *parser)
     {
         return grouping(parser);
     }
-    else if (match(parser, 5, TOKEN_TRUE, TOKEN_FALSE, TOKEN_NULL, TOKEN_NUMBER,
-                   TOKEN_STRING))
+    else if (match(parser, 5, TOKEN_TRUE, TOKEN_FALSE, TOKEN_NULL, TOKEN_NUMBER, TOKEN_STRING))
     {
         return literal(parser);
     }
@@ -594,8 +590,7 @@ static Stmt print_statement(Parser *parser)
 
 static Stmt let_statement(Parser *parser)
 {
-    Token identifier =
-        consume(parser, TOKEN_IDENTIFIER, "Expected identifier after 'let'.");
+    Token identifier = consume(parser, TOKEN_IDENTIFIER, "Expected identifier after 'let'.");
     char *name = own_string_n(identifier.start, identifier.length);
 
     consume(parser, TOKEN_EQUAL, "Expected '=' after variable name.");
@@ -696,8 +691,7 @@ static Stmt function_statement(Parser *parser)
     {
         do
         {
-            Token parameter =
-                consume(parser, TOKEN_IDENTIFIER, "Expected parameter name.");
+            Token parameter = consume(parser, TOKEN_IDENTIFIER, "Expected parameter name.");
             dynarray_insert(&parameters, own_string_n(parameter.start, parameter.length));
         } while (match(parser, 1, TOKEN_COMMA));
     }
@@ -714,8 +708,7 @@ static Stmt function_statement(Parser *parser)
 
 static Stmt decorator_statement(Parser *parser)
 {
-    Token decorator =
-        consume(parser, TOKEN_IDENTIFIER, "Expected identifier after '@'.");
+    Token decorator = consume(parser, TOKEN_IDENTIFIER, "Expected identifier after '@'.");
     consume(parser, TOKEN_FN, "Expected 'fn' after '@deco'.");
     Stmt fn = function_statement(parser);
     StmtDeco stmt = {
@@ -751,8 +744,7 @@ static Stmt continue_statement(Parser *parser)
 
 static Stmt struct_statement(Parser *parser)
 {
-    Token name =
-        consume(parser, TOKEN_IDENTIFIER, "Expected identifier after 'struct'.");
+    Token name = consume(parser, TOKEN_IDENTIFIER, "Expected identifier after 'struct'.");
     consume(parser, TOKEN_LEFT_BRACE, "Expected '{' after 'struct'.");
     DynArray_char_ptr properties = {0};
     do

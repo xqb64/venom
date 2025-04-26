@@ -65,7 +65,7 @@ void run_file(Arguments *args)
     }
 
     dynarray_insert(&chunk.code, OP_HLT);
-   
+
     free_compiler(compiler);
     free(compiler);
 
@@ -73,7 +73,7 @@ void run_file(Arguments *args)
     {
         disassemble(&chunk);
         exit(0);
-    } 
+    }
 
     VM vm;
     init_vm(&vm);
@@ -110,9 +110,15 @@ Arguments *parse_args(int argc, char *argv[])
     {
         switch (opt)
         {
-            case 'l': do_lex = 1; break;
-            case 'p': do_parse = 1; break;
-            case 'i': do_ir = 1; break;
+            case 'l':
+                do_lex = 1;
+                break;
+            case 'p':
+                do_parse = 1;
+                break;
+            case 'i':
+                do_ir = 1;
+                break;
             default:
                 fprintf(stderr, "usage: %s [--lex] [--parse] [--ir]\n", argv[0]);
                 return NULL;
@@ -126,7 +132,7 @@ Arguments *parse_args(int argc, char *argv[])
     }
 
     Arguments *args = malloc(sizeof(Arguments));
-    
+
     args->lex = do_lex;
     args->parse = do_parse;
     args->ir = do_ir;
