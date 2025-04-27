@@ -433,7 +433,7 @@ Token get_token(Tokenizer *tokenizer)
 
 void print_tokens(DynArray_Token *tokens)
 {
-    printf("Tokens: [");
+    printf("[");
     for (size_t i = 0; i < tokens->count; i++)
     {
         print_token(&tokens->data[i]);
