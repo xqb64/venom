@@ -1,6 +1,5 @@
 #include <getopt.h>
 #include <stdio.h>
-#include <stdlib.h>
 
 #include "ast.h"
 #include "compiler.h"
@@ -92,7 +91,7 @@ void run_file(Arguments *args)
     free(source);
 }
 
-Arguments *parse_args(int argc, char *argv[])
+Arguments parse_args(int argc, char *argv[])
 {
     static const struct option long_opts[] = {
         {"lex", no_argument, 0, 'l'},
@@ -121,35 +120,30 @@ Arguments *parse_args(int argc, char *argv[])
                 break;
             default:
                 fprintf(stderr, "usage: %s [--lex] [--parse] [--ir]\n", argv[0]);
-                return NULL;
+                exit(1);
         }
     }
 
     if (do_lex + do_parse + do_ir > 1)
     {
         fprintf(stderr, "Please specify exactly one option.\n");
-        return NULL;
+        exit(1);
     }
 
-    Arguments *args = malloc(sizeof(Arguments));
+    Arguments args;
 
-    args->lex = do_lex;
-    args->parse = do_parse;
-    args->ir = do_ir;
-    args->file = argv[optind];
+    args.lex = do_lex;
+    args.parse = do_parse;
+    args.ir = do_ir;
+    args.file = argv[optind];
 
     return args;
 }
 
 int main(int argc, char *argv[])
 {
-    Arguments *args;
+    Arguments args;
 
     args = parse_args(argc, argv);
-    if (!args)
-        exit(1);
-
-    run_file(args);
-
-    free(args);
+    run_file(&args);
 }
