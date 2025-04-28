@@ -38,6 +38,7 @@
 
 typedef DynArray(char *) DynArray_char_ptr;
 typedef DynArray(int) DynArray_int;
+typedef DynArray(uint8_t) DynArray_uint8_t;
 typedef DynArray(uint32_t) DynArray_uint32_t;
 
 #define COPY_DYNARRAY(dest, src)                     \

@@ -69,9 +69,6 @@ typedef enum
     OP_HLT,
 } Opcode;
 
-typedef DynArray(uint8_t) DynArray_uint8_t;
-typedef DynArray(double) DynArray_double;
-
 typedef struct Bytecode
 {
     DynArray_uint8_t code;
@@ -90,16 +87,15 @@ typedef struct
 
 typedef Table(StructBlueprint) Table_StructBlueprint;
 void free_table_struct_blueprints(Table_StructBlueprint *table);
-void free_table_functions(Table_Function *table);
 
 typedef struct Module Module;
 
-typedef DynArray(Module *) DynArray_module_ptr;
+typedef DynArray(Module *) DynArray_Module_ptr;
 
 typedef struct Module
 {
     char *path;
-    DynArray_module_ptr imports;
+    DynArray_Module_ptr imports;
     struct Module *parent;
     Bytecode code;
 } Module;
@@ -150,7 +146,6 @@ void free_compiler(Compiler *compiler);
 void compile(Bytecode *code, Stmt stmt);
 
 void emit_stack_cleanup(Bytecode *code);
-
 void patch_jumps(Bytecode *code);
 
 extern Compiler *current_compiler;
