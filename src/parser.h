@@ -1,11 +1,9 @@
 #ifndef venom_parser_h
 #define venom_parser_h
 
-#include <stdbool.h>
 #include <stddef.h>
 
 #include "ast.h"
-#include "dynarray.h"
 #include "tokenizer.h"
 
 typedef struct
