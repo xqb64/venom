@@ -232,7 +232,7 @@ void free_stmt(Stmt stmt)
     }
 }
 
-void print_literal(ExprLit *literal)
+static void print_literal(ExprLit *literal)
 {
     switch (literal->kind)
     {
@@ -264,7 +264,7 @@ void print_literal(ExprLit *literal)
             putchar(' ');             \
     } while (0)
 
-void print_expression(Expr *expr, int indent)
+static void print_expression(Expr *expr, int indent)
 {
     switch (expr->kind)
     {
@@ -400,7 +400,7 @@ void print_expression(Expr *expr, int indent)
     printf(")");
 }
 
-void print_stmt(Stmt *stmt, int indent, bool continuation)
+static void print_stmt(Stmt *stmt, int indent, bool continuation)
 {
     if (!continuation)
         INDENT(indent);
