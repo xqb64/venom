@@ -16,7 +16,6 @@ typedef struct
 } Parser;
 
 void init_parser(Parser *parser, DynArray_Token *tokens);
-void free_parser(Parser *parser);
 
 DynArray_Stmt parse(Parser *parser);
 

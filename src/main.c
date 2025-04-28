@@ -31,7 +31,7 @@ static void run_file(Arguments *args)
     if (args->lex)
     {
         print_tokens(&tokens);
-        exit(0);
+        goto cleanup_after_lex;
     }
 
     Parser parser;
@@ -43,7 +43,7 @@ static void run_file(Arguments *args)
     if (args->parse)
     {
         pretty_print(&cooked_ast);
-        exit(0);
+        goto cleanup_after_parse;
     }
 
     Bytecode chunk;
@@ -65,13 +65,10 @@ static void run_file(Arguments *args)
 
     dynarray_insert(&chunk.code, OP_HLT);
 
-    free_compiler(compiler);
-    free(compiler);
-
     if (args->ir)
     {
         disassemble(&chunk);
-        exit(0);
+        goto cleanup_after_compile;
     }
 
     VM vm;
@@ -81,14 +78,20 @@ static void run_file(Arguments *args)
     
     free_vm(&vm);
 
+cleanup_after_compile:
+    free_compiler(compiler);
+    free(compiler);
+    free_chunk(&chunk);
+
+cleanup_after_parse:
     for (size_t i = 0; i < cooked_ast.count; i++)
     {
         free_stmt(cooked_ast.data[i]);
     }
     dynarray_free(&cooked_ast);
 
-    free_chunk(&chunk);
-    free_parser(&parser);
+cleanup_after_lex:
+    dynarray_free(&tokens);
     free(source);
 }
 
@@ -147,4 +150,6 @@ int main(int argc, char *argv[])
 
     args = parse_args(argc, argv);
     run_file(&args);
+
+    return 0;
 }

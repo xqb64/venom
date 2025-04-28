@@ -1928,8 +1928,6 @@ static void compile_stmt_use(Bytecode *code, Stmt stmt)
 
         current_compiler->current_mod = old_module;
 
-        free_parser(&parser);
-
         for (size_t i = 0; i < stmts.count; i++)
         {
             free_stmt(stmts.data[i]);

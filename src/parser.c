@@ -18,11 +18,6 @@ void init_parser(Parser *parser, DynArray_Token *tokens)
     parser->tokens = tokens;
 }
 
-void free_parser(Parser *parser)
-{
-    dynarray_free(parser->tokens);
-}
-
 static void parse_error(Parser *parser, char *message)
 {
     fprintf(stderr, "parser: %s\n", message);
