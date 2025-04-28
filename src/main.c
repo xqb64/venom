@@ -19,7 +19,7 @@ typedef struct
     char *file;
 } Arguments;
 
-void run_file(Arguments *args)
+static void run_file(Arguments *args)
 {
     char *source = read_file(args->file);
 
@@ -91,7 +91,7 @@ void run_file(Arguments *args)
     free(source);
 }
 
-Arguments parse_args(int argc, char *argv[])
+static Arguments parse_args(int argc, char *argv[])
 {
     static const struct option long_opts[] = {
         {"lex", no_argument, 0, 'l'},
