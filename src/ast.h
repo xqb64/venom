@@ -341,5 +341,6 @@ typedef struct Stmt
 #define AS_STMT_ASSERT(stmt)   ((Stmt) {.kind = STMT_ASSERT, .as.stmt_assert = (stmt)})
 
 void pretty_print(DynArray_Stmt *stmts);
+void free_stmt(Stmt stmt);
 
 #endif
