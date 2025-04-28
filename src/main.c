@@ -76,10 +76,10 @@ static void run_file(Arguments *args)
 
     VM vm;
     init_vm(&vm);
-    run(&vm, &chunk);
-    free_vm(&vm);
 
-    free_parser(&parser);
+    run(&vm, &chunk);
+    
+    free_vm(&vm);
 
     for (size_t i = 0; i < cooked_ast.count; i++)
     {
@@ -88,6 +88,7 @@ static void run_file(Arguments *args)
     dynarray_free(&cooked_ast);
 
     free_chunk(&chunk);
+    free_parser(&parser);
     free(source);
 }
 
