@@ -5,6 +5,12 @@
 
 #include "dynarray.h"
 
+typedef struct Expr Expr;
+typedef DynArray(Expr) DynArray_Expr;
+
+typedef struct Stmt Stmt;
+typedef DynArray(Stmt) DynArray_Stmt;
+
 typedef enum
 {
     EXPR_LIT,
@@ -20,10 +26,6 @@ typedef enum
     EXPR_ARRAY,
     EXPR_SUBSCRIPT,
 } ExprKind;
-
-typedef struct Expr Expr;
-
-typedef DynArray(Expr) DynArray_Expr;
 
 typedef enum
 {
@@ -178,10 +180,6 @@ typedef enum
     STMT_YIELD,
     STMT_ASSERT,
 } StmtKind;
-
-typedef struct Stmt Stmt;
-
-typedef DynArray(Stmt) DynArray_Stmt;
 
 typedef struct
 {
