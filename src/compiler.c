@@ -76,7 +76,7 @@ static Builtin builtins[] = {
 
 Compiler *current_compiler = NULL;
 
-void free_table_int(Table_int *table)
+static void free_table_int(Table_int *table)
 {
     for (size_t i = 0; i < TABLE_MAX; i++)
     {
@@ -88,7 +88,7 @@ void free_table_int(Table_int *table)
     }
 }
 
-void free_table_function_ptr(Table_FunctionPtr *table)
+static void free_table_function_ptr(Table_FunctionPtr *table)
 {
     for (size_t i = 0; i < TABLE_MAX; i++)
     {
@@ -124,7 +124,7 @@ void free_table_struct_blueprints(Table_StructBlueprint *table)
     }
 }
 
-void free_table_functions(Table_Function *table)
+static void free_table_functions(Table_Function *table)
 {
     for (size_t i = 0; i < TABLE_MAX; i++)
     {
@@ -136,7 +136,7 @@ void free_table_functions(Table_Function *table)
     }
 }
 
-void free_table_compiled_modules(Table_module_ptr *table)
+static void free_table_compiled_modules(Table_module_ptr *table)
 {
     for (size_t i = 0; i < TABLE_MAX; i++)
     {
@@ -154,7 +154,7 @@ void free_table_compiled_modules(Table_module_ptr *table)
     }
 }
 
-void free_table_labels(Table_Label *table)
+static void free_table_labels(Table_Label *table)
 {
     for (size_t i = 0; i < TABLE_MAX; i++)
     {
@@ -418,7 +418,7 @@ static void end_scope(Bytecode *code)
     }
 }
 
-void patch_jumps(Bytecode *code)
+static void patch_jumps(Bytecode *code)
 {
     for (size_t i = 0; i < TABLE_MAX; i++)
     {
