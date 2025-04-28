@@ -145,9 +145,6 @@ void free_compiler(Compiler *compiler);
 
 void compile(Bytecode *code, Stmt stmt);
 
-void emit_stack_cleanup(Bytecode *code);
-void patch_jumps(Bytecode *code);
-
 extern Compiler *current_compiler;
 
 #endif

@@ -418,6 +418,27 @@ static void end_scope(Bytecode *code)
     }
 }
 
+void patch_jumps(Bytecode *code)
+{
+    for (size_t i = 0; i < TABLE_MAX; i++)
+    {
+        if (current_compiler->labels->indexes[i])
+        {
+            Label *l =
+                table_get(current_compiler->labels, current_compiler->labels->indexes[i]->key);
+
+            int location = l->location;
+            int patch_with = l->patch_with;
+
+            if (patch_with == -1)
+                continue;
+
+            code->code.data[location + 1] = ((patch_with - location - 3) >> 8) & 0xFF;
+            code->code.data[location + 2] = ((patch_with) - (location) -3) & 0xFF;
+        }
+    }
+}
+
 /* Check if 'name' is present in the builtins table.
  * If it is, return its index in the sp, otherwise -1. */
 static Function *resolve_builtin(char *name)
@@ -1957,27 +1978,6 @@ static void compile_stmt_assert(Bytecode *code, Stmt stmt)
     StmtAssert stmt_assert = TO_STMT_ASSERT(stmt);
     compile_expr(code, stmt_assert.exp);
     emit_byte(code, OP_ASSERT);
-}
-
-void patch_jumps(Bytecode *code)
-{
-    for (size_t i = 0; i < TABLE_MAX; i++)
-    {
-        if (current_compiler->labels->indexes[i])
-        {
-            Label *l =
-                table_get(current_compiler->labels, current_compiler->labels->indexes[i]->key);
-
-            int location = l->location;
-            int patch_with = l->patch_with;
-
-            if (patch_with == -1)
-                continue;
-
-            code->code.data[location + 1] = ((patch_with - location - 3) >> 8) & 0xFF;
-            code->code.data[location + 2] = ((patch_with) - (location) -3) & 0xFF;
-        }
-    }
 }
 
 typedef void (*CompileHandlerFn)(Bytecode *code, Stmt stmt);
