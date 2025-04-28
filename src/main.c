@@ -4,7 +4,6 @@
 #include "ast.h"
 #include "compiler.h"
 #include "disassembler.h"
-#include "dynarray.h"
 #include "parser.h"
 #include "semantics.h"
 #include "tokenizer.h"
