@@ -18,7 +18,7 @@ typedef struct
     char *file;
 } Arguments;
 
-static int run_file(Arguments *args)
+static int run(Arguments *args)
 {
     int result = 0;
 
@@ -99,7 +99,7 @@ static int run_file(Arguments *args)
     VM vm;
     init_vm(&vm);
 
-    result = run(&vm, &chunk);
+    result = exec(&vm, &chunk);
 
     free_vm(&vm);
 
@@ -176,7 +176,7 @@ int main(int argc, char *argv[])
     Arguments args;
 
     args = parse_args(argc, argv);
-    int result = run_file(&args);
+    int result = run(&args);
 
     return result;
 }

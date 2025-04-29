@@ -8,7 +8,6 @@
 #include <string.h>
 
 #include "compiler.h"
-#include "disassembler.h"
 #include "dynarray.h"
 #include "math.h"
 #include "object.h"
@@ -1317,7 +1316,7 @@ static inline const char *print_current_instruction(uint8_t opcode)
 }
 #endif
 
-int run(VM *vm, Bytecode *code)
+int exec(VM *vm, Bytecode *code)
 {
     static void *dispatch_table[] = {
         &&op_print,
