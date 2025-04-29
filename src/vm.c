@@ -1514,10 +1514,7 @@ int run(VM *vm, Bytecode *code)
 #define HANDLE(name)                              \
     op_##name:                                    \
         result = handle_op_##name(vm, code, &ip); \
-        if (result == -1)                         \
-        {                                         \
-            goto op_bail;                         \
-        }                                         \
+        if (result == -1) goto op_bail;           \
         DISPATCH();                               \
 
     uint8_t *ip = code->code.data;
