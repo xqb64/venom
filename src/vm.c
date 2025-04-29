@@ -8,6 +8,7 @@
 #include <string.h>
 
 #include "compiler.h"
+#include "disassembler.h"
 #include "dynarray.h"
 #include "math.h"
 #include "object.h"
@@ -1312,125 +1313,7 @@ static inline int handle_op_assert(VM *vm, Bytecode *code, uint8_t **ip)
 #ifdef venom_debug_vm
 static inline const char *print_current_instruction(uint8_t opcode)
 {
-    switch (opcode)
-    {
-        case OP_PRINT:
-            return "OP_PRINT";
-        case OP_ADD:
-            return "OP_ADD";
-        case OP_SUB:
-            return "OP_SUB";
-        case OP_MUL:
-            return "OP_MUL";
-        case OP_DIV:
-            return "OP_DIV";
-        case OP_MOD:
-            return "OP_MOD";
-        case OP_EQ:
-            return "OP_EQ";
-        case OP_GT:
-            return "OP_GT";
-        case OP_LT:
-            return "OP_LT";
-        case OP_NOT:
-            return "OP_NOT";
-        case OP_NEG:
-            return "OP_NEG";
-        case OP_TRUE:
-            return "OP_TRUE";
-        case OP_NULL:
-            return "OP_NULL";
-        case OP_CONST:
-            return "OP_CONST";
-        case OP_STR:
-            return "OP_STR";
-        case OP_JZ:
-            return "OP_JZ";
-        case OP_JMP:
-            return "OP_JMP";
-        case OP_BITAND:
-            return "OP_BITAND";
-        case OP_BITOR:
-            return "OP_BITOR";
-        case OP_BITXOR:
-            return "OP_BITXOR";
-        case OP_BITNOT:
-            return "OP_BITNOT";
-        case OP_BITSHL:
-            return "OP_BITSHL";
-        case OP_BITSHR:
-            return "OP_BITSHR";
-        case OP_SET_GLOBAL:
-            return "OP_SET_GLOBAL";
-        case OP_GET_GLOBAL:
-            return "OP_GET_GLOBAL";
-        case OP_GET_GLOBAL_PTR:
-            return "OP_GET_GLOBAL_PTR";
-        case OP_DEEPSET:
-            return "OP_DEEPSET";
-        case OP_DEEPGET:
-            return "OP_DEEPGET";
-        case OP_DEEPGET_PTR:
-            return "OP_DEEPGET_PTR";
-        case OP_SETATTR:
-            return "OP_SETATTR";
-        case OP_GETATTR:
-            return "OP_GETATTR";
-        case OP_GETATTR_PTR:
-            return "OP_GETATTR_PTR";
-        case OP_STRUCT:
-            return "OP_STRUCT";
-        case OP_STRUCT_BLUEPRINT:
-            return "OP_STRUCT_BLUEPRINT";
-        case OP_CLOSURE:
-            return "OP_CLOSURE";
-        case OP_CALL:
-            return "OP_CALL";
-        case OP_CALL_METHOD:
-            return "OP_CALL_METHOD";
-        case OP_RET:
-            return "OP_RET";
-        case OP_POP:
-            return "OP_POP";
-        case OP_DEREF:
-            return "OP_DEREF";
-        case OP_DEREFSET:
-            return "OP_DEREFSET";
-        case OP_STRCAT:
-            return "OP_STRCAT";
-        case OP_ARRAY:
-            return "OP_ARRAY";
-        case OP_ARRAYSET:
-            return "OP_ARRAYSET";
-        case OP_SUBSCRIPT:
-            return "OP_SUBSCRIPT";
-        case OP_GET_UPVALUE:
-            return "OP_GET_UPVALUE";
-        case OP_GET_UPVALUE_PTR:
-            return "OP_GET_UPVALUE_PTR";
-        case OP_SET_UPVALUE:
-            return "OP_SET_UPVALUE";
-        case OP_CLOSE_UPVALUE:
-            return "OP_CLOSE_UPVALUE";
-        case OP_IMPL:
-            return "OP_IMPL";
-        case OP_MKGEN:
-            return "OP_MKGEN";
-        case OP_YIELD:
-            return "OP_YIELD";
-        case OP_RESUME:
-            return "OP_RESUME";
-        case OP_LEN:
-            return "OP_LEN";
-        case OP_HASATTR:
-            return "OP_HASATTR";
-        case OP_ASSERT:
-            return "OP_ASSERT";
-        case OP_HLT:
-            return "OP_HLT";
-        default:
-            assert(0);
-    }
+    return disassemble_handler[opcode].opcode;
 }
 #endif
 

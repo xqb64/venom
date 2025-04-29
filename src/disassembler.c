@@ -6,12 +6,7 @@
 #include "compiler.h"
 #include "dynarray.h"
 
-typedef struct
-{
-    char *opcode;
-} DisassembleHandler;
-
-static DisassembleHandler disassemble_handler[] = {
+DisassembleHandler disassemble_handler[] = {
     [OP_PRINT] = {.opcode = "OP_PRINT"},
     [OP_ADD] = {.opcode = "OP_ADD"},
     [OP_SUB] = {.opcode = "OP_SUB"},
