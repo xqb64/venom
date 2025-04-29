@@ -34,6 +34,6 @@ typedef struct
 
 void init_vm(VM *vm);
 void free_vm(VM *vm);
-void run(VM *vm, Bytecode *code);
+int run(VM *vm, Bytecode *code);
 
 #endif

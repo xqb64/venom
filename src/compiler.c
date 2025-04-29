@@ -1934,6 +1934,8 @@ static void compile_stmt_use(Bytecode *code, Stmt stmt)
         }
         dynarray_free(&stmts);
 
+        dynarray_free(&tokens);
+
         free(source);
     }
     else

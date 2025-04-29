@@ -18,8 +18,10 @@ typedef struct
     char *file;
 } Arguments;
 
-static void run_file(Arguments *args)
+static int run_file(Arguments *args)
 {
+    int result = 0;
+
     char *source = read_file(args->file);
 
     Tokenizer tokenizer;
@@ -73,8 +75,8 @@ static void run_file(Arguments *args)
     VM vm;
     init_vm(&vm);
 
-    run(&vm, &chunk);
-    
+    result = run(&vm, &chunk);
+
     free_vm(&vm);
 
 cleanup_after_compile:
@@ -92,6 +94,8 @@ cleanup_after_parse:
 cleanup_after_lex:
     dynarray_free(&tokens);
     free(source);
+
+    return result;
 }
 
 static Arguments parse_args(int argc, char *argv[])
@@ -148,7 +152,7 @@ int main(int argc, char *argv[])
     Arguments args;
 
     args = parse_args(argc, argv);
-    run_file(&args);
+    int result = run_file(&args);
 
-    return 0;
+    return result;
 }
