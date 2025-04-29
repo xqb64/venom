@@ -32,6 +32,7 @@ static int run_file(Arguments *args)
     if (!tokenize_result.is_ok)
     {
         fprintf(stderr, "tokenizer: %s\n", tokenize_result.msg);
+        result = -1;
         goto cleanup_after_lex;
     }
 
@@ -51,6 +52,7 @@ static int run_file(Arguments *args)
     if (!parse_result.is_ok)
     {
         fprintf(stderr, "parser: %s\n", parse_result.msg);
+        result = -1;
         goto cleanup_after_parse;
     }
 
@@ -75,9 +77,15 @@ static int run_file(Arguments *args)
 
     table_insert(compiler->compiled_modules, args->file, compiler->current_mod);
 
+    int compile_result;
     for (size_t i = 0; i < cooked_ast.count; i++)
     {
-        compile(&chunk, cooked_ast.data[i]);
+        compile_result = compile(&chunk, cooked_ast.data[i]);
+        if (compile_result == -1)
+        {
+            result = -1;
+            goto cleanup_after_compile;
+        }
     }
 
     dynarray_insert(&chunk.code, OP_HLT);

@@ -17,7 +17,7 @@ RESULTS = {
     "break.vnm": {
         "debug_prints": [],
         "ends_with": "compiler: Variable 'y' is not defined.",
-        "return_code": 1,
+        "return_code": 255,
     },
     "breakcomplex.vnm": {
         "debug_prints": [

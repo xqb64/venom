@@ -143,7 +143,7 @@ void free_chunk(Bytecode *code);
 Compiler *new_compiler(void);
 void free_compiler(Compiler *compiler);
 
-void compile(Bytecode *code, Stmt stmt);
+int compile(Bytecode *code, Stmt stmt);
 
 extern Compiler *current_compiler;
 

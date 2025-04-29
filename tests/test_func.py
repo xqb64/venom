@@ -15,7 +15,7 @@ def test_func_undefined():
     error = process.stderr.decode("utf-8")
 
     assert_error(error, ["compiler: Function 'amain' is not defined.\n"])
-    assert process.returncode == 1
+    assert process.returncode == 255
 
 
 def test_func_wrong_argcount():
@@ -29,7 +29,7 @@ def test_func_wrong_argcount():
     error = process.stderr.decode("utf-8")
 
     assert_error(error, ["compiler: Function 'main' requires 2 arguments.\n"])
-    assert process.returncode == 1
+    assert process.returncode == 255
 
 
 def test_method():
