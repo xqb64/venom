@@ -445,7 +445,7 @@ static void patch_jumps(Bytecode *code)
  * If it is, return its index in the sp, otherwise -1. */
 static Function *resolve_builtin(char *name)
 {
-    struct Compiler *current = current_compiler;
+    Compiler *current = current_compiler;
     while (current)
     {
         Function **f = table_get(current->builtins, name);
@@ -460,7 +460,7 @@ static Function *resolve_builtin(char *name)
  * If it is, return its index in the sp, otherwise -1. */
 static int resolve_global(Bytecode *code, char *name)
 {
-    struct Compiler *current = current_compiler;
+    Compiler *current = current_compiler;
     while (current)
     {
         for (size_t idx = 0; idx < current->globals_count; idx++)
@@ -487,7 +487,7 @@ static int resolve_local(char *name)
 
 static int resolve_upvalue(char *name)
 {
-    struct Compiler *current = current_compiler->next;
+    Compiler *current = current_compiler->next;
     while (current)
     {
         for (size_t idx = 0; idx < current->locals_count; idx++)
