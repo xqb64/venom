@@ -91,9 +91,7 @@ typedef struct
 typedef DynArray(Token) DynArray_Token;
 
 void init_tokenizer(Tokenizer *tokenizer, char *source);
-void print_token(Token *token);
-void print_tokens(DynArray_Token *tokens);
-Token get_token(Tokenizer *tokenizer);
 DynArray_Token tokenize(Tokenizer *tokenizer);
+void print_tokens(DynArray_Token *tokens);
 
 #endif

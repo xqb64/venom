@@ -60,12 +60,12 @@ static Token make_token(Tokenizer *tokenizer, TokenType type, int length)
     };
 }
 
-void print_token(Token *token)
+static void print_token(Token *token)
 {
     printf("%.*s", token->length, token->start);
 }
 
-TokenType check_keyword(Tokenizer *tokenizer, int start_pos, int length)
+static TokenType check_keyword(Tokenizer *tokenizer, int start_pos, int length)
 {
     char *lexeme = tokenizer->current - length;
 
@@ -118,7 +118,7 @@ typedef enum
     STATE_DONE,
 } TokenizerState;
 
-Token get_token(Tokenizer *tokenizer)
+static Token get_token(Tokenizer *tokenizer)
 {
     TokenizerState state = STATE_START;
     int length = 0;
