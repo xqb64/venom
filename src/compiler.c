@@ -1900,7 +1900,15 @@ static void compile_stmt_use(Bytecode *code, Stmt stmt)
         Tokenizer tokenizer;
         init_tokenizer(&tokenizer, source);
 
-        DynArray_Token tokens = tokenize(&tokenizer);
+        TokenizeResult tokenize_result = tokenize(&tokenizer);
+
+        if (!tokenize_result.is_ok)
+        {
+            fprintf(stderr, "tokenizer: %s\n", tokenize_result.msg);
+            exit(1);
+        }
+
+        DynArray_Token tokens = tokenize_result.tokens;
 
         Parser parser;
         init_parser(&parser, &tokens);

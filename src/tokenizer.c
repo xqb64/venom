@@ -443,13 +443,23 @@ void print_tokens(DynArray_Token *tokens)
     printf("]\n");
 }
 
-DynArray_Token tokenize(Tokenizer *tokenizer)
+TokenizeResult tokenize(Tokenizer *tokenizer)
 {
-    DynArray_Token tokens = {0};
+    TokenizeResult result = {0};
+
     Token t;
     while ((t = get_token(tokenizer)).type != TOKEN_EOF)
     {
-        dynarray_insert(&tokens, t);
+        if (t.type == TOKEN_ERROR)
+        {
+            result.msg = "Error at line X";
+            result.is_ok = false;
+            return result;
+        }
+        dynarray_insert(&result.tokens, t);
     }
-    return tokens;
+
+    result.is_ok = true;
+
+    return result;
 }

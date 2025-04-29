@@ -27,7 +27,15 @@ static int run_file(Arguments *args)
     Tokenizer tokenizer;
     init_tokenizer(&tokenizer, source);
 
-    DynArray_Token tokens = tokenize(&tokenizer);
+    TokenizeResult tokenize_result = tokenize(&tokenizer);
+
+    if (!tokenize_result.is_ok)
+    {
+        fprintf(stderr, "tokenizer: %s\n", tokenize_result.msg);
+        goto cleanup_after_lex;
+    }
+
+    DynArray_Token tokens = tokenize_result.tokens;
 
     if (args->lex)
     {
@@ -92,7 +100,7 @@ cleanup_after_parse:
     dynarray_free(&cooked_ast);
 
 cleanup_after_lex:
-    dynarray_free(&tokens);
+    dynarray_free(&tokenize_result.tokens);
     free(source);
 
     return result;
