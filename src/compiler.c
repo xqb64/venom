@@ -7,10 +7,12 @@
 #include <stdlib.h>
 #include <string.h>
 
+#include "ast.h"
 #include "dynarray.h"
 #include "parser.h"
 #include "table.h"
 #include "tokenizer.h"
+#include "semantics.h"
 
 #ifdef venom_debug_compiler
 static bool is_last(Module *parent, Module *child)
@@ -1913,7 +1915,16 @@ static void compile_stmt_use(Bytecode *code, Stmt stmt)
         Parser parser;
         init_parser(&parser, &tokens);
 
-        DynArray_Stmt stmts = parse(&parser);
+        ParseResult parse_result = parse(&parser);
+
+        if (!parse_result.is_ok)
+        {
+            fprintf(stderr, "parser: %s\n", parse_result.msg);
+            exit(1);
+        }
+
+        DynArray_Stmt raw_ast = parse_result.ast;
+        DynArray_Stmt cooked_ast = loop_label_program(raw_ast, NULL);
 
         Module *old_module = current_compiler->current_mod;
 
@@ -1929,18 +1940,18 @@ static void compile_stmt_use(Bytecode *code, Stmt stmt)
         if (is_cyclic(current_compiler, importee))
             COMPILER_ERROR("Cycle.");
 
-        for (size_t i = 0; i < stmts.count; i++)
+        for (size_t i = 0; i < cooked_ast.count; i++)
         {
-            compile(code, stmts.data[i]);
+            compile(code, cooked_ast.data[i]);
         }
 
         current_compiler->current_mod = old_module;
 
-        for (size_t i = 0; i < stmts.count; i++)
+        for (size_t i = 0; i < cooked_ast.count; i++)
         {
-            free_stmt(stmts.data[i]);
+            free_stmt(cooked_ast.data[i]);
         }
-        dynarray_free(&stmts);
+        dynarray_free(&cooked_ast);
 
         dynarray_free(&tokens);
 

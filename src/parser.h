@@ -13,10 +13,17 @@ typedef struct
     size_t depth;
     DynArray_Token *tokens;
     size_t idx;
+    bool error;
 } Parser;
 
-void init_parser(Parser *parser, DynArray_Token *tokens);
+typedef struct
+{
+    DynArray_Stmt ast;
+    bool is_ok;
+    char *msg;
+} ParseResult;
 
-DynArray_Stmt parse(Parser *parser);
+void init_parser(Parser *parser, DynArray_Token *tokens);
+ParseResult parse(Parser *parser);
 
 #endif

@@ -19,7 +19,7 @@ void init_parser(Parser *parser, DynArray_Token *tokens)
 
 static void parse_error(Parser *parser, char *message)
 {
-    fprintf(stderr, "parser: %s\n", message);
+    parser->error = true;
 }
 
 static Token pop_front(Parser *parser)
@@ -866,13 +866,20 @@ static Stmt statement(Parser *parser)
     }
 }
 
-DynArray_Stmt parse(Parser *parser)
+ParseResult parse(Parser *parser)
 {
-    DynArray_Stmt stmts = {0};
+    ParseResult result = {0};
     advance(parser);
     while (parser->current.type != TOKEN_EOF)
     {
-        dynarray_insert(&stmts, statement(parser));
+        if (parser->error)
+        {
+            result.is_ok = false;
+            result.msg = "Parse error";
+            return result;
+        }
+        dynarray_insert(&result.ast, statement(parser));
     }
-    return stmts;
+    result.is_ok = true;
+    return result;
 }

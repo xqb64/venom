@@ -46,7 +46,15 @@ static int run_file(Arguments *args)
     Parser parser;
     init_parser(&parser, &tokens);
 
-    DynArray_Stmt raw_ast = parse(&parser);
+    ParseResult parse_result = parse(&parser);
+
+    if (!parse_result.is_ok)
+    {
+        fprintf(stderr, "parser: %s\n", parse_result.msg);
+        goto cleanup_after_parse;
+    }
+
+    DynArray_Stmt raw_ast = parse_result.ast;
     DynArray_Stmt cooked_ast = loop_label_program(raw_ast, NULL);
 
     if (args->parse)
