@@ -1396,7 +1396,7 @@ int run(VM *vm, Bytecode *code)
 #define HANDLE(name)                                      \
     op_##name : result = handle_op_##name(vm, code, &ip); \
     if (result == -1)                                     \
-        goto op_bail;                                     \
+        goto bail;                                        \
     DISPATCH();
 
     uint8_t *ip = code->code.data;
@@ -1467,7 +1467,7 @@ int run(VM *vm, Bytecode *code)
     op_hlt:
         assert(vm->tos == 0);
         return 0;
-    op_bail:
+    bail:
         return -1;
     }
 }
