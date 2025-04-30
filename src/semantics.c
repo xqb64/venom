@@ -2,13 +2,31 @@
 
 #include <stdio.h>
 #include <stdlib.h>
-
-#include "parser.h"
+#include <string.h>
 
 static size_t make_temp(void)
 {
     static size_t tmp = 0;
     return tmp++;
+}
+
+static size_t number_length(size_t n)
+{
+    size_t i;
+
+    i = 0;
+
+    do {
+        n /= 10;
+        i++;
+    } while (n != 0);
+
+    return i;
+}
+
+static size_t label_length(const char *label, size_t n)
+{
+    return strlen(label) + number_length(n) + 1;
 }
 
 DynArray_Stmt loop_label_program(DynArray_Stmt stmts, char *current)
@@ -26,16 +44,18 @@ void loop_label_stmt(Stmt *stmt, char *current)
     {
         case STMT_WHILE: {
             size_t tmp = make_temp();
-            char *loop_label = malloc(256);
-            snprintf(loop_label, 256, "while_%zu", tmp);
+            size_t label_len = label_length("while_", tmp);
+            char *loop_label = malloc(label_len);
+            snprintf(loop_label, label_len, "while_%zu", tmp);
             loop_label_stmt(stmt->as.stmt_while.body, loop_label);
             stmt->as.stmt_while.label = loop_label;
             break;
         }
         case STMT_FOR: {
             size_t tmp = make_temp();
-            char *loop_label = malloc(256);
-            snprintf(loop_label, 256, "for_%zu", tmp);
+            size_t label_len = label_length("for_", tmp);
+            char *loop_label = malloc(label_len);
+            snprintf(loop_label, label_len, "for_%zu", tmp);
             loop_label_stmt(stmt->as.stmt_for.body, loop_label);
             stmt->as.stmt_for.label = loop_label;
             break;
