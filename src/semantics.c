@@ -4,7 +4,7 @@
 #include <stdlib.h>
 #include <string.h>
 
-static size_t make_temp(void)
+static size_t mktmp(void)
 {
     static size_t tmp = 0;
     return tmp++;
@@ -24,7 +24,7 @@ static size_t numlen(size_t n)
     return i;
 }
 
-static size_t label_length(const char *label, size_t n)
+static size_t lblen(const char *label, size_t n)
 {
     return strlen(label) + numlen(n) + 1;
 }
@@ -43,8 +43,8 @@ void loop_label_stmt(Stmt *stmt, char *current)
     switch (stmt->kind)
     {
         case STMT_WHILE: {
-            size_t tmp = make_temp();
-            size_t label_len = label_length("while_", tmp);
+            size_t tmp = mktmp();
+            size_t label_len = lblen("while_", tmp);
             char *loop_label = malloc(label_len);
             snprintf(loop_label, label_len, "while_%zu", tmp);
             loop_label_stmt(stmt->as.stmt_while.body, loop_label);
@@ -52,8 +52,8 @@ void loop_label_stmt(Stmt *stmt, char *current)
             break;
         }
         case STMT_FOR: {
-            size_t tmp = make_temp();
-            size_t label_len = label_length("for_", tmp);
+            size_t tmp = mktmp();
+            size_t label_len = lblen("for_", tmp);
             char *loop_label = malloc(label_len);
             snprintf(loop_label, label_len, "for_%zu", tmp);
             loop_label_stmt(stmt->as.stmt_for.body, loop_label);
