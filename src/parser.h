@@ -13,8 +13,23 @@ typedef struct
     size_t depth;
     DynArray_Token *tokens;
     size_t idx;
-    bool error;
 } Parser;
+
+typedef struct
+{
+    Token token;
+    bool is_ok;
+} TokenResult;
+
+typedef struct
+{
+    union {
+        Expr expr;
+        Stmt stmt;
+    } as;
+    bool is_ok;
+    char *msg;
+} ParseFnResult;
 
 typedef struct
 {
