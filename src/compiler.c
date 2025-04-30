@@ -6,14 +6,13 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
-#include <stdarg.h>
 
 #include "ast.h"
 #include "dynarray.h"
 #include "parser.h"
+#include "semantics.h"
 #include "table.h"
 #include "tokenizer.h"
-#include "semantics.h"
 
 #ifdef venom_debug_compiler
 static bool is_last(Module *parent, Module *child)
@@ -76,11 +75,12 @@ static inline int alloc_error_str(char **dst, const char *fmt, ...)
     return 0;
 }
 
-#define COMPILER_ERROR(...)                                      \
-    do                                                           \
-    {                                                            \
-        alloc_error_str(&compile_result->msg, __VA_ARGS__);      \
-        return -1;                                               \
+#define COMPILER_ERROR(...)                                 \
+    do                                                      \
+    {                                                       \
+        alloc_error_str(&compile_result->msg, __VA_ARGS__); \
+        compile_result->is_ok = false;                      \
+        return -1;                                          \
     } while (0)
 
 typedef struct
@@ -559,15 +559,15 @@ static Function *resolve_func(char *name)
     return NULL;
 }
 
-#define COMPILE_EXPR(code, exp)                           \
-    result = compile_expr(code, (exp), compile_result);   \
-    if (result == -1)                                     \
-        return result;                                    \
+#define COMPILE_EXPR(code, exp)                         \
+    result = compile_expr(code, (exp), compile_result); \
+    if (result == -1)                                   \
+        return result;
 
-#define COMPILE_STMT(code, stmt)                          \
-    result = compile_stmt(code, (stmt), compile_result);  \
-    if (result == -1)                                     \
-        return result;                                    \
+#define COMPILE_STMT(code, stmt)                         \
+    result = compile_stmt(code, (stmt), compile_result); \
+    if (result == -1)                                    \
+        return result;
 
 static int compile_expr(Bytecode *code, Expr exp, CompileResult *compile_result);
 
@@ -981,7 +981,7 @@ static int compile_expr_get(Bytecode *code, Expr exp, CompileResult *compile_res
     /* Emit OP_GETATTR with the index of the property name. */
     emit_byte(code, OP_GETATTR);
     emit_uint32(code, add_string(code, e.property_name));
-    
+
     return result;
 }
 
@@ -1009,7 +1009,8 @@ static void handle_specop(Bytecode *code, const char *op)
         emit_byte(code, OP_BITSHL);
 }
 
-static int compile_assign_var(Bytecode *code, ExprAssign e, bool is_compound, CompileResult *compile_result)
+static int compile_assign_var(Bytecode *code, ExprAssign e, bool is_compound,
+                              CompileResult *compile_result)
 {
     int result = 0;
 
@@ -1077,11 +1078,12 @@ static int compile_assign_var(Bytecode *code, ExprAssign e, bool is_compound, Co
         emit_byte(code, OP_DEEPSET);
 
     emit_uint32(code, idx);
-    
+
     return result;
 }
 
-static int compile_assign_get(Bytecode *code, ExprAssign e, bool is_compound, CompileResult *compile_result)
+static int compile_assign_get(Bytecode *code, ExprAssign e, bool is_compound,
+                              CompileResult *compile_result)
 {
     int result = 0;
 
@@ -1119,11 +1121,12 @@ static int compile_assign_get(Bytecode *code, ExprAssign e, bool is_compound, Co
 
     /* Pop the struct off the stack. */
     emit_byte(code, OP_POP);
-    
+
     return result;
 }
 
-static int compile_assign_una(Bytecode *code, ExprAssign e, bool is_compound, CompileResult *compile_result)
+static int compile_assign_una(Bytecode *code, ExprAssign e, bool is_compound,
+                              CompileResult *compile_result)
 {
     int result = 0;
 
@@ -1150,7 +1153,8 @@ static int compile_assign_una(Bytecode *code, ExprAssign e, bool is_compound, Co
     return result;
 }
 
-static int compile_assign_sub(Bytecode *code, ExprAssign e, bool is_compound, CompileResult *compile_result)
+static int compile_assign_sub(Bytecode *code, ExprAssign e, bool is_compound,
+                              CompileResult *compile_result)
 {
     int result = 0;
 
@@ -1174,7 +1178,7 @@ static int compile_assign_sub(Bytecode *code, ExprAssign e, bool is_compound, Co
     }
 
     emit_byte(code, OP_ARRAYSET);
-    
+
     return result;
 }
 
@@ -1211,10 +1215,10 @@ static int compile_expr_log(Bytecode *code, Expr exp, CompileResult *compile_res
     int result = 0;
 
     ExprLogic e = TO_EXPR_LOG(exp);
-    
+
     /* We first compile the left-hand side of the expression. */
     COMPILE_EXPR(code, *e.lhs);
-    
+
     if (strcmp(e.op, "&&") == 0)
     {
         /* For logical AND, we need to short-circuit when the left-hand side
@@ -1277,7 +1281,7 @@ static int compile_expr_log(Bytecode *code, Expr exp, CompileResult *compile_res
         COMPILE_EXPR(code, *e.rhs);
         patch_placeholder(code, end_jump);
     }
-    
+
     return result;
 }
 
@@ -1333,7 +1337,7 @@ static int compile_expr_struct(Bytecode *code, Expr exp, CompileResult *compile_
 static int compile_expr_s_init(Bytecode *code, Expr exp, CompileResult *compile_result)
 {
     int result = 0;
-    
+
     ExprStructInit e = TO_EXPR_S_INIT(exp);
 
     /* First, we compile the value of the initializer,
@@ -1422,11 +1426,11 @@ static int compile_stmt(Bytecode *code, Stmt stmt, CompileResult *compile_result
 static int compile_stmt_print(Bytecode *code, Stmt stmt, CompileResult *compile_result)
 {
     int result = 0;
-    
+
     StmtPrint s = TO_STMT_PRINT(stmt);
     COMPILE_EXPR(code, s.exp);
     emit_byte(code, OP_PRINT);
-    
+
     return result;
 }
 
@@ -1518,7 +1522,7 @@ static int compile_stmt_block(Bytecode *code, Stmt stmt, CompileResult *compile_
     }
 
     end_scope(code);
-    
+
     return result;
 }
 
@@ -1560,7 +1564,7 @@ static int compile_stmt_if(Bytecode *code, Stmt stmt, CompileResult *compile_res
     /* Finally, we patch the else jump. If the else branch wasn't
      * compiled, the offset should be zeroed out. */
     patch_placeholder(code, else_jump);
-    
+
     return result;
 }
 
@@ -1625,7 +1629,7 @@ static int compile_stmt_while(Bytecode *code, Stmt stmt, CompileResult *compile_
     patch_jumps(code);
 
     free(exit_label);
-    
+
     return result;
 }
 
@@ -1730,7 +1734,7 @@ static int compile_stmt_for(Bytecode *code, Stmt stmt, CompileResult *compile_re
     emit_byte(code, OP_POP);
 
     free(exit_label);
-    
+
     return result;
 }
 
@@ -1833,7 +1837,7 @@ static int compile_stmt_fn(Bytecode *code, Stmt stmt, CompileResult *compile_res
     free(current_compiler);
 
     current_compiler = old_compiler;
-    
+
     return result;
 }
 
@@ -1868,7 +1872,7 @@ static int compile_stmt_deco(Bytecode *code, Stmt stmt, CompileResult *compile_r
 
     emit_byte(code, OP_SET_GLOBAL);
     emit_uint32(code, add_string(code, stmt.as.stmt_deco.fn->as.stmt_fn.name));
-    
+
     return result;
 }
 
@@ -1903,7 +1907,7 @@ static int compile_stmt_struct(Bytecode *code, Stmt stmt, CompileResult *compile
 
     /* Let the compiler know about the blueprint. */
     table_insert(current_compiler->struct_blueprints, blueprint.name, blueprint);
-    
+
     return result;
 }
 
@@ -1948,7 +1952,7 @@ static int compile_stmt_return(Bytecode *code, Stmt stmt, CompileResult *compile
     }
 
     emit_byte(code, OP_RET);
-    
+
     return result;
 }
 
@@ -2143,7 +2147,7 @@ static int compile_stmt_yield(Bytecode *code, Stmt stmt, CompileResult *compile_
     f->is_gen = true;
 
     table_insert(current_compiler->functions, f->name, *f);
-    
+
     return result;
 }
 
@@ -2154,7 +2158,7 @@ static int compile_stmt_assert(Bytecode *code, Stmt stmt, CompileResult *compile
     StmtAssert stmt_assert = TO_STMT_ASSERT(stmt);
     COMPILE_EXPR(code, stmt_assert.exp);
     emit_byte(code, OP_ASSERT);
-    
+
     return result;
 }
 
@@ -2191,6 +2195,20 @@ static int compile_stmt(Bytecode *code, Stmt stmt, CompileResult *compile_result
     return stmt_handler[stmt.kind].fn(code, stmt, compile_result);
 }
 
+void free_compile_result(CompileResult *result)
+{
+    if (result->chunk)
+    {
+        free_chunk(result->chunk);
+        free(result->chunk);
+    }
+
+    if (result->msg)
+    {
+        free(result->msg);
+    }
+}
+
 CompileResult compile(DynArray_Stmt *ast)
 {
     CompileResult result = {0};
@@ -2198,14 +2216,14 @@ CompileResult compile(DynArray_Stmt *ast)
     Bytecode *chunk = malloc(sizeof(Bytecode));
     init_chunk(chunk);
 
-    int compile_result;
+    int tmp_result;
     for (size_t i = 0; i < ast->count; i++)
     {
-        compile_result = compile_stmt(chunk, ast->data[i], &result);
-        if (compile_result == -1)
+        tmp_result = compile_stmt(chunk, ast->data[i], &result);
+        if (tmp_result == -1)
         {
-            result.is_ok = false;
-            result.chunk = chunk;
+            free_chunk(chunk);
+            free(chunk);
             return result;
         }
     }
