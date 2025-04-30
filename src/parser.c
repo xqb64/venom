@@ -87,10 +87,7 @@ static TokenResult consume(Parser *parser, TokenType type)
 {
     if (check(parser, type))
         return (TokenResult) {.token = advance(parser), .is_ok = true};
-    else
-    {
-        return (TokenResult) {.is_ok = false};
-    };
+    return (TokenResult) {.is_ok = false};
 }
 
 static ParseFnResult boolean(Parser *parser)
