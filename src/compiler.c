@@ -6,6 +6,7 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
+#include <stdarg.h>
 
 #include "ast.h"
 #include "dynarray.h"
@@ -57,13 +58,29 @@ static void print_module_tree(Compiler *compiler, Module *parent, Module *mod, i
 }
 #endif
 
-#define COMPILER_ERROR(...)            \
-    do                                 \
-    {                                  \
-        fprintf(stderr, "compiler: "); \
-        fprintf(stderr, __VA_ARGS__);  \
-        fprintf(stderr, "\n");         \
-        return -1;                     \
+static inline int alloc_error_str(char **dst, const char *fmt, ...)
+{
+    va_list args;
+    va_start(args, fmt);
+
+    int len = vsnprintf(NULL, 0, fmt, args);
+    if (len < 0)
+        return -1;
+
+    *dst = malloc(len + 1);
+
+    va_start(args, fmt);
+    vsnprintf(*dst, len + 1, fmt, args);
+    va_end(args);
+
+    return 0;
+}
+
+#define COMPILER_ERROR(...)                                      \
+    do                                                           \
+    {                                                            \
+        alloc_error_str(&compile_result->msg, __VA_ARGS__);      \
+        return -1;                                               \
     } while (0)
 
 typedef struct
@@ -542,19 +559,19 @@ static Function *resolve_func(char *name)
     return NULL;
 }
 
-#define COMPILE_EXPR(code, exp)           \
-    result = compile_expr(code, (exp));   \
-    if (result == -1)                     \
-        return result;                    \
+#define COMPILE_EXPR(code, exp)                           \
+    result = compile_expr(code, (exp), compile_result);   \
+    if (result == -1)                                     \
+        return result;                                    \
 
-#define COMPILE_STMT(code, stmt)          \
-    result = compile_stmt(code, (stmt));  \
-    if (result == -1)                     \
-        return result;                    \
+#define COMPILE_STMT(code, stmt)                          \
+    result = compile_stmt(code, (stmt), compile_result);  \
+    if (result == -1)                                     \
+        return result;                                    \
 
-static int compile_expr(Bytecode *code, Expr exp);
+static int compile_expr(Bytecode *code, Expr exp, CompileResult *compile_result);
 
-static int compile_expr_lit(Bytecode *code, Expr exp)
+static int compile_expr_lit(Bytecode *code, Expr exp, CompileResult *compile_result)
 {
     int result = 0;
 
@@ -591,7 +608,7 @@ static int compile_expr_lit(Bytecode *code, Expr exp)
     return result;
 }
 
-static int compile_expr_var(Bytecode *code, Expr exp)
+static int compile_expr_var(Bytecode *code, Expr exp, CompileResult *compile_result)
 {
     int result = 0;
     ExprVar e = TO_EXPR_VAR(exp);
@@ -628,7 +645,7 @@ static int compile_expr_var(Bytecode *code, Expr exp)
     COMPILER_ERROR("Variable '%s' is not defined.", e.name);
 }
 
-static int compile_expr_una(Bytecode *code, Expr exp)
+static int compile_expr_una(Bytecode *code, Expr exp, CompileResult *compile_result)
 {
     int result = 0;
 
@@ -716,7 +733,7 @@ static int compile_expr_una(Bytecode *code, Expr exp)
     return result;
 }
 
-static int compile_expr_bin(Bytecode *code, Expr exp)
+static int compile_expr_bin(Bytecode *code, Expr exp, CompileResult *compile_result)
 {
     int result = 0;
 
@@ -797,7 +814,7 @@ static int compile_expr_bin(Bytecode *code, Expr exp)
     return result;
 }
 
-static int compile_expr_call(Bytecode *code, Expr exp)
+static int compile_expr_call(Bytecode *code, Expr exp, CompileResult *compile_result)
 {
     int result = 0;
 
@@ -945,7 +962,7 @@ static int compile_expr_call(Bytecode *code, Expr exp)
     return result;
 }
 
-static int compile_expr_get(Bytecode *code, Expr exp)
+static int compile_expr_get(Bytecode *code, Expr exp, CompileResult *compile_result)
 {
     int result = 0;
 
@@ -992,7 +1009,7 @@ static void handle_specop(Bytecode *code, const char *op)
         emit_byte(code, OP_BITSHL);
 }
 
-static int compile_assign_var(Bytecode *code, ExprAssign e, bool is_compound)
+static int compile_assign_var(Bytecode *code, ExprAssign e, bool is_compound, CompileResult *compile_result)
 {
     int result = 0;
 
@@ -1064,7 +1081,7 @@ static int compile_assign_var(Bytecode *code, ExprAssign e, bool is_compound)
     return result;
 }
 
-static int compile_assign_get(Bytecode *code, ExprAssign e, bool is_compound)
+static int compile_assign_get(Bytecode *code, ExprAssign e, bool is_compound, CompileResult *compile_result)
 {
     int result = 0;
 
@@ -1106,7 +1123,7 @@ static int compile_assign_get(Bytecode *code, ExprAssign e, bool is_compound)
     return result;
 }
 
-static int compile_assign_una(Bytecode *code, ExprAssign e, bool is_compound)
+static int compile_assign_una(Bytecode *code, ExprAssign e, bool is_compound, CompileResult *compile_result)
 {
     int result = 0;
 
@@ -1133,7 +1150,7 @@ static int compile_assign_una(Bytecode *code, ExprAssign e, bool is_compound)
     return result;
 }
 
-static int compile_assign_sub(Bytecode *code, ExprAssign e, bool is_compound)
+static int compile_assign_sub(Bytecode *code, ExprAssign e, bool is_compound, CompileResult *compile_result)
 {
     int result = 0;
 
@@ -1161,7 +1178,7 @@ static int compile_assign_sub(Bytecode *code, ExprAssign e, bool is_compound)
     return result;
 }
 
-static int compile_expr_ass(Bytecode *code, Expr exp)
+static int compile_expr_ass(Bytecode *code, Expr exp, CompileResult *compile_result)
 {
     int result = 0;
 
@@ -1171,16 +1188,16 @@ static int compile_expr_ass(Bytecode *code, Expr exp)
     switch (e.lhs->kind)
     {
         case EXPR_VAR:
-            compile_assign_var(code, e, compound_assign);
+            compile_assign_var(code, e, compound_assign, compile_result);
             break;
         case EXPR_GET:
-            compile_assign_get(code, e, compound_assign);
+            compile_assign_get(code, e, compound_assign, compile_result);
             break;
         case EXPR_UNA:
-            compile_assign_una(code, e, compound_assign);
+            compile_assign_una(code, e, compound_assign, compile_result);
             break;
         case EXPR_SUBSCRIPT:
-            compile_assign_sub(code, e, compound_assign);
+            compile_assign_sub(code, e, compound_assign, compile_result);
             break;
         default:
             COMPILER_ERROR("Invalid assignment.");
@@ -1189,7 +1206,7 @@ static int compile_expr_ass(Bytecode *code, Expr exp)
     return result;
 }
 
-static int compile_expr_log(Bytecode *code, Expr exp)
+static int compile_expr_log(Bytecode *code, Expr exp, CompileResult *compile_result)
 {
     int result = 0;
 
@@ -1264,7 +1281,7 @@ static int compile_expr_log(Bytecode *code, Expr exp)
     return result;
 }
 
-static int compile_expr_struct(Bytecode *code, Expr exp)
+static int compile_expr_struct(Bytecode *code, Expr exp, CompileResult *compile_result)
 {
     int result = 0;
 
@@ -1313,7 +1330,7 @@ static int compile_expr_struct(Bytecode *code, Expr exp)
     return result;
 }
 
-static int compile_expr_s_init(Bytecode *code, Expr exp)
+static int compile_expr_s_init(Bytecode *code, Expr exp, CompileResult *compile_result)
 {
     int result = 0;
     
@@ -1333,7 +1350,7 @@ static int compile_expr_s_init(Bytecode *code, Expr exp)
     return result;
 }
 
-static int compile_expr_array(Bytecode *code, Expr exp)
+static int compile_expr_array(Bytecode *code, Expr exp, CompileResult *compile_result)
 {
     int result = 0;
 
@@ -1355,7 +1372,7 @@ static int compile_expr_array(Bytecode *code, Expr exp)
     return result;
 }
 
-static int compile_expr_subscript(Bytecode *code, Expr exp)
+static int compile_expr_subscript(Bytecode *code, Expr exp, CompileResult *compile_result)
 {
     int result = 0;
     ExprSubscript e = TO_EXPR_SUBSCRIPT(exp);
@@ -1372,7 +1389,7 @@ static int compile_expr_subscript(Bytecode *code, Expr exp)
     return result;
 }
 
-typedef int (*CompileExprHandlerFn)(Bytecode *code, Expr exp);
+typedef int (*CompileExprHandlerFn)(Bytecode *code, Expr exp, CompileResult *compile_result);
 
 typedef struct
 {
@@ -1395,14 +1412,14 @@ static CompileExprHandler expression_handler[] = {
     [EXPR_SUBSCRIPT] = {.fn = compile_expr_subscript, .name = "EXPR_SUBSCRIPT"},
 };
 
-static int compile_expr(Bytecode *code, Expr exp)
+static int compile_expr(Bytecode *code, Expr exp, CompileResult *compile_result)
 {
-    return expression_handler[exp.kind].fn(code, exp);
+    return expression_handler[exp.kind].fn(code, exp, compile_result);
 }
 
-static int compile_stmt(Bytecode *code, Stmt stmt);
+static int compile_stmt(Bytecode *code, Stmt stmt, CompileResult *compile_result);
 
-static int compile_stmt_print(Bytecode *code, Stmt stmt)
+static int compile_stmt_print(Bytecode *code, Stmt stmt, CompileResult *compile_result)
 {
     int result = 0;
     
@@ -1413,7 +1430,7 @@ static int compile_stmt_print(Bytecode *code, Stmt stmt)
     return result;
 }
 
-static int compile_stmt_let(Bytecode *code, Stmt stmt)
+static int compile_stmt_let(Bytecode *code, Stmt stmt, CompileResult *compile_result)
 {
     int result = 0;
 
@@ -1463,7 +1480,7 @@ static int compile_stmt_let(Bytecode *code, Stmt stmt)
     return result;
 }
 
-static int compile_stmt_expr(Bytecode *code, Stmt stmt)
+static int compile_stmt_expr(Bytecode *code, Stmt stmt, CompileResult *compile_result)
 {
     int result = 0;
 
@@ -1487,7 +1504,7 @@ static int compile_stmt_expr(Bytecode *code, Stmt stmt)
     return result;
 }
 
-static int compile_stmt_block(Bytecode *code, Stmt stmt)
+static int compile_stmt_block(Bytecode *code, Stmt stmt, CompileResult *compile_result)
 {
     int result = 0;
 
@@ -1505,7 +1522,7 @@ static int compile_stmt_block(Bytecode *code, Stmt stmt)
     return result;
 }
 
-static int compile_stmt_if(Bytecode *code, Stmt stmt)
+static int compile_stmt_if(Bytecode *code, Stmt stmt, CompileResult *compile_result)
 {
     int result = 0;
 
@@ -1547,7 +1564,7 @@ static int compile_stmt_if(Bytecode *code, Stmt stmt)
     return result;
 }
 
-static int compile_stmt_while(Bytecode *code, Stmt stmt)
+static int compile_stmt_while(Bytecode *code, Stmt stmt, CompileResult *compile_result)
 {
     int result = 0;
 
@@ -1612,7 +1629,7 @@ static int compile_stmt_while(Bytecode *code, Stmt stmt)
     return result;
 }
 
-static int compile_stmt_for(Bytecode *code, Stmt stmt)
+static int compile_stmt_for(Bytecode *code, Stmt stmt, CompileResult *compile_result)
 {
     int result = 0;
 
@@ -1739,7 +1756,7 @@ Compiler *new_compiler(void)
     return ALLOC(compiler);
 }
 
-static int compile_stmt_fn(Bytecode *code, Stmt stmt)
+static int compile_stmt_fn(Bytecode *code, Stmt stmt, CompileResult *compile_result)
 {
     int result = 0;
 
@@ -1820,7 +1837,7 @@ static int compile_stmt_fn(Bytecode *code, Stmt stmt)
     return result;
 }
 
-static int compile_stmt_deco(Bytecode *code, Stmt stmt)
+static int compile_stmt_deco(Bytecode *code, Stmt stmt, CompileResult *compile_result)
 {
     int result = 0;
 
@@ -1855,7 +1872,7 @@ static int compile_stmt_deco(Bytecode *code, Stmt stmt)
     return result;
 }
 
-static int compile_stmt_struct(Bytecode *code, Stmt stmt)
+static int compile_stmt_struct(Bytecode *code, Stmt stmt, CompileResult *compile_result)
 {
     int result = 0;
 
@@ -1890,7 +1907,7 @@ static int compile_stmt_struct(Bytecode *code, Stmt stmt)
     return result;
 }
 
-static int compile_stmt_return(Bytecode *code, Stmt stmt)
+static int compile_stmt_return(Bytecode *code, Stmt stmt, CompileResult *compile_result)
 {
     int result = 0;
 
@@ -1942,7 +1959,7 @@ static void emit_named_jump(Bytecode *code, char *label)
     table_insert(current_compiler->labels, label, exit_label);
 }
 
-static int compile_stmt_break(Bytecode *code, Stmt stmt)
+static int compile_stmt_break(Bytecode *code, Stmt stmt, CompileResult *compile_result)
 {
     int result = 0;
 
@@ -1955,7 +1972,7 @@ static int compile_stmt_break(Bytecode *code, Stmt stmt)
     return result;
 }
 
-static int compile_stmt_continue(Bytecode *code, Stmt stmt)
+static int compile_stmt_continue(Bytecode *code, Stmt stmt, CompileResult *compile_result)
 {
     int result = 0;
 
@@ -1966,7 +1983,7 @@ static int compile_stmt_continue(Bytecode *code, Stmt stmt)
     return result;
 }
 
-static int compile_stmt_impl(Bytecode *code, Stmt stmt)
+static int compile_stmt_impl(Bytecode *code, Stmt stmt, CompileResult *compile_result)
 {
     int result = 0;
     StmtImpl s = TO_STMT_IMPL(stmt);
@@ -2020,7 +2037,7 @@ static bool is_cyclic(Compiler *compiler, Module *mod)
     return false;
 }
 
-static int compile_stmt_use(Bytecode *code, Stmt stmt)
+static int compile_stmt_use(Bytecode *code, Stmt stmt, CompileResult *compile_result)
 {
     int result = 0;
     StmtUse stmt_use = TO_STMT_USE(stmt);
@@ -2113,7 +2130,7 @@ static int compile_stmt_use(Bytecode *code, Stmt stmt)
     return result;
 }
 
-static int compile_stmt_yield(Bytecode *code, Stmt stmt)
+static int compile_stmt_yield(Bytecode *code, Stmt stmt, CompileResult *compile_result)
 {
     int result = 0;
 
@@ -2130,7 +2147,7 @@ static int compile_stmt_yield(Bytecode *code, Stmt stmt)
     return result;
 }
 
-static int compile_stmt_assert(Bytecode *code, Stmt stmt)
+static int compile_stmt_assert(Bytecode *code, Stmt stmt, CompileResult *compile_result)
 {
     int result = 0;
 
@@ -2141,7 +2158,7 @@ static int compile_stmt_assert(Bytecode *code, Stmt stmt)
     return result;
 }
 
-typedef int (*CompileHandlerFn)(Bytecode *code, Stmt stmt);
+typedef int (*CompileHandlerFn)(Bytecode *code, Stmt stmt, CompileResult *compile_result);
 
 typedef struct
 {
@@ -2169,9 +2186,9 @@ static CompileHandler stmt_handler[] = {
     [STMT_ASSERT] = {.fn = compile_stmt_assert, .name = "STMT_ASSERT"},
 };
 
-static int compile_stmt(Bytecode *code, Stmt stmt)
+static int compile_stmt(Bytecode *code, Stmt stmt, CompileResult *compile_result)
 {
-    return stmt_handler[stmt.kind].fn(code, stmt);
+    return stmt_handler[stmt.kind].fn(code, stmt, compile_result);
 }
 
 CompileResult compile(DynArray_Stmt *ast)
@@ -2184,11 +2201,10 @@ CompileResult compile(DynArray_Stmt *ast)
     int compile_result;
     for (size_t i = 0; i < ast->count; i++)
     {
-        compile_result = compile_stmt(chunk, ast->data[i]);
+        compile_result = compile_stmt(chunk, ast->data[i], &result);
         if (compile_result == -1)
         {
             result.is_ok = false;
-            result.msg = "compiler error";
             result.chunk = chunk;
             return result;
         }

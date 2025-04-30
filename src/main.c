@@ -103,6 +103,8 @@ cleanup_after_compile:
     free(compiler);
     free_chunk(compile_result.chunk);
     free(compile_result.chunk);
+    if (compile_result.msg)
+        free(compile_result.msg);
 
 cleanup_after_parse:
     for (size_t i = 0; i < cooked_ast.count; i++)
