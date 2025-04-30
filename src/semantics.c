@@ -10,7 +10,7 @@ static size_t make_temp(void)
     return tmp++;
 }
 
-static size_t number_length(size_t n)
+static size_t numlen(size_t n)
 {
     size_t i;
 
@@ -26,7 +26,7 @@ static size_t number_length(size_t n)
 
 static size_t label_length(const char *label, size_t n)
 {
-    return strlen(label) + number_length(n) + 1;
+    return strlen(label) + numlen(n) + 1;
 }
 
 DynArray_Stmt loop_label_program(DynArray_Stmt stmts, char *current)
