@@ -13,6 +13,7 @@
 #include "semantics.h"
 #include "table.h"
 #include "tokenizer.h"
+#include "util.h"
 
 #ifdef venom_debug_compiler
 static bool is_last(Module *parent, Module *child)
@@ -1966,9 +1967,11 @@ static void emit_named_jump(Bytecode *code, char *label)
 static int compile_stmt_break(Bytecode *code, Stmt stmt, CompileResult *compile_result)
 {
     int result = 0;
-
-    char *exit_label = malloc(256);
-    snprintf(exit_label, 256, "%s_exit", stmt.as.stmt_break.label);
+    
+    size_t len = lblen(stmt.as.stmt_break.label, 0) + strlen("_exit"); 
+    
+    char *exit_label = malloc(len);
+    snprintf(exit_label, len, "%s_exit", stmt.as.stmt_break.label);
     emit_loop_cleanup(code);
     emit_named_jump(code, exit_label);
     free(exit_label);

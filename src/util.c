@@ -50,3 +50,24 @@ char *read_file(const char *path)
     fclose(file);
     return buffer;
 }
+
+size_t numlen(size_t n)
+{
+    size_t i;
+
+    i = 0;
+
+    do {
+        n /= 10;
+        i++;
+    } while (n != 0);
+
+    return i;
+}
+
+size_t lblen(const char *label, size_t n)
+{
+    return strlen(label) + numlen(n) + 1;
+}
+
+
