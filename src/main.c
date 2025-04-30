@@ -65,9 +65,6 @@ static int run(Arguments *args)
         goto cleanup_after_parse;
     }
 
-    Bytecode chunk;
-    init_chunk(&chunk);
-
     Compiler *compiler = current_compiler = new_compiler();
 
     Module current_mod = {.path = own_string(args->file), .imports = {0}, .parent = NULL};
@@ -77,36 +74,35 @@ static int run(Arguments *args)
 
     table_insert(compiler->compiled_modules, args->file, compiler->current_mod);
 
-    int compile_result;
-    for (size_t i = 0; i < cooked_ast.count; i++)
+    CompileResult compile_result = compile(&cooked_ast);
+
+    if (!compile_result.is_ok)
     {
-        compile_result = compile(&chunk, cooked_ast.data[i]);
-        if (compile_result == -1)
-        {
-            result = -1;
-            goto cleanup_after_compile;
-        }
+        fprintf(stderr, "compiler: %s\n", compile_result.msg);
+        result = -1;
+        goto cleanup_after_compile;
     }
 
-    dynarray_insert(&chunk.code, OP_HLT);
+    Bytecode *chunk = compile_result.chunk;
 
     if (args->ir)
     {
-        disassemble(&chunk);
+        disassemble(chunk);
         goto cleanup_after_compile;
     }
 
     VM vm;
     init_vm(&vm);
 
-    result = exec(&vm, &chunk);
+    result = exec(&vm, chunk);
 
     free_vm(&vm);
 
 cleanup_after_compile:
     free_compiler(compiler);
     free(compiler);
-    free_chunk(&chunk);
+    free_chunk(compile_result.chunk);
+    free(compile_result.chunk);
 
 cleanup_after_parse:
     for (size_t i = 0; i < cooked_ast.count; i++)

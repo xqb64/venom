@@ -8,6 +8,7 @@
 #include <string.h>
 
 #include "compiler.h"
+#include "disassembler.h"
 #include "dynarray.h"
 #include "math.h"
 #include "object.h"

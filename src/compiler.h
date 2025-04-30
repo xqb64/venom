@@ -137,13 +137,20 @@ typedef struct Compiler
     Table_FunctionPtr *builtins;
 } Compiler;
 
+typedef struct
+{
+    Bytecode *chunk;
+    bool is_ok;
+    char *msg;
+} CompileResult;
+
 void init_chunk(Bytecode *code);
 void free_chunk(Bytecode *code);
 
 Compiler *new_compiler(void);
 void free_compiler(Compiler *compiler);
 
-int compile(Bytecode *code, Stmt stmt);
+CompileResult compile(DynArray_Stmt *ast);
 
 extern Compiler *current_compiler;
 

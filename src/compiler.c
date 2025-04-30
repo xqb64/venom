@@ -547,10 +547,10 @@ static Function *resolve_func(char *name)
     if (result == -1)                     \
         return result;                    \
 
-#define COMPILE(code, stmt)         \
-    result = compile(code, (stmt)); \
-    if (result == -1)               \
-        return result;              \
+#define COMPILE_STMT(code, stmt)          \
+    result = compile_stmt(code, (stmt));  \
+    if (result == -1)                     \
+        return result;                    \
 
 static int compile_expr(Bytecode *code, Expr exp);
 
@@ -1400,6 +1400,8 @@ static int compile_expr(Bytecode *code, Expr exp)
     return expression_handler[exp.kind].fn(code, exp);
 }
 
+static int compile_stmt(Bytecode *code, Stmt stmt);
+
 static int compile_stmt_print(Bytecode *code, Stmt stmt)
 {
     int result = 0;
@@ -1495,7 +1497,7 @@ static int compile_stmt_block(Bytecode *code, Stmt stmt)
     /* Compile the body of the black. */
     for (size_t i = 0; i < s.stmts.count; i++)
     {
-        COMPILE(code, s.stmts.data[i]);
+        COMPILE_STMT(code, s.stmts.data[i]);
     }
 
     end_scope(code);
@@ -1523,7 +1525,7 @@ static int compile_stmt_if(Bytecode *code, Stmt stmt)
      * find out its size. */
     int then_jump = emit_placeholder(code, OP_JZ);
 
-    COMPILE(code, *s.then_branch);
+    COMPILE_STMT(code, *s.then_branch);
 
     /* Then, we emit OP_JMP, which jumps over the else branch, in
      * case the then branch was taken. */
@@ -1535,7 +1537,7 @@ static int compile_stmt_if(Bytecode *code, Stmt stmt)
     /* Then, we compile the else branch if it exists. */
     if (s.else_branch != NULL)
     {
-        COMPILE(code, *s.else_branch);
+        COMPILE_STMT(code, *s.else_branch);
     }
 
     /* Finally, we patch the else jump. If the else branch wasn't
@@ -1576,7 +1578,7 @@ static int compile_stmt_while(Bytecode *code, Stmt stmt)
     dynarray_insert(&current_compiler->loop_depths, current_compiler->depth);
 
     /* Then, we compile the body of the loop. */
-    COMPILE(code, *s.body);
+    COMPILE_STMT(code, *s.body);
 
     /* Pop the loop depth as it's no longer needed. */
     dynarray_pop(&current_compiler->loop_depths);
@@ -1678,7 +1680,7 @@ static int compile_stmt_for(Bytecode *code, Stmt stmt)
     dynarray_insert(&current_compiler->loop_depths, current_compiler->depth);
 
     /* Compile the loop body. */
-    COMPILE(code, *s.body);
+    COMPILE_STMT(code, *s.body);
 
     /* Pop the loop depth as it's no longer needed. */
     dynarray_pop(&current_compiler->loop_depths);
@@ -1784,7 +1786,7 @@ static int compile_stmt_fn(Bytecode *code, Stmt stmt)
     int jump = emit_placeholder(code, OP_JMP);
 
     /* Compile the function body. */
-    COMPILE(code, *s.body);
+    COMPILE_STMT(code, *s.body);
 
     /* Finally, patch the jump. */
     patch_placeholder(code, jump);
@@ -1822,7 +1824,7 @@ static int compile_stmt_deco(Bytecode *code, Stmt stmt)
 {
     int result = 0;
 
-    COMPILE(code, *stmt.as.stmt_deco.fn);
+    COMPILE_STMT(code, *stmt.as.stmt_deco.fn);
 
     emit_byte(code, OP_GET_GLOBAL);
     emit_uint32(code, add_string(code, stmt.as.stmt_deco.fn->as.stmt_fn.name));
@@ -1987,7 +1989,7 @@ static int compile_stmt_impl(Bytecode *code, Stmt stmt)
             .location = code->code.count + 3,
         };
         table_insert(blueprint->methods, func.name, ALLOC(f));
-        COMPILE(code, s.methods.data[i]);
+        COMPILE_STMT(code, s.methods.data[i]);
     }
 
     emit_byte(code, OP_IMPL);
@@ -2074,7 +2076,7 @@ static int compile_stmt_use(Bytecode *code, Stmt stmt)
 
         for (size_t i = 0; i < cooked_ast.count; i++)
         {
-            COMPILE(code, cooked_ast.data[i]);
+            COMPILE_STMT(code, cooked_ast.data[i]);
         }
 
         current_compiler->current_mod = old_module;
@@ -2147,7 +2149,7 @@ typedef struct
     char *name;
 } CompileHandler;
 
-static CompileHandler handler[] = {
+static CompileHandler stmt_handler[] = {
     [STMT_PRINT] = {.fn = compile_stmt_print, .name = "STMT_PRINT"},
     [STMT_LET] = {.fn = compile_stmt_let, .name = "STMT_LET"},
     [STMT_EXPR] = {.fn = compile_stmt_expr, .name = "STMT_EXPR"},
@@ -2167,7 +2169,35 @@ static CompileHandler handler[] = {
     [STMT_ASSERT] = {.fn = compile_stmt_assert, .name = "STMT_ASSERT"},
 };
 
-int compile(Bytecode *code, Stmt stmt)
+static int compile_stmt(Bytecode *code, Stmt stmt)
 {
-    return handler[stmt.kind].fn(code, stmt);
+    return stmt_handler[stmt.kind].fn(code, stmt);
+}
+
+CompileResult compile(DynArray_Stmt *ast)
+{
+    CompileResult result = {0};
+
+    Bytecode *chunk = malloc(sizeof(Bytecode));
+    init_chunk(chunk);
+
+    int compile_result;
+    for (size_t i = 0; i < ast->count; i++)
+    {
+        compile_result = compile_stmt(chunk, ast->data[i]);
+        if (compile_result == -1)
+        {
+            result.is_ok = false;
+            result.msg = "compiler error";
+            result.chunk = chunk;
+            return result;
+        }
+    }
+
+    dynarray_insert(&chunk->code, OP_HLT);
+
+    result.is_ok = true;
+    result.chunk = chunk;
+
+    return result;
 }
