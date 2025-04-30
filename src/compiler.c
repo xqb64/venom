@@ -2197,8 +2197,11 @@ static int compile_stmt(Bytecode *code, Stmt stmt, CompileResult *compile_result
 
 void free_compile_result(CompileResult *result)
 {
-    free_chunk(result->chunk);
-    free(result->chunk);
+    if (result->chunk)
+    {
+        free_chunk(result->chunk);
+        free(result->chunk);
+    }
     if (result->msg)
     {
         free(result->msg);
