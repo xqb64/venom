@@ -13,7 +13,7 @@
 
 #define CONSUME(parser, token_type, err)                         \
     ({                                                           \
-        TokenResult r = consume((parser), (token_type), (err));  \
+        TokenResult r = consume((parser), (token_type));         \
         if (!r.is_ok)                                            \
             return (ParseFnResult) {.is_ok = false, .msg = err}; \
         r.token;                                                 \
@@ -27,12 +27,12 @@
         r.as.expr;                           \
     })
 
-#define HANDLE_STMT(kind, ...)                 \
-    ({                                         \
-        ParseFnResult r = kind((parser));      \
-        if (!r.is_ok)                          \
-            return r;                          \
-        r.as.stmt;                             \
+#define HANDLE_STMT(kind, ...)            \
+    ({                                    \
+        ParseFnResult r = kind((parser)); \
+        if (!r.is_ok)                     \
+            return r;                     \
+        r.as.stmt;                        \
     })
 
 void init_parser(Parser *parser, DynArray_Token *tokens)
@@ -83,7 +83,7 @@ static bool match(Parser *parser, int size, ...)
     return false;
 }
 
-static TokenResult consume(Parser *parser, TokenType type, char *message)
+static TokenResult consume(Parser *parser, TokenType type)
 {
     if (check(parser, type))
         return (TokenResult) {.token = advance(parser), .is_ok = true};
