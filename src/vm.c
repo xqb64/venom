@@ -1537,4 +1537,7 @@ ExecResult exec(VM *vm, Bytecode *code)
     bail:
         return r;
     }
+
+#undef HANDLE
+#undef DISPATCH
 }
