@@ -1,10 +1,11 @@
 #ifndef venom_semantics_h
 #define venom_semantics_h
 
-#include "parser.h"
+#include "ast.h"
 
 typedef struct
 {
+    DynArray_Stmt ast; 
     bool is_ok;
     char *msg;
 } LoopLabelResult;
