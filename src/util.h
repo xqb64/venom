@@ -8,6 +8,7 @@ char *own_string_n(const char *string, int n);
 char *read_file(const char *path);
 size_t numlen(size_t n);
 size_t lblen(const char *lb, size_t n);
+int alloc_err_str(char **dst, const char *fmt, ...);
 
 /* The purpose of the ALLOC macro is to take an
  * existing object, put it on the heap and ret-

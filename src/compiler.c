@@ -58,28 +58,10 @@ static void print_module_tree(Compiler *compiler, Module *parent, Module *mod, i
 }
 #endif
 
-static inline int alloc_error_str(char **dst, const char *fmt, ...)
-{
-    va_list args;
-    va_start(args, fmt);
-
-    int len = vsnprintf(NULL, 0, fmt, args);
-    if (len < 0)
-        return -1;
-
-    *dst = malloc(len + 1);
-
-    va_start(args, fmt);
-    vsnprintf(*dst, len + 1, fmt, args);
-    va_end(args);
-
-    return 0;
-}
-
 #define COMPILER_ERROR(...)                                 \
     do                                                      \
     {                                                       \
-        alloc_error_str(&compile_result->msg, __VA_ARGS__); \
+        alloc_err_str(&compile_result->msg, __VA_ARGS__);   \
         compile_result->is_ok = false;                      \
         return -1;                                          \
     } while (0)

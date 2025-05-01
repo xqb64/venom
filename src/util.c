@@ -1,5 +1,6 @@
 #include "util.h"
 
+#include <stdarg.h>
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
@@ -68,6 +69,24 @@ size_t numlen(size_t n)
 size_t lblen(const char *label, size_t n)
 {
     return strlen(label) + numlen(n) + 1;
+}
+
+int alloc_err_str(char **dst, const char *fmt, ...)
+{
+    va_list args;
+    va_start(args, fmt);
+
+    int len = vsnprintf(NULL, 0, fmt, args);
+    if (len < 0)
+        return -1;
+
+    *dst = malloc(len + 1);
+
+    va_start(args, fmt);
+    vsnprintf(*dst, len + 1, fmt, args);
+    va_end(args);
+
+    return 0;
 }
 
 
