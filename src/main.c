@@ -137,8 +137,8 @@ static Arguments parse_args(int argc, char *argv[])
     int do_parse = 0;
     int do_ir = 0;
 
-    int opt, idx;
-    while ((opt = getopt_long(argc, argv, "lpi", long_opts, &idx)) != -1)
+    int opt, opt_idx = 0;
+    while ((opt = getopt_long(argc, argv, "lpi", long_opts, &opt_idx)) != -1)
     {
         switch (opt)
         {
