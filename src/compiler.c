@@ -2058,8 +2058,8 @@ static CompileResult compile_stmt_use(Bytecode *code, Stmt stmt)
             exit(1);
         }
 
-        DynArray_Stmt raw_ast = parse_result.ast;
-        DynArray_Stmt cooked_ast = loop_label_program(raw_ast, NULL);
+        DynArray_Stmt ast = parse_result.ast;
+        loop_label_program(&ast, NULL);
 
         Module *old_module = current_compiler->current_mod;
 
@@ -2075,18 +2075,18 @@ static CompileResult compile_stmt_use(Bytecode *code, Stmt stmt)
         if (is_cyclic(current_compiler, importee))
             COMPILER_ERROR("Cycle.");
 
-        for (size_t i = 0; i < cooked_ast.count; i++)
+        for (size_t i = 0; i < ast.count; i++)
         {
-            COMPILE_STMT(code, cooked_ast.data[i]);
+            COMPILE_STMT(code, ast.data[i]);
         }
 
         current_compiler->current_mod = old_module;
 
-        for (size_t i = 0; i < cooked_ast.count; i++)
+        for (size_t i = 0; i < ast.count; i++)
         {
-            free_stmt(cooked_ast.data[i]);
+            free_stmt(ast.data[i]);
         }
-        dynarray_free(&cooked_ast);
+        dynarray_free(&ast);
 
         dynarray_free(&tokens);
 

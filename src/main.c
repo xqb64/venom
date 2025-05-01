@@ -56,12 +56,12 @@ static int run(Arguments *args)
         goto cleanup_after_parse;
     }
 
-    DynArray_Stmt raw_ast = parse_result.ast;
-    DynArray_Stmt cooked_ast = loop_label_program(raw_ast, NULL);
+    DynArray_Stmt ast = parse_result.ast;
+    loop_label_program(&ast, NULL);
 
     if (args->parse)
     {
-        pretty_print(&cooked_ast);
+        pretty_print(&ast);
         goto cleanup_after_parse;
     }
 
@@ -74,7 +74,7 @@ static int run(Arguments *args)
 
     table_insert(compiler->compiled_modules, args->file, compiler->current_mod);
 
-    CompileResult compile_result = compile(&cooked_ast);
+    CompileResult compile_result = compile(&ast);
 
     if (!compile_result.is_ok)
     {
@@ -111,11 +111,11 @@ cleanup_after_compile:
     free_compile_result(&compile_result);
 
 cleanup_after_parse:
-    for (size_t i = 0; i < cooked_ast.count; i++)
+    for (size_t i = 0; i < ast.count; i++)
     {
-        free_stmt(cooked_ast.data[i]);
+        free_stmt(ast.data[i]);
     }
-    dynarray_free(&cooked_ast);
+    dynarray_free(&ast);
 
 cleanup_after_lex:
     dynarray_free(&tokenize_result.tokens);

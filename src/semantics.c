@@ -12,13 +12,12 @@ static size_t mktmp(void)
     return tmp++;
 }
 
-DynArray_Stmt loop_label_program(DynArray_Stmt stmts, char *current)
+void loop_label_program(DynArray_Stmt *stmts, char *current)
 {
-    for (size_t i = 0; i < stmts.count; i++)
+    for (size_t i = 0; i < stmts->count; i++)
     {
-        loop_label_stmt(&stmts.data[i], current);
+        loop_label_stmt(&stmts->data[i], current);
     }
-    return stmts;
 }
 
 void loop_label_stmt(Stmt *stmt, char *current)
@@ -66,7 +65,7 @@ void loop_label_stmt(Stmt *stmt, char *current)
             break;
         }
         case STMT_BLOCK: {
-            stmt->as.stmt_block.stmts = loop_label_program(stmt->as.stmt_block.stmts, current);
+            loop_label_program(&stmt->as.stmt_block.stmts, current);
             break;
         }
         case STMT_IF: {
