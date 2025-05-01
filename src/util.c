@@ -58,7 +58,8 @@ size_t numlen(size_t n)
 
     i = 0;
 
-    do {
+    do
+    {
         n /= 10;
         i++;
     } while (n != 0);
@@ -88,5 +89,3 @@ int alloc_err_str(char **dst, const char *fmt, ...)
 
     return 0;
 }
-
-

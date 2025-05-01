@@ -1,9 +1,10 @@
 #include "semantics.h"
-#include "util.h"
 
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
+
+#include "util.h"
 
 static size_t mktmp(void)
 {
