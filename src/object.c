@@ -67,12 +67,18 @@ void print_object(Object *object)
     }
 }
 
+static inline bool is_refcounted(Object *obj)
+{
+    return IS_CLOSURE(*obj) || IS_STRUCT(*obj) || IS_STRING(*obj) || IS_ARRAY(*obj) ||
+           IS_GENERATOR(*obj);
+}
+
 void free_table_object(const Table_Object *table)
 {
     for (size_t i = 0; i < table->count; i++)
     {
         Object obj = table->items[i];
-        if (IS_CLOSURE(obj) || IS_STRUCT(obj) || IS_STRING(obj) || IS_ARRAY(obj))
+        if (is_refcounted(&obj))
         {
             objdecref(&obj);
         }
