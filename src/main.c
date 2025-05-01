@@ -94,8 +94,15 @@ static int run(Arguments *args)
     VM vm;
     init_vm(&vm);
 
-    result = exec(&vm, chunk);
+    ExecResult exec_result = exec(&vm, chunk);
+    if (!exec_result.is_ok)
+    {
+        fprintf(stderr, "vm: %s\n", exec_result.msg);
+        result = -1;
+        goto cleanup_after_exec; /* just for the symmetry */
+    }
 
+cleanup_after_exec:
     free_vm(&vm);
 
 cleanup_after_compile:

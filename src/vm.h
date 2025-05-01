@@ -32,8 +32,14 @@ typedef struct
     size_t fs_count;
 } VM;
 
+typedef struct
+{
+    bool is_ok;
+    char *msg;
+} ExecResult;
+
 void init_vm(VM *vm);
 void free_vm(VM *vm);
-int exec(VM *vm, Bytecode *code);
+ExecResult exec(VM *vm, Bytecode *code);
 
 #endif
