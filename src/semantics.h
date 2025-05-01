@@ -3,7 +3,13 @@
 
 #include "parser.h"
 
-void loop_label_program(DynArray_Stmt *stmts, char *current);
-void loop_label_stmt(Stmt *stmt, char *current);
+typedef struct
+{
+    bool is_ok;
+    char *msg;
+} LoopLabelResult;
+
+LoopLabelResult loop_label_program(DynArray_Stmt *stmts, char *current);
+LoopLabelResult loop_label_stmt(Stmt *stmt, char *current);
 
 #endif

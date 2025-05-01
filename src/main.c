@@ -57,7 +57,14 @@ static int run(Arguments *args)
     }
 
     DynArray_Stmt ast = parse_result.ast;
-    loop_label_program(&ast, NULL);
+
+    LoopLabelResult loop_label_result = loop_label_program(&ast, NULL);
+    if (!loop_label_result.is_ok)
+    {
+        fprintf(stderr, "loop labeler: %s\n", loop_label_result.msg);
+        result = -1;
+        goto cleanup_after_parse;
+    }
 
     if (args->parse)
     {
