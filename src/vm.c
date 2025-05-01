@@ -8,7 +8,9 @@
 #include <string.h>
 
 #include "compiler.h"
+#ifdef venom_debug_vm
 #include "disassembler.h"
+#endif
 #include "dynarray.h"
 #include "math.h"
 #include "object.h"
