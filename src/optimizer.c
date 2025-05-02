@@ -47,18 +47,35 @@ void optimize_expr(Expr *expr)
 
 void optimize_stmt(Stmt *stmt)
 {
-    if (stmt->kind == STMT_PRINT)
+    switch (stmt->kind)
     {
-        Expr *expr = &stmt->as.stmt_print.exp;
-        optimize_expr(expr);
-    }
-    else if (stmt->kind == STMT_FN)
-    {
-        optimize_stmt(stmt->as.stmt_fn.body);
-    }
-    else if (stmt->kind == STMT_BLOCK)
-    {
-        optimize(&stmt->as.stmt_block.stmts);
+        case STMT_PRINT: {
+            Expr *expr = &stmt->as.stmt_print.exp;
+            optimize_expr(expr);
+            break;
+        }
+        case STMT_LET: {
+            Expr *expr = &stmt->as.stmt_let.initializer;
+            optimize_expr(expr);
+            break;
+        }
+        case STMT_FN: {
+            optimize_stmt(stmt->as.stmt_fn.body);
+            break;
+        }
+        case STMT_IF: {
+            optimize_expr(&stmt->as.stmt_if.condition);
+            optimize_stmt(stmt->as.stmt_if.then_branch);
+            if (stmt->as.stmt_if.else_branch)
+                optimize_stmt(stmt->as.stmt_if.else_branch);
+            break;
+        }
+        case STMT_BLOCK: {
+            optimize(&stmt->as.stmt_block.stmts);
+            break;
+        }
+        default:
+            break;
     }
 }
 
