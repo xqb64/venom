@@ -7,6 +7,7 @@
 #include <stdlib.h>
 #include <string.h>
 
+#include "ast.h"
 #include "dynarray.h"
 #include "tokenizer.h"
 #include "util.h"
@@ -108,7 +109,7 @@ static ParseFnResult boolean(Parser *parser)
     }
     ExprLit e = {
         .kind = LIT_BOOL,
-        .as.bval = b,
+        .as._bool = b,
     };
     return (ParseFnResult) {.as.expr = AS_EXPR_LIT(e), .is_ok = true, .msg = NULL};
 }
@@ -123,7 +124,7 @@ static ParseFnResult number(Parser *parser)
 {
     ExprLit e = {
         .kind = LIT_NUM,
-        .as.dval = strtod(parser->previous.start, NULL),
+        .as._double = strtod(parser->previous.start, NULL),
     };
     return (ParseFnResult) {.as.expr = AS_EXPR_LIT(e), .is_ok = true, .msg = NULL};
 }
@@ -132,7 +133,7 @@ static ParseFnResult string(Parser *parser)
 {
     ExprLit e = {
         .kind = LIT_STR,
-        .as.sval = own_string_n(parser->previous.start, parser->previous.length - 1),
+        .as.str = own_string_n(parser->previous.start, parser->previous.length - 1),
     };
     return (ParseFnResult) {.as.expr = AS_EXPR_LIT(e), .is_ok = true, .msg = NULL};
 }
@@ -227,6 +228,10 @@ static char *operator(Token token)
             return "<<";
         case TOKEN_LESS_LESS_EQUAL:
             return "<<=";
+        case TOKEN_DOUBLE_AMPERSAND:
+            return "&&";
+        case TOKEN_DOUBLE_PIPE:
+            return "||";
         default:
             assert(0);
     }
@@ -444,14 +449,14 @@ static ParseFnResult and_(Parser *parser)
     Expr expr = HANDLE_EXPR(bitwise_or, parser);
     while (match(parser, 1, TOKEN_DOUBLE_AMPERSAND))
     {
-        char *op = own_string_n(parser->previous.start, parser->previous.length);
+        char *op = operator(parser->previous);
         Expr right = HANDLE_EXPR(bitwise_or, parser);
-        ExprLogic logexp = {
+        ExprBin binexp = {
             .lhs = ALLOC(expr),
             .rhs = ALLOC(right),
             .op = op,
         };
-        expr = AS_EXPR_LOG(logexp);
+        expr = AS_EXPR_BIN(binexp);
     }
     return (ParseFnResult) {.as.expr = expr, .is_ok = true, .msg = NULL};
 }
@@ -461,14 +466,14 @@ static ParseFnResult or_(Parser *parser)
     Expr expr = HANDLE_EXPR(and_, parser);
     while (match(parser, 1, TOKEN_DOUBLE_PIPE))
     {
-        char *op = own_string_n(parser->previous.start, parser->previous.length);
+        char *op = operator(parser->previous);
         Expr right = HANDLE_EXPR(and_, parser);
-        ExprLogic logexp = {
+        ExprBin binexp = {
             .lhs = ALLOC(expr),
             .rhs = ALLOC(right),
             .op = op,
         };
-        expr = AS_EXPR_LOG(logexp);
+        expr = AS_EXPR_BIN(binexp);
     }
     return (ParseFnResult) {.as.expr = expr, .is_ok = true, .msg = NULL};
 }

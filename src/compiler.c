@@ -563,7 +563,7 @@ static CompileResult compile_expr_lit(Bytecode *code, Expr exp)
     {
         case LIT_BOOL: {
             emit_byte(code, OP_TRUE);
-            if (!e.as.bval)
+            if (!e.as._bool)
             {
                 emit_byte(code, OP_NOT);
             }
@@ -571,11 +571,11 @@ static CompileResult compile_expr_lit(Bytecode *code, Expr exp)
         }
         case LIT_NUM: {
             emit_byte(code, OP_CONST);
-            emit_double(code, e.as.dval);
+            emit_double(code, e.as._double);
             break;
         }
         case LIT_STR: {
-            uint32_t str_idx = add_string(code, e.as.sval);
+            uint32_t str_idx = add_string(code, e.as.str);
             emit_byte(code, OP_STR);
             emit_uint32(code, str_idx);
             break;
@@ -723,6 +723,75 @@ static CompileResult compile_expr_bin(Bytecode *code, Expr exp)
     ExprBin e = TO_EXPR_BIN(exp);
 
     COMPILE_EXPR(code, *e.lhs);
+    
+    if (strcmp(e.op, "&&") == 0)
+    {
+        /* For logical AND, we need to short-circuit when the left-hand side
+         * is falsey.
+         *
+         * When the left-hand side is falsey, OP_JZ will eat the boolean va-
+         * lue (false) that was on the stack after evaluating the left side,
+         * meaning we need to make sure to put that value back on the stack.
+         * This does not happen if the left-hand side is truthy, because the
+         * result of evaluating the rhs will remain on the stack. So, we ne-
+         * ed to only care about pushing false.
+         *
+         * We emit two jumps:
+         *
+         * 1) a conditional jump that jumps over both a) the right-hand side
+         * and b) the other jump (described below), and goes straight to pu-
+         * shing 'false'
+         * 2) an unconditional jump that skips over pushing 'false'
+         *
+         * If the left-hand side is falsey, the vm will take the conditional
+         * jump and push 'false' on the stack.
+         *
+         * If the left-hand side is truthy, the vm will evaluate the rhs and
+         * skip over pushing 'false' on the stack. */
+        int end_jump = emit_placeholder(code, OP_JZ);
+        COMPILE_EXPR(code, *e.rhs);
+        int false_jump = emit_placeholder(code, OP_JMP);
+        patch_placeholder(code, end_jump);
+        emit_bytes(code, 2, OP_TRUE, OP_NOT);
+        patch_placeholder(code, false_jump);
+
+        return result;
+    }
+    else if (strcmp(e.op, "||") == 0)
+    {
+        /* For logical OR, we need to short-circuit when the left-hand side
+         * is truthy.
+         *
+         * When lhs is truthy, OP_JZ will eat the bool value (true) that was
+         * on the stack after evaluating the lhs, which means we need to put
+         * the value back on the stack. This doesn't happen if lhs is falsey
+         * because the result of evaluating the right-hand side would remain
+         * on the stack. So, we need to only care about pushing 'true'.
+         *
+         * We emit two jumps:
+         *
+         * 1) a conditional jump that jumps over both a) pushing true and b)
+         * the other jump (described below), and goes straight to evaluating
+         * the right-hand side
+         * 2) an unconditional jump that jumps over evaluating the rhs
+         *
+         * If the left-hand side is truthy, the vm will first push 'true' on
+         * the stack and then fall through to the second, unconditional jump
+         * that skips evaluating the right-hand side.
+         *
+         * If the lhs is falsey, the vm will jump over pushing 'true' on the
+         * stack and the unconditional jump, and will evaluate the rhs. */
+        int true_jump = emit_placeholder(code, OP_JZ);
+        emit_byte(code, OP_TRUE);
+        int end_jump = emit_placeholder(code, OP_JMP);
+        patch_placeholder(code, true_jump);
+        COMPILE_EXPR(code, *e.rhs);
+        patch_placeholder(code, end_jump);
+    
+        return result;
+    }
+
+
     COMPILE_EXPR(code, *e.rhs);
 
     if (strcmp(e.op, "+") == 0)
@@ -792,7 +861,7 @@ static CompileResult compile_expr_bin(Bytecode *code, Expr exp)
     else if (strcmp(e.op, "++") == 0)
     {
         emit_byte(code, OP_STRCAT);
-    }
+    } 
 
     return result;
 }
@@ -863,7 +932,7 @@ static CompileResult compile_expr_call(Bytecode *code, Expr exp)
             {
                 COMPILE_EXPR(code, e.arguments.data[0]);
                 emit_bytes(code, 1, OP_GETATTR);
-                emit_uint32(code, add_string(code, e.arguments.data[1].as.expr_lit.as.sval));
+                emit_uint32(code, add_string(code, e.arguments.data[1].as.expr_lit.as.str));
             }
             else if (strcmp(b->name, "setattr") == 0)
             {
@@ -871,7 +940,7 @@ static CompileResult compile_expr_call(Bytecode *code, Expr exp)
                 COMPILE_EXPR(code, e.arguments.data[2]);
 
                 emit_byte(code, OP_SETATTR);
-                emit_uint32(code, add_string(code, e.arguments.data[1].as.expr_lit.as.sval));
+                emit_uint32(code, add_string(code, e.arguments.data[1].as.expr_lit.as.str));
             }
 
             return result;
@@ -1188,81 +1257,6 @@ static CompileResult compile_expr_ass(Bytecode *code, Expr exp)
     return result;
 }
 
-static CompileResult compile_expr_log(Bytecode *code, Expr exp)
-{
-    CompileResult result = {.is_ok = true, .chunk = NULL, .msg = NULL};
-
-    ExprLogic e = TO_EXPR_LOG(exp);
-
-    /* We first compile the left-hand side of the expression. */
-    COMPILE_EXPR(code, *e.lhs);
-
-    if (strcmp(e.op, "&&") == 0)
-    {
-        /* For logical AND, we need to short-circuit when the left-hand side
-         * is falsey.
-         *
-         * When the left-hand side is falsey, OP_JZ will eat the boolean va-
-         * lue (false) that was on the stack after evaluating the left side,
-         * meaning we need to make sure to put that value back on the stack.
-         * This does not happen if the left-hand side is truthy, because the
-         * result of evaluating the rhs will remain on the stack. So, we ne-
-         * ed to only care about pushing false.
-         *
-         * We emit two jumps:
-         *
-         * 1) a conditional jump that jumps over both a) the right-hand side
-         * and b) the other jump (described below), and goes straight to pu-
-         * shing 'false'
-         * 2) an unconditional jump that skips over pushing 'false'
-         *
-         * If the left-hand side is falsey, the vm will take the conditional
-         * jump and push 'false' on the stack.
-         *
-         * If the left-hand side is truthy, the vm will evaluate the rhs and
-         * skip over pushing 'false' on the stack. */
-        int end_jump = emit_placeholder(code, OP_JZ);
-        COMPILE_EXPR(code, *e.rhs);
-        int false_jump = emit_placeholder(code, OP_JMP);
-        patch_placeholder(code, end_jump);
-        emit_bytes(code, 2, OP_TRUE, OP_NOT);
-        patch_placeholder(code, false_jump);
-    }
-    else if (strcmp(e.op, "||") == 0)
-    {
-        /* For logical OR, we need to short-circuit when the left-hand side
-         * is truthy.
-         *
-         * When lhs is truthy, OP_JZ will eat the bool value (true) that was
-         * on the stack after evaluating the lhs, which means we need to put
-         * the value back on the stack. This doesn't happen if lhs is falsey
-         * because the result of evaluating the right-hand side would remain
-         * on the stack. So, we need to only care about pushing 'true'.
-         *
-         * We emit two jumps:
-         *
-         * 1) a conditional jump that jumps over both a) pushing true and b)
-         * the other jump (described below), and goes straight to evaluating
-         * the right-hand side
-         * 2) an unconditional jump that jumps over evaluating the rhs
-         *
-         * If the left-hand side is truthy, the vm will first push 'true' on
-         * the stack and then fall through to the second, unconditional jump
-         * that skips evaluating the right-hand side.
-         *
-         * If the lhs is falsey, the vm will jump over pushing 'true' on the
-         * stack and the unconditional jump, and will evaluate the rhs. */
-        int true_jump = emit_placeholder(code, OP_JZ);
-        emit_byte(code, OP_TRUE);
-        int end_jump = emit_placeholder(code, OP_JMP);
-        patch_placeholder(code, true_jump);
-        COMPILE_EXPR(code, *e.rhs);
-        patch_placeholder(code, end_jump);
-    }
-
-    return result;
-}
-
 static CompileResult compile_expr_struct(Bytecode *code, Expr exp)
 {
     CompileResult result = {.is_ok = true, .chunk = NULL, .msg = NULL};
@@ -1387,7 +1381,6 @@ static CompileExprHandler expression_handler[] = {
     [EXPR_CALL] = {.fn = compile_expr_call, .name = "EXPR_CALL"},
     [EXPR_GET] = {.fn = compile_expr_get, .name = "EXPR_GET"},
     [EXPR_ASS] = {.fn = compile_expr_ass, .name = "EXPR_ASS"},
-    [EXPR_LOG] = {.fn = compile_expr_log, .name = "EXPR_LOG"},
     [EXPR_STRUCT] = {.fn = compile_expr_struct, .name = "EXPR_STRUCT"},
     [EXPR_S_INIT] = {.fn = compile_expr_s_init, .name = "EXPR_S_INIT"},
     [EXPR_ARRAY] = {.fn = compile_expr_array, .name = "EXPR_ARRAY"},

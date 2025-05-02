@@ -13,7 +13,7 @@ static void free_expression(Expr e)
             ExprLit litexpr = TO_EXPR_LIT(e);
             if (litexpr.kind == LIT_STR)
             {
-                free(litexpr.as.sval);
+                free(litexpr.as.str);
             }
             break;
         }
@@ -43,15 +43,6 @@ static void free_expression(Expr e)
             free_expression(*assignexpr.rhs);
             free(assignexpr.lhs);
             free(assignexpr.rhs);
-            break;
-        }
-        case EXPR_LOG: {
-            ExprLogic logicexpr = TO_EXPR_LOG(e);
-            free_expression(*logicexpr.lhs);
-            free_expression(*logicexpr.rhs);
-            free(logicexpr.lhs);
-            free(logicexpr.rhs);
-            free(logicexpr.op);
             break;
         }
         case EXPR_CALL: {
@@ -237,7 +228,7 @@ static void print_literal(ExprLit *literal)
     switch (literal->kind)
     {
         case LIT_BOOL: {
-            printf("%s", literal->as.bval ? "true" : "false");
+            printf("%s", literal->as._bool ? "true" : "false");
             break;
         }
         case LIT_NULL: {
@@ -245,11 +236,11 @@ static void print_literal(ExprLit *literal)
             break;
         }
         case LIT_NUM: {
-            printf("%.16g", literal->as.dval);
+            printf("%.16g", literal->as._double);
             break;
         }
         case LIT_STR: {
-            printf("%s", literal->as.sval);
+            printf("%s", literal->as.str);
             break;
         }
         default:
@@ -272,14 +263,6 @@ static void print_expression(Expr *expr, int indent)
             printf("Literal(\n");
             INDENT(indent + 4);
             print_literal(&expr->as.expr_lit);
-            break;
-        }
-        case EXPR_LOG: {
-            printf("Logical(\n");
-            INDENT(indent + 4);
-            print_expression(expr->as.expr_log.lhs, indent + 4);
-            printf(" %s ", expr->as.expr_bin.op);
-            print_expression(expr->as.expr_log.rhs, indent + 4);
             break;
         }
         case EXPR_ARRAY: {

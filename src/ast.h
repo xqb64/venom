@@ -20,7 +20,6 @@ typedef enum
     EXPR_CALL,
     EXPR_GET,
     EXPR_ASS,
-    EXPR_LOG,
     EXPR_STRUCT,
     EXPR_S_INIT,
     EXPR_ARRAY,
@@ -39,9 +38,9 @@ typedef struct ExprLit
 {
     LiteralKind kind;
     union {
-        bool bval;
-        double dval;
-        char *sval;
+        bool _bool;
+        double _double;
+        char *str;
     } as;
 } ExprLit;
 
@@ -83,13 +82,6 @@ typedef struct ExprAssign
     char *op;
 } ExprAssign;
 
-typedef struct ExprLogic
-{
-    Expr *lhs;
-    Expr *rhs;
-    char *op;
-} ExprLogic;
-
 typedef struct ExprStruct
 {
     char *name;
@@ -126,7 +118,6 @@ typedef struct Expr
         ExprCall expr_call;
         ExprGet expr_get;
         ExprAssign expr_ass;
-        ExprLogic expr_log;
         ExprStruct expr_struct;
         ExprStructInit expr_s_init;
         ExprArray expr_array;

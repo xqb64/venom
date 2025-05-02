@@ -7,15 +7,15 @@
 
 void optimize_expr(Expr *expr)
 {
-#define HANDLE_OPER(oper)                                                            \
+#define HANDLE_OPER(type, oper, literal)                                                            \
     do                                                                               \
     {                                                                                \
         if (strcmp(binexpr->op, #oper) == 0)                                         \
         {                                                                            \
-            double optimized_double = lhs.as.dval oper rhs.as.dval;                  \
-            ExprLit optimized_expr = {.kind = LIT_NUM, .as.dval = optimized_double}; \
+            type folded_const = lhs.as._##type oper rhs.as._##type;                  \
+            ExprLit folded_expr = {.kind = LIT_##literal, .as._##type = folded_const}; \
                                                                                      \
-            expr->as.expr_lit = optimized_expr;                                      \
+            expr->as.expr_lit = folded_expr;                                      \
             expr->kind = EXPR_LIT;                                                   \
         }                                                                            \
     } while (0)
@@ -34,11 +34,19 @@ void optimize_expr(Expr *expr)
 
             if (lhs.kind == LIT_NUM && rhs.kind == LIT_NUM)
             {
-                HANDLE_OPER(+);
-                HANDLE_OPER(-);
-                HANDLE_OPER(*);
-                HANDLE_OPER(/);
-            }
+                HANDLE_OPER(double, +, NUM);
+                HANDLE_OPER(double, -, NUM);
+                HANDLE_OPER(double, *, NUM);
+                HANDLE_OPER(double, /, NUM);
+                HANDLE_OPER(bool, <, BOOL);
+                HANDLE_OPER(bool, >, BOOL);
+                HANDLE_OPER(bool, <=, BOOL);
+                HANDLE_OPER(bool, >=, BOOL);
+                HANDLE_OPER(bool, ==, BOOL);
+                HANDLE_OPER(bool, !=, BOOL);
+                HANDLE_OPER(bool, &&, BOOL);
+                HANDLE_OPER(bool, ||, BOOL);
+           }
         }
     }
 
