@@ -4,6 +4,7 @@
 #include "ast.h"
 #include "compiler.h"
 #include "disassembler.h"
+#include "optimizer.h"
 #include "parser.h"
 #include "semantics.h"
 #include "tokenizer.h"
@@ -15,6 +16,7 @@ typedef struct
     int lex;
     int parse;
     int ir;
+    int optimize;
     char *file;
 } Arguments;
 
@@ -76,6 +78,14 @@ static int run(Arguments *args)
     DynArray_Stmt cooked_ast = loop_label_result.ast;
 
     if (args->parse)
+    {
+        pretty_print(&cooked_ast);
+        goto cleanup_after_parse;
+    }
+
+    optimize(&cooked_ast);
+
+    if (args->optimize)
     {
         pretty_print(&cooked_ast);
         goto cleanup_after_parse;
@@ -146,15 +156,17 @@ static ArgParseResult parse_args(int argc, char *argv[])
         {"lex", no_argument, 0, 'l'},
         {"parse", no_argument, 0, 'p'},
         {"ir", no_argument, 0, 'i'},
+        {"optimize", no_argument, 0, 'o'},
         {0, 0, 0, 0},
     };
 
     int do_lex = 0;
     int do_parse = 0;
     int do_ir = 0;
+    int do_optimize = 0;
 
     int opt, opt_idx = 0;
-    while ((opt = getopt_long(argc, argv, "lpi", long_opts, &opt_idx)) != -1)
+    while ((opt = getopt_long(argc, argv, "lpio", long_opts, &opt_idx)) != -1)
     {
         switch (opt)
         {
@@ -167,9 +179,13 @@ static ArgParseResult parse_args(int argc, char *argv[])
             case 'i':
                 do_ir = 1;
                 break;
+            case 'o':
+                do_optimize = 1;
+                break;
             default:
-                return (ArgParseResult) {
-                    .args = {0}, .msg = "usage: %s [--lex] [--parse] [--ir]", .is_ok = false};
+                return (ArgParseResult) {.args = {0},
+                                         .msg = "usage: %s [--lex] [--parse] [--ir] [--optimize]",
+                                         .is_ok = false};
         }
     }
 
@@ -184,6 +200,7 @@ static ArgParseResult parse_args(int argc, char *argv[])
     args.lex = do_lex;
     args.parse = do_parse;
     args.ir = do_ir;
+    args.optimize = do_optimize;
     args.file = argv[optind];
 
     return (ArgParseResult) {.args = args, .is_ok = true, .msg = NULL};
