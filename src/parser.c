@@ -11,12 +11,12 @@
 #include "tokenizer.h"
 #include "util.h"
 
-#define CONSUME(parser, token_type, err)                         \
-    ({                                                           \
-        TokenResult r = consume((parser), (token_type));         \
-        if (!r.is_ok)                                            \
-            return (ParseFnResult) {.is_ok = false, .msg = err}; \
-        r.token;                                                 \
+#define CONSUME(parser, token_type, err)                                    \
+    ({                                                                      \
+        TokenResult r = consume((parser), (token_type));                    \
+        if (!r.is_ok)                                                       \
+            return (ParseFnResult) {.is_ok = false, .msg = err, .as = {0}}; \
+        r.token;                                                            \
     })
 
 #define HANDLE_EXPR(kind, ...)               \
@@ -87,7 +87,7 @@ static TokenResult consume(Parser *parser, TokenType type)
 {
     if (check(parser, type))
         return (TokenResult) {.token = advance(parser), .is_ok = true};
-    return (TokenResult) {.is_ok = false};
+    return (TokenResult) {.is_ok = false, .token = {0}};
 }
 
 static ParseFnResult boolean(Parser *parser)
@@ -110,12 +110,13 @@ static ParseFnResult boolean(Parser *parser)
         .kind = LIT_BOOL,
         .as.bval = b,
     };
-    return (ParseFnResult) {.as.expr = AS_EXPR_LIT(e), .is_ok = true};
+    return (ParseFnResult) {.as.expr = AS_EXPR_LIT(e), .is_ok = true, .msg = NULL};
 }
 
 static ParseFnResult null(Parser *parser)
 {
-    return (ParseFnResult) {.as.expr = AS_EXPR_LIT((ExprLit) {.kind = LIT_NULL}), .is_ok = true};
+    return (ParseFnResult) {
+        .as.expr = AS_EXPR_LIT((ExprLit) {.kind = LIT_NULL}), .is_ok = true, .msg = NULL};
 }
 
 static ParseFnResult number(Parser *parser)
@@ -124,7 +125,7 @@ static ParseFnResult number(Parser *parser)
         .kind = LIT_NUM,
         .as.dval = strtod(parser->previous.start, NULL),
     };
-    return (ParseFnResult) {.as.expr = AS_EXPR_LIT(e), .is_ok = true};
+    return (ParseFnResult) {.as.expr = AS_EXPR_LIT(e), .is_ok = true, .msg = NULL};
 }
 
 static ParseFnResult string(Parser *parser)
@@ -133,7 +134,7 @@ static ParseFnResult string(Parser *parser)
         .kind = LIT_STR,
         .as.sval = own_string_n(parser->previous.start, parser->previous.length - 1),
     };
-    return (ParseFnResult) {.as.expr = AS_EXPR_LIT(e), .is_ok = true};
+    return (ParseFnResult) {.as.expr = AS_EXPR_LIT(e), .is_ok = true, .msg = NULL};
 }
 
 static ParseFnResult variable(Parser *parser)
@@ -141,7 +142,7 @@ static ParseFnResult variable(Parser *parser)
     ExprVar e = {
         .name = own_string_n(parser->previous.start, parser->previous.length),
     };
-    return (ParseFnResult) {.as.expr = AS_EXPR_VAR(e), .is_ok = true};
+    return (ParseFnResult) {.as.expr = AS_EXPR_VAR(e), .is_ok = true, .msg = NULL};
 }
 
 static ParseFnResult literal(Parser *parser)
@@ -246,7 +247,7 @@ static ParseFnResult finish_call(Parser *parser, Expr callee)
         .callee = ALLOC(callee),
         .arguments = arguments,
     };
-    return (ParseFnResult) {.as.expr = AS_EXPR_CALL(e), .is_ok = true};
+    return (ParseFnResult) {.as.expr = AS_EXPR_CALL(e), .is_ok = true, .msg = NULL};
 }
 
 static ParseFnResult call(Parser *parser)
@@ -287,7 +288,7 @@ static ParseFnResult call(Parser *parser)
             break;
         }
     }
-    return (ParseFnResult) {.as.expr = expr, .is_ok = true};
+    return (ParseFnResult) {.as.expr = expr, .is_ok = true, .msg = NULL};
 }
 
 static ParseFnResult unary(Parser *parser)
@@ -297,7 +298,7 @@ static ParseFnResult unary(Parser *parser)
         char *op = own_string_n(parser->previous.start, parser->previous.length);
         Expr right = HANDLE_EXPR(unary, parser);
         ExprUnary e = {.exp = ALLOC(right), .op = op};
-        return (ParseFnResult) {.as.expr = AS_EXPR_UNA(e), .is_ok = true};
+        return (ParseFnResult) {.as.expr = AS_EXPR_UNA(e), .is_ok = true, .msg = NULL};
     }
     return call(parser);
 }
@@ -316,7 +317,7 @@ static ParseFnResult factor(Parser *parser)
         };
         expr = AS_EXPR_BIN(binexp);
     }
-    return (ParseFnResult) {.as.expr = expr, .is_ok = true};
+    return (ParseFnResult) {.as.expr = expr, .is_ok = true, .msg = NULL};
 }
 
 static ParseFnResult term(Parser *parser)
@@ -333,7 +334,7 @@ static ParseFnResult term(Parser *parser)
         };
         expr = AS_EXPR_BIN(binexp);
     }
-    return (ParseFnResult) {.as.expr = expr, .is_ok = true};
+    return (ParseFnResult) {.as.expr = expr, .is_ok = true, .msg = NULL};
 }
 
 static ParseFnResult bitwise_shift(Parser *parser)
@@ -350,7 +351,7 @@ static ParseFnResult bitwise_shift(Parser *parser)
         };
         expr = AS_EXPR_BIN(binexp);
     }
-    return (ParseFnResult) {.as.expr = expr, .is_ok = true};
+    return (ParseFnResult) {.as.expr = expr, .is_ok = true, .msg = NULL};
 }
 
 static ParseFnResult comparison(Parser *parser)
@@ -367,7 +368,7 @@ static ParseFnResult comparison(Parser *parser)
         };
         expr = AS_EXPR_BIN(binexp);
     }
-    return (ParseFnResult) {.as.expr = expr, .is_ok = true};
+    return (ParseFnResult) {.as.expr = expr, .is_ok = true, .msg = NULL};
 }
 
 static ParseFnResult equality(Parser *parser)
@@ -384,7 +385,7 @@ static ParseFnResult equality(Parser *parser)
         };
         expr = AS_EXPR_BIN(binexp);
     }
-    return (ParseFnResult) {.as.expr = expr, .is_ok = true};
+    return (ParseFnResult) {.as.expr = expr, .is_ok = true, .msg = NULL};
 }
 
 static ParseFnResult bitwise_and(Parser *parser)
@@ -401,7 +402,7 @@ static ParseFnResult bitwise_and(Parser *parser)
         };
         expr = AS_EXPR_BIN(binexp);
     }
-    return (ParseFnResult) {.as.expr = expr, .is_ok = true};
+    return (ParseFnResult) {.as.expr = expr, .is_ok = true, .msg = NULL};
 }
 
 static ParseFnResult bitwise_xor(Parser *parser)
@@ -418,7 +419,7 @@ static ParseFnResult bitwise_xor(Parser *parser)
         };
         expr = AS_EXPR_BIN(binexp);
     }
-    return (ParseFnResult) {.as.expr = expr, .is_ok = true};
+    return (ParseFnResult) {.as.expr = expr, .is_ok = true, .msg = NULL};
 }
 
 static ParseFnResult bitwise_or(Parser *parser)
@@ -435,7 +436,7 @@ static ParseFnResult bitwise_or(Parser *parser)
         };
         expr = AS_EXPR_BIN(binexp);
     }
-    return (ParseFnResult) {.as.expr = expr, .is_ok = true};
+    return (ParseFnResult) {.as.expr = expr, .is_ok = true, .msg = NULL};
 }
 
 static ParseFnResult and_(Parser *parser)
@@ -452,7 +453,7 @@ static ParseFnResult and_(Parser *parser)
         };
         expr = AS_EXPR_LOG(logexp);
     }
-    return (ParseFnResult) {.as.expr = expr, .is_ok = true};
+    return (ParseFnResult) {.as.expr = expr, .is_ok = true, .msg = NULL};
 }
 
 static ParseFnResult or_(Parser *parser)
@@ -469,7 +470,7 @@ static ParseFnResult or_(Parser *parser)
         };
         expr = AS_EXPR_LOG(logexp);
     }
-    return (ParseFnResult) {.as.expr = expr, .is_ok = true};
+    return (ParseFnResult) {.as.expr = expr, .is_ok = true, .msg = NULL};
 }
 
 static ParseFnResult assignment(Parser *parser)
@@ -488,7 +489,7 @@ static ParseFnResult assignment(Parser *parser)
         };
         expr = AS_EXPR_ASS(assignexp);
     }
-    return (ParseFnResult) {.as.expr = expr, .is_ok = true};
+    return (ParseFnResult) {.as.expr = expr, .is_ok = true, .msg = NULL};
 }
 
 static ParseFnResult expression(Parser *parser)
@@ -500,7 +501,7 @@ static ParseFnResult grouping(Parser *parser)
 {
     Expr exp = HANDLE_EXPR(expression, parser);
     CONSUME(parser, TOKEN_RIGHT_PAREN, "Unmatched closing parentheses.");
-    return (ParseFnResult) {.as.expr = exp, .is_ok = true};
+    return (ParseFnResult) {.as.expr = exp, .is_ok = true, .msg = NULL};
 }
 
 static ParseFnResult block(Parser *parser)
@@ -517,7 +518,7 @@ static ParseFnResult block(Parser *parser)
         .stmts = stmts,
     };
     parser->depth--;
-    return (ParseFnResult) {.as.stmt = AS_STMT_BLOCK(body), .is_ok = true};
+    return (ParseFnResult) {.as.stmt = AS_STMT_BLOCK(body), .is_ok = true, .msg = NULL};
 }
 
 static ParseFnResult struct_initializer(Parser *parser)
@@ -541,7 +542,7 @@ static ParseFnResult struct_initializer(Parser *parser)
         .initializers = initializers,
         .name = name,
     };
-    return (ParseFnResult) {.as.expr = AS_EXPR_STRUCT(structexp), .is_ok = true};
+    return (ParseFnResult) {.as.expr = AS_EXPR_STRUCT(structexp), .is_ok = true, .msg = NULL};
 }
 
 static ParseFnResult array_initializer(Parser *parser)
@@ -555,7 +556,7 @@ static ParseFnResult array_initializer(Parser *parser)
     ExprArray arrayexp = {
         .elements = initializers,
     };
-    return (ParseFnResult) {.as.expr = AS_EXPR_ARRAY(arrayexp), .is_ok = true};
+    return (ParseFnResult) {.as.expr = AS_EXPR_ARRAY(arrayexp), .is_ok = true, .msg = NULL};
 }
 
 static ParseFnResult primary(Parser *parser)
@@ -594,7 +595,7 @@ static ParseFnResult print_statement(Parser *parser)
     Expr exp = HANDLE_EXPR(expression, parser);
     CONSUME(parser, TOKEN_SEMICOLON, "Expected semicolon at the end of the expression.");
     StmtPrint stmt = {.exp = exp};
-    return (ParseFnResult) {.as.stmt = AS_STMT_PRINT(stmt), .is_ok = true};
+    return (ParseFnResult) {.as.stmt = AS_STMT_PRINT(stmt), .is_ok = true, .msg = NULL};
 }
 
 static ParseFnResult let_statement(Parser *parser)
@@ -608,7 +609,7 @@ static ParseFnResult let_statement(Parser *parser)
 
     CONSUME(parser, TOKEN_SEMICOLON, "Expected semicolon at the end of the statement.");
     StmtLet stmt = {.name = name, .initializer = initializer};
-    return (ParseFnResult) {.as.stmt = AS_STMT_LET(stmt), .is_ok = true};
+    return (ParseFnResult) {.as.stmt = AS_STMT_LET(stmt), .is_ok = true, .msg = NULL};
 }
 
 static ParseFnResult expression_statement(Parser *parser)
@@ -616,7 +617,7 @@ static ParseFnResult expression_statement(Parser *parser)
     Expr expr = HANDLE_EXPR(expression, parser);
     CONSUME(parser, TOKEN_SEMICOLON, "Expected ';' after expression");
     StmtExpr stmt = {.exp = expr};
-    return (ParseFnResult) {.as.stmt = AS_STMT_EXPR(stmt), .is_ok = true};
+    return (ParseFnResult) {.as.stmt = AS_STMT_EXPR(stmt), .is_ok = true, .msg = NULL};
 }
 
 static ParseFnResult if_statement(Parser *parser)
@@ -641,7 +642,7 @@ static ParseFnResult if_statement(Parser *parser)
         .else_branch = else_branch,
         .condition = condition,
     };
-    return (ParseFnResult) {.as.stmt = AS_STMT_IF(stmt), .is_ok = true};
+    return (ParseFnResult) {.as.stmt = AS_STMT_IF(stmt), .is_ok = true, .msg = NULL};
 }
 
 static ParseFnResult while_statement(Parser *parser)
@@ -659,7 +660,7 @@ static ParseFnResult while_statement(Parser *parser)
         .condition = condition,
         .body = ALLOC(body),
     };
-    return (ParseFnResult) {.as.stmt = AS_STMT_WHILE(stmt), .is_ok = true};
+    return (ParseFnResult) {.as.stmt = AS_STMT_WHILE(stmt), .is_ok = true, .msg = NULL};
 }
 
 static ParseFnResult for_statement(Parser *parser)
@@ -688,7 +689,7 @@ static ParseFnResult for_statement(Parser *parser)
         .body = ALLOC(body),
     };
 
-    return (ParseFnResult) {.as.stmt = AS_STMT_FOR(stmt), .is_ok = true};
+    return (ParseFnResult) {.as.stmt = AS_STMT_FOR(stmt), .is_ok = true, .msg = NULL};
 }
 
 static ParseFnResult function_statement(Parser *parser)
@@ -712,7 +713,7 @@ static ParseFnResult function_statement(Parser *parser)
         .body = ALLOC(body),
         .parameters = parameters,
     };
-    return (ParseFnResult) {.as.stmt = AS_STMT_FN(stmt), .is_ok = true};
+    return (ParseFnResult) {.as.stmt = AS_STMT_FN(stmt), .is_ok = true, .msg = NULL};
 }
 
 static ParseFnResult decorator_statement(Parser *parser)
@@ -724,7 +725,7 @@ static ParseFnResult decorator_statement(Parser *parser)
         .name = own_string_n(decorator.start, decorator.length),
         .fn = ALLOC(fn),
     };
-    return (ParseFnResult) {.as.stmt = AS_STMT_DECO(stmt), .is_ok = true};
+    return (ParseFnResult) {.as.stmt = AS_STMT_DECO(stmt), .is_ok = true, .msg = NULL};
 }
 
 static ParseFnResult return_statement(Parser *parser)
@@ -734,21 +735,21 @@ static ParseFnResult return_statement(Parser *parser)
     StmtRet stmt = {
         .returnval = expr,
     };
-    return (ParseFnResult) {.as.stmt = AS_STMT_RETURN(stmt), .is_ok = true};
+    return (ParseFnResult) {.as.stmt = AS_STMT_RETURN(stmt), .is_ok = true, .msg = NULL};
 }
 
 static ParseFnResult break_statement(Parser *parser)
 {
     CONSUME(parser, TOKEN_SEMICOLON, "Expected ';' after break.");
     StmtBreak stmt = {0};
-    return (ParseFnResult) {.as.stmt = AS_STMT_BREAK(stmt), .is_ok = true};
+    return (ParseFnResult) {.as.stmt = AS_STMT_BREAK(stmt), .is_ok = true, .msg = NULL};
 }
 
 static ParseFnResult continue_statement(Parser *parser)
 {
     CONSUME(parser, TOKEN_SEMICOLON, "Expected ';' after continue.");
     StmtContinue stmt = {0};
-    return (ParseFnResult) {.as.stmt = AS_STMT_CONTINUE(stmt), .is_ok = true};
+    return (ParseFnResult) {.as.stmt = AS_STMT_CONTINUE(stmt), .is_ok = true, .msg = NULL};
 }
 
 static ParseFnResult struct_statement(Parser *parser)
@@ -766,7 +767,7 @@ static ParseFnResult struct_statement(Parser *parser)
         .name = own_string_n(name.start, name.length),
         .properties = properties,
     };
-    return (ParseFnResult) {.as.stmt = AS_STMT_STRUCT(stmt), .is_ok = true};
+    return (ParseFnResult) {.as.stmt = AS_STMT_STRUCT(stmt), .is_ok = true, .msg = NULL};
 }
 
 static ParseFnResult impl_statement(Parser *parser)
@@ -782,7 +783,7 @@ static ParseFnResult impl_statement(Parser *parser)
         .name = own_string_n(name.start, name.length),
         .methods = methods,
     };
-    return (ParseFnResult) {.as.stmt = AS_STMT_IMPL(stmt), .is_ok = true};
+    return (ParseFnResult) {.as.stmt = AS_STMT_IMPL(stmt), .is_ok = true, .msg = NULL};
 }
 
 static ParseFnResult use_statement(Parser *parser)
@@ -790,7 +791,7 @@ static ParseFnResult use_statement(Parser *parser)
     Token path = CONSUME(parser, TOKEN_STRING, "Module path should be a string");
     CONSUME(parser, TOKEN_SEMICOLON, "expected semicolon at the end of use statement");
     StmtUse stmt = {.path = own_string_n(path.start, path.length - 1)};
-    return (ParseFnResult) {.as.stmt = AS_STMT_USE(stmt), .is_ok = true};
+    return (ParseFnResult) {.as.stmt = AS_STMT_USE(stmt), .is_ok = true, .msg = NULL};
 }
 
 static ParseFnResult yield_statement(Parser *parser)
@@ -798,7 +799,7 @@ static ParseFnResult yield_statement(Parser *parser)
     Expr expr = HANDLE_EXPR(expression, parser);
     CONSUME(parser, TOKEN_SEMICOLON, "Expected ';' after yield statement.");
     StmtYield stmt = {.exp = expr};
-    return (ParseFnResult) {.as.stmt = AS_STMT_YIELD(stmt), .is_ok = true};
+    return (ParseFnResult) {.as.stmt = AS_STMT_YIELD(stmt), .is_ok = true, .msg = NULL};
 }
 
 static ParseFnResult assert_statement(Parser *parser)
@@ -806,7 +807,7 @@ static ParseFnResult assert_statement(Parser *parser)
     Expr expr = HANDLE_EXPR(expression, parser);
     CONSUME(parser, TOKEN_SEMICOLON, "Expected ';' after assert statement.");
     StmtAssert stmt = {.exp = expr};
-    return (ParseFnResult) {.as.stmt = AS_STMT_ASSERT(stmt), .is_ok = true};
+    return (ParseFnResult) {.as.stmt = AS_STMT_ASSERT(stmt), .is_ok = true, .msg = NULL};
 }
 
 static ParseFnResult statement(Parser *parser)
