@@ -5,7 +5,7 @@
 
 typedef struct
 {
-    DynArray_Stmt ast; 
+    DynArray_Stmt ast;
     bool is_ok;
     char *msg;
 } LoopLabelResult;

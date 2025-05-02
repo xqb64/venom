@@ -168,14 +168,16 @@ static ArgParseResult parse_args(int argc, char *argv[])
                 do_ir = 1;
                 break;
             default:
-                return (ArgParseResult){.args = {0}, .msg = "usage: %s [--lex] [--parse] [--ir]", .is_ok = false};
+                return (ArgParseResult) {
+                    .args = {0}, .msg = "usage: %s [--lex] [--parse] [--ir]", .is_ok = false};
         }
     }
 
     if (do_lex + do_parse + do_ir > 1)
     {
-        return (ArgParseResult){.args = {0}, .msg = "Please specify exactly one option.", .is_ok = false}; 
-   }
+        return (ArgParseResult) {
+            .args = {0}, .msg = "Please specify exactly one option.", .is_ok = false};
+    }
 
     Arguments args;
 
@@ -184,7 +186,7 @@ static ArgParseResult parse_args(int argc, char *argv[])
     args.ir = do_ir;
     args.file = argv[optind];
 
-    return (ArgParseResult){ .args = args, .is_ok = true, .msg = NULL};
+    return (ArgParseResult) {.args = args, .is_ok = true, .msg = NULL};
 }
 
 int main(int argc, char *argv[])
@@ -198,7 +200,7 @@ int main(int argc, char *argv[])
         fprintf(stderr, "venom: %s\n", arg_parse_result.msg);
         return -1;
     }
-    
+
     args = arg_parse_result.args;
     int result = run(&args);
 
