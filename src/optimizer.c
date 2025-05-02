@@ -42,7 +42,7 @@ void optimize_expr(Expr *expr)
         }
     }
 
-#undef HANDLE_OP
+#undef HANDLE_OPER
 }
 
 void optimize_stmt(Stmt *stmt)
