@@ -723,7 +723,7 @@ static CompileResult compile_expr_bin(Bytecode *code, Expr exp)
     ExprBin e = TO_EXPR_BIN(exp);
 
     COMPILE_EXPR(code, *e.lhs);
-    
+
     if (strcmp(e.op, "&&") == 0)
     {
         /* For logical AND, we need to short-circuit when the left-hand side
@@ -787,10 +787,9 @@ static CompileResult compile_expr_bin(Bytecode *code, Expr exp)
         patch_placeholder(code, true_jump);
         COMPILE_EXPR(code, *e.rhs);
         patch_placeholder(code, end_jump);
-    
+
         return result;
     }
-
 
     COMPILE_EXPR(code, *e.rhs);
 
@@ -861,7 +860,7 @@ static CompileResult compile_expr_bin(Bytecode *code, Expr exp)
     else if (strcmp(e.op, "++") == 0)
     {
         emit_byte(code, OP_STRCAT);
-    } 
+    }
 
     return result;
 }
