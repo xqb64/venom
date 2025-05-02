@@ -18,6 +18,13 @@ typedef struct
     char *file;
 } Arguments;
 
+typedef struct
+{
+    Arguments args;
+    bool is_ok;
+    char *msg;
+} ArgParseResult;
+
 static int run(Arguments *args)
 {
     int result = 0;
@@ -133,7 +140,7 @@ cleanup_after_lex:
     return result;
 }
 
-static Arguments parse_args(int argc, char *argv[])
+static ArgParseResult parse_args(int argc, char *argv[])
 {
     static const struct option long_opts[] = {
         {"lex", no_argument, 0, 'l'},
@@ -161,16 +168,14 @@ static Arguments parse_args(int argc, char *argv[])
                 do_ir = 1;
                 break;
             default:
-                fprintf(stderr, "usage: %s [--lex] [--parse] [--ir]\n", argv[0]);
-                exit(1);
+                return (ArgParseResult){.args = {0}, .msg = "usage: %s [--lex] [--parse] [--ir]", .is_ok = false};
         }
     }
 
     if (do_lex + do_parse + do_ir > 1)
     {
-        fprintf(stderr, "Please specify exactly one option.\n");
-        exit(1);
-    }
+        return (ArgParseResult){.args = {0}, .msg = "Please specify exactly one option.", .is_ok = false}; 
+   }
 
     Arguments args;
 
@@ -179,14 +184,22 @@ static Arguments parse_args(int argc, char *argv[])
     args.ir = do_ir;
     args.file = argv[optind];
 
-    return args;
+    return (ArgParseResult){ .args = args, .is_ok = true, .msg = NULL};
 }
 
 int main(int argc, char *argv[])
 {
+    ArgParseResult arg_parse_result;
     Arguments args;
 
-    args = parse_args(argc, argv);
+    arg_parse_result = parse_args(argc, argv);
+    if (!arg_parse_result.is_ok)
+    {
+        fprintf(stderr, "venom: %s\n", arg_parse_result.msg);
+        return -1;
+    }
+    
+    args = arg_parse_result.args;
     int result = run(&args);
 
     return result;
