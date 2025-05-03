@@ -5,38 +5,38 @@
 
 #include "ast.h"
 
-void optimize_expr(Expr *expr)
+void optimize_expr(Expr *target)
 {
-#define HANDLE_OPER(result_type, expr_type, oper, literal_kind)                                    \
-    do                                                                                             \
-    {                                                                                              \
-        if (strcmp((expr_type)->op, #oper) == 0)                                                   \
-        {                                                                                          \
-            result_type folded_const = lhs.as._##result_type oper rhs.as._##result_type;           \
-            ExprLit folded_expr = {.kind = LIT_##literal_kind, .as._##result_type = folded_const}; \
-                                                                                                   \
-            expr->as.expr_lit = folded_expr;                                                       \
-            expr->kind = EXPR_LIT;                                                                 \
-        }                                                                                          \
+#define HANDLE_OPER(type, expr, oper, literal_kind)                                     \
+    do                                                                                  \
+    {                                                                                   \
+        if (strcmp((expr)->op, #oper) == 0)                                             \
+        {                                                                               \
+            type folded_const = lhs.as._##type oper rhs.as._##type;                     \
+            ExprLit folded_expr = {.kind = (literal_kind), .as._##type = folded_const}; \
+                                                                                        \
+            target->as.expr_lit = folded_expr;                                          \
+            target->kind = EXPR_LIT;                                                    \
+        }                                                                               \
     } while (0)
 
-#define APPLY_NUMERIC(expr)              \
-    HANDLE_OPER(double, (expr), +, NUM); \
-    HANDLE_OPER(double, (expr), -, NUM); \
-    HANDLE_OPER(double, (expr), *, NUM); \
-    HANDLE_OPER(double, (expr), /, NUM); \
-    HANDLE_OPER(bool, (expr), <, BOOL);  \
-    HANDLE_OPER(bool, (expr), >, BOOL);  \
-    HANDLE_OPER(bool, (expr), <=, BOOL); \
-    HANDLE_OPER(bool, (expr), >=, BOOL); \
-    HANDLE_OPER(bool, (expr), ==, BOOL); \
-    HANDLE_OPER(bool, (expr), !=, BOOL);
+#define APPLY_NUMERIC(expr)                  \
+    HANDLE_OPER(double, (expr), +, LIT_NUM); \
+    HANDLE_OPER(double, (expr), -, LIT_NUM); \
+    HANDLE_OPER(double, (expr), *, LIT_NUM); \
+    HANDLE_OPER(double, (expr), /, LIT_NUM); \
+    HANDLE_OPER(bool, (expr), <, LIT_BOOL);  \
+    HANDLE_OPER(bool, (expr), >, LIT_BOOL);  \
+    HANDLE_OPER(bool, (expr), <=, LIT_BOOL); \
+    HANDLE_OPER(bool, (expr), >=, LIT_BOOL); \
+    HANDLE_OPER(bool, (expr), ==, LIT_BOOL); \
+    HANDLE_OPER(bool, (expr), !=, LIT_BOOL);
 
-#define APPLY_BOOLEAN(expr)              \
-    HANDLE_OPER(bool, (expr), ==, BOOL); \
-    HANDLE_OPER(bool, (expr), !=, BOOL); \
-    HANDLE_OPER(bool, (expr), &&, BOOL); \
-    HANDLE_OPER(bool, (expr), ||, BOOL);
+#define APPLY_BOOLEAN(expr)                  \
+    HANDLE_OPER(bool, (expr), ==, LIT_BOOL); \
+    HANDLE_OPER(bool, (expr), !=, LIT_BOOL); \
+    HANDLE_OPER(bool, (expr), &&, LIT_BOOL); \
+    HANDLE_OPER(bool, (expr), ||, LIT_BOOL);
 
 #define APPLY(expr)                                                         \
     do                                                                      \
@@ -58,23 +58,23 @@ void optimize_expr(Expr *expr)
         }                                                                   \
     } while (0)
 
-    if (expr->kind == EXPR_BIN)
+    if (target->kind == EXPR_BIN)
     {
-        ExprBin *binexpr = &expr->as.expr_bin;
+        ExprBin *binexpr = &target->as.expr_bin;
 
         optimize_expr(binexpr->lhs);
         optimize_expr(binexpr->rhs);
 
         APPLY(binexpr);
     }
-    else if (expr->kind == EXPR_ASS)
+    else if (target->kind == EXPR_ASS)
     {
-        ExprAssign *assignexpr = &expr->as.expr_ass;
+        ExprAssign *assignexpr = &target->as.expr_ass;
         optimize_expr(assignexpr->rhs);
     }
-    else if (expr->kind == EXPR_CALL)
+    else if (target->kind == EXPR_CALL)
     {
-        ExprCall *callexpr = &expr->as.expr_call;
+        ExprCall *callexpr = &target->as.expr_call;
 
         for (size_t i = 0; i < callexpr->arguments.count; i++)
         {
@@ -82,9 +82,9 @@ void optimize_expr(Expr *expr)
             optimize_expr(arg);
         }
     }
-    else if (expr->kind == EXPR_STRUCT)
+    else if (target->kind == EXPR_STRUCT)
     {
-        ExprStruct *structexpr = &expr->as.expr_struct;
+        ExprStruct *structexpr = &target->as.expr_struct;
 
         for (size_t i = 0; i < structexpr->initializers.count; i++)
         {
@@ -92,9 +92,9 @@ void optimize_expr(Expr *expr)
             optimize_expr(initializer);
         }
     }
-    else if (expr->kind == EXPR_S_INIT)
+    else if (target->kind == EXPR_S_INIT)
     {
-        ExprStructInit *structinitexpr = &expr->as.expr_s_init;
+        ExprStructInit *structinitexpr = &target->as.expr_s_init;
 
         optimize_expr(structinitexpr->value);
     }
