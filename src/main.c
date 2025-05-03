@@ -83,12 +83,9 @@ static int run(Arguments *args)
         goto cleanup_after_parse;
     }
 
-    optimize(&cooked_ast);
-
     if (args->optimize)
     {
-        pretty_print(&cooked_ast);
-        goto cleanup_after_parse;
+        optimize(&cooked_ast);
     }
 
     Compiler *compiler = current_compiler = new_compiler();
