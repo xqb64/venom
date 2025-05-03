@@ -70,10 +70,7 @@ void optimize_expr(Expr *expr)
     else if (expr->kind == EXPR_ASS)
     {
         ExprAssign *assignexpr = &expr->as.expr_ass;
-
         optimize_expr(assignexpr->rhs);
-
-        APPLY(assignexpr);
     }
     else if (expr->kind == EXPR_CALL)
     {
@@ -102,6 +99,9 @@ void optimize_expr(Expr *expr)
         optimize_expr(structinitexpr->value);
     }
 #undef HANDLE_OPER
+#undef APPLY_NUMERIC
+#undef APPLY_BOOLEAN
+#undef APPLY
 }
 
 void optimize_stmt(Stmt *stmt)
@@ -174,6 +174,13 @@ void optimize_stmt(Stmt *stmt)
 
             optimize_stmt(stmt->as.stmt_for.body);
 
+            break;
+        }
+        case STMT_IMPL: {
+            for (size_t i = 0; i < stmt->as.stmt_impl.methods.count; i++)
+            {
+                optimize_stmt(&stmt->as.stmt_impl.methods.data[i]);
+            }
             break;
         }
         default:
