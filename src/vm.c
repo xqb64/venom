@@ -8,9 +8,11 @@
 #include <string.h>
 
 #include "compiler.h"
+
 #ifdef venom_debug_vm
 #include "disassembler.h"
 #endif
+
 #include "dynarray.h"
 #include "math.h"
 #include "object.h"
@@ -60,7 +62,14 @@ static inline uint64_t clamp(double d)
     {                                                 \
         Object b = pop(vm);                           \
         Object a = pop(vm);                           \
+                                                      \
+        if (type(&a) != type(&b))                     \
+        {                                             \
+            RUNTIME_ERROR("cannot '" #op "' objects of different types: '%s' and '%s'", get_object_type(&a), get_object_type(&b));              \
+        }                                             \
+                                                      \
         Object obj = wrapper(AS_NUM(a) op AS_NUM(b)); \
+                                                      \
         push(vm, obj);                                \
     } while (0)
 

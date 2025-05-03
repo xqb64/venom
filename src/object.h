@@ -725,4 +725,25 @@ inline void dealloc(Object *obj)
 #endif
 }
 
+#ifdef NAN_BOXING
+inline ObjectType type(Object *obj)
+{
+    if (IS_ARRAY(*obj)) return OBJ_ARRAY;
+    if (IS_BOOL(*obj)) return OBJ_BOOLEAN;
+    if (IS_CLOSURE(*obj)) return OBJ_CLOSURE;
+    if (IS_GENERATOR(*obj)) return OBJ_GENERATOR;
+    if (IS_NULL(*obj)) return OBJ_NULL;
+    if (IS_NUM(*obj)) return OBJ_NUMBER;
+    if (IS_PTR(*obj)) return OBJ_PTR;
+    if (IS_STRING(*obj)) return OBJ_STRING;
+    if (IS_STRUCT(*obj)) return OBJ_STRUCT;
+    assert(0);
+}
+#else
+inline ObjectType type(Object *obj)
+{
+    return obj->type;
+}
+#endif
+
 #endif
