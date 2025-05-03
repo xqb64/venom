@@ -44,8 +44,14 @@ void optimize_expr(Expr *expr)
                 HANDLE_OPER(bool, >=, BOOL);
                 HANDLE_OPER(bool, ==, BOOL);
                 HANDLE_OPER(bool, !=, BOOL);
+            }
+            
+            if (lhs.kind == LIT_BOOL && rhs.kind == LIT_BOOL)
+            {
+                HANDLE_OPER(bool, ==, BOOL);
+                HANDLE_OPER(bool, !=, BOOL);
                 HANDLE_OPER(bool, &&, BOOL);
-                HANDLE_OPER(bool, ||, BOOL);
+                HANDLE_OPER(bool, ||, BOOL); 
             }
         }
     }
