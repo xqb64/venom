@@ -4,6 +4,7 @@
 #include "ast.h"
 #include "compiler.h"
 #include "disassembler.h"
+#include "dynarray.h"
 #include "optimizer.h"
 #include "parser.h"
 #include "semantics.h"
@@ -85,7 +86,13 @@ static int run(Arguments *args)
 
     if (args->optimize)
     {
-        optimize(&cooked_ast);
+        DynArray_Stmt tmp = optimize(&cooked_ast);
+        for (size_t i = 0; i < cooked_ast.count; i++)
+        {
+            free_stmt(cooked_ast.data[i]);
+        }
+        dynarray_free(&cooked_ast);
+        cooked_ast = tmp;
     }
 
     Compiler *compiler = current_compiler = new_compiler();

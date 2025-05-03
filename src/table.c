@@ -76,3 +76,35 @@ uint32_t hash(const char *key, int length)
     }
     return hash;
 }
+
+void table_remove_impl(Bucket **head, const char *key, void *items, size_t itemsize)
+{
+    Bucket *prev = NULL;
+    Bucket *curr = *head;
+
+    while (curr != NULL)
+    {
+        if (strcmp(curr->key, key) == 0)
+        {
+            if (prev)
+            {
+                prev->next = curr->next;
+            }
+            else
+            {
+                *head = curr->next;
+            }
+
+            // Clear item from items array
+            memset((char *) items + curr->value * itemsize, 0, itemsize);
+
+            // Free the bucket node
+            free(curr->key);
+            free(curr);
+
+            return;
+        }
+        prev = curr;
+        curr = curr->next;
+    }
+}

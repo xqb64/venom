@@ -5,7 +5,7 @@
 #include <stdio.h>
 #include <stdlib.h>
 
-static void free_expression(Expr e)
+void free_expression(Expr e)
 {
     switch (e.kind)
     {
@@ -35,6 +35,7 @@ static void free_expression(Expr e)
             free_expression(*binexpr.rhs);
             free(binexpr.lhs);
             free(binexpr.rhs);
+            free(binexpr.op);
             break;
         }
         case EXPR_ASS: {
@@ -43,6 +44,7 @@ static void free_expression(Expr e)
             free_expression(*assignexpr.rhs);
             free(assignexpr.lhs);
             free(assignexpr.rhs);
+            free(assignexpr.op);
             break;
         }
         case EXPR_CALL: {
@@ -100,7 +102,7 @@ static void free_expression(Expr e)
             break;
         }
         default:
-            break;
+            assert(0);
     }
 }
 
@@ -218,8 +220,21 @@ void free_stmt(Stmt stmt)
             free_expression(TO_STMT_YIELD(stmt).exp);
             break;
         }
-        default:
+        case STMT_ASSERT: {
+            free_expression(TO_STMT_ASSERT(stmt).exp);
             break;
+        }
+        case STMT_BREAK: {
+            free(stmt.as.stmt_break.label);
+            break;
+        }
+        case STMT_CONTINUE: {
+            free(stmt.as.stmt_continue.label);
+            break;
+        }
+        default:
+            print_stmt(&stmt, 0, false);
+            assert(0);
     }
 }
 
@@ -255,7 +270,7 @@ static void print_literal(ExprLit *literal)
             putchar(' ');             \
     } while (0)
 
-static void print_expression(Expr *expr, int indent)
+void print_expression(Expr *expr, int indent)
 {
     switch (expr->kind)
     {
@@ -383,7 +398,7 @@ static void print_expression(Expr *expr, int indent)
     printf(")");
 }
 
-static void print_stmt(Stmt *stmt, int indent, bool continuation)
+void print_stmt(Stmt *stmt, int indent, bool continuation)
 {
     if (!continuation)
         INDENT(indent);

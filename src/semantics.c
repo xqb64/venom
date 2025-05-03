@@ -72,7 +72,7 @@ LoopLabelResult loop_label_stmt(Stmt *stmt, char *current)
             {
                 LOOP_LABEL_ERROR("'break' statement outside the loop");
             }
-            stmt->as.stmt_break.label = current;
+            stmt->as.stmt_break.label = own_string(current);
             break;
         }
         case STMT_CONTINUE: {
@@ -80,7 +80,7 @@ LoopLabelResult loop_label_stmt(Stmt *stmt, char *current)
             {
                 LOOP_LABEL_ERROR("compiler: 'continue' statement outside the loop");
             }
-            stmt->as.stmt_continue.label = current;
+            stmt->as.stmt_continue.label = own_string(current);
             break;
         }
         case STMT_FN: {

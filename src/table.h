@@ -3,6 +3,7 @@
 
 #include <stdint.h>
 #include <stdio.h>
+#include <stdlib.h>
 #include <string.h>
 
 #include "util.h"
@@ -68,5 +69,11 @@ Return type is void*, so make sure to use a pointer of the correct type.
             (table)->items[*item_idx] = (item);                            \
         }                                                                  \
     } while (0)
+
+void table_remove_impl(Bucket **head, const char *key, void *items, size_t itemsize);
+
+#define table_remove(table, key)                                                        \
+    table_remove_impl(&(table)->indexes[hash((key), strlen((key))) % TABLE_MAX], (key), \
+                      (table)->items, sizeof((table)->items[0]))
 
 #endif

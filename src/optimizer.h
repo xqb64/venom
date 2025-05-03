@@ -3,6 +3,6 @@
 
 #include "ast.h"
 
-void optimize(DynArray_Stmt *ast);
+DynArray_Stmt optimize(DynArray_Stmt *ast);
 
 #endif

@@ -313,7 +313,7 @@ static ParseFnResult factor(Parser *parser)
     Expr expr = HANDLE_EXPR(unary, parser);
     while (match(parser, 3, TOKEN_STAR, TOKEN_SLASH, TOKEN_MOD))
     {
-        char *op = operator(parser->previous);
+        char *op = own_string(operator(parser->previous));
         Expr right = HANDLE_EXPR(unary, parser);
         ExprBin binexp = {
             .lhs = ALLOC(expr),
@@ -330,7 +330,7 @@ static ParseFnResult term(Parser *parser)
     Expr expr = HANDLE_EXPR(factor, parser);
     while (match(parser, 3, TOKEN_PLUS, TOKEN_MINUS, TOKEN_PLUSPLUS))
     {
-        char *op = operator(parser->previous);
+        char *op = own_string(operator(parser->previous));
         Expr right = HANDLE_EXPR(factor, parser);
         ExprBin binexp = {
             .lhs = ALLOC(expr),
@@ -347,7 +347,7 @@ static ParseFnResult bitwise_shift(Parser *parser)
     Expr expr = HANDLE_EXPR(term, parser);
     while (match(parser, 2, TOKEN_GREATER_GREATER, TOKEN_LESS_LESS))
     {
-        char *op = operator(parser->previous);
+        char *op = own_string(operator(parser->previous));
         Expr right = HANDLE_EXPR(term, parser);
         ExprBin binexp = {
             .lhs = ALLOC(expr),
@@ -364,7 +364,7 @@ static ParseFnResult comparison(Parser *parser)
     Expr expr = HANDLE_EXPR(bitwise_shift, parser);
     while (match(parser, 4, TOKEN_GREATER, TOKEN_LESS, TOKEN_GREATER_EQUAL, TOKEN_LESS_EQUAL))
     {
-        char *op = operator(parser->previous);
+        char *op = own_string(operator(parser->previous));
         Expr right = HANDLE_EXPR(bitwise_shift, parser);
         ExprBin binexp = {
             .lhs = ALLOC(expr),
@@ -381,7 +381,7 @@ static ParseFnResult equality(Parser *parser)
     Expr expr = HANDLE_EXPR(comparison, parser);
     while (match(parser, 2, TOKEN_DOUBLE_EQUAL, TOKEN_BANG_EQUAL))
     {
-        char *op = operator(parser->previous);
+        char *op = own_string(operator(parser->previous));
         Expr right = HANDLE_EXPR(comparison, parser);
         ExprBin binexp = {
             .lhs = ALLOC(expr),
@@ -398,7 +398,7 @@ static ParseFnResult bitwise_and(Parser *parser)
     Expr expr = HANDLE_EXPR(equality, parser);
     while (match(parser, 1, TOKEN_AMPERSAND))
     {
-        char *op = operator(parser->previous);
+        char *op = own_string(operator(parser->previous));
         Expr right = HANDLE_EXPR(equality, parser);
         ExprBin binexp = {
             .lhs = ALLOC(expr),
@@ -415,7 +415,7 @@ static ParseFnResult bitwise_xor(Parser *parser)
     Expr expr = HANDLE_EXPR(bitwise_and, parser);
     while (match(parser, 1, TOKEN_CARET))
     {
-        char *op = operator(parser->previous);
+        char *op = own_string(operator(parser->previous));
         Expr right = HANDLE_EXPR(bitwise_and, parser);
         ExprBin binexp = {
             .lhs = ALLOC(expr),
@@ -432,7 +432,7 @@ static ParseFnResult bitwise_or(Parser *parser)
     Expr expr = HANDLE_EXPR(bitwise_xor, parser);
     while (match(parser, 1, TOKEN_PIPE))
     {
-        char *op = operator(parser->previous);
+        char *op = own_string(operator(parser->previous));
         Expr right = HANDLE_EXPR(bitwise_xor, parser);
         ExprBin binexp = {
             .lhs = ALLOC(expr),
@@ -449,7 +449,7 @@ static ParseFnResult and_(Parser *parser)
     Expr expr = HANDLE_EXPR(bitwise_or, parser);
     while (match(parser, 1, TOKEN_DOUBLE_AMPERSAND))
     {
-        char *op = operator(parser->previous);
+        char *op = own_string(operator(parser->previous));
         Expr right = HANDLE_EXPR(bitwise_or, parser);
         ExprBin binexp = {
             .lhs = ALLOC(expr),
@@ -466,7 +466,7 @@ static ParseFnResult or_(Parser *parser)
     Expr expr = HANDLE_EXPR(and_, parser);
     while (match(parser, 1, TOKEN_DOUBLE_PIPE))
     {
-        char *op = operator(parser->previous);
+        char *op = own_string(operator(parser->previous));
         Expr right = HANDLE_EXPR(and_, parser);
         ExprBin binexp = {
             .lhs = ALLOC(expr),
