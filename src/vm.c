@@ -57,36 +57,43 @@ static inline uint64_t clamp(double d)
         return (uint64_t) d;
 }
 
-#define BINARY_OP(op, wrapper)                        \
-    do                                                \
-    {                                                 \
-        Object b = pop(vm);                           \
-        Object a = pop(vm);                           \
-                                                      \
-        if (type(&a) != type(&b))                     \
-        {                                             \
-            RUNTIME_ERROR("cannot '" #op "' objects of different types: '%s' and '%s'", get_object_type(&a), get_object_type(&b));              \
-        }                                             \
-                                                      \
-        Object obj = wrapper(AS_NUM(a) op AS_NUM(b)); \
-                                                      \
-        push(vm, obj);                                \
+#define BINARY_OP(op, wrapper)                                                          \
+    do                                                                                  \
+    {                                                                                   \
+        Object b = pop(vm);                                                             \
+        Object a = pop(vm);                                                             \
+                                                                                        \
+        if (type(&a) != type(&b))                                                       \
+        {                                                                               \
+            RUNTIME_ERROR("cannot '" #op "' objects of different types: '%s' and '%s'", \
+                          get_object_type(&a), get_object_type(&b));                    \
+        }                                                                               \
+                                                                                        \
+        Object obj = wrapper(AS_NUM(a) op AS_NUM(b));                                   \
+                                                                                        \
+        push(vm, obj);                                                                  \
     } while (0)
 
-#define BITWISE_OP(op)                            \
-    do                                            \
-    {                                             \
-        Object b = pop(vm);                       \
-        Object a = pop(vm);                       \
-                                                  \
-        uint64_t clamped_a = clamp(AS_NUM(a));    \
-        uint64_t clamped_b = clamp(AS_NUM(b));    \
-                                                  \
-        uint64_t result = clamped_a op clamped_b; \
-                                                  \
-        Object obj = NUM_VAL((double) result);    \
-                                                  \
-        push(vm, obj);                            \
+#define BITWISE_OP(op)                                                                  \
+    do                                                                                  \
+    {                                                                                   \
+        Object b = pop(vm);                                                             \
+        Object a = pop(vm);                                                             \
+                                                                                        \
+        if (type(&a) != type(&b))                                                       \
+        {                                                                               \
+            RUNTIME_ERROR("cannot '" #op "' objects of different types: '%s' and '%s'", \
+                          get_object_type(&a), get_object_type(&b));                    \
+        }                                                                               \
+                                                                                        \
+        uint64_t clamped_a = clamp(AS_NUM(a));                                          \
+        uint64_t clamped_b = clamp(AS_NUM(b));                                          \
+                                                                                        \
+        uint64_t result = clamped_a op clamped_b;                                       \
+                                                                                        \
+        Object obj = NUM_VAL((double) result);                                          \
+                                                                                        \
+        push(vm, obj);                                                                  \
     } while (0)
 
 #define READ_UINT8() (*++(*ip))
