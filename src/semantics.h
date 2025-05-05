@@ -3,11 +3,10 @@
 
 #include "ast.h"
 
-typedef struct
-{
-    DynArray_Stmt ast;
-    bool is_ok;
-    char *msg;
+typedef struct {
+  DynArray_Stmt ast;
+  bool is_ok;
+  char *msg;
 } LoopLabelResult;
 
 LoopLabelResult loop_label_program(DynArray_Stmt *ast, const char *current);

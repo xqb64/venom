@@ -8,859 +8,803 @@
 
 #include "util.h"
 
-static Bucket *clone_bucket(Bucket *src, const Expr *src_items, Expr *dst_items, size_t *dst_count)
-{
-    if (!src)
-        return NULL;
+static Bucket *clone_bucket(Bucket *src, const Expr *src_items, Expr *dst_items,
+                            size_t *dst_count) {
+  if (!src) return NULL;
 
-    Bucket *new = malloc(sizeof(Bucket));
-    new->key = own_string(src->key);
+  Bucket *new = malloc(sizeof(Bucket));
+  new->key = own_string(src->key);
 
-    dst_items[*dst_count] = clone_expr(&src_items[src->value]);
-    new->value = (*dst_count)++;
+  dst_items[*dst_count] = clone_expr(&src_items[src->value]);
+  new->value = (*dst_count)++;
 
-    new->next = clone_bucket(src->next, src_items, dst_items, dst_count);
-    return new;
+  new->next = clone_bucket(src->next, src_items, dst_items, dst_count);
+  return new;
 }
 
-void free_table_expr(const Table_Expr *table)
-{
-    for (size_t i = 0; i < TABLE_MAX; i++)
-    {
-        if (table->indexes[i])
-        {
-            Bucket *head = table->indexes[i];
-            Bucket *tmp;
-            while (head != NULL)
-            {
-                tmp = head;
-                head = head->next;
-                free(tmp->key);
-                free(tmp);
-            }
-        }
+void free_table_expr(const Table_Expr *table) {
+  for (size_t i = 0; i < TABLE_MAX; i++) {
+    if (table->indexes[i]) {
+      Bucket *head = table->indexes[i];
+      Bucket *tmp;
+      while (head != NULL) {
+        tmp = head;
+        head = head->next;
+        free(tmp->key);
+        free(tmp);
+      }
     }
+  }
 
-    for (size_t i = 0; i < table->count; i++)
-    {
-        free_expression(&table->items[i]);
-    }
+  for (size_t i = 0; i < table->count; i++) {
+    free_expression(&table->items[i]);
+  }
 }
 
-Table_Expr clone_table_expr(const Table_Expr *src)
-{
-    Table_Expr clone = {0};
+Table_Expr clone_table_expr(const Table_Expr *src) {
+  Table_Expr clone = {0};
 
-    for (size_t i = 0; i < TABLE_MAX; i++)
-    {
-        if (src->indexes[i])
-        {
-            clone.indexes[i] = clone_bucket(src->indexes[i], src->items, clone.items, &clone.count);
-        }
+  for (size_t i = 0; i < TABLE_MAX; i++) {
+    if (src->indexes[i]) {
+      clone.indexes[i] =
+          clone_bucket(src->indexes[i], src->items, clone.items, &clone.count);
     }
+  }
 
-    /* FIXME */
-    for (size_t i = 0; i < src->count; i++)
-    {
-        clone.items[i] = clone_expr(&src->items[i]);
-    }
+  /* FIXME */
+  for (size_t i = 0; i < src->count; i++) {
+    clone.items[i] = clone_expr(&src->items[i]);
+  }
 
-    return clone;
+  return clone;
 }
 
-void free_expression(const Expr *expr)
-{
-    switch (expr->kind)
-    {
-        case EXPR_LITERAL: {
-            ExprLiteral expr_lit = expr->as.expr_literal;
-            if (expr_lit.kind == LIT_STRING)
-            {
-                free(expr_lit.as.str);
-            }
-            break;
-        }
-        case EXPR_VARIABLE: {
-            ExprVariable expr_var = expr->as.expr_variable;
-            free(expr_var.name);
-            break;
-        }
-        case EXPR_UNARY: {
-            ExprUnary expr_unary = expr->as.expr_unary;
-            free_expression(expr_unary.expr);
-            free(expr_unary.expr);
-            free(expr_unary.op);
-            break;
-        }
-        case EXPR_BINARY: {
-            ExprBinary expr_bin = expr->as.expr_binary;
-            free_expression(expr_bin.lhs);
-            free_expression(expr_bin.rhs);
-            free(expr_bin.lhs);
-            free(expr_bin.rhs);
-            free(expr_bin.op);
-            break;
-        }
-        case EXPR_ASSIGN: {
-            ExprAssign expr_assign = expr->as.expr_assign;
-            free_expression(expr_assign.lhs);
-            free_expression(expr_assign.rhs);
-            free(expr_assign.lhs);
-            free(expr_assign.rhs);
-            free(expr_assign.op);
-            break;
-        }
-        case EXPR_CALL: {
-            ExprCall expr_call = expr->as.expr_call;
-            free_expression(expr_call.callee);
-            free(expr_call.callee);
-            for (size_t i = 0; i < expr_call.arguments.count; i++)
-            {
-                free_expression(&expr_call.arguments.data[i]);
-            }
-            dynarray_free(&expr_call.arguments);
-            break;
-        }
-        case EXPR_STRUCT: {
-            ExprStruct expr_struct = expr->as.expr_struct;
-            free(expr_struct.name);
-            for (size_t i = 0; i < expr_struct.initializers.count; i++)
-            {
-                free_expression(&expr_struct.initializers.data[i]);
-            }
-            dynarray_free(&expr_struct.initializers);
-            break;
-        }
-        case EXPR_STRUCT_INITIALIZER: {
-            ExprStructInitializer expr_struct_initializer = expr->as.expr_struct_initializer;
-            free_expression(expr_struct_initializer.property);
-            free_expression(expr_struct_initializer.value);
-            free(expr_struct_initializer.value);
-            free(expr_struct_initializer.property);
-            break;
-        }
-        case EXPR_GET: {
-            ExprGet expr_get = expr->as.expr_get;
-            free_expression(expr_get.expr);
-            free(expr_get.property_name);
-            free(expr_get.expr);
-            free(expr_get.op);
-            break;
-        }
-        case EXPR_ARRAY: {
-            ExprArray expr_array = expr->as.expr_array;
-            for (size_t i = 0; i < expr_array.elements.count; i++)
-            {
-                free_expression(&expr_array.elements.data[i]);
-            }
-            dynarray_free(&expr_array.elements);
-            break;
-        }
-        case EXPR_SUBSCRIPT: {
-            ExprSubscript expr_subscript = expr->as.expr_subscript;
-            free_expression(expr_subscript.expr);
-            free_expression(expr_subscript.index);
-            free(expr_subscript.expr);
-            free(expr_subscript.index);
-            break;
-        }
-        default:
-            assert(0);
+void free_expression(const Expr *expr) {
+  switch (expr->kind) {
+    case EXPR_LITERAL: {
+      ExprLiteral expr_lit = expr->as.expr_literal;
+      if (expr_lit.kind == LIT_STRING) {
+        free(expr_lit.as.str);
+      }
+      break;
     }
+    case EXPR_VARIABLE: {
+      ExprVariable expr_var = expr->as.expr_variable;
+      free(expr_var.name);
+      break;
+    }
+    case EXPR_UNARY: {
+      ExprUnary expr_unary = expr->as.expr_unary;
+      free_expression(expr_unary.expr);
+      free(expr_unary.expr);
+      free(expr_unary.op);
+      break;
+    }
+    case EXPR_BINARY: {
+      ExprBinary expr_bin = expr->as.expr_binary;
+      free_expression(expr_bin.lhs);
+      free_expression(expr_bin.rhs);
+      free(expr_bin.lhs);
+      free(expr_bin.rhs);
+      free(expr_bin.op);
+      break;
+    }
+    case EXPR_ASSIGN: {
+      ExprAssign expr_assign = expr->as.expr_assign;
+      free_expression(expr_assign.lhs);
+      free_expression(expr_assign.rhs);
+      free(expr_assign.lhs);
+      free(expr_assign.rhs);
+      free(expr_assign.op);
+      break;
+    }
+    case EXPR_CALL: {
+      ExprCall expr_call = expr->as.expr_call;
+      free_expression(expr_call.callee);
+      free(expr_call.callee);
+      for (size_t i = 0; i < expr_call.arguments.count; i++) {
+        free_expression(&expr_call.arguments.data[i]);
+      }
+      dynarray_free(&expr_call.arguments);
+      break;
+    }
+    case EXPR_STRUCT: {
+      ExprStruct expr_struct = expr->as.expr_struct;
+      free(expr_struct.name);
+      for (size_t i = 0; i < expr_struct.initializers.count; i++) {
+        free_expression(&expr_struct.initializers.data[i]);
+      }
+      dynarray_free(&expr_struct.initializers);
+      break;
+    }
+    case EXPR_STRUCT_INITIALIZER: {
+      ExprStructInitializer expr_struct_initializer =
+          expr->as.expr_struct_initializer;
+      free_expression(expr_struct_initializer.property);
+      free_expression(expr_struct_initializer.value);
+      free(expr_struct_initializer.value);
+      free(expr_struct_initializer.property);
+      break;
+    }
+    case EXPR_GET: {
+      ExprGet expr_get = expr->as.expr_get;
+      free_expression(expr_get.expr);
+      free(expr_get.property_name);
+      free(expr_get.expr);
+      free(expr_get.op);
+      break;
+    }
+    case EXPR_ARRAY: {
+      ExprArray expr_array = expr->as.expr_array;
+      for (size_t i = 0; i < expr_array.elements.count; i++) {
+        free_expression(&expr_array.elements.data[i]);
+      }
+      dynarray_free(&expr_array.elements);
+      break;
+    }
+    case EXPR_SUBSCRIPT: {
+      ExprSubscript expr_subscript = expr->as.expr_subscript;
+      free_expression(expr_subscript.expr);
+      free_expression(expr_subscript.index);
+      free(expr_subscript.expr);
+      free(expr_subscript.index);
+      break;
+    }
+    default:
+      assert(0);
+  }
 }
 
-void free_stmt(const Stmt *stmt)
-{
-    switch (stmt->kind)
-    {
-        case STMT_PRINT: {
-            free_expression(&stmt->as.stmt_print.expr);
-            break;
-        }
-        case STMT_IMPL: {
-            free(stmt->as.stmt_impl.name);
-            for (size_t i = 0; i < stmt->as.stmt_impl.methods.count; i++)
-            {
-                free_stmt(&stmt->as.stmt_impl.methods.data[i]);
-            }
-            dynarray_free(&stmt->as.stmt_impl.methods);
-            break;
-        }
-        case STMT_LET: {
-            free_expression(&stmt->as.stmt_let.initializer);
-            free(stmt->as.stmt_let.name);
-            break;
-        }
-        case STMT_BLOCK: {
-            for (size_t i = 0; i < stmt->as.stmt_block.stmts.count; i++)
-            {
-                free_stmt(&stmt->as.stmt_block.stmts.data[i]);
-            }
-            dynarray_free(&stmt->as.stmt_block.stmts);
-            break;
-        }
-        case STMT_IF: {
-            free_expression(&stmt->as.stmt_if.condition);
-
-            free_stmt(stmt->as.stmt_if.then_branch);
-            free(stmt->as.stmt_if.then_branch);
-
-            if (stmt->as.stmt_if.else_branch != NULL)
-            {
-                free_stmt(stmt->as.stmt_if.else_branch);
-                free(stmt->as.stmt_if.else_branch);
-            }
-
-            break;
-        }
-        case STMT_WHILE: {
-            free(stmt->as.stmt_while.label);
-            free_expression(&stmt->as.stmt_while.condition);
-            for (size_t i = 0; i < stmt->as.stmt_while.body->as.stmt_block.stmts.count; i++)
-            {
-                free_stmt(&stmt->as.stmt_while.body->as.stmt_block.stmts.data[i]);
-            }
-            dynarray_free(&stmt->as.stmt_while.body->as.stmt_block.stmts);
-            free(stmt->as.stmt_while.body);
-            break;
-        }
-        case STMT_FOR: {
-            free(stmt->as.stmt_for.label);
-            free_expression(&stmt->as.stmt_for.initializer);
-            free_expression(&stmt->as.stmt_for.condition);
-            free_expression(&stmt->as.stmt_for.advancement);
-            for (size_t i = 0; i < stmt->as.stmt_for.body->as.stmt_block.stmts.count; i++)
-            {
-                free_stmt(&stmt->as.stmt_for.body->as.stmt_block.stmts.data[i]);
-            }
-            dynarray_free(&stmt->as.stmt_for.body->as.stmt_block.stmts);
-            free(stmt->as.stmt_for.body);
-            break;
-        }
-        case STMT_RETURN: {
-            free_expression(&stmt->as.stmt_return.expr);
-            break;
-        }
-        case STMT_EXPR: {
-            free_expression(&stmt->as.stmt_expr.expr);
-            break;
-        }
-        case STMT_FN: {
-            free(stmt->as.stmt_fn.name);
-            for (size_t i = 0; i < stmt->as.stmt_fn.parameters.count; i++)
-            {
-                free(stmt->as.stmt_fn.parameters.data[i]);
-            }
-            dynarray_free(&stmt->as.stmt_fn.parameters);
-            for (size_t i = 0; i < stmt->as.stmt_fn.body->as.stmt_block.stmts.count; i++)
-            {
-                free_stmt(&stmt->as.stmt_fn.body->as.stmt_block.stmts.data[i]);
-            }
-            dynarray_free(&stmt->as.stmt_fn.body->as.stmt_block.stmts);
-            free(stmt->as.stmt_fn.body);
-            break;
-        }
-        case STMT_DECORATOR: {
-            free(stmt->as.stmt_decorator.name);
-            free_stmt(stmt->as.stmt_decorator.fn);
-            free(stmt->as.stmt_decorator.fn);
-            break;
-        }
-        case STMT_STRUCT: {
-            free(stmt->as.stmt_struct.name);
-            for (size_t i = 0; i < stmt->as.stmt_struct.properties.count; i++)
-            {
-                free(stmt->as.stmt_struct.properties.data[i]);
-            }
-            dynarray_free(&stmt->as.stmt_struct.properties);
-            break;
-        }
-        case STMT_USE: {
-            free(stmt->as.stmt_use.path);
-            break;
-        }
-        case STMT_YIELD: {
-            free_expression(&stmt->as.stmt_yield.expr);
-            break;
-        }
-        case STMT_ASSERT: {
-            free_expression(&stmt->as.stmt_assert.expr);
-            break;
-        }
-        case STMT_BREAK: {
-            free(stmt->as.stmt_break.label);
-            break;
-        }
-        case STMT_CONTINUE: {
-            free(stmt->as.stmt_continue.label);
-            break;
-        }
-        default:
-            print_stmt(stmt, 0, false);
-            assert(0);
+void free_stmt(const Stmt *stmt) {
+  switch (stmt->kind) {
+    case STMT_PRINT: {
+      free_expression(&stmt->as.stmt_print.expr);
+      break;
     }
+    case STMT_IMPL: {
+      free(stmt->as.stmt_impl.name);
+      for (size_t i = 0; i < stmt->as.stmt_impl.methods.count; i++) {
+        free_stmt(&stmt->as.stmt_impl.methods.data[i]);
+      }
+      dynarray_free(&stmt->as.stmt_impl.methods);
+      break;
+    }
+    case STMT_LET: {
+      free_expression(&stmt->as.stmt_let.initializer);
+      free(stmt->as.stmt_let.name);
+      break;
+    }
+    case STMT_BLOCK: {
+      for (size_t i = 0; i < stmt->as.stmt_block.stmts.count; i++) {
+        free_stmt(&stmt->as.stmt_block.stmts.data[i]);
+      }
+      dynarray_free(&stmt->as.stmt_block.stmts);
+      break;
+    }
+    case STMT_IF: {
+      free_expression(&stmt->as.stmt_if.condition);
+
+      free_stmt(stmt->as.stmt_if.then_branch);
+      free(stmt->as.stmt_if.then_branch);
+
+      if (stmt->as.stmt_if.else_branch != NULL) {
+        free_stmt(stmt->as.stmt_if.else_branch);
+        free(stmt->as.stmt_if.else_branch);
+      }
+
+      break;
+    }
+    case STMT_WHILE: {
+      free(stmt->as.stmt_while.label);
+      free_expression(&stmt->as.stmt_while.condition);
+      for (size_t i = 0;
+           i < stmt->as.stmt_while.body->as.stmt_block.stmts.count; i++) {
+        free_stmt(&stmt->as.stmt_while.body->as.stmt_block.stmts.data[i]);
+      }
+      dynarray_free(&stmt->as.stmt_while.body->as.stmt_block.stmts);
+      free(stmt->as.stmt_while.body);
+      break;
+    }
+    case STMT_FOR: {
+      free(stmt->as.stmt_for.label);
+      free_expression(&stmt->as.stmt_for.initializer);
+      free_expression(&stmt->as.stmt_for.condition);
+      free_expression(&stmt->as.stmt_for.advancement);
+      for (size_t i = 0; i < stmt->as.stmt_for.body->as.stmt_block.stmts.count;
+           i++) {
+        free_stmt(&stmt->as.stmt_for.body->as.stmt_block.stmts.data[i]);
+      }
+      dynarray_free(&stmt->as.stmt_for.body->as.stmt_block.stmts);
+      free(stmt->as.stmt_for.body);
+      break;
+    }
+    case STMT_RETURN: {
+      free_expression(&stmt->as.stmt_return.expr);
+      break;
+    }
+    case STMT_EXPR: {
+      free_expression(&stmt->as.stmt_expr.expr);
+      break;
+    }
+    case STMT_FN: {
+      free(stmt->as.stmt_fn.name);
+      for (size_t i = 0; i < stmt->as.stmt_fn.parameters.count; i++) {
+        free(stmt->as.stmt_fn.parameters.data[i]);
+      }
+      dynarray_free(&stmt->as.stmt_fn.parameters);
+      for (size_t i = 0; i < stmt->as.stmt_fn.body->as.stmt_block.stmts.count;
+           i++) {
+        free_stmt(&stmt->as.stmt_fn.body->as.stmt_block.stmts.data[i]);
+      }
+      dynarray_free(&stmt->as.stmt_fn.body->as.stmt_block.stmts);
+      free(stmt->as.stmt_fn.body);
+      break;
+    }
+    case STMT_DECORATOR: {
+      free(stmt->as.stmt_decorator.name);
+      free_stmt(stmt->as.stmt_decorator.fn);
+      free(stmt->as.stmt_decorator.fn);
+      break;
+    }
+    case STMT_STRUCT: {
+      free(stmt->as.stmt_struct.name);
+      for (size_t i = 0; i < stmt->as.stmt_struct.properties.count; i++) {
+        free(stmt->as.stmt_struct.properties.data[i]);
+      }
+      dynarray_free(&stmt->as.stmt_struct.properties);
+      break;
+    }
+    case STMT_USE: {
+      free(stmt->as.stmt_use.path);
+      break;
+    }
+    case STMT_YIELD: {
+      free_expression(&stmt->as.stmt_yield.expr);
+      break;
+    }
+    case STMT_ASSERT: {
+      free_expression(&stmt->as.stmt_assert.expr);
+      break;
+    }
+    case STMT_BREAK: {
+      free(stmt->as.stmt_break.label);
+      break;
+    }
+    case STMT_CONTINUE: {
+      free(stmt->as.stmt_continue.label);
+      break;
+    }
+    default:
+      print_stmt(stmt, 0, false);
+      assert(0);
+  }
 }
 
-static void print_literal(const ExprLiteral *literal)
-{
-    switch (literal->kind)
-    {
-        case LIT_BOOLEAN: {
-            printf("%s", literal->as._bool ? "true" : "false");
-            break;
-        }
-        case LIT_NULL: {
-            printf("null");
-            break;
-        }
-        case LIT_NUMBER: {
-            printf("%.16g", literal->as._double);
-            break;
-        }
-        case LIT_STRING: {
-            printf("%s", literal->as.str);
-            break;
-        }
-        default:
-            assert(0);
+static void print_literal(const ExprLiteral *literal) {
+  switch (literal->kind) {
+    case LIT_BOOLEAN: {
+      printf("%s", literal->as._bool ? "true" : "false");
+      break;
     }
+    case LIT_NULL: {
+      printf("null");
+      break;
+    }
+    case LIT_NUMBER: {
+      printf("%.16g", literal->as._double);
+      break;
+    }
+    case LIT_STRING: {
+      printf("%s", literal->as.str);
+      break;
+    }
+    default:
+      assert(0);
+  }
 }
 
-#define INDENT(n)                     \
-    do                                \
-    {                                 \
-        for (int s = 0; s < (n); s++) \
-            putchar(' ');             \
-    } while (0)
+#define INDENT(n)                               \
+  do {                                          \
+    for (int s = 0; s < (n); s++) putchar(' '); \
+  } while (0)
 
-void print_expression(const Expr *expr, int indent)
-{
-    switch (expr->kind)
-    {
-        case EXPR_LITERAL: {
-            printf("Literal(\n");
-            INDENT(indent + 4);
-            print_literal(&expr->as.expr_literal);
-            break;
-        }
-        case EXPR_ARRAY: {
-            printf("Array(\n");
-            INDENT(indent + 4);
-            printf("members: [");
-            for (size_t i = 0; i < expr->as.expr_array.elements.count; i++)
-            {
-                print_expression(&expr->as.expr_array.elements.data[i], indent + 4);
-                if (i < expr->as.expr_array.elements.count - 1)
-                    printf(", ");
-            }
-            printf("]");
-            break;
-        }
-        case EXPR_STRUCT: {
-            printf("Struct(\n");
-            INDENT(indent + 4);
-            printf("name: %s,\n", expr->as.expr_struct.name);
-            INDENT(indent + 4);
-            printf("initializers: [\n");
-            for (size_t i = 0; i < expr->as.expr_struct.initializers.count; i++)
-            {
-                INDENT(indent + 8);
-                print_expression(&expr->as.expr_struct.initializers.data[i], indent + 8);
-                if (i < expr->as.expr_struct.initializers.count - 1)
-                    printf(",\n");
-            }
-            break;
-        }
-        case EXPR_STRUCT_INITIALIZER: {
-            printf("StructInit(\n");
-            INDENT(indent + 4);
-            printf("property: ");
-            print_expression(expr->as.expr_struct_initializer.property, indent + 4);
-            printf(",\n");
-            INDENT(indent + 4);
-            printf("value: ");
-            print_expression(expr->as.expr_struct_initializer.value, indent + 4);
-            break;
-        }
-        case EXPR_BINARY: {
-            printf("Binary(\n");
-            INDENT(indent + 4);
-            print_expression(expr->as.expr_binary.lhs, indent + 4);
-            printf(" %s ", expr->as.expr_binary.op);
-            print_expression(expr->as.expr_binary.rhs, indent + 4);
-            break;
-        }
-        case EXPR_GET: {
-            printf("Get(\n");
-            INDENT(indent + 4);
-            printf("gettee: %s,\n", expr->as.expr_get.property_name);
-            INDENT(indent + 4);
-            printf("op: `%s`\n", expr->as.expr_get.op);
-            INDENT(indent + 4);
-            printf("exp: ");
-            print_expression(expr->as.expr_get.expr, indent + 4);
-            break;
-        }
-        case EXPR_SUBSCRIPT: {
-            printf("Subscript(\n");
-            INDENT(indent + 4);
-            printf("subscriptee: ");
-            print_expression(expr->as.expr_subscript.expr, indent + 4);
-            printf(",\n");
-            INDENT(indent + 4);
-            printf("index: ");
-            print_expression(expr->as.expr_subscript.index, indent + 4);
-            break;
-        }
-        case EXPR_UNARY: {
-            printf("Unary(\n");
-            INDENT(indent + 4);
-            printf("exp: ");
-            print_expression(expr->as.expr_unary.expr, indent + 4);
-            printf(",\n");
-            INDENT(indent + 4);
-            printf("op: %s", expr->as.expr_unary.op);
-            break;
-        }
-        case EXPR_VARIABLE: {
-            printf("Variable(\n");
-            INDENT(indent + 4);
-            printf("name: %s", expr->as.expr_variable.name);
-            break;
-        }
-        case EXPR_ASSIGN: {
-            printf("Assign(\n");
-            INDENT(indent + 4);
-            print_expression(expr->as.expr_assign.lhs, indent + 4);
-            printf(" %s ", expr->as.expr_assign.op);
-            print_expression(expr->as.expr_assign.rhs, indent + 4);
-            break;
-        }
-        case EXPR_CALL: {
-            printf("Call(\n");
-            INDENT(indent + 4);
-            printf("callee: ");
-            print_expression(expr->as.expr_call.callee, indent + 4);
-            printf(", \n");
-            INDENT(indent + 4);
-            printf("arguments: [");
-            for (size_t i = 0; i < expr->as.expr_call.arguments.count; i++)
-            {
-                print_expression(&expr->as.expr_call.arguments.data[i], indent + 4);
-                if (i < expr->as.expr_call.arguments.count - 1)
-                    printf(", ");
-            }
-            printf("]");
-            break;
-        }
-        default:
-            break;
+void print_expression(const Expr *expr, int indent) {
+  switch (expr->kind) {
+    case EXPR_LITERAL: {
+      printf("Literal(\n");
+      INDENT(indent + 4);
+      print_literal(&expr->as.expr_literal);
+      break;
     }
-    printf("\n");
-    INDENT(indent);
-    printf(")");
+    case EXPR_ARRAY: {
+      printf("Array(\n");
+      INDENT(indent + 4);
+      printf("members: [");
+      for (size_t i = 0; i < expr->as.expr_array.elements.count; i++) {
+        print_expression(&expr->as.expr_array.elements.data[i], indent + 4);
+        if (i < expr->as.expr_array.elements.count - 1) printf(", ");
+      }
+      printf("]");
+      break;
+    }
+    case EXPR_STRUCT: {
+      printf("Struct(\n");
+      INDENT(indent + 4);
+      printf("name: %s,\n", expr->as.expr_struct.name);
+      INDENT(indent + 4);
+      printf("initializers: [\n");
+      for (size_t i = 0; i < expr->as.expr_struct.initializers.count; i++) {
+        INDENT(indent + 8);
+        print_expression(&expr->as.expr_struct.initializers.data[i],
+                         indent + 8);
+        if (i < expr->as.expr_struct.initializers.count - 1) printf(",\n");
+      }
+      break;
+    }
+    case EXPR_STRUCT_INITIALIZER: {
+      printf("StructInit(\n");
+      INDENT(indent + 4);
+      printf("property: ");
+      print_expression(expr->as.expr_struct_initializer.property, indent + 4);
+      printf(",\n");
+      INDENT(indent + 4);
+      printf("value: ");
+      print_expression(expr->as.expr_struct_initializer.value, indent + 4);
+      break;
+    }
+    case EXPR_BINARY: {
+      printf("Binary(\n");
+      INDENT(indent + 4);
+      print_expression(expr->as.expr_binary.lhs, indent + 4);
+      printf(" %s ", expr->as.expr_binary.op);
+      print_expression(expr->as.expr_binary.rhs, indent + 4);
+      break;
+    }
+    case EXPR_GET: {
+      printf("Get(\n");
+      INDENT(indent + 4);
+      printf("gettee: %s,\n", expr->as.expr_get.property_name);
+      INDENT(indent + 4);
+      printf("op: `%s`\n", expr->as.expr_get.op);
+      INDENT(indent + 4);
+      printf("exp: ");
+      print_expression(expr->as.expr_get.expr, indent + 4);
+      break;
+    }
+    case EXPR_SUBSCRIPT: {
+      printf("Subscript(\n");
+      INDENT(indent + 4);
+      printf("subscriptee: ");
+      print_expression(expr->as.expr_subscript.expr, indent + 4);
+      printf(",\n");
+      INDENT(indent + 4);
+      printf("index: ");
+      print_expression(expr->as.expr_subscript.index, indent + 4);
+      break;
+    }
+    case EXPR_UNARY: {
+      printf("Unary(\n");
+      INDENT(indent + 4);
+      printf("exp: ");
+      print_expression(expr->as.expr_unary.expr, indent + 4);
+      printf(",\n");
+      INDENT(indent + 4);
+      printf("op: %s", expr->as.expr_unary.op);
+      break;
+    }
+    case EXPR_VARIABLE: {
+      printf("Variable(\n");
+      INDENT(indent + 4);
+      printf("name: %s", expr->as.expr_variable.name);
+      break;
+    }
+    case EXPR_ASSIGN: {
+      printf("Assign(\n");
+      INDENT(indent + 4);
+      print_expression(expr->as.expr_assign.lhs, indent + 4);
+      printf(" %s ", expr->as.expr_assign.op);
+      print_expression(expr->as.expr_assign.rhs, indent + 4);
+      break;
+    }
+    case EXPR_CALL: {
+      printf("Call(\n");
+      INDENT(indent + 4);
+      printf("callee: ");
+      print_expression(expr->as.expr_call.callee, indent + 4);
+      printf(", \n");
+      INDENT(indent + 4);
+      printf("arguments: [");
+      for (size_t i = 0; i < expr->as.expr_call.arguments.count; i++) {
+        print_expression(&expr->as.expr_call.arguments.data[i], indent + 4);
+        if (i < expr->as.expr_call.arguments.count - 1) printf(", ");
+      }
+      printf("]");
+      break;
+    }
+    default:
+      break;
+  }
+  printf("\n");
+  INDENT(indent);
+  printf(")");
 }
 
-void print_stmt(const Stmt *stmt, int indent, bool continuation)
-{
-    if (!continuation)
-        INDENT(indent);
+void print_stmt(const Stmt *stmt, int indent, bool continuation) {
+  if (!continuation) INDENT(indent);
 
-    switch (stmt->kind)
-    {
-        case STMT_LET: {
-            printf("Let(\n");
-            INDENT(indent + 4);
-            printf("name: %s,\n", stmt->as.stmt_let.name);
-            INDENT(indent + 4);
-            printf("initializer: ");
-            print_expression(&stmt->as.stmt_let.initializer, indent + 4);
-            break;
-        }
-        case STMT_PRINT: {
-            printf("Print(\n");
-            INDENT(indent + 4);
-            print_expression(&stmt->as.stmt_print.expr, indent + 4);
-            break;
-        }
-        case STMT_FN: {
-            printf("Function(\n");
-            INDENT(indent + 4);
-            print_stmt(stmt->as.stmt_fn.body, indent + 4, true);
-            break;
-        }
-        case STMT_BLOCK: {
-            printf("Block(\n");
-            for (size_t i = 0; i < stmt->as.stmt_block.stmts.count; i++)
-            {
-                print_stmt(&stmt->as.stmt_block.stmts.data[i], indent + 4, false);
-                if (i < stmt->as.stmt_block.stmts.count - 1)
-                    printf(",\n");
-            }
-            break;
-        }
-        case STMT_WHILE: {
-            printf("While(\n");
-            INDENT(indent + 4);
-            printf("condition: ");
-            print_expression(&stmt->as.stmt_while.condition, indent + 4);
-            printf(",\n");
-            INDENT(indent + 4);
-            printf("body: ");
-            print_stmt(stmt->as.stmt_while.body, indent + 4, true);
-            break;
-        }
-        case STMT_FOR: {
-            printf("For(\n");
-            INDENT(indent + 4);
-            printf("init: ");
-            print_expression(&stmt->as.stmt_for.initializer, indent + 4);
-            putchar('\n');
-            INDENT(indent + 4);
-            printf("condition: ");
-            print_expression(&stmt->as.stmt_for.condition, indent + 4);
-            putchar('\n');
-            INDENT(indent + 4);
-            printf("advancement: ");
-            print_expression(&stmt->as.stmt_for.advancement, indent + 4);
-            putchar('\n');
-            INDENT(indent + 4);
-            printf("label: \"%s\",\n", stmt->as.stmt_for.label);
-            INDENT(indent + 4);
-            printf("body: ");
-            print_stmt(stmt->as.stmt_for.body, indent + 4, true);
-            break;
-        }
-        case STMT_IF: {
-            printf("If(\n");
-            INDENT(indent + 4);
-            printf("condition: ");
-            print_expression(&stmt->as.stmt_if.condition, indent + 4);
-            printf(",\n");
-            INDENT(indent + 4);
-            printf("then: ");
-            print_stmt(stmt->as.stmt_if.then_branch, indent + 4, true);
-            printf(",\n");
-            INDENT(indent + 4);
-            printf("else: ");
-            if (stmt->as.stmt_if.else_branch)
-                print_stmt(stmt->as.stmt_if.else_branch, indent + 4, true);
-            else
-                printf("null");
-            break;
-        }
-        case STMT_EXPR: {
-            printf("Expr(\n");
-            INDENT(indent + 4);
-            print_expression(&stmt->as.stmt_expr.expr, indent + 4);
-            break;
-        }
-        case STMT_RETURN: {
-            printf("Return(\n");
-            INDENT(indent + 4);
-            print_expression(&stmt->as.stmt_return.expr, indent + 4);
-            break;
-        }
-        case STMT_BREAK: {
-            printf("Break");
-            break;
-        }
-        case STMT_CONTINUE: {
-            printf("Continue");
-            break;
-        }
-        case STMT_ASSERT: {
-            printf("Assert(\n");
-            INDENT(indent + 4);
-            print_expression(&stmt->as.stmt_assert.expr, indent + 4);
-            break;
-        }
-        case STMT_USE: {
-            printf("Use(%s)\n", stmt->as.stmt_use.path);
-            break;
-        }
-        case STMT_YIELD: {
-            printf("Yield(\n");
-            INDENT(indent + 4);
-            print_expression(&stmt->as.stmt_yield.expr, indent + 4);
-            break;
-        }
-        case STMT_DECORATOR: {
-            printf("Decorator(\n");
-            INDENT(indent + 4);
-            printf("name: %s,\n", stmt->as.stmt_decorator.name);
-            INDENT(indent + 4);
-            printf("fn: ");
-            print_stmt(stmt->as.stmt_decorator.fn, indent + 4, true);
-            break;
-        }
-        case STMT_STRUCT: {
-            printf("Struct(\n");
-            INDENT(indent + 4);
-            printf("name: %s\n", stmt->as.stmt_struct.name);
-            INDENT(indent + 4);
-            printf("properties: [");
-            for (size_t i = 0; i < stmt->as.stmt_struct.properties.count; i++)
-            {
-                printf("%s", stmt->as.stmt_struct.properties.data[i]);
-                if (i < stmt->as.stmt_struct.properties.count - 1)
-                    printf(", ");
-            }
-            printf("]");
-            break;
-        }
-        case STMT_IMPL: {
-            printf("Impl(\n");
-            INDENT(indent + 4);
-            printf("name: %s,\n", stmt->as.stmt_impl.name);
-            INDENT(indent + 4);
-            printf("methods: [");
-            for (size_t i = 0; i < stmt->as.stmt_impl.methods.count; i++)
-            {
-                print_stmt(&stmt->as.stmt_impl.methods.data[i], indent + 4, true);
-                if (i < stmt->as.stmt_impl.methods.count - 1)
-                    printf(", ");
-            }
-            printf("]");
-            break;
-        }
-        default:
-            break;
+  switch (stmt->kind) {
+    case STMT_LET: {
+      printf("Let(\n");
+      INDENT(indent + 4);
+      printf("name: %s,\n", stmt->as.stmt_let.name);
+      INDENT(indent + 4);
+      printf("initializer: ");
+      print_expression(&stmt->as.stmt_let.initializer, indent + 4);
+      break;
     }
-    printf("\n");
-    INDENT(indent);
-    printf(")");
+    case STMT_PRINT: {
+      printf("Print(\n");
+      INDENT(indent + 4);
+      print_expression(&stmt->as.stmt_print.expr, indent + 4);
+      break;
+    }
+    case STMT_FN: {
+      printf("Function(\n");
+      INDENT(indent + 4);
+      print_stmt(stmt->as.stmt_fn.body, indent + 4, true);
+      break;
+    }
+    case STMT_BLOCK: {
+      printf("Block(\n");
+      for (size_t i = 0; i < stmt->as.stmt_block.stmts.count; i++) {
+        print_stmt(&stmt->as.stmt_block.stmts.data[i], indent + 4, false);
+        if (i < stmt->as.stmt_block.stmts.count - 1) printf(",\n");
+      }
+      break;
+    }
+    case STMT_WHILE: {
+      printf("While(\n");
+      INDENT(indent + 4);
+      printf("condition: ");
+      print_expression(&stmt->as.stmt_while.condition, indent + 4);
+      printf(",\n");
+      INDENT(indent + 4);
+      printf("body: ");
+      print_stmt(stmt->as.stmt_while.body, indent + 4, true);
+      break;
+    }
+    case STMT_FOR: {
+      printf("For(\n");
+      INDENT(indent + 4);
+      printf("init: ");
+      print_expression(&stmt->as.stmt_for.initializer, indent + 4);
+      putchar('\n');
+      INDENT(indent + 4);
+      printf("condition: ");
+      print_expression(&stmt->as.stmt_for.condition, indent + 4);
+      putchar('\n');
+      INDENT(indent + 4);
+      printf("advancement: ");
+      print_expression(&stmt->as.stmt_for.advancement, indent + 4);
+      putchar('\n');
+      INDENT(indent + 4);
+      printf("label: \"%s\",\n", stmt->as.stmt_for.label);
+      INDENT(indent + 4);
+      printf("body: ");
+      print_stmt(stmt->as.stmt_for.body, indent + 4, true);
+      break;
+    }
+    case STMT_IF: {
+      printf("If(\n");
+      INDENT(indent + 4);
+      printf("condition: ");
+      print_expression(&stmt->as.stmt_if.condition, indent + 4);
+      printf(",\n");
+      INDENT(indent + 4);
+      printf("then: ");
+      print_stmt(stmt->as.stmt_if.then_branch, indent + 4, true);
+      printf(",\n");
+      INDENT(indent + 4);
+      printf("else: ");
+      if (stmt->as.stmt_if.else_branch)
+        print_stmt(stmt->as.stmt_if.else_branch, indent + 4, true);
+      else
+        printf("null");
+      break;
+    }
+    case STMT_EXPR: {
+      printf("Expr(\n");
+      INDENT(indent + 4);
+      print_expression(&stmt->as.stmt_expr.expr, indent + 4);
+      break;
+    }
+    case STMT_RETURN: {
+      printf("Return(\n");
+      INDENT(indent + 4);
+      print_expression(&stmt->as.stmt_return.expr, indent + 4);
+      break;
+    }
+    case STMT_BREAK: {
+      printf("Break");
+      break;
+    }
+    case STMT_CONTINUE: {
+      printf("Continue");
+      break;
+    }
+    case STMT_ASSERT: {
+      printf("Assert(\n");
+      INDENT(indent + 4);
+      print_expression(&stmt->as.stmt_assert.expr, indent + 4);
+      break;
+    }
+    case STMT_USE: {
+      printf("Use(%s)\n", stmt->as.stmt_use.path);
+      break;
+    }
+    case STMT_YIELD: {
+      printf("Yield(\n");
+      INDENT(indent + 4);
+      print_expression(&stmt->as.stmt_yield.expr, indent + 4);
+      break;
+    }
+    case STMT_DECORATOR: {
+      printf("Decorator(\n");
+      INDENT(indent + 4);
+      printf("name: %s,\n", stmt->as.stmt_decorator.name);
+      INDENT(indent + 4);
+      printf("fn: ");
+      print_stmt(stmt->as.stmt_decorator.fn, indent + 4, true);
+      break;
+    }
+    case STMT_STRUCT: {
+      printf("Struct(\n");
+      INDENT(indent + 4);
+      printf("name: %s\n", stmt->as.stmt_struct.name);
+      INDENT(indent + 4);
+      printf("properties: [");
+      for (size_t i = 0; i < stmt->as.stmt_struct.properties.count; i++) {
+        printf("%s", stmt->as.stmt_struct.properties.data[i]);
+        if (i < stmt->as.stmt_struct.properties.count - 1) printf(", ");
+      }
+      printf("]");
+      break;
+    }
+    case STMT_IMPL: {
+      printf("Impl(\n");
+      INDENT(indent + 4);
+      printf("name: %s,\n", stmt->as.stmt_impl.name);
+      INDENT(indent + 4);
+      printf("methods: [");
+      for (size_t i = 0; i < stmt->as.stmt_impl.methods.count; i++) {
+        print_stmt(&stmt->as.stmt_impl.methods.data[i], indent + 4, true);
+        if (i < stmt->as.stmt_impl.methods.count - 1) printf(", ");
+      }
+      printf("]");
+      break;
+    }
+    default:
+      break;
+  }
+  printf("\n");
+  INDENT(indent);
+  printf(")");
 }
 
-ExprLiteral clone_literal(const ExprLiteral *literal)
-{
-    ExprLiteral clone;
+ExprLiteral clone_literal(const ExprLiteral *literal) {
+  ExprLiteral clone;
 
-    clone.kind = literal->kind;
+  clone.kind = literal->kind;
 
-    switch (literal->kind)
-    {
-        case LIT_NUMBER: {
-            clone.as._double = literal->as._double;
-            break;
-        }
-        case LIT_BOOLEAN: {
-            clone.as._bool = literal->as._bool;
-            break;
-        }
-        case LIT_STRING: {
-            clone.as.str = own_string(literal->as.str);
-            break;
-        }
-        default:
-            break;
+  switch (literal->kind) {
+    case LIT_NUMBER: {
+      clone.as._double = literal->as._double;
+      break;
     }
+    case LIT_BOOLEAN: {
+      clone.as._bool = literal->as._bool;
+      break;
+    }
+    case LIT_STRING: {
+      clone.as.str = own_string(literal->as.str);
+      break;
+    }
+    default:
+      break;
+  }
 
-    return clone;
+  return clone;
 }
 
-Expr clone_expr(const Expr *expr)
-{
-    Expr clone;
+Expr clone_expr(const Expr *expr) {
+  Expr clone;
 
-    clone.kind = expr->kind;
+  clone.kind = expr->kind;
 
-    switch (expr->kind)
-    {
-        case EXPR_BINARY: {
-            Expr lhs = clone_expr(expr->as.expr_binary.lhs);
-            Expr rhs = clone_expr(expr->as.expr_binary.rhs);
-            clone.as.expr_binary.lhs = ALLOC(lhs);
-            clone.as.expr_binary.rhs = ALLOC(rhs);
-            clone.as.expr_binary.op = own_string(expr->as.expr_binary.op);
-            break;
-        }
-        case EXPR_ASSIGN: {
-            Expr lhs = clone_expr(expr->as.expr_assign.lhs);
-            Expr rhs = clone_expr(expr->as.expr_assign.rhs);
-            clone.as.expr_assign.lhs = ALLOC(lhs);
-            clone.as.expr_assign.rhs = ALLOC(rhs);
-            clone.as.expr_assign.op = own_string(expr->as.expr_assign.op);
-            break;
-        }
-        case EXPR_UNARY: {
-            Expr exp = clone_expr(expr->as.expr_unary.expr);
-            clone.as.expr_unary.expr = ALLOC(exp);
-            break;
-        }
-        case EXPR_CALL: {
-            DynArray_Expr args = {0};
-            for (size_t i = 0; i < expr->as.expr_call.arguments.count; i++)
-            {
-                Expr cloned = clone_expr(&expr->as.expr_call.arguments.data[i]);
-                dynarray_insert(&args, cloned);
-            }
-            clone.as.expr_call.arguments = args;
-            Expr callee_expr = clone_expr(expr->as.expr_call.callee);
-            clone.as.expr_call.callee = ALLOC(callee_expr);
-            break;
-        }
-        case EXPR_LITERAL: {
-            ExprLiteral cloned = clone_literal(&expr->as.expr_literal);
-            clone.as.expr_literal = cloned;
-            break;
-        }
-        case EXPR_VARIABLE: {
-            clone.as.expr_variable.name = own_string(expr->as.expr_variable.name);
-            break;
-        }
-        default:
-            assert(0);
+  switch (expr->kind) {
+    case EXPR_BINARY: {
+      Expr lhs = clone_expr(expr->as.expr_binary.lhs);
+      Expr rhs = clone_expr(expr->as.expr_binary.rhs);
+      clone.as.expr_binary.lhs = ALLOC(lhs);
+      clone.as.expr_binary.rhs = ALLOC(rhs);
+      clone.as.expr_binary.op = own_string(expr->as.expr_binary.op);
+      break;
     }
+    case EXPR_ASSIGN: {
+      Expr lhs = clone_expr(expr->as.expr_assign.lhs);
+      Expr rhs = clone_expr(expr->as.expr_assign.rhs);
+      clone.as.expr_assign.lhs = ALLOC(lhs);
+      clone.as.expr_assign.rhs = ALLOC(rhs);
+      clone.as.expr_assign.op = own_string(expr->as.expr_assign.op);
+      break;
+    }
+    case EXPR_UNARY: {
+      Expr exp = clone_expr(expr->as.expr_unary.expr);
+      clone.as.expr_unary.expr = ALLOC(exp);
+      break;
+    }
+    case EXPR_CALL: {
+      DynArray_Expr args = {0};
+      for (size_t i = 0; i < expr->as.expr_call.arguments.count; i++) {
+        Expr cloned = clone_expr(&expr->as.expr_call.arguments.data[i]);
+        dynarray_insert(&args, cloned);
+      }
+      clone.as.expr_call.arguments = args;
+      Expr callee_expr = clone_expr(expr->as.expr_call.callee);
+      clone.as.expr_call.callee = ALLOC(callee_expr);
+      break;
+    }
+    case EXPR_LITERAL: {
+      ExprLiteral cloned = clone_literal(&expr->as.expr_literal);
+      clone.as.expr_literal = cloned;
+      break;
+    }
+    case EXPR_VARIABLE: {
+      clone.as.expr_variable.name = own_string(expr->as.expr_variable.name);
+      break;
+    }
+    default:
+      assert(0);
+  }
 
-    return clone;
+  return clone;
 }
 
-Stmt clone_stmt(const Stmt *stmt)
-{
-    Stmt copy;
+Stmt clone_stmt(const Stmt *stmt) {
+  Stmt copy;
 
-    copy.kind = stmt->kind;
+  copy.kind = stmt->kind;
 
-    switch (stmt->kind)
-    {
-        case STMT_LET: {
-            copy.as.stmt_let.initializer = clone_expr(&stmt->as.stmt_let.initializer);
-            copy.as.stmt_let.name = own_string(stmt->as.stmt_let.name);
-            break;
-        }
-        case STMT_FN: {
-            copy.as.stmt_fn.name = own_string(stmt->as.stmt_fn.name);
-            Stmt body = clone_stmt(stmt->as.stmt_fn.body);
-            copy.as.stmt_fn.body = ALLOC(body);
-            ;
-            break;
-        }
-        case STMT_BLOCK: {
-            copy.as.stmt_block.depth = stmt->as.stmt_block.depth;
-            copy.as.stmt_block.stmts = clone_ast(&stmt->as.stmt_block.stmts);
-            break;
-        }
-        case STMT_PRINT: {
-            copy.as.stmt_print.expr = clone_expr(&stmt->as.stmt_print.expr);
-            break;
-        }
-        case STMT_WHILE: {
-            copy.as.stmt_while.label = own_string(stmt->as.stmt_while.label);
-            copy.as.stmt_while.condition = clone_expr(&stmt->as.stmt_while.condition);
-            Stmt body = clone_stmt(stmt->as.stmt_while.body);
-            copy.as.stmt_while.body = ALLOC(body);
-            break;
-        }
-        case STMT_FOR: {
-            copy.as.stmt_for.initializer = clone_expr(&stmt->as.stmt_for.initializer);
-            copy.as.stmt_for.condition = clone_expr(&stmt->as.stmt_for.condition);
-            copy.as.stmt_for.advancement = clone_expr(&stmt->as.stmt_for.advancement);
-            Stmt body = clone_stmt(stmt->as.stmt_for.body);
-            copy.as.stmt_for.body = ALLOC(body);
-            copy.as.stmt_for.label = own_string(stmt->as.stmt_for.label);
-            break;
-        }
-        case STMT_EXPR: {
-            copy.as.stmt_expr.expr = clone_expr(&stmt->as.stmt_expr.expr);
-            break;
-        }
-        case STMT_BREAK: {
-            copy.as.stmt_break.label = own_string(stmt->as.stmt_break.label);
-            break;
-        }
-        case STMT_CONTINUE: {
-            copy.as.stmt_continue.label = own_string(stmt->as.stmt_continue.label);
-            break;
-        }
-        case STMT_ASSERT: {
-            copy.as.stmt_assert.expr = clone_expr(&stmt->as.stmt_assert.expr);
-            break;
-        }
-        case STMT_DECORATOR: {
-            Stmt body = clone_stmt(stmt->as.stmt_decorator.fn);
-            copy.as.stmt_decorator.fn = ALLOC(body);
-            copy.as.stmt_decorator.name = own_string(stmt->as.stmt_decorator.name);
-            break;
-        }
-        case STMT_IF: {
-            copy.as.stmt_if.condition = clone_expr(&stmt->as.stmt_if.condition);
-            Stmt then_branch = clone_stmt(stmt->as.stmt_if.then_branch);
-            Stmt *else_branch = NULL;
-            if (stmt->as.stmt_if.else_branch)
-            {
-                Stmt s = clone_stmt(stmt->as.stmt_if.else_branch);
-                *else_branch = s;
-            }
-            copy.as.stmt_if.then_branch = ALLOC(then_branch);
-            copy.as.stmt_if.else_branch = else_branch;
-            break;
-        }
-        case STMT_IMPL: {
-            copy.as.stmt_impl.name = own_string(stmt->as.stmt_impl.name);
-            DynArray_Stmt methods = {0};
-            for (size_t i = 0; i < stmt->as.stmt_impl.methods.count; i++)
-            {
-                Stmt s = clone_stmt(&stmt->as.stmt_impl.methods.data[i]);
-                dynarray_insert(&methods, s);
-            }
-            copy.as.stmt_impl.methods = methods;
-            break;
-        }
-        case STMT_RETURN: {
-            copy.as.stmt_return.expr = clone_expr(&stmt->as.stmt_return.expr);
-            break;
-        }
-        case STMT_YIELD: {
-            copy.as.stmt_yield.expr = clone_expr(&stmt->as.stmt_yield.expr);
-            break;
-        }
-        case STMT_USE: {
-            copy.as.stmt_use.path = own_string(stmt->as.stmt_use.path);
-            break;
-        }
-        case STMT_STRUCT: {
-            copy.as.stmt_struct.name = own_string(stmt->as.stmt_struct.name);
-            DynArray_char_ptr properties = {0};
-            for (size_t i = 0; i < stmt->as.stmt_struct.properties.count; i++)
-            {
-                char *s = own_string(stmt->as.stmt_struct.properties.data[i]);
-                dynarray_insert(&properties, s);
-            }
-            break;
-        }
-        default:
-            assert(0);
+  switch (stmt->kind) {
+    case STMT_LET: {
+      copy.as.stmt_let.initializer = clone_expr(&stmt->as.stmt_let.initializer);
+      copy.as.stmt_let.name = own_string(stmt->as.stmt_let.name);
+      break;
     }
+    case STMT_FN: {
+      copy.as.stmt_fn.name = own_string(stmt->as.stmt_fn.name);
+      Stmt body = clone_stmt(stmt->as.stmt_fn.body);
+      copy.as.stmt_fn.body = ALLOC(body);
+      ;
+      break;
+    }
+    case STMT_BLOCK: {
+      copy.as.stmt_block.depth = stmt->as.stmt_block.depth;
+      copy.as.stmt_block.stmts = clone_ast(&stmt->as.stmt_block.stmts);
+      break;
+    }
+    case STMT_PRINT: {
+      copy.as.stmt_print.expr = clone_expr(&stmt->as.stmt_print.expr);
+      break;
+    }
+    case STMT_WHILE: {
+      copy.as.stmt_while.label = own_string(stmt->as.stmt_while.label);
+      copy.as.stmt_while.condition = clone_expr(&stmt->as.stmt_while.condition);
+      Stmt body = clone_stmt(stmt->as.stmt_while.body);
+      copy.as.stmt_while.body = ALLOC(body);
+      break;
+    }
+    case STMT_FOR: {
+      copy.as.stmt_for.initializer = clone_expr(&stmt->as.stmt_for.initializer);
+      copy.as.stmt_for.condition = clone_expr(&stmt->as.stmt_for.condition);
+      copy.as.stmt_for.advancement = clone_expr(&stmt->as.stmt_for.advancement);
+      Stmt body = clone_stmt(stmt->as.stmt_for.body);
+      copy.as.stmt_for.body = ALLOC(body);
+      copy.as.stmt_for.label = own_string(stmt->as.stmt_for.label);
+      break;
+    }
+    case STMT_EXPR: {
+      copy.as.stmt_expr.expr = clone_expr(&stmt->as.stmt_expr.expr);
+      break;
+    }
+    case STMT_BREAK: {
+      copy.as.stmt_break.label = own_string(stmt->as.stmt_break.label);
+      break;
+    }
+    case STMT_CONTINUE: {
+      copy.as.stmt_continue.label = own_string(stmt->as.stmt_continue.label);
+      break;
+    }
+    case STMT_ASSERT: {
+      copy.as.stmt_assert.expr = clone_expr(&stmt->as.stmt_assert.expr);
+      break;
+    }
+    case STMT_DECORATOR: {
+      Stmt body = clone_stmt(stmt->as.stmt_decorator.fn);
+      copy.as.stmt_decorator.fn = ALLOC(body);
+      copy.as.stmt_decorator.name = own_string(stmt->as.stmt_decorator.name);
+      break;
+    }
+    case STMT_IF: {
+      copy.as.stmt_if.condition = clone_expr(&stmt->as.stmt_if.condition);
+      Stmt then_branch = clone_stmt(stmt->as.stmt_if.then_branch);
+      Stmt *else_branch = NULL;
+      if (stmt->as.stmt_if.else_branch) {
+        Stmt s = clone_stmt(stmt->as.stmt_if.else_branch);
+        *else_branch = s;
+      }
+      copy.as.stmt_if.then_branch = ALLOC(then_branch);
+      copy.as.stmt_if.else_branch = else_branch;
+      break;
+    }
+    case STMT_IMPL: {
+      copy.as.stmt_impl.name = own_string(stmt->as.stmt_impl.name);
+      DynArray_Stmt methods = {0};
+      for (size_t i = 0; i < stmt->as.stmt_impl.methods.count; i++) {
+        Stmt s = clone_stmt(&stmt->as.stmt_impl.methods.data[i]);
+        dynarray_insert(&methods, s);
+      }
+      copy.as.stmt_impl.methods = methods;
+      break;
+    }
+    case STMT_RETURN: {
+      copy.as.stmt_return.expr = clone_expr(&stmt->as.stmt_return.expr);
+      break;
+    }
+    case STMT_YIELD: {
+      copy.as.stmt_yield.expr = clone_expr(&stmt->as.stmt_yield.expr);
+      break;
+    }
+    case STMT_USE: {
+      copy.as.stmt_use.path = own_string(stmt->as.stmt_use.path);
+      break;
+    }
+    case STMT_STRUCT: {
+      copy.as.stmt_struct.name = own_string(stmt->as.stmt_struct.name);
+      DynArray_char_ptr properties = {0};
+      for (size_t i = 0; i < stmt->as.stmt_struct.properties.count; i++) {
+        char *s = own_string(stmt->as.stmt_struct.properties.data[i]);
+        dynarray_insert(&properties, s);
+      }
+      break;
+    }
+    default:
+      assert(0);
+  }
 
-    return copy;
+  return copy;
 }
 
-DynArray_Stmt clone_ast(const DynArray_Stmt *ast)
-{
-    DynArray_Stmt copy = {0};
+DynArray_Stmt clone_ast(const DynArray_Stmt *ast) {
+  DynArray_Stmt copy = {0};
 
-    for (size_t i = 0; i < ast->count; i++)
-    {
-        Stmt s = clone_stmt(&ast->data[i]);
-        dynarray_insert(&copy, s);
-    }
+  for (size_t i = 0; i < ast->count; i++) {
+    Stmt s = clone_stmt(&ast->data[i]);
+    dynarray_insert(&copy, s);
+  }
 
-    return copy;
+  return copy;
 }
 
-void pretty_print(const DynArray_Stmt *ast)
-{
-    int indent = 0;
+void pretty_print(const DynArray_Stmt *ast) {
+  int indent = 0;
 
-    printf("Program(\n");
+  printf("Program(\n");
 
-    for (size_t i = 0; i < ast->count; i++)
-    {
-        print_stmt(&ast->data[i], indent + 4, false);
-        if (i < ast->count - 1)
-            printf(",\n");
-    }
+  for (size_t i = 0; i < ast->count; i++) {
+    print_stmt(&ast->data[i], indent + 4, false);
+    if (i < ast->count - 1) printf(",\n");
+  }
 
-    printf("\n)\n");
+  printf("\n)\n");
 }

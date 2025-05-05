@@ -12,827 +12,735 @@
 #include "tokenizer.h"
 #include "util.h"
 
-#define CONSUME(parser, token_type, err)                                         \
-    ({                                                                           \
-        TokenResult r = consume((parser), (token_type));                         \
-        if (!r.is_ok)                                                            \
-            return (ParseFnResult) {.is_ok = false, .msg = err, .as.stmt = {0}}; \
-        r.token;                                                                 \
-    })
+#define CONSUME(parser, token_type, err)                                  \
+  ({                                                                      \
+    TokenResult r = consume((parser), (token_type));                      \
+    if (!r.is_ok)                                                         \
+      return (ParseFnResult){.is_ok = false, .msg = err, .as.stmt = {0}}; \
+    r.token;                                                              \
+  })
 
-#define HANDLE_EXPR(kind, ...)               \
-    ({                                       \
-        ParseFnResult r = kind(__VA_ARGS__); \
-        if (!r.is_ok)                        \
-            return r;                        \
-        r.as.expr;                           \
-    })
+#define HANDLE_EXPR(kind, ...)           \
+  ({                                     \
+    ParseFnResult r = kind(__VA_ARGS__); \
+    if (!r.is_ok) return r;              \
+    r.as.expr;                           \
+  })
 
-#define HANDLE_STMT(kind, ...)            \
-    ({                                    \
-        ParseFnResult r = kind((parser)); \
-        if (!r.is_ok)                     \
-            return r;                     \
-        r.as.stmt;                        \
-    })
+#define HANDLE_STMT(kind, ...)        \
+  ({                                  \
+    ParseFnResult r = kind((parser)); \
+    if (!r.is_ok) return r;           \
+    r.as.stmt;                        \
+  })
 
-void init_parser(Parser *parser, const DynArray_Token *tokens)
-{
-    memset(parser, 0, sizeof(Parser));
-    parser->tokens = tokens;
+void init_parser(Parser *parser, const DynArray_Token *tokens) {
+  memset(parser, 0, sizeof(Parser));
+  parser->tokens = tokens;
 }
 
-static Token pop_front(Parser *parser)
-{
-    if (parser->idx < parser->tokens->count)
-        return parser->tokens->data[parser->idx++];
-    return (Token) {.type = TOKEN_EOF, .length = 0, .start = NULL};
+static Token pop_front(Parser *parser) {
+  if (parser->idx < parser->tokens->count)
+    return parser->tokens->data[parser->idx++];
+  return (Token){.type = TOKEN_EOF, .length = 0, .start = NULL};
 }
 
-static Token next_token(Parser *parser)
-{
-    return pop_front(parser);
+static Token next_token(Parser *parser) { return pop_front(parser); }
+
+static Token advance(Parser *parser) {
+  parser->previous = parser->current;
+  parser->current = next_token(parser);
+  return parser->previous;
 }
 
-static Token advance(Parser *parser)
-{
-    parser->previous = parser->current;
-    parser->current = next_token(parser);
-    return parser->previous;
+static bool check(Parser *parser, TokenType type) {
+  return parser->current.type == type;
 }
 
-static bool check(Parser *parser, TokenType type)
-{
-    return parser->current.type == type;
-}
-
-static bool match(Parser *parser, int size, ...)
-{
-    va_list ap;
-    va_start(ap, size);
-    for (int i = 0; i < size; i++)
-    {
-        TokenType type = va_arg(ap, TokenType);
-        if (check(parser, type))
-        {
-            advance(parser);
-            va_end(ap);
-            return true;
-        }
+static bool match(Parser *parser, int size, ...) {
+  va_list ap;
+  va_start(ap, size);
+  for (int i = 0; i < size; i++) {
+    TokenType type = va_arg(ap, TokenType);
+    if (check(parser, type)) {
+      advance(parser);
+      va_end(ap);
+      return true;
     }
-    va_end(ap);
-    return false;
+  }
+  va_end(ap);
+  return false;
 }
 
-static TokenResult consume(Parser *parser, TokenType type)
-{
-    if (check(parser, type))
-        return (TokenResult) {.token = advance(parser), .is_ok = true};
-    return (TokenResult) {.is_ok = false, .token = {0}};
+static TokenResult consume(Parser *parser, TokenType type) {
+  if (check(parser, type))
+    return (TokenResult){.token = advance(parser), .is_ok = true};
+  return (TokenResult){.is_ok = false, .token = {0}};
 }
 
-static ParseFnResult boolean(Parser *parser)
-{
-    bool b;
-    switch (parser->previous.type)
-    {
-        case TOKEN_TRUE: {
-            b = true;
-            break;
-        }
-        case TOKEN_FALSE: {
-            b = false;
-            break;
-        }
-        default:
-            assert(0);
+static ParseFnResult boolean(Parser *parser) {
+  bool b;
+  switch (parser->previous.type) {
+    case TOKEN_TRUE: {
+      b = true;
+      break;
     }
-    ExprLiteral e = {
-        .kind = LIT_BOOLEAN,
-        .as._bool = b,
-    };
-    return (ParseFnResult) {.as.expr = AS_EXPR_LITERAL(e), .is_ok = true, .msg = NULL};
-}
-
-static ParseFnResult null(Parser *parser)
-{
-    return (ParseFnResult) {
-        .as.expr = AS_EXPR_LITERAL((ExprLiteral) {.kind = LIT_NULL}), .is_ok = true, .msg = NULL};
-}
-
-static ParseFnResult number(Parser *parser)
-{
-    ExprLiteral e = {
-        .kind = LIT_NUMBER,
-        .as._double = strtod(parser->previous.start, NULL),
-    };
-    return (ParseFnResult) {.as.expr = AS_EXPR_LITERAL(e), .is_ok = true, .msg = NULL};
-}
-
-static ParseFnResult string(Parser *parser)
-{
-    ExprLiteral e = {
-        .kind = LIT_STRING,
-        .as.str = own_string_n(parser->previous.start, parser->previous.length - 1),
-    };
-    return (ParseFnResult) {.as.expr = AS_EXPR_LITERAL(e), .is_ok = true, .msg = NULL};
-}
-
-static ParseFnResult variable(Parser *parser)
-{
-    ExprVariable e = {
-        .name = own_string_n(parser->previous.start, parser->previous.length),
-    };
-    return (ParseFnResult) {.as.expr = AS_EXPR_VARIABLE(e), .is_ok = true, .msg = NULL};
-}
-
-static ParseFnResult literal(Parser *parser)
-{
-    switch (parser->previous.type)
-    {
-        case TOKEN_NUMBER:
-            return number(parser);
-        case TOKEN_STRING:
-            return string(parser);
-        case TOKEN_TRUE:
-        case TOKEN_FALSE:
-            return boolean(parser);
-        case TOKEN_NULL:
-            return null(parser);
-        default:
-            assert(0);
+    case TOKEN_FALSE: {
+      b = false;
+      break;
     }
+    default:
+      assert(0);
+  }
+  ExprLiteral e = {
+      .kind = LIT_BOOLEAN,
+      .as._bool = b,
+  };
+  return (ParseFnResult){
+      .as.expr = AS_EXPR_LITERAL(e), .is_ok = true, .msg = NULL};
+}
+
+static ParseFnResult null(Parser *parser) {
+  return (ParseFnResult){
+      .as.expr = AS_EXPR_LITERAL((ExprLiteral){.kind = LIT_NULL}),
+      .is_ok = true,
+      .msg = NULL};
+}
+
+static ParseFnResult number(Parser *parser) {
+  ExprLiteral e = {
+      .kind = LIT_NUMBER,
+      .as._double = strtod(parser->previous.start, NULL),
+  };
+  return (ParseFnResult){
+      .as.expr = AS_EXPR_LITERAL(e), .is_ok = true, .msg = NULL};
+}
+
+static ParseFnResult string(Parser *parser) {
+  ExprLiteral e = {
+      .kind = LIT_STRING,
+      .as.str =
+          own_string_n(parser->previous.start, parser->previous.length - 1),
+  };
+  return (ParseFnResult){
+      .as.expr = AS_EXPR_LITERAL(e), .is_ok = true, .msg = NULL};
+}
+
+static ParseFnResult variable(Parser *parser) {
+  ExprVariable e = {
+      .name = own_string_n(parser->previous.start, parser->previous.length),
+  };
+  return (ParseFnResult){
+      .as.expr = AS_EXPR_VARIABLE(e), .is_ok = true, .msg = NULL};
+}
+
+static ParseFnResult literal(Parser *parser) {
+  switch (parser->previous.type) {
+    case TOKEN_NUMBER:
+      return number(parser);
+    case TOKEN_STRING:
+      return string(parser);
+    case TOKEN_TRUE:
+    case TOKEN_FALSE:
+      return boolean(parser);
+    case TOKEN_NULL:
+      return null(parser);
+    default:
+      assert(0);
+  }
 }
 
 static ParseFnResult primary(Parser *parser);
 static ParseFnResult expression(Parser *parser);
 static ParseFnResult statement(Parser *parser);
 
-static ParseFnResult finish_call(Parser *parser, Expr callee)
-{
-    DynArray_Expr arguments = {0};
-    if (!check(parser, TOKEN_RIGHT_PAREN))
-    {
-        do
-        {
-            dynarray_insert(&arguments, HANDLE_EXPR(expression, parser));
-        } while (match(parser, 1, TOKEN_COMMA));
-    }
-    CONSUME(parser, TOKEN_RIGHT_PAREN, "Expected ')' after expression.");
-    ExprCall e = {
-        .callee = ALLOC(callee),
-        .arguments = arguments,
-    };
-    return (ParseFnResult) {.as.expr = AS_EXPR_CALL(e), .is_ok = true, .msg = NULL};
-}
-
-static ParseFnResult call(Parser *parser)
-{
-    Expr expr = HANDLE_EXPR(primary, parser);
-    for (;;)
-    {
-        if (match(parser, 1, TOKEN_LEFT_PAREN))
-        {
-            expr = HANDLE_EXPR(finish_call, parser, expr);
-        }
-        else if (match(parser, 2, TOKEN_DOT, TOKEN_ARROW))
-        {
-            char *op = own_string_n(parser->previous.start, parser->previous.length);
-            Token property_name =
-                CONSUME(parser, TOKEN_IDENTIFIER, "Expected property name after '.'");
-
-            ExprGet get_expr = {
-                .expr = ALLOC(expr),
-                .property_name = own_string_n(property_name.start, property_name.length),
-                .op = op,
-            };
-
-            expr = AS_EXPR_GET(get_expr);
-        }
-        else if (match(parser, 1, TOKEN_LEFT_BRACKET))
-        {
-            Expr index = HANDLE_EXPR(expression, parser);
-            CONSUME(parser, TOKEN_RIGHT_BRACKET, "Expected ']' after index.");
-            ExprSubscript subscript_expr = {
-                .expr = ALLOC(expr),
-                .index = ALLOC(index),
-            };
-            expr = AS_EXPR_SUBSCRIPT(subscript_expr);
-        }
-        else
-        {
-            break;
-        }
-    }
-    return (ParseFnResult) {.as.expr = expr, .is_ok = true, .msg = NULL};
-}
-
-static ParseFnResult unary(Parser *parser)
-{
-    if (match(parser, 5, TOKEN_MINUS, TOKEN_AMPERSAND, TOKEN_STAR, TOKEN_BANG, TOKEN_TILDE))
-    {
-        char *op = own_string_n(parser->previous.start, parser->previous.length);
-        Expr right = HANDLE_EXPR(unary, parser);
-        ExprUnary e = {.expr = ALLOC(right), .op = op};
-        return (ParseFnResult) {.as.expr = AS_EXPR_UNARY(e), .is_ok = true, .msg = NULL};
-    }
-    return call(parser);
-}
-
-static ParseFnResult factor(Parser *parser)
-{
-    Expr expr = HANDLE_EXPR(unary, parser);
-    while (match(parser, 3, TOKEN_STAR, TOKEN_SLASH, TOKEN_MOD))
-    {
-        char *op = own_string_n(parser->previous.start, parser->previous.length);
-        Expr right = HANDLE_EXPR(unary, parser);
-        ExprBinary binexp = {
-            .lhs = ALLOC(expr),
-            .rhs = ALLOC(right),
-            .op = op,
-        };
-        expr = AS_EXPR_BINARY(binexp);
-    }
-    return (ParseFnResult) {.as.expr = expr, .is_ok = true, .msg = NULL};
-}
-
-static ParseFnResult term(Parser *parser)
-{
-    Expr expr = HANDLE_EXPR(factor, parser);
-    while (match(parser, 3, TOKEN_PLUS, TOKEN_MINUS, TOKEN_PLUSPLUS))
-    {
-        char *op = own_string_n(parser->previous.start, parser->previous.length);
-        Expr right = HANDLE_EXPR(factor, parser);
-        ExprBinary binexp = {
-            .lhs = ALLOC(expr),
-            .rhs = ALLOC(right),
-            .op = op,
-        };
-        expr = AS_EXPR_BINARY(binexp);
-    }
-    return (ParseFnResult) {.as.expr = expr, .is_ok = true, .msg = NULL};
-}
-
-static ParseFnResult bitwise_shift(Parser *parser)
-{
-    Expr expr = HANDLE_EXPR(term, parser);
-    while (match(parser, 2, TOKEN_GREATER_GREATER, TOKEN_LESS_LESS))
-    {
-        char *op = own_string_n(parser->previous.start, parser->previous.length);
-        Expr right = HANDLE_EXPR(term, parser);
-        ExprBinary binexp = {
-            .lhs = ALLOC(expr),
-            .rhs = ALLOC(right),
-            .op = op,
-        };
-        expr = AS_EXPR_BINARY(binexp);
-    }
-    return (ParseFnResult) {.as.expr = expr, .is_ok = true, .msg = NULL};
-}
-
-static ParseFnResult comparison(Parser *parser)
-{
-    Expr expr = HANDLE_EXPR(bitwise_shift, parser);
-    while (match(parser, 4, TOKEN_GREATER, TOKEN_LESS, TOKEN_GREATER_EQUAL, TOKEN_LESS_EQUAL))
-    {
-        char *op = own_string_n(parser->previous.start, parser->previous.length);
-        Expr right = HANDLE_EXPR(bitwise_shift, parser);
-        ExprBinary binexp = {
-            .lhs = ALLOC(expr),
-            .rhs = ALLOC(right),
-            .op = op,
-        };
-        expr = AS_EXPR_BINARY(binexp);
-    }
-    return (ParseFnResult) {.as.expr = expr, .is_ok = true, .msg = NULL};
-}
-
-static ParseFnResult equality(Parser *parser)
-{
-    Expr expr = HANDLE_EXPR(comparison, parser);
-    while (match(parser, 2, TOKEN_DOUBLE_EQUAL, TOKEN_BANG_EQUAL))
-    {
-        char *op = own_string_n(parser->previous.start, parser->previous.length);
-        Expr right = HANDLE_EXPR(comparison, parser);
-        ExprBinary binexp = {
-            .lhs = ALLOC(expr),
-            .rhs = ALLOC(right),
-            .op = op,
-        };
-        expr = AS_EXPR_BINARY(binexp);
-    }
-    return (ParseFnResult) {.as.expr = expr, .is_ok = true, .msg = NULL};
-}
-
-static ParseFnResult bitwise_and(Parser *parser)
-{
-    Expr expr = HANDLE_EXPR(equality, parser);
-    while (match(parser, 1, TOKEN_AMPERSAND))
-    {
-        char *op = own_string_n(parser->previous.start, parser->previous.length);
-        Expr right = HANDLE_EXPR(equality, parser);
-        ExprBinary binexp = {
-            .lhs = ALLOC(expr),
-            .rhs = ALLOC(right),
-            .op = op,
-        };
-        expr = AS_EXPR_BINARY(binexp);
-    }
-    return (ParseFnResult) {.as.expr = expr, .is_ok = true, .msg = NULL};
-}
-
-static ParseFnResult bitwise_xor(Parser *parser)
-{
-    Expr expr = HANDLE_EXPR(bitwise_and, parser);
-    while (match(parser, 1, TOKEN_CARET))
-    {
-        char *op = own_string_n(parser->previous.start, parser->previous.length);
-        Expr right = HANDLE_EXPR(bitwise_and, parser);
-        ExprBinary binexp = {
-            .lhs = ALLOC(expr),
-            .rhs = ALLOC(right),
-            .op = op,
-        };
-        expr = AS_EXPR_BINARY(binexp);
-    }
-    return (ParseFnResult) {.as.expr = expr, .is_ok = true, .msg = NULL};
-}
-
-static ParseFnResult bitwise_or(Parser *parser)
-{
-    Expr expr = HANDLE_EXPR(bitwise_xor, parser);
-    while (match(parser, 1, TOKEN_PIPE))
-    {
-        char *op = own_string_n(parser->previous.start, parser->previous.length);
-        Expr right = HANDLE_EXPR(bitwise_xor, parser);
-        ExprBinary binexp = {
-            .lhs = ALLOC(expr),
-            .rhs = ALLOC(right),
-            .op = op,
-        };
-        expr = AS_EXPR_BINARY(binexp);
-    }
-    return (ParseFnResult) {.as.expr = expr, .is_ok = true, .msg = NULL};
-}
-
-static ParseFnResult and_(Parser *parser)
-{
-    Expr expr = HANDLE_EXPR(bitwise_or, parser);
-    while (match(parser, 1, TOKEN_DOUBLE_AMPERSAND))
-    {
-        char *op = own_string_n(parser->previous.start, parser->previous.length);
-        Expr right = HANDLE_EXPR(bitwise_or, parser);
-        ExprBinary binexp = {
-            .lhs = ALLOC(expr),
-            .rhs = ALLOC(right),
-            .op = op,
-        };
-        expr = AS_EXPR_BINARY(binexp);
-    }
-    return (ParseFnResult) {.as.expr = expr, .is_ok = true, .msg = NULL};
-}
-
-static ParseFnResult or_(Parser *parser)
-{
-    Expr expr = HANDLE_EXPR(and_, parser);
-    while (match(parser, 1, TOKEN_DOUBLE_PIPE))
-    {
-        char *op = own_string_n(parser->previous.start, parser->previous.length);
-        Expr right = HANDLE_EXPR(and_, parser);
-        ExprBinary binexp = {
-            .lhs = ALLOC(expr),
-            .rhs = ALLOC(right),
-            .op = op,
-        };
-        expr = AS_EXPR_BINARY(binexp);
-    }
-    return (ParseFnResult) {.as.expr = expr, .is_ok = true, .msg = NULL};
-}
-
-static ParseFnResult assignment(Parser *parser)
-{
-    Expr expr = HANDLE_EXPR(or_, parser);
-    if (match(parser, 11, TOKEN_EQUAL, TOKEN_PLUS_EQUAL, TOKEN_MINUS_EQUAL, TOKEN_STAR_EQUAL,
-              TOKEN_SLASH_EQUAL, TOKEN_MOD_EQUAL, TOKEN_AMPERSAND_EQUAL, TOKEN_PIPE_EQUAL,
-              TOKEN_CARET_EQUAL, TOKEN_GREATER_GREATER_EQUAL, TOKEN_LESS_LESS_EQUAL))
-    {
-        char *op = own_string_n(parser->previous.start, parser->previous.length);
-        Expr right = HANDLE_EXPR(or_, parser);
-        ExprAssign assignexp = {
-            .lhs = ALLOC(expr),
-            .rhs = ALLOC(right),
-            .op = op,
-        };
-        expr = AS_EXPR_ASSIGN(assignexp);
-    }
-    return (ParseFnResult) {.as.expr = expr, .is_ok = true, .msg = NULL};
-}
-
-static ParseFnResult expression(Parser *parser)
-{
-    return assignment(parser);
-}
-
-static ParseFnResult grouping(Parser *parser)
-{
-    Expr exp = HANDLE_EXPR(expression, parser);
-    CONSUME(parser, TOKEN_RIGHT_PAREN, "Unmatched closing parentheses.");
-    return (ParseFnResult) {.as.expr = exp, .is_ok = true, .msg = NULL};
-}
-
-static ParseFnResult block(Parser *parser)
-{
-    parser->depth++;
-    DynArray_Stmt stmts = {0};
-    while (!check(parser, TOKEN_RIGHT_BRACE) && !check(parser, TOKEN_EOF))
-    {
-        dynarray_insert(&stmts, HANDLE_STMT(statement, parser));
-    }
-    CONSUME(parser, TOKEN_RIGHT_BRACE, "Expected '}' at the end of the block.");
-    StmtBlock body = {
-        .depth = parser->depth,
-        .stmts = stmts,
-    };
-    parser->depth--;
-    return (ParseFnResult) {.as.stmt = AS_STMT_BLOCK(body), .is_ok = true, .msg = NULL};
-}
-
-static ParseFnResult struct_initializer(Parser *parser)
-{
-    char *name = own_string_n(parser->previous.start, parser->previous.length);
-    CONSUME(parser, TOKEN_LEFT_BRACE, "Expected '{' after struct name.");
-    DynArray_Expr initializers = {0};
-    do
-    {
-        Expr property = HANDLE_EXPR(expression, parser);
-        CONSUME(parser, TOKEN_COLON, "Expected ':' after property name.");
-        Expr value = HANDLE_EXPR(expression, parser);
-        ExprStructInitializer structinitexp = {
-            .property = ALLOC(property),
-            .value = ALLOC(value),
-        };
-        dynarray_insert(&initializers, AS_EXPR_STRUCT_INITIALIZER(structinitexp));
+static ParseFnResult finish_call(Parser *parser, Expr callee) {
+  DynArray_Expr arguments = {0};
+  if (!check(parser, TOKEN_RIGHT_PAREN)) {
+    do {
+      dynarray_insert(&arguments, HANDLE_EXPR(expression, parser));
     } while (match(parser, 1, TOKEN_COMMA));
-    CONSUME(parser, TOKEN_RIGHT_BRACE, "Expected '}' after struct initialization.");
-    ExprStruct structexp = {
-        .initializers = initializers,
-        .name = name,
-    };
-    return (ParseFnResult) {.as.expr = AS_EXPR_STRUCT(structexp), .is_ok = true, .msg = NULL};
+  }
+  CONSUME(parser, TOKEN_RIGHT_PAREN, "Expected ')' after expression.");
+  ExprCall e = {
+      .callee = ALLOC(callee),
+      .arguments = arguments,
+  };
+  return (ParseFnResult){
+      .as.expr = AS_EXPR_CALL(e), .is_ok = true, .msg = NULL};
 }
 
-static ParseFnResult array_initializer(Parser *parser)
-{
-    DynArray_Expr initializers = {0};
-    do
-    {
-        dynarray_insert(&initializers, HANDLE_EXPR(expression, parser));
+static ParseFnResult call(Parser *parser) {
+  Expr expr = HANDLE_EXPR(primary, parser);
+  for (;;) {
+    if (match(parser, 1, TOKEN_LEFT_PAREN)) {
+      expr = HANDLE_EXPR(finish_call, parser, expr);
+    } else if (match(parser, 2, TOKEN_DOT, TOKEN_ARROW)) {
+      char *op = own_string_n(parser->previous.start, parser->previous.length);
+      Token property_name =
+          CONSUME(parser, TOKEN_IDENTIFIER, "Expected property name after '.'");
+
+      ExprGet get_expr = {
+          .expr = ALLOC(expr),
+          .property_name =
+              own_string_n(property_name.start, property_name.length),
+          .op = op,
+      };
+
+      expr = AS_EXPR_GET(get_expr);
+    } else if (match(parser, 1, TOKEN_LEFT_BRACKET)) {
+      Expr index = HANDLE_EXPR(expression, parser);
+      CONSUME(parser, TOKEN_RIGHT_BRACKET, "Expected ']' after index.");
+      ExprSubscript subscript_expr = {
+          .expr = ALLOC(expr),
+          .index = ALLOC(index),
+      };
+      expr = AS_EXPR_SUBSCRIPT(subscript_expr);
+    } else {
+      break;
+    }
+  }
+  return (ParseFnResult){.as.expr = expr, .is_ok = true, .msg = NULL};
+}
+
+static ParseFnResult unary(Parser *parser) {
+  if (match(parser, 5, TOKEN_MINUS, TOKEN_AMPERSAND, TOKEN_STAR, TOKEN_BANG,
+            TOKEN_TILDE)) {
+    char *op = own_string_n(parser->previous.start, parser->previous.length);
+    Expr right = HANDLE_EXPR(unary, parser);
+    ExprUnary e = {.expr = ALLOC(right), .op = op};
+    return (ParseFnResult){
+        .as.expr = AS_EXPR_UNARY(e), .is_ok = true, .msg = NULL};
+  }
+  return call(parser);
+}
+
+static ParseFnResult factor(Parser *parser) {
+  Expr expr = HANDLE_EXPR(unary, parser);
+  while (match(parser, 3, TOKEN_STAR, TOKEN_SLASH, TOKEN_MOD)) {
+    char *op = own_string_n(parser->previous.start, parser->previous.length);
+    Expr right = HANDLE_EXPR(unary, parser);
+    ExprBinary binexp = {
+        .lhs = ALLOC(expr),
+        .rhs = ALLOC(right),
+        .op = op,
+    };
+    expr = AS_EXPR_BINARY(binexp);
+  }
+  return (ParseFnResult){.as.expr = expr, .is_ok = true, .msg = NULL};
+}
+
+static ParseFnResult term(Parser *parser) {
+  Expr expr = HANDLE_EXPR(factor, parser);
+  while (match(parser, 3, TOKEN_PLUS, TOKEN_MINUS, TOKEN_PLUSPLUS)) {
+    char *op = own_string_n(parser->previous.start, parser->previous.length);
+    Expr right = HANDLE_EXPR(factor, parser);
+    ExprBinary binexp = {
+        .lhs = ALLOC(expr),
+        .rhs = ALLOC(right),
+        .op = op,
+    };
+    expr = AS_EXPR_BINARY(binexp);
+  }
+  return (ParseFnResult){.as.expr = expr, .is_ok = true, .msg = NULL};
+}
+
+static ParseFnResult bitwise_shift(Parser *parser) {
+  Expr expr = HANDLE_EXPR(term, parser);
+  while (match(parser, 2, TOKEN_GREATER_GREATER, TOKEN_LESS_LESS)) {
+    char *op = own_string_n(parser->previous.start, parser->previous.length);
+    Expr right = HANDLE_EXPR(term, parser);
+    ExprBinary binexp = {
+        .lhs = ALLOC(expr),
+        .rhs = ALLOC(right),
+        .op = op,
+    };
+    expr = AS_EXPR_BINARY(binexp);
+  }
+  return (ParseFnResult){.as.expr = expr, .is_ok = true, .msg = NULL};
+}
+
+static ParseFnResult comparison(Parser *parser) {
+  Expr expr = HANDLE_EXPR(bitwise_shift, parser);
+  while (match(parser, 4, TOKEN_GREATER, TOKEN_LESS, TOKEN_GREATER_EQUAL,
+               TOKEN_LESS_EQUAL)) {
+    char *op = own_string_n(parser->previous.start, parser->previous.length);
+    Expr right = HANDLE_EXPR(bitwise_shift, parser);
+    ExprBinary binexp = {
+        .lhs = ALLOC(expr),
+        .rhs = ALLOC(right),
+        .op = op,
+    };
+    expr = AS_EXPR_BINARY(binexp);
+  }
+  return (ParseFnResult){.as.expr = expr, .is_ok = true, .msg = NULL};
+}
+
+static ParseFnResult equality(Parser *parser) {
+  Expr expr = HANDLE_EXPR(comparison, parser);
+  while (match(parser, 2, TOKEN_DOUBLE_EQUAL, TOKEN_BANG_EQUAL)) {
+    char *op = own_string_n(parser->previous.start, parser->previous.length);
+    Expr right = HANDLE_EXPR(comparison, parser);
+    ExprBinary binexp = {
+        .lhs = ALLOC(expr),
+        .rhs = ALLOC(right),
+        .op = op,
+    };
+    expr = AS_EXPR_BINARY(binexp);
+  }
+  return (ParseFnResult){.as.expr = expr, .is_ok = true, .msg = NULL};
+}
+
+static ParseFnResult bitwise_and(Parser *parser) {
+  Expr expr = HANDLE_EXPR(equality, parser);
+  while (match(parser, 1, TOKEN_AMPERSAND)) {
+    char *op = own_string_n(parser->previous.start, parser->previous.length);
+    Expr right = HANDLE_EXPR(equality, parser);
+    ExprBinary binexp = {
+        .lhs = ALLOC(expr),
+        .rhs = ALLOC(right),
+        .op = op,
+    };
+    expr = AS_EXPR_BINARY(binexp);
+  }
+  return (ParseFnResult){.as.expr = expr, .is_ok = true, .msg = NULL};
+}
+
+static ParseFnResult bitwise_xor(Parser *parser) {
+  Expr expr = HANDLE_EXPR(bitwise_and, parser);
+  while (match(parser, 1, TOKEN_CARET)) {
+    char *op = own_string_n(parser->previous.start, parser->previous.length);
+    Expr right = HANDLE_EXPR(bitwise_and, parser);
+    ExprBinary binexp = {
+        .lhs = ALLOC(expr),
+        .rhs = ALLOC(right),
+        .op = op,
+    };
+    expr = AS_EXPR_BINARY(binexp);
+  }
+  return (ParseFnResult){.as.expr = expr, .is_ok = true, .msg = NULL};
+}
+
+static ParseFnResult bitwise_or(Parser *parser) {
+  Expr expr = HANDLE_EXPR(bitwise_xor, parser);
+  while (match(parser, 1, TOKEN_PIPE)) {
+    char *op = own_string_n(parser->previous.start, parser->previous.length);
+    Expr right = HANDLE_EXPR(bitwise_xor, parser);
+    ExprBinary binexp = {
+        .lhs = ALLOC(expr),
+        .rhs = ALLOC(right),
+        .op = op,
+    };
+    expr = AS_EXPR_BINARY(binexp);
+  }
+  return (ParseFnResult){.as.expr = expr, .is_ok = true, .msg = NULL};
+}
+
+static ParseFnResult and_(Parser *parser) {
+  Expr expr = HANDLE_EXPR(bitwise_or, parser);
+  while (match(parser, 1, TOKEN_DOUBLE_AMPERSAND)) {
+    char *op = own_string_n(parser->previous.start, parser->previous.length);
+    Expr right = HANDLE_EXPR(bitwise_or, parser);
+    ExprBinary binexp = {
+        .lhs = ALLOC(expr),
+        .rhs = ALLOC(right),
+        .op = op,
+    };
+    expr = AS_EXPR_BINARY(binexp);
+  }
+  return (ParseFnResult){.as.expr = expr, .is_ok = true, .msg = NULL};
+}
+
+static ParseFnResult or_(Parser *parser) {
+  Expr expr = HANDLE_EXPR(and_, parser);
+  while (match(parser, 1, TOKEN_DOUBLE_PIPE)) {
+    char *op = own_string_n(parser->previous.start, parser->previous.length);
+    Expr right = HANDLE_EXPR(and_, parser);
+    ExprBinary binexp = {
+        .lhs = ALLOC(expr),
+        .rhs = ALLOC(right),
+        .op = op,
+    };
+    expr = AS_EXPR_BINARY(binexp);
+  }
+  return (ParseFnResult){.as.expr = expr, .is_ok = true, .msg = NULL};
+}
+
+static ParseFnResult assignment(Parser *parser) {
+  Expr expr = HANDLE_EXPR(or_, parser);
+  if (match(parser, 11, TOKEN_EQUAL, TOKEN_PLUS_EQUAL, TOKEN_MINUS_EQUAL,
+            TOKEN_STAR_EQUAL, TOKEN_SLASH_EQUAL, TOKEN_MOD_EQUAL,
+            TOKEN_AMPERSAND_EQUAL, TOKEN_PIPE_EQUAL, TOKEN_CARET_EQUAL,
+            TOKEN_GREATER_GREATER_EQUAL, TOKEN_LESS_LESS_EQUAL)) {
+    char *op = own_string_n(parser->previous.start, parser->previous.length);
+    Expr right = HANDLE_EXPR(or_, parser);
+    ExprAssign assignexp = {
+        .lhs = ALLOC(expr),
+        .rhs = ALLOC(right),
+        .op = op,
+    };
+    expr = AS_EXPR_ASSIGN(assignexp);
+  }
+  return (ParseFnResult){.as.expr = expr, .is_ok = true, .msg = NULL};
+}
+
+static ParseFnResult expression(Parser *parser) { return assignment(parser); }
+
+static ParseFnResult grouping(Parser *parser) {
+  Expr exp = HANDLE_EXPR(expression, parser);
+  CONSUME(parser, TOKEN_RIGHT_PAREN, "Unmatched closing parentheses.");
+  return (ParseFnResult){.as.expr = exp, .is_ok = true, .msg = NULL};
+}
+
+static ParseFnResult block(Parser *parser) {
+  parser->depth++;
+  DynArray_Stmt stmts = {0};
+  while (!check(parser, TOKEN_RIGHT_BRACE) && !check(parser, TOKEN_EOF)) {
+    dynarray_insert(&stmts, HANDLE_STMT(statement, parser));
+  }
+  CONSUME(parser, TOKEN_RIGHT_BRACE, "Expected '}' at the end of the block.");
+  StmtBlock body = {
+      .depth = parser->depth,
+      .stmts = stmts,
+  };
+  parser->depth--;
+  return (ParseFnResult){
+      .as.stmt = AS_STMT_BLOCK(body), .is_ok = true, .msg = NULL};
+}
+
+static ParseFnResult struct_initializer(Parser *parser) {
+  char *name = own_string_n(parser->previous.start, parser->previous.length);
+  CONSUME(parser, TOKEN_LEFT_BRACE, "Expected '{' after struct name.");
+  DynArray_Expr initializers = {0};
+  do {
+    Expr property = HANDLE_EXPR(expression, parser);
+    CONSUME(parser, TOKEN_COLON, "Expected ':' after property name.");
+    Expr value = HANDLE_EXPR(expression, parser);
+    ExprStructInitializer structinitexp = {
+        .property = ALLOC(property),
+        .value = ALLOC(value),
+    };
+    dynarray_insert(&initializers, AS_EXPR_STRUCT_INITIALIZER(structinitexp));
+  } while (match(parser, 1, TOKEN_COMMA));
+  CONSUME(parser, TOKEN_RIGHT_BRACE,
+          "Expected '}' after struct initialization.");
+  ExprStruct structexp = {
+      .initializers = initializers,
+      .name = name,
+  };
+  return (ParseFnResult){
+      .as.expr = AS_EXPR_STRUCT(structexp), .is_ok = true, .msg = NULL};
+}
+
+static ParseFnResult array_initializer(Parser *parser) {
+  DynArray_Expr initializers = {0};
+  do {
+    dynarray_insert(&initializers, HANDLE_EXPR(expression, parser));
+  } while (match(parser, 1, TOKEN_COMMA));
+  CONSUME(parser, TOKEN_RIGHT_BRACKET,
+          "Expected ']' after array initialization.");
+  ExprArray arrayexp = {
+      .elements = initializers,
+  };
+  return (ParseFnResult){
+      .as.expr = AS_EXPR_ARRAY(arrayexp), .is_ok = true, .msg = NULL};
+}
+
+static ParseFnResult primary(Parser *parser) {
+  if (match(parser, 1, TOKEN_IDENTIFIER)) {
+    if (check(parser, TOKEN_LEFT_BRACE)) {
+      return struct_initializer(parser);
+    } else {
+      return variable(parser);
+    }
+  } else if (match(parser, 1, TOKEN_LEFT_PAREN)) {
+    return grouping(parser);
+  } else if (match(parser, 5, TOKEN_TRUE, TOKEN_FALSE, TOKEN_NULL, TOKEN_NUMBER,
+                   TOKEN_STRING)) {
+    return literal(parser);
+  } else if (match(parser, 1, TOKEN_LEFT_BRACKET)) {
+    return array_initializer(parser);
+  } else {
+    assert(0);
+  }
+}
+
+static ParseFnResult print_statement(Parser *parser) {
+  Expr exp = HANDLE_EXPR(expression, parser);
+  CONSUME(parser, TOKEN_SEMICOLON,
+          "Expected semicolon at the end of the expression.");
+  StmtPrint stmt = {.expr = exp};
+  return (ParseFnResult){
+      .as.stmt = AS_STMT_PRINT(stmt), .is_ok = true, .msg = NULL};
+}
+
+static ParseFnResult let_statement(Parser *parser) {
+  Token identifier =
+      CONSUME(parser, TOKEN_IDENTIFIER, "Expected identifier after 'let'.");
+  char *name = own_string_n(identifier.start, identifier.length);
+
+  CONSUME(parser, TOKEN_EQUAL, "Expected '=' after variable name.");
+
+  Expr initializer = HANDLE_EXPR(expression, parser);
+
+  CONSUME(parser, TOKEN_SEMICOLON,
+          "Expected semicolon at the end of the statement.");
+  StmtLet stmt = {.name = name, .initializer = initializer};
+  return (ParseFnResult){
+      .as.stmt = AS_STMT_LET(stmt), .is_ok = true, .msg = NULL};
+}
+
+static ParseFnResult expression_statement(Parser *parser) {
+  Expr expr = HANDLE_EXPR(expression, parser);
+  CONSUME(parser, TOKEN_SEMICOLON, "Expected ';' after expression");
+  StmtExpr stmt = {.expr = expr};
+  return (ParseFnResult){
+      .as.stmt = AS_STMT_EXPR(stmt), .is_ok = true, .msg = NULL};
+}
+
+static ParseFnResult if_statement(Parser *parser) {
+  CONSUME(parser, TOKEN_LEFT_PAREN, "Expected '(' after if.");
+  Expr condition = HANDLE_EXPR(expression, parser);
+  CONSUME(parser, TOKEN_RIGHT_PAREN, "Expected ')' after the condition.");
+
+  Stmt *then_branch = malloc(sizeof(Stmt));
+  Stmt *else_branch = NULL;
+
+  *then_branch = HANDLE_STMT(statement, parser);
+
+  if (match(parser, 1, TOKEN_ELSE)) {
+    else_branch = malloc(sizeof(Stmt));
+    *else_branch = HANDLE_STMT(statement, parser);
+  }
+
+  StmtIf stmt = {
+      .then_branch = then_branch,
+      .else_branch = else_branch,
+      .condition = condition,
+  };
+  return (ParseFnResult){
+      .as.stmt = AS_STMT_IF(stmt), .is_ok = true, .msg = NULL};
+}
+
+static ParseFnResult while_statement(Parser *parser) {
+  CONSUME(parser, TOKEN_LEFT_PAREN, "Expected '(' after while.");
+
+  Expr condition = HANDLE_EXPR(expression, parser);
+  CONSUME(parser, TOKEN_RIGHT_PAREN, "Expected ')' after condition.");
+
+  CONSUME(parser, TOKEN_LEFT_BRACE, "Expected '{' after the while condition.");
+
+  Stmt body = HANDLE_STMT(block, parser);
+
+  StmtWhile stmt = {
+      .condition = condition,
+      .body = ALLOC(body),
+  };
+  return (ParseFnResult){
+      .as.stmt = AS_STMT_WHILE(stmt), .is_ok = true, .msg = NULL};
+}
+
+static ParseFnResult for_statement(Parser *parser) {
+  CONSUME(parser, TOKEN_LEFT_PAREN, "Expected '(' after for.");
+
+  CONSUME(parser, TOKEN_LET, "Expected 'let' in initializer");
+
+  Expr initializer = HANDLE_EXPR(expression, parser);
+  CONSUME(parser, TOKEN_SEMICOLON, "Expected ';' after initializer.");
+
+  Expr condition = HANDLE_EXPR(expression, parser);
+  CONSUME(parser, TOKEN_SEMICOLON, "Expected ';' after condition.");
+
+  Expr advancement = HANDLE_EXPR(expression, parser);
+  CONSUME(parser, TOKEN_RIGHT_PAREN, "Expected ')' after advancement.");
+
+  CONSUME(parser, TOKEN_LEFT_BRACE, "Expected '{' after ')'.");
+
+  Stmt body = HANDLE_STMT(block, parser);
+
+  StmtFor stmt = {
+      .initializer = initializer,
+      .condition = condition,
+      .advancement = advancement,
+      .body = ALLOC(body),
+  };
+
+  return (ParseFnResult){
+      .as.stmt = AS_STMT_FOR(stmt), .is_ok = true, .msg = NULL};
+}
+
+static ParseFnResult function_statement(Parser *parser) {
+  Token name =
+      CONSUME(parser, TOKEN_IDENTIFIER, "Expected identifier after 'fn'.");
+  CONSUME(parser, TOKEN_LEFT_PAREN, "Expected '(' after identifier.");
+  DynArray_char_ptr parameters = {0};
+  if (!check(parser, TOKEN_RIGHT_PAREN)) {
+    do {
+      Token parameter =
+          CONSUME(parser, TOKEN_IDENTIFIER, "Expected parameter name.");
+      dynarray_insert(&parameters,
+                      own_string_n(parameter.start, parameter.length));
     } while (match(parser, 1, TOKEN_COMMA));
-    CONSUME(parser, TOKEN_RIGHT_BRACKET, "Expected ']' after array initialization.");
-    ExprArray arrayexp = {
-        .elements = initializers,
-    };
-    return (ParseFnResult) {.as.expr = AS_EXPR_ARRAY(arrayexp), .is_ok = true, .msg = NULL};
+  }
+  CONSUME(parser, TOKEN_RIGHT_PAREN, "Expected ')' after the parameter list.");
+  CONSUME(parser, TOKEN_LEFT_BRACE, "Expected '{' after the ')'.");
+  Stmt body = HANDLE_STMT(block, parser);
+  StmtFn stmt = {
+      .name = own_string_n(name.start, name.length),
+      .body = ALLOC(body),
+      .parameters = parameters,
+  };
+  return (ParseFnResult){
+      .as.stmt = AS_STMT_FN(stmt), .is_ok = true, .msg = NULL};
 }
 
-static ParseFnResult primary(Parser *parser)
-{
-    if (match(parser, 1, TOKEN_IDENTIFIER))
-    {
-        if (check(parser, TOKEN_LEFT_BRACE))
-        {
-            return struct_initializer(parser);
-        }
-        else
-        {
-            return variable(parser);
-        }
-    }
-    else if (match(parser, 1, TOKEN_LEFT_PAREN))
-    {
-        return grouping(parser);
-    }
-    else if (match(parser, 5, TOKEN_TRUE, TOKEN_FALSE, TOKEN_NULL, TOKEN_NUMBER, TOKEN_STRING))
-    {
-        return literal(parser);
-    }
-    else if (match(parser, 1, TOKEN_LEFT_BRACKET))
-    {
-        return array_initializer(parser);
-    }
-    else
-    {
-        assert(0);
-    }
+static ParseFnResult decorator_statement(Parser *parser) {
+  Token decorator =
+      CONSUME(parser, TOKEN_IDENTIFIER, "Expected identifier after '@'.");
+  CONSUME(parser, TOKEN_FN, "Expected 'fn' after '@deco'.");
+  Stmt fn = HANDLE_STMT(function_statement, parser);
+  StmtDecorator stmt = {
+      .name = own_string_n(decorator.start, decorator.length),
+      .fn = ALLOC(fn),
+  };
+  return (ParseFnResult){
+      .as.stmt = AS_STMT_DECORATOR(stmt), .is_ok = true, .msg = NULL};
 }
 
-static ParseFnResult print_statement(Parser *parser)
-{
-    Expr exp = HANDLE_EXPR(expression, parser);
-    CONSUME(parser, TOKEN_SEMICOLON, "Expected semicolon at the end of the expression.");
-    StmtPrint stmt = {.expr = exp};
-    return (ParseFnResult) {.as.stmt = AS_STMT_PRINT(stmt), .is_ok = true, .msg = NULL};
+static ParseFnResult return_statement(Parser *parser) {
+  Expr expr = HANDLE_EXPR(expression, parser);
+  CONSUME(parser, TOKEN_SEMICOLON, "Expected ';' after return.");
+  StmtReturn stmt = {
+      .expr = expr,
+  };
+  return (ParseFnResult){
+      .as.stmt = AS_STMT_RETURN(stmt), .is_ok = true, .msg = NULL};
 }
 
-static ParseFnResult let_statement(Parser *parser)
-{
-    Token identifier = CONSUME(parser, TOKEN_IDENTIFIER, "Expected identifier after 'let'.");
-    char *name = own_string_n(identifier.start, identifier.length);
-
-    CONSUME(parser, TOKEN_EQUAL, "Expected '=' after variable name.");
-
-    Expr initializer = HANDLE_EXPR(expression, parser);
-
-    CONSUME(parser, TOKEN_SEMICOLON, "Expected semicolon at the end of the statement.");
-    StmtLet stmt = {.name = name, .initializer = initializer};
-    return (ParseFnResult) {.as.stmt = AS_STMT_LET(stmt), .is_ok = true, .msg = NULL};
+static ParseFnResult break_statement(Parser *parser) {
+  CONSUME(parser, TOKEN_SEMICOLON, "Expected ';' after break.");
+  StmtBreak stmt = {0};
+  return (ParseFnResult){
+      .as.stmt = AS_STMT_BREAK(stmt), .is_ok = true, .msg = NULL};
 }
 
-static ParseFnResult expression_statement(Parser *parser)
-{
-    Expr expr = HANDLE_EXPR(expression, parser);
-    CONSUME(parser, TOKEN_SEMICOLON, "Expected ';' after expression");
-    StmtExpr stmt = {.expr = expr};
-    return (ParseFnResult) {.as.stmt = AS_STMT_EXPR(stmt), .is_ok = true, .msg = NULL};
+static ParseFnResult continue_statement(Parser *parser) {
+  CONSUME(parser, TOKEN_SEMICOLON, "Expected ';' after continue.");
+  StmtContinue stmt = {0};
+  return (ParseFnResult){
+      .as.stmt = AS_STMT_CONTINUE(stmt), .is_ok = true, .msg = NULL};
 }
 
-static ParseFnResult if_statement(Parser *parser)
-{
-    CONSUME(parser, TOKEN_LEFT_PAREN, "Expected '(' after if.");
-    Expr condition = HANDLE_EXPR(expression, parser);
-    CONSUME(parser, TOKEN_RIGHT_PAREN, "Expected ')' after the condition.");
-
-    Stmt *then_branch = malloc(sizeof(Stmt));
-    Stmt *else_branch = NULL;
-
-    *then_branch = HANDLE_STMT(statement, parser);
-
-    if (match(parser, 1, TOKEN_ELSE))
-    {
-        else_branch = malloc(sizeof(Stmt));
-        *else_branch = HANDLE_STMT(statement, parser);
-    }
-
-    StmtIf stmt = {
-        .then_branch = then_branch,
-        .else_branch = else_branch,
-        .condition = condition,
-    };
-    return (ParseFnResult) {.as.stmt = AS_STMT_IF(stmt), .is_ok = true, .msg = NULL};
+static ParseFnResult struct_statement(Parser *parser) {
+  Token name =
+      CONSUME(parser, TOKEN_IDENTIFIER, "Expected identifier after 'struct'.");
+  CONSUME(parser, TOKEN_LEFT_BRACE, "Expected '{' after 'struct'.");
+  DynArray_char_ptr properties = {0};
+  do {
+    Token property =
+        CONSUME(parser, TOKEN_IDENTIFIER, "Expected property name.");
+    CONSUME(parser, TOKEN_SEMICOLON, "Expected semicolon after property.");
+    dynarray_insert(&properties, own_string_n(property.start, property.length));
+  } while (!match(parser, 1, TOKEN_RIGHT_BRACE));
+  StmtStruct stmt = {
+      .name = own_string_n(name.start, name.length),
+      .properties = properties,
+  };
+  return (ParseFnResult){
+      .as.stmt = AS_STMT_STRUCT(stmt), .is_ok = true, .msg = NULL};
 }
 
-static ParseFnResult while_statement(Parser *parser)
-{
-    CONSUME(parser, TOKEN_LEFT_PAREN, "Expected '(' after while.");
-
-    Expr condition = HANDLE_EXPR(expression, parser);
-    CONSUME(parser, TOKEN_RIGHT_PAREN, "Expected ')' after condition.");
-
-    CONSUME(parser, TOKEN_LEFT_BRACE, "Expected '{' after the while condition.");
-
-    Stmt body = HANDLE_STMT(block, parser);
-
-    StmtWhile stmt = {
-        .condition = condition,
-        .body = ALLOC(body),
-    };
-    return (ParseFnResult) {.as.stmt = AS_STMT_WHILE(stmt), .is_ok = true, .msg = NULL};
+static ParseFnResult impl_statement(Parser *parser) {
+  Token name =
+      CONSUME(parser, TOKEN_IDENTIFIER, "Expected identifier after 'impl'.");
+  CONSUME(parser, TOKEN_LEFT_BRACE, "Expected '{' after identifier.");
+  DynArray_Stmt methods = {0};
+  while (!match(parser, 1, TOKEN_RIGHT_BRACE)) {
+    dynarray_insert(&methods, HANDLE_STMT(statement, parser));
+  }
+  StmtImpl stmt = {
+      .name = own_string_n(name.start, name.length),
+      .methods = methods,
+  };
+  return (ParseFnResult){
+      .as.stmt = AS_STMT_IMPL(stmt), .is_ok = true, .msg = NULL};
 }
 
-static ParseFnResult for_statement(Parser *parser)
-{
-    CONSUME(parser, TOKEN_LEFT_PAREN, "Expected '(' after for.");
-
-    CONSUME(parser, TOKEN_LET, "Expected 'let' in initializer");
-
-    Expr initializer = HANDLE_EXPR(expression, parser);
-    CONSUME(parser, TOKEN_SEMICOLON, "Expected ';' after initializer.");
-
-    Expr condition = HANDLE_EXPR(expression, parser);
-    CONSUME(parser, TOKEN_SEMICOLON, "Expected ';' after condition.");
-
-    Expr advancement = HANDLE_EXPR(expression, parser);
-    CONSUME(parser, TOKEN_RIGHT_PAREN, "Expected ')' after advancement.");
-
-    CONSUME(parser, TOKEN_LEFT_BRACE, "Expected '{' after ')'.");
-
-    Stmt body = HANDLE_STMT(block, parser);
-
-    StmtFor stmt = {
-        .initializer = initializer,
-        .condition = condition,
-        .advancement = advancement,
-        .body = ALLOC(body),
-    };
-
-    return (ParseFnResult) {.as.stmt = AS_STMT_FOR(stmt), .is_ok = true, .msg = NULL};
+static ParseFnResult use_statement(Parser *parser) {
+  Token path = CONSUME(parser, TOKEN_STRING, "Module path should be a string");
+  CONSUME(parser, TOKEN_SEMICOLON,
+          "expected semicolon at the end of use statement");
+  StmtUse stmt = {.path = own_string_n(path.start, path.length - 1)};
+  return (ParseFnResult){
+      .as.stmt = AS_STMT_USE(stmt), .is_ok = true, .msg = NULL};
 }
 
-static ParseFnResult function_statement(Parser *parser)
-{
-    Token name = CONSUME(parser, TOKEN_IDENTIFIER, "Expected identifier after 'fn'.");
-    CONSUME(parser, TOKEN_LEFT_PAREN, "Expected '(' after identifier.");
-    DynArray_char_ptr parameters = {0};
-    if (!check(parser, TOKEN_RIGHT_PAREN))
-    {
-        do
-        {
-            Token parameter = CONSUME(parser, TOKEN_IDENTIFIER, "Expected parameter name.");
-            dynarray_insert(&parameters, own_string_n(parameter.start, parameter.length));
-        } while (match(parser, 1, TOKEN_COMMA));
-    }
-    CONSUME(parser, TOKEN_RIGHT_PAREN, "Expected ')' after the parameter list.");
-    CONSUME(parser, TOKEN_LEFT_BRACE, "Expected '{' after the ')'.");
-    Stmt body = HANDLE_STMT(block, parser);
-    StmtFn stmt = {
-        .name = own_string_n(name.start, name.length),
-        .body = ALLOC(body),
-        .parameters = parameters,
-    };
-    return (ParseFnResult) {.as.stmt = AS_STMT_FN(stmt), .is_ok = true, .msg = NULL};
+static ParseFnResult yield_statement(Parser *parser) {
+  Expr expr = HANDLE_EXPR(expression, parser);
+  CONSUME(parser, TOKEN_SEMICOLON, "Expected ';' after yield statement.");
+  StmtYield stmt = {.expr = expr};
+  return (ParseFnResult){
+      .as.stmt = AS_STMT_YIELD(stmt), .is_ok = true, .msg = NULL};
 }
 
-static ParseFnResult decorator_statement(Parser *parser)
-{
-    Token decorator = CONSUME(parser, TOKEN_IDENTIFIER, "Expected identifier after '@'.");
-    CONSUME(parser, TOKEN_FN, "Expected 'fn' after '@deco'.");
-    Stmt fn = HANDLE_STMT(function_statement, parser);
-    StmtDecorator stmt = {
-        .name = own_string_n(decorator.start, decorator.length),
-        .fn = ALLOC(fn),
-    };
-    return (ParseFnResult) {.as.stmt = AS_STMT_DECORATOR(stmt), .is_ok = true, .msg = NULL};
+static ParseFnResult assert_statement(Parser *parser) {
+  Expr expr = HANDLE_EXPR(expression, parser);
+  CONSUME(parser, TOKEN_SEMICOLON, "Expected ';' after assert statement.");
+  StmtAssert stmt = {.expr = expr};
+  return (ParseFnResult){
+      .as.stmt = AS_STMT_ASSERT(stmt), .is_ok = true, .msg = NULL};
 }
 
-static ParseFnResult return_statement(Parser *parser)
-{
-    Expr expr = HANDLE_EXPR(expression, parser);
-    CONSUME(parser, TOKEN_SEMICOLON, "Expected ';' after return.");
-    StmtReturn stmt = {
-        .expr = expr,
-    };
-    return (ParseFnResult) {.as.stmt = AS_STMT_RETURN(stmt), .is_ok = true, .msg = NULL};
+static ParseFnResult statement(Parser *parser) {
+  if (match(parser, 1, TOKEN_PRINT)) {
+    return print_statement(parser);
+  } else if (match(parser, 1, TOKEN_LET)) {
+    return let_statement(parser);
+  } else if (match(parser, 1, TOKEN_LEFT_BRACE)) {
+    return block(parser);
+  } else if (match(parser, 1, TOKEN_IF)) {
+    return if_statement(parser);
+  } else if (match(parser, 1, TOKEN_WHILE)) {
+    return while_statement(parser);
+  } else if (match(parser, 1, TOKEN_FOR)) {
+    return for_statement(parser);
+  } else if (match(parser, 1, TOKEN_BREAK)) {
+    return break_statement(parser);
+  } else if (match(parser, 1, TOKEN_CONTINUE)) {
+    return continue_statement(parser);
+  } else if (match(parser, 1, TOKEN_FN)) {
+    return function_statement(parser);
+  } else if (match(parser, 1, TOKEN_RETURN)) {
+    return return_statement(parser);
+  } else if (match(parser, 1, TOKEN_STRUCT)) {
+    return struct_statement(parser);
+  } else if (match(parser, 1, TOKEN_USE)) {
+    return use_statement(parser);
+  } else if (match(parser, 1, TOKEN_AT)) {
+    return decorator_statement(parser);
+  } else if (match(parser, 1, TOKEN_IMPL)) {
+    return impl_statement(parser);
+  } else if (match(parser, 1, TOKEN_YIELD)) {
+    return yield_statement(parser);
+  } else if (match(parser, 1, TOKEN_ASSERT)) {
+    return assert_statement(parser);
+  } else {
+    return expression_statement(parser);
+  }
 }
 
-static ParseFnResult break_statement(Parser *parser)
-{
-    CONSUME(parser, TOKEN_SEMICOLON, "Expected ';' after break.");
-    StmtBreak stmt = {0};
-    return (ParseFnResult) {.as.stmt = AS_STMT_BREAK(stmt), .is_ok = true, .msg = NULL};
-}
-
-static ParseFnResult continue_statement(Parser *parser)
-{
-    CONSUME(parser, TOKEN_SEMICOLON, "Expected ';' after continue.");
-    StmtContinue stmt = {0};
-    return (ParseFnResult) {.as.stmt = AS_STMT_CONTINUE(stmt), .is_ok = true, .msg = NULL};
-}
-
-static ParseFnResult struct_statement(Parser *parser)
-{
-    Token name = CONSUME(parser, TOKEN_IDENTIFIER, "Expected identifier after 'struct'.");
-    CONSUME(parser, TOKEN_LEFT_BRACE, "Expected '{' after 'struct'.");
-    DynArray_char_ptr properties = {0};
-    do
-    {
-        Token property = CONSUME(parser, TOKEN_IDENTIFIER, "Expected property name.");
-        CONSUME(parser, TOKEN_SEMICOLON, "Expected semicolon after property.");
-        dynarray_insert(&properties, own_string_n(property.start, property.length));
-    } while (!match(parser, 1, TOKEN_RIGHT_BRACE));
-    StmtStruct stmt = {
-        .name = own_string_n(name.start, name.length),
-        .properties = properties,
-    };
-    return (ParseFnResult) {.as.stmt = AS_STMT_STRUCT(stmt), .is_ok = true, .msg = NULL};
-}
-
-static ParseFnResult impl_statement(Parser *parser)
-{
-    Token name = CONSUME(parser, TOKEN_IDENTIFIER, "Expected identifier after 'impl'.");
-    CONSUME(parser, TOKEN_LEFT_BRACE, "Expected '{' after identifier.");
-    DynArray_Stmt methods = {0};
-    while (!match(parser, 1, TOKEN_RIGHT_BRACE))
-    {
-        dynarray_insert(&methods, HANDLE_STMT(statement, parser));
+ParseResult parse(Parser *parser) {
+  ParseResult result = {0};
+  advance(parser);
+  while (parser->current.type != TOKEN_EOF) {
+    ParseFnResult r = statement(parser);
+    if (!r.is_ok) {
+      result.msg = r.msg;
+      result.is_ok = false;
+      return result;
     }
-    StmtImpl stmt = {
-        .name = own_string_n(name.start, name.length),
-        .methods = methods,
-    };
-    return (ParseFnResult) {.as.stmt = AS_STMT_IMPL(stmt), .is_ok = true, .msg = NULL};
-}
-
-static ParseFnResult use_statement(Parser *parser)
-{
-    Token path = CONSUME(parser, TOKEN_STRING, "Module path should be a string");
-    CONSUME(parser, TOKEN_SEMICOLON, "expected semicolon at the end of use statement");
-    StmtUse stmt = {.path = own_string_n(path.start, path.length - 1)};
-    return (ParseFnResult) {.as.stmt = AS_STMT_USE(stmt), .is_ok = true, .msg = NULL};
-}
-
-static ParseFnResult yield_statement(Parser *parser)
-{
-    Expr expr = HANDLE_EXPR(expression, parser);
-    CONSUME(parser, TOKEN_SEMICOLON, "Expected ';' after yield statement.");
-    StmtYield stmt = {.expr = expr};
-    return (ParseFnResult) {.as.stmt = AS_STMT_YIELD(stmt), .is_ok = true, .msg = NULL};
-}
-
-static ParseFnResult assert_statement(Parser *parser)
-{
-    Expr expr = HANDLE_EXPR(expression, parser);
-    CONSUME(parser, TOKEN_SEMICOLON, "Expected ';' after assert statement.");
-    StmtAssert stmt = {.expr = expr};
-    return (ParseFnResult) {.as.stmt = AS_STMT_ASSERT(stmt), .is_ok = true, .msg = NULL};
-}
-
-static ParseFnResult statement(Parser *parser)
-{
-    if (match(parser, 1, TOKEN_PRINT))
-    {
-        return print_statement(parser);
-    }
-    else if (match(parser, 1, TOKEN_LET))
-    {
-        return let_statement(parser);
-    }
-    else if (match(parser, 1, TOKEN_LEFT_BRACE))
-    {
-        return block(parser);
-    }
-    else if (match(parser, 1, TOKEN_IF))
-    {
-        return if_statement(parser);
-    }
-    else if (match(parser, 1, TOKEN_WHILE))
-    {
-        return while_statement(parser);
-    }
-    else if (match(parser, 1, TOKEN_FOR))
-    {
-        return for_statement(parser);
-    }
-    else if (match(parser, 1, TOKEN_BREAK))
-    {
-        return break_statement(parser);
-    }
-    else if (match(parser, 1, TOKEN_CONTINUE))
-    {
-        return continue_statement(parser);
-    }
-    else if (match(parser, 1, TOKEN_FN))
-    {
-        return function_statement(parser);
-    }
-    else if (match(parser, 1, TOKEN_RETURN))
-    {
-        return return_statement(parser);
-    }
-    else if (match(parser, 1, TOKEN_STRUCT))
-    {
-        return struct_statement(parser);
-    }
-    else if (match(parser, 1, TOKEN_USE))
-    {
-        return use_statement(parser);
-    }
-    else if (match(parser, 1, TOKEN_AT))
-    {
-        return decorator_statement(parser);
-    }
-    else if (match(parser, 1, TOKEN_IMPL))
-    {
-        return impl_statement(parser);
-    }
-    else if (match(parser, 1, TOKEN_YIELD))
-    {
-        return yield_statement(parser);
-    }
-    else if (match(parser, 1, TOKEN_ASSERT))
-    {
-        return assert_statement(parser);
-    }
-    else
-    {
-        return expression_statement(parser);
-    }
-}
-
-ParseResult parse(Parser *parser)
-{
-    ParseResult result = {0};
-    advance(parser);
-    while (parser->current.type != TOKEN_EOF)
-    {
-        ParseFnResult r = statement(parser);
-        if (!r.is_ok)
-        {
-            result.msg = r.msg;
-            result.is_ok = false;
-            return result;
-        }
-        dynarray_insert(&result.ast, r.as.stmt);
-    }
-    result.is_ok = true;
-    return result;
+    dynarray_insert(&result.ast, r.as.stmt);
+  }
+  result.is_ok = true;
+  return result;
 }

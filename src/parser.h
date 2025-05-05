@@ -6,36 +6,32 @@
 #include "ast.h"
 #include "tokenizer.h"
 
-typedef struct
-{
-    Token current;
-    Token previous;
-    size_t depth;
-    const DynArray_Token *tokens;
-    size_t idx;
+typedef struct {
+  Token current;
+  Token previous;
+  size_t depth;
+  const DynArray_Token *tokens;
+  size_t idx;
 } Parser;
 
-typedef struct
-{
-    Token token;
-    bool is_ok;
+typedef struct {
+  Token token;
+  bool is_ok;
 } TokenResult;
 
-typedef struct
-{
-    union {
-        Expr expr;
-        Stmt stmt;
-    } as;
-    bool is_ok;
-    char *msg;
+typedef struct {
+  union {
+    Expr expr;
+    Stmt stmt;
+  } as;
+  bool is_ok;
+  char *msg;
 } ParseFnResult;
 
-typedef struct
-{
-    DynArray_Stmt ast;
-    bool is_ok;
-    char *msg;
+typedef struct {
+  DynArray_Stmt ast;
+  bool is_ok;
+  char *msg;
 } ParseResult;
 
 void init_parser(Parser *parser, const DynArray_Token *tokens);

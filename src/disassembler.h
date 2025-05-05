@@ -5,9 +5,8 @@
 
 void disassemble(Bytecode *code);
 
-typedef struct
-{
-    char *opcode;
+typedef struct {
+  char *opcode;
 } DisassembleHandler;
 
 extern DisassembleHandler disassemble_handler[];
