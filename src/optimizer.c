@@ -14,60 +14,58 @@ typedef Table(Expr) Table_Expr;
 
 ExprLit clone_literal(const ExprLit *literal)
 {
-    ExprLit *copy = malloc(sizeof(ExprLit));
+    ExprLit clone;
 
-    copy->kind = literal->kind;
+    clone.kind = literal->kind;
 
     switch (literal->kind)
     {
         case LIT_NUM: {
-            copy->as._double = literal->as._double;
+            clone.as._double = literal->as._double;
             break;
         }
         case LIT_BOOL: {
-            copy->as._bool = literal->as._bool;
+            clone.as._bool = literal->as._bool;
             break;
         }
         case LIT_STR: {
-            copy->as.str = own_string(literal->as.str);
+            clone.as.str = own_string(literal->as.str);
             break;
         }
         default:
             break;
     }
 
-    ExprLit retval = *copy;
-    free(copy);
-    return retval;
+    return clone;
 }
 
 Expr clone_expr(const Expr *expr)
 {
-    Expr *copy = malloc(sizeof(Expr));
+    Expr clone;
 
-    copy->kind = expr->kind;
+    clone.kind = expr->kind;
 
     switch (expr->kind)
     {
         case EXPR_BIN: {
             Expr lhs = clone_expr(expr->as.expr_bin.lhs);
             Expr rhs = clone_expr(expr->as.expr_bin.rhs);
-            copy->as.expr_bin.lhs = ALLOC(lhs);
-            copy->as.expr_bin.rhs = ALLOC(rhs);
-            copy->as.expr_bin.op = own_string(expr->as.expr_bin.op);
+            clone.as.expr_bin.lhs = ALLOC(lhs);
+            clone.as.expr_bin.rhs = ALLOC(rhs);
+            clone.as.expr_bin.op = own_string(expr->as.expr_bin.op);
             break;
         }
         case EXPR_ASS: {
             Expr lhs = clone_expr(expr->as.expr_ass.lhs);
             Expr rhs = clone_expr(expr->as.expr_ass.rhs);
-            copy->as.expr_ass.lhs = ALLOC(lhs);
-            copy->as.expr_ass.rhs = ALLOC(rhs);
-            copy->as.expr_ass.op = own_string(expr->as.expr_ass.op);
+            clone.as.expr_ass.lhs = ALLOC(lhs);
+            clone.as.expr_ass.rhs = ALLOC(rhs);
+            clone.as.expr_ass.op = own_string(expr->as.expr_ass.op);
             break;
         }
         case EXPR_UNA: {
             Expr exp = clone_expr(expr->as.expr_una.exp);
-            copy->as.expr_una.exp = ALLOC(exp);
+            clone.as.expr_una.exp = ALLOC(exp);
             break;
         }
         case EXPR_CALL: {
@@ -77,29 +75,25 @@ Expr clone_expr(const Expr *expr)
                 Expr cloned = clone_expr(&expr->as.expr_call.arguments.data[i]);
                 dynarray_insert(&args, cloned);
             }
-            copy->as.expr_call.arguments = args;
+            clone.as.expr_call.arguments = args;
             Expr callee_expr = clone_expr(expr->as.expr_call.callee);
-            copy->as.expr_call.callee = ALLOC(callee_expr);
+            clone.as.expr_call.callee = ALLOC(callee_expr);
             break;
         }
         case EXPR_LIT: {
             ExprLit cloned = clone_literal(&expr->as.expr_lit);
-            copy->as.expr_lit = cloned;
+            clone.as.expr_lit = cloned;
             break;
         }
         case EXPR_VAR: {
-            copy->as.expr_var.name = own_string(expr->as.expr_var.name);
+            clone.as.expr_var.name = own_string(expr->as.expr_var.name);
             break;
         }
         default:
             assert(0);
     }
 
-    Expr retval = *copy;
-
-    free(copy);
-
-    return retval;
+    return clone;
 }
 
 static Bucket *clone_bucket(Bucket *src, Expr *src_items, Expr *dst_items, size_t *dst_count)
