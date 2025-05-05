@@ -687,18 +687,18 @@ static CompileResult compile_expr_una(Bytecode *code, const Expr *expr)
                 break;
             }
             case EXPR_GET: {
-                ExprGet getexp = expr_unary.expr->as.expr_get;
+                ExprGet expr_get = expr_unary.expr->as.expr_get;
                 /* Compile the part that comes be-
                  * fore the member access operator. */
-                COMPILE_EXPR(code, getexp.expr);
+                COMPILE_EXPR(code, expr_get.expr);
                 /* Deref if the operator is '->'. */
-                if (strcmp(getexp.op, "->") == 0)
+                if (strcmp(expr_get.op, "->") == 0)
                 {
                     emit_byte(code, OP_DEREF);
                 }
                 /* Add the 'property_name' string to the
                  * chunk's sp, and emit OP_GETATTR_PTR. */
-                uint32_t property_name_idx = add_string(code, getexp.property_name);
+                uint32_t property_name_idx = add_string(code, expr_get.property_name);
                 emit_byte(code, OP_GETATTR_PTR);
                 emit_uint32(code, property_name_idx);
                 break;
@@ -873,19 +873,19 @@ static CompileResult compile_expr_call(Bytecode *code, const Expr *expr)
 
     if (expr_call.callee->kind == EXPR_GET)
     {
-        ExprGet getexp = expr_call.callee->as.expr_get;
+        ExprGet expr_get = expr_call.callee->as.expr_get;
 
         /* Compile the part that comes before the member access
          * operator. */
-        COMPILE_EXPR(code, getexp.expr);
+        COMPILE_EXPR(code, expr_get.expr);
 
         /* Deref it if the operator is -> */
-        if (strcmp(getexp.op, "->") == 0)
+        if (strcmp(expr_get.op, "->") == 0)
         {
             emit_byte(code, OP_DEREF);
         }
 
-        char *method = getexp.property_name;
+        char *method = expr_get.property_name;
 
         for (size_t i = 0; i < expr_call.arguments.count; i++)
         {
@@ -1582,8 +1582,9 @@ static CompileResult compile_stmt_while(Bytecode *code, const Stmt *stmt)
      * see if we need to continue looping. */
     emit_loop(code, loop_start);
 
-    char *exit_label = malloc(256);
-    snprintf(exit_label, 256, "%s_exit", stmt_while.label);
+    int len = lblen(stmt_while.label, 0) + strlen("_exit");
+    char *exit_label = malloc(len);
+    snprintf(exit_label, len, "%s_exit", stmt_while.label);
 
     Label *loop_exit = table_get(current_compiler->labels, exit_label);
     if (!loop_exit)
