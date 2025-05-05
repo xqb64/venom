@@ -552,13 +552,13 @@ static Function *resolve_func(const char *name)
     if (!result.is_ok)                   \
         return result;
 
-static CompileResult compile_expr(Bytecode *code, const Expr *exp);
+static CompileResult compile_expr(Bytecode *code, const Expr *expr);
 
-static CompileResult compile_expr_lit(Bytecode *code, const Expr *exp)
+static CompileResult compile_expr_lit(Bytecode *code, const Expr *expr)
 {
     CompileResult result = {.is_ok = true, .chunk = NULL, .msg = NULL};
 
-    ExprLit e = exp->as.expr_lit;
+    ExprLit e = expr->as.expr_lit;
     switch (e.kind)
     {
         case LIT_BOOL: {
@@ -591,10 +591,10 @@ static CompileResult compile_expr_lit(Bytecode *code, const Expr *exp)
     return result;
 }
 
-static CompileResult compile_expr_var(Bytecode *code, const Expr *exp)
+static CompileResult compile_expr_var(Bytecode *code, const Expr *expr)
 {
     CompileResult result = {.is_ok = true, .chunk = NULL, .msg = NULL};
-    ExprVar e = exp->as.expr_var;
+    ExprVar e = expr->as.expr_var;
 
     /* Try to resolve the variable as local. */
     int idx = resolve_local(e.name);
@@ -628,11 +628,11 @@ static CompileResult compile_expr_var(Bytecode *code, const Expr *exp)
     COMPILER_ERROR("Variable '%s' is not defined.", e.name);
 }
 
-static CompileResult compile_expr_una(Bytecode *code, const Expr *exp)
+static CompileResult compile_expr_una(Bytecode *code, const Expr *expr)
 {
     CompileResult result = {.is_ok = true, .chunk = NULL, .msg = NULL};
 
-    ExprUnary e = exp->as.expr_una;
+    ExprUnary e = expr->as.expr_una;
     if (strcmp(e.op, "-") == 0)
     {
         COMPILE_EXPR(code, e.expr);
@@ -716,11 +716,11 @@ static CompileResult compile_expr_una(Bytecode *code, const Expr *exp)
     return result;
 }
 
-static CompileResult compile_expr_bin(Bytecode *code, const Expr *exp)
+static CompileResult compile_expr_bin(Bytecode *code, const Expr *expr)
 {
     CompileResult result = {.is_ok = true, .chunk = NULL, .msg = NULL};
 
-    ExprBin e = exp->as.expr_bin;
+    ExprBin e = expr->as.expr_bin;
 
     COMPILE_EXPR(code, e.lhs);
 
@@ -865,11 +865,11 @@ static CompileResult compile_expr_bin(Bytecode *code, const Expr *exp)
     return result;
 }
 
-static CompileResult compile_expr_call(Bytecode *code, const Expr *exp)
+static CompileResult compile_expr_call(Bytecode *code, const Expr *expr)
 {
     CompileResult result = {.is_ok = true, .chunk = NULL, .msg = NULL};
 
-    ExprCall e = exp->as.expr_call;
+    ExprCall e = expr->as.expr_call;
 
     if (e.callee->kind == EXPR_GET)
     {
@@ -1012,11 +1012,11 @@ static CompileResult compile_expr_call(Bytecode *code, const Expr *exp)
     return result;
 }
 
-static CompileResult compile_expr_get(Bytecode *code, const Expr *exp)
+static CompileResult compile_expr_get(Bytecode *code, const Expr *expr)
 {
     CompileResult result = {.is_ok = true, .chunk = NULL, .msg = NULL};
 
-    ExprGet e = exp->as.expr_get;
+    ExprGet e = expr->as.expr_get;
 
     /* Compile the part that comes before the member access
      * operator. */
@@ -1228,11 +1228,11 @@ static CompileResult compile_assign_sub(Bytecode *code, ExprAssign e, bool is_co
     return result;
 }
 
-static CompileResult compile_expr_ass(Bytecode *code, const Expr *exp)
+static CompileResult compile_expr_ass(Bytecode *code, const Expr *expr)
 {
     CompileResult result = {.is_ok = true, .chunk = NULL, .msg = NULL};
 
-    ExprAssign e = exp->as.expr_ass;
+    ExprAssign e = expr->as.expr_ass;
     bool compound_assign = strcmp(e.op, "=") != 0;
 
     switch (e.lhs->kind)
@@ -1256,11 +1256,11 @@ static CompileResult compile_expr_ass(Bytecode *code, const Expr *exp)
     return result;
 }
 
-static CompileResult compile_expr_struct(Bytecode *code, const Expr *exp)
+static CompileResult compile_expr_struct(Bytecode *code, const Expr *expr)
 {
     CompileResult result = {.is_ok = true, .chunk = NULL, .msg = NULL};
 
-    ExprStruct e = exp->as.expr_struct;
+    ExprStruct e = expr->as.expr_struct;
 
     /* Look up the struct with that name in current_compiler->structs. */
     StructBlueprint *blueprint = resolve_blueprint(e.name);
@@ -1305,11 +1305,11 @@ static CompileResult compile_expr_struct(Bytecode *code, const Expr *exp)
     return result;
 }
 
-static CompileResult compile_expr_struct_init(Bytecode *code, const Expr *exp)
+static CompileResult compile_expr_struct_init(Bytecode *code, const Expr *expr)
 {
     CompileResult result = {.is_ok = true, .chunk = NULL, .msg = NULL};
 
-    ExprStructInit e = exp->as.expr_struct_init;
+    ExprStructInit e = expr->as.expr_struct_init;
 
     /* First, we compile the value of the initializer,
      * since OP_SETATTR expects it to be on the stack. */
@@ -1325,11 +1325,11 @@ static CompileResult compile_expr_struct_init(Bytecode *code, const Expr *exp)
     return result;
 }
 
-static CompileResult compile_expr_array(Bytecode *code, const Expr *exp)
+static CompileResult compile_expr_array(Bytecode *code, const Expr *expr)
 {
     CompileResult result = {.is_ok = true, .chunk = NULL, .msg = NULL};
 
-    ExprArray e = exp->as.expr_array;
+    ExprArray e = expr->as.expr_array;
 
     /* First, we compile the array elements in reverse. Why? If we had
      * done [1, 2, 3], when the vm popped these elements, it would ha-
@@ -1347,10 +1347,10 @@ static CompileResult compile_expr_array(Bytecode *code, const Expr *exp)
     return result;
 }
 
-static CompileResult compile_expr_subscript(Bytecode *code, const Expr *exp)
+static CompileResult compile_expr_subscript(Bytecode *code, const Expr *expr)
 {
     CompileResult result = {.is_ok = true, .chunk = NULL, .msg = NULL};
-    ExprSubscript e = exp->as.expr_subscript;
+    ExprSubscript e = expr->as.expr_subscript;
 
     /* First, we compile the expr. */
     COMPILE_EXPR(code, e.expr);
@@ -1364,7 +1364,7 @@ static CompileResult compile_expr_subscript(Bytecode *code, const Expr *exp)
     return result;
 }
 
-typedef CompileResult (*CompileExprHandlerFn)(Bytecode *code, const Expr *exp);
+typedef CompileResult (*CompileExprHandlerFn)(Bytecode *code, const Expr *expr);
 
 typedef struct
 {
@@ -1386,9 +1386,9 @@ static CompileExprHandler expression_handler[] = {
     [EXPR_SUBSCRIPT] = {.fn = compile_expr_subscript, .name = "EXPR_SUBSCRIPT"},
 };
 
-static CompileResult compile_expr(Bytecode *code, const Expr *exp)
+static CompileResult compile_expr(Bytecode *code, const Expr *expr)
 {
-    return expression_handler[exp->kind].fn(code, exp);
+    return expression_handler[expr->kind].fn(code, expr);
 }
 
 static CompileResult compile_stmt(Bytecode *code, const Stmt *stmt);
