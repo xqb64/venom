@@ -168,75 +168,6 @@ static ParseFnResult primary(Parser *parser);
 static ParseFnResult expression(Parser *parser);
 static ParseFnResult statement(Parser *parser);
 
-static char *operator(Token token)
-{
-    switch (token.type)
-    {
-        case TOKEN_EQUAL:
-            return "=";
-        case TOKEN_PLUS:
-            return "+";
-        case TOKEN_PLUS_EQUAL:
-            return "+=";
-        case TOKEN_MINUS:
-            return "-";
-        case TOKEN_MINUS_EQUAL:
-            return "-=";
-        case TOKEN_STAR:
-            return "*";
-        case TOKEN_STAR_EQUAL:
-            return "*=";
-        case TOKEN_SLASH:
-            return "/";
-        case TOKEN_SLASH_EQUAL:
-            return "/=";
-        case TOKEN_AMPERSAND:
-            return "&";
-        case TOKEN_AMPERSAND_EQUAL:
-            return "&=";
-        case TOKEN_PIPE:
-            return "|";
-        case TOKEN_PIPE_EQUAL:
-            return "|=";
-        case TOKEN_CARET:
-            return "^";
-        case TOKEN_CARET_EQUAL:
-            return "^=";
-        case TOKEN_MOD:
-            return "%%";
-        case TOKEN_MOD_EQUAL:
-            return "%%=";
-        case TOKEN_DOUBLE_EQUAL:
-            return "==";
-        case TOKEN_BANG_EQUAL:
-            return "!=";
-        case TOKEN_GREATER:
-            return ">";
-        case TOKEN_GREATER_EQUAL:
-            return ">=";
-        case TOKEN_LESS:
-            return "<";
-        case TOKEN_LESS_EQUAL:
-            return "<=";
-        case TOKEN_PLUSPLUS:
-            return "++";
-        case TOKEN_GREATER_GREATER:
-            return ">>";
-        case TOKEN_GREATER_GREATER_EQUAL:
-            return ">>=";
-        case TOKEN_LESS_LESS:
-            return "<<";
-        case TOKEN_LESS_LESS_EQUAL:
-            return "<<=";
-        case TOKEN_DOUBLE_AMPERSAND:
-            return "&&";
-        case TOKEN_DOUBLE_PIPE:
-            return "||";
-        default:
-            assert(0);
-    }
-}
-
 static ParseFnResult finish_call(Parser *parser, Expr callee)
 {
     DynArray_Expr arguments = {0};
@@ -313,7 +244,7 @@ static ParseFnResult factor(Parser *parser)
     Expr expr = HANDLE_EXPR(unary, parser);
     while (match(parser, 3, TOKEN_STAR, TOKEN_SLASH, TOKEN_MOD))
     {
-        char *op = own_string(operator(parser->previous));
+        char *op = own_string_n(parser->previous.start, parser->previous.length);
         Expr right = HANDLE_EXPR(unary, parser);
         ExprBin binexp = {
             .lhs = ALLOC(expr),
@@ -330,7 +261,7 @@ static ParseFnResult term(Parser *parser)
     Expr expr = HANDLE_EXPR(factor, parser);
     while (match(parser, 3, TOKEN_PLUS, TOKEN_MINUS, TOKEN_PLUSPLUS))
     {
-        char *op = own_string(operator(parser->previous));
+        char *op = own_string_n(parser->previous.start, parser->previous.length);
         Expr right = HANDLE_EXPR(factor, parser);
         ExprBin binexp = {
             .lhs = ALLOC(expr),
@@ -347,7 +278,7 @@ static ParseFnResult bitwise_shift(Parser *parser)
     Expr expr = HANDLE_EXPR(term, parser);
     while (match(parser, 2, TOKEN_GREATER_GREATER, TOKEN_LESS_LESS))
     {
-        char *op = own_string(operator(parser->previous));
+        char *op = own_string_n(parser->previous.start, parser->previous.length);
         Expr right = HANDLE_EXPR(term, parser);
         ExprBin binexp = {
             .lhs = ALLOC(expr),
@@ -364,7 +295,7 @@ static ParseFnResult comparison(Parser *parser)
     Expr expr = HANDLE_EXPR(bitwise_shift, parser);
     while (match(parser, 4, TOKEN_GREATER, TOKEN_LESS, TOKEN_GREATER_EQUAL, TOKEN_LESS_EQUAL))
     {
-        char *op = own_string(operator(parser->previous));
+        char *op = own_string_n(parser->previous.start, parser->previous.length);
         Expr right = HANDLE_EXPR(bitwise_shift, parser);
         ExprBin binexp = {
             .lhs = ALLOC(expr),
@@ -381,7 +312,7 @@ static ParseFnResult equality(Parser *parser)
     Expr expr = HANDLE_EXPR(comparison, parser);
     while (match(parser, 2, TOKEN_DOUBLE_EQUAL, TOKEN_BANG_EQUAL))
     {
-        char *op = own_string(operator(parser->previous));
+        char *op = own_string_n(parser->previous.start, parser->previous.length);
         Expr right = HANDLE_EXPR(comparison, parser);
         ExprBin binexp = {
             .lhs = ALLOC(expr),
@@ -398,7 +329,7 @@ static ParseFnResult bitwise_and(Parser *parser)
     Expr expr = HANDLE_EXPR(equality, parser);
     while (match(parser, 1, TOKEN_AMPERSAND))
     {
-        char *op = own_string(operator(parser->previous));
+        char *op = own_string_n(parser->previous.start, parser->previous.length);
         Expr right = HANDLE_EXPR(equality, parser);
         ExprBin binexp = {
             .lhs = ALLOC(expr),
@@ -415,7 +346,7 @@ static ParseFnResult bitwise_xor(Parser *parser)
     Expr expr = HANDLE_EXPR(bitwise_and, parser);
     while (match(parser, 1, TOKEN_CARET))
     {
-        char *op = own_string(operator(parser->previous));
+        char *op = own_string_n(parser->previous.start, parser->previous.length);
         Expr right = HANDLE_EXPR(bitwise_and, parser);
         ExprBin binexp = {
             .lhs = ALLOC(expr),
@@ -432,7 +363,7 @@ static ParseFnResult bitwise_or(Parser *parser)
     Expr expr = HANDLE_EXPR(bitwise_xor, parser);
     while (match(parser, 1, TOKEN_PIPE))
     {
-        char *op = own_string(operator(parser->previous));
+        char *op = own_string_n(parser->previous.start, parser->previous.length);
         Expr right = HANDLE_EXPR(bitwise_xor, parser);
         ExprBin binexp = {
             .lhs = ALLOC(expr),
@@ -449,7 +380,7 @@ static ParseFnResult and_(Parser *parser)
     Expr expr = HANDLE_EXPR(bitwise_or, parser);
     while (match(parser, 1, TOKEN_DOUBLE_AMPERSAND))
     {
-        char *op = own_string(operator(parser->previous));
+        char *op = own_string_n(parser->previous.start, parser->previous.length);
         Expr right = HANDLE_EXPR(bitwise_or, parser);
         ExprBin binexp = {
             .lhs = ALLOC(expr),
@@ -466,7 +397,7 @@ static ParseFnResult or_(Parser *parser)
     Expr expr = HANDLE_EXPR(and_, parser);
     while (match(parser, 1, TOKEN_DOUBLE_PIPE))
     {
-        char *op = own_string(operator(parser->previous));
+        char *op = own_string_n(parser->previous.start, parser->previous.length);
         Expr right = HANDLE_EXPR(and_, parser);
         ExprBin binexp = {
             .lhs = ALLOC(expr),
@@ -485,7 +416,7 @@ static ParseFnResult assignment(Parser *parser)
               TOKEN_SLASH_EQUAL, TOKEN_MOD_EQUAL, TOKEN_AMPERSAND_EQUAL, TOKEN_PIPE_EQUAL,
               TOKEN_CARET_EQUAL, TOKEN_GREATER_GREATER_EQUAL, TOKEN_LESS_LESS_EQUAL))
     {
-        char *op = operator(parser->previous);
+        char *op = own_string_n(parser->previous.start, parser->previous.length);
         Expr right = HANDLE_EXPR(or_, parser);
         ExprAssign assignexp = {
             .lhs = ALLOC(expr),
