@@ -850,16 +850,16 @@ DynArray_Stmt clone_ast(const DynArray_Stmt *ast)
     return copy;
 }
 
-void pretty_print(const DynArray_Stmt *stmts)
+void pretty_print(const DynArray_Stmt *ast)
 {
     int indent = 0;
 
     printf("Program(\n");
 
-    for (size_t i = 0; i < stmts->count; i++)
+    for (size_t i = 0; i < ast->count; i++)
     {
-        print_stmt(&stmts->data[i], indent + 4, false);
-        if (i < stmts->count - 1)
+        print_stmt(&ast->data[i], indent + 4, false);
+        if (i < ast->count - 1)
             printf(",\n");
     }
 

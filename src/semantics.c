@@ -27,7 +27,7 @@ static size_t mktmp(void)
     return tmp++;
 }
 
-LoopLabelResult loop_label_program(DynArray_Stmt *ast, char *current)
+LoopLabelResult loop_label_program(DynArray_Stmt *ast, const char *current)
 {
     LoopLabelResult result;
 
@@ -43,7 +43,7 @@ LoopLabelResult loop_label_program(DynArray_Stmt *ast, char *current)
     return result;
 }
 
-LoopLabelResult loop_label_stmt(Stmt *stmt, char *current)
+LoopLabelResult loop_label_stmt(Stmt *stmt, const char *current)
 {
     LoopLabelResult result;
 

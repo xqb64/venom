@@ -10,7 +10,7 @@ typedef struct
     char *msg;
 } LoopLabelResult;
 
-LoopLabelResult loop_label_program(DynArray_Stmt *stmts, char *current);
-LoopLabelResult loop_label_stmt(Stmt *stmt, char *current);
+LoopLabelResult loop_label_program(DynArray_Stmt *ast, const char *current);
+LoopLabelResult loop_label_stmt(Stmt *stmt, const char *current);
 
 #endif
