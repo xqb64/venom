@@ -5,19 +5,22 @@
 #include <stdlib.h>
 #include <string.h>
 
-char *own_string(const char *string) {
+char *own_string(const char *string)
+{
   char *s = malloc(strlen(string) + 1);
   snprintf(s, strlen(string) + 1, "%s", string);
   return s;
 }
 
-char *own_string_n(const char *string, int n) {
+char *own_string_n(const char *string, int n)
+{
   char *s = malloc(strlen(string) + 1);
   snprintf(s, n + 1, "%s", string);
   return s;
 }
 
-char *read_file(const char *path) {
+char *read_file(const char *path)
+{
   FILE *file = fopen(path, "rb");
   if (file == NULL) {
     fprintf(stderr, "Could not open file \"%s\".\n", path);
@@ -46,7 +49,8 @@ char *read_file(const char *path) {
   return buffer;
 }
 
-size_t numlen(size_t n) {
+size_t numlen(size_t n)
+{
   size_t i;
 
   i = 0;
@@ -59,16 +63,20 @@ size_t numlen(size_t n) {
   return i;
 }
 
-size_t lblen(const char *label, size_t n) {
+size_t lblen(const char *label, size_t n)
+{
   return strlen(label) + numlen(n) + 1;
 }
 
-int alloc_err_str(char **dst, const char *fmt, ...) {
+int alloc_err_str(char **dst, const char *fmt, ...)
+{
   va_list args;
   va_start(args, fmt);
 
   int len = vsnprintf(NULL, 0, fmt, args);
-  if (len < 0) return -1;
+  if (len < 0) {
+    return -1;
+  }
 
   *dst = malloc(len + 1);
 

@@ -1,6 +1,7 @@
 #include "table.h"
 
-void *access_if_idx_not_null(void *array, size_t itemsize, int *i) {
+void *access_if_idx_not_null(void *array, size_t itemsize, int *i)
+{
   if (i == NULL) {
     return NULL;
   }
@@ -9,15 +10,19 @@ void *access_if_idx_not_null(void *array, size_t itemsize, int *i) {
   return (char *)array + (*i) * itemsize;
 }
 
-int *list_find(Bucket *head, const char *item) {
+int *list_find(Bucket *head, const char *item)
+{
   while (head != NULL) {
-    if (strcmp(head->key, item) == 0) return &head->value;
+    if (strcmp(head->key, item) == 0) {
+      return &head->value;
+    }
     head = head->next;
   }
   return NULL;
 }
 
-void list_insert(Bucket **head, char *key, int item) {
+void list_insert(Bucket **head, char *key, int item)
+{
   /* Create a new node. */
   Bucket *new_node = malloc(sizeof(Bucket));
 
@@ -40,7 +45,8 @@ void list_insert(Bucket **head, char *key, int item) {
   }
 }
 
-void list_free(Bucket *head) {
+void list_free(Bucket *head)
+{
   Bucket *tmp;
   while (head != NULL) {
     tmp = head;
@@ -50,7 +56,8 @@ void list_free(Bucket *head) {
   }
 }
 
-uint32_t hash(const char *key, int length) {
+uint32_t hash(const char *key, int length)
+{
   /* copy-paste from 'crafting interpreters' */
   uint32_t hash = 2166136261u;
   for (int i = 0; i < length; i++) {
@@ -61,7 +68,8 @@ uint32_t hash(const char *key, int length) {
 }
 
 void table_remove_impl(Bucket **head, const char *key, void *items,
-                       size_t itemsize) {
+                       size_t itemsize)
+{
   Bucket *prev = NULL;
   Bucket *curr = *head;
 

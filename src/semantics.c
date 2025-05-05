@@ -19,12 +19,14 @@
   result.is_ok = false;                    \
   return result;
 
-static size_t mktmp(void) {
+static size_t mktmp(void)
+{
   static size_t tmp = 0;
   return tmp++;
 }
 
-LoopLabelResult loop_label_program(DynArray_Stmt *ast, const char *current) {
+LoopLabelResult loop_label_program(DynArray_Stmt *ast, const char *current)
+{
   LoopLabelResult result;
 
   for (size_t i = 0; i < ast->count; i++) {
@@ -38,7 +40,8 @@ LoopLabelResult loop_label_program(DynArray_Stmt *ast, const char *current) {
   return result;
 }
 
-LoopLabelResult loop_label_stmt(Stmt *stmt, const char *current) {
+LoopLabelResult loop_label_stmt(Stmt *stmt, const char *current)
+{
   LoopLabelResult result;
 
   switch (stmt->kind) {
@@ -80,13 +83,16 @@ LoopLabelResult loop_label_stmt(Stmt *stmt, const char *current) {
     }
     case STMT_BLOCK: {
       result = loop_label_program(&stmt->as.stmt_block.stmts, current);
-      if (!result.is_ok) return result;
+      if (!result.is_ok) {
+        return result;
+      }
       break;
     }
     case STMT_IF: {
       HANDLE_STMT(stmt->as.stmt_if.then_branch, current);
-      if (stmt->as.stmt_if.else_branch)
+      if (stmt->as.stmt_if.else_branch) {
         HANDLE_STMT(stmt->as.stmt_if.else_branch, current);
+      }
       break;
     }
     default:

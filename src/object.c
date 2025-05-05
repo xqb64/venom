@@ -2,7 +2,8 @@
 
 #include "table.h"
 
-void print_object(const Object *object) {
+void print_object(const Object *object)
+{
   if (IS_BOOL(*object)) {
     bool value = AS_BOOL(*object);
     printf("%s", value ? "true" : "false");
@@ -46,12 +47,14 @@ void print_object(const Object *object) {
   }
 }
 
-static inline bool is_refcounted(const Object *obj) {
+static inline bool is_refcounted(const Object *obj)
+{
   return IS_CLOSURE(*obj) || IS_STRUCT(*obj) || IS_STRING(*obj) ||
          IS_ARRAY(*obj) || IS_GENERATOR(*obj);
 }
 
-void free_table_object(const Table_Object *table) {
+void free_table_object(const Table_Object *table)
+{
   for (size_t i = 0; i < table->count; i++) {
     Object obj = table->items[i];
     if (is_refcounted(&obj)) {

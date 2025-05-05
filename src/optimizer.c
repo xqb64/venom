@@ -10,7 +10,8 @@
 #include "table.h"
 #include "util.h"
 
-static Expr constant_fold_expr(const Expr *target, bool *is_modified) {
+static Expr constant_fold_expr(const Expr *target, bool *is_modified)
+{
 #define HANDLE_OPER(result_type, as_type, expr, oper, literal_kind)        \
   do {                                                                     \
     if (strcmp((expr)->op, #oper) == 0) {                                  \
@@ -144,7 +145,8 @@ static Expr constant_fold_expr(const Expr *target, bool *is_modified) {
 #undef APPLY
 }
 
-static Stmt constant_fold_stmt(const Stmt *stmt, bool *is_modified) {
+static Stmt constant_fold_stmt(const Stmt *stmt, bool *is_modified)
+{
   switch (stmt->kind) {
     case STMT_PRINT: {
       const Expr *expr = &stmt->as.stmt_print.expr;
@@ -294,7 +296,8 @@ static Stmt constant_fold_stmt(const Stmt *stmt, bool *is_modified) {
 }
 
 static Expr propagate_copies_expr(const Expr *expr, Table_Expr *copies,
-                                  bool *is_modified) {
+                                  bool *is_modified)
+{
   switch (expr->kind) {
     case EXPR_LITERAL: {
       return *expr;
@@ -397,7 +400,8 @@ static Expr propagate_copies_expr(const Expr *expr, Table_Expr *copies,
 }
 
 static Stmt propagate_copies_stmt(const Stmt *stmt, Table_Expr *copies,
-                                  bool *is_modified) {
+                                  bool *is_modified)
+{
   switch (stmt->kind) {
     case STMT_LET: {
       const Expr *init = &stmt->as.stmt_let.initializer;
@@ -554,7 +558,8 @@ static Stmt propagate_copies_stmt(const Stmt *stmt, Table_Expr *copies,
   }
 }
 
-DynArray_Stmt optimize(const DynArray_Stmt *ast) {
+DynArray_Stmt optimize(const DynArray_Stmt *ast)
+{
   bool is_modified;
   DynArray_Stmt original = clone_ast(ast);
 
@@ -572,13 +577,16 @@ DynArray_Stmt optimize(const DynArray_Stmt *ast) {
 
     free_table_expr(&copies);
 
-    for (size_t i = 0; i < original.count; i++) free_stmt(&original.data[i]);
+    for (size_t i = 0; i < original.count; i++) {
+      free_stmt(&original.data[i]);
+    }
     dynarray_free(&original);
 
     original = clone_ast(&optimized_ast);
 
-    for (size_t i = 0; i < optimized_ast.count; i++)
+    for (size_t i = 0; i < optimized_ast.count; i++) {
       free_stmt(&optimized_ast.data[i]);
+    }
     dynarray_free(&optimized_ast);
 
   } while (is_modified);

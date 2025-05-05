@@ -23,41 +23,49 @@
 #define HANDLE_EXPR(kind, ...)           \
   ({                                     \
     ParseFnResult r = kind(__VA_ARGS__); \
-    if (!r.is_ok) return r;              \
+    if (!r.is_ok)                        \
+      return r;                          \
     r.as.expr;                           \
   })
 
 #define HANDLE_STMT(kind, ...)        \
   ({                                  \
     ParseFnResult r = kind((parser)); \
-    if (!r.is_ok) return r;           \
+    if (!r.is_ok)                     \
+      return r;                       \
     r.as.stmt;                        \
   })
 
-void init_parser(Parser *parser, const DynArray_Token *tokens) {
+void init_parser(Parser *parser, const DynArray_Token *tokens)
+{
   memset(parser, 0, sizeof(Parser));
   parser->tokens = tokens;
 }
 
-static Token pop_front(Parser *parser) {
-  if (parser->idx < parser->tokens->count)
+static Token pop_front(Parser *parser)
+{
+  if (parser->idx < parser->tokens->count) {
     return parser->tokens->data[parser->idx++];
+  }
   return (Token){.type = TOKEN_EOF, .length = 0, .start = NULL};
 }
 
 static Token next_token(Parser *parser) { return pop_front(parser); }
 
-static Token advance(Parser *parser) {
+static Token advance(Parser *parser)
+{
   parser->previous = parser->current;
   parser->current = next_token(parser);
   return parser->previous;
 }
 
-static bool check(Parser *parser, TokenType type) {
+static bool check(Parser *parser, TokenType type)
+{
   return parser->current.type == type;
 }
 
-static bool match(Parser *parser, int size, ...) {
+static bool match(Parser *parser, int size, ...)
+{
   va_list ap;
   va_start(ap, size);
   for (int i = 0; i < size; i++) {
@@ -72,13 +80,16 @@ static bool match(Parser *parser, int size, ...) {
   return false;
 }
 
-static TokenResult consume(Parser *parser, TokenType type) {
-  if (check(parser, type))
+static TokenResult consume(Parser *parser, TokenType type)
+{
+  if (check(parser, type)) {
     return (TokenResult){.token = advance(parser), .is_ok = true};
+  }
   return (TokenResult){.is_ok = false, .token = {0}};
 }
 
-static ParseFnResult boolean(Parser *parser) {
+static ParseFnResult boolean(Parser *parser)
+{
   bool b;
   switch (parser->previous.type) {
     case TOKEN_TRUE: {
@@ -100,14 +111,16 @@ static ParseFnResult boolean(Parser *parser) {
       .as.expr = AS_EXPR_LITERAL(e), .is_ok = true, .msg = NULL};
 }
 
-static ParseFnResult null(Parser *parser) {
+static ParseFnResult null(Parser *parser)
+{
   return (ParseFnResult){
       .as.expr = AS_EXPR_LITERAL((ExprLiteral){.kind = LIT_NULL}),
       .is_ok = true,
       .msg = NULL};
 }
 
-static ParseFnResult number(Parser *parser) {
+static ParseFnResult number(Parser *parser)
+{
   ExprLiteral e = {
       .kind = LIT_NUMBER,
       .as._double = strtod(parser->previous.start, NULL),
@@ -116,7 +129,8 @@ static ParseFnResult number(Parser *parser) {
       .as.expr = AS_EXPR_LITERAL(e), .is_ok = true, .msg = NULL};
 }
 
-static ParseFnResult string(Parser *parser) {
+static ParseFnResult string(Parser *parser)
+{
   ExprLiteral e = {
       .kind = LIT_STRING,
       .as.str =
@@ -126,7 +140,8 @@ static ParseFnResult string(Parser *parser) {
       .as.expr = AS_EXPR_LITERAL(e), .is_ok = true, .msg = NULL};
 }
 
-static ParseFnResult variable(Parser *parser) {
+static ParseFnResult variable(Parser *parser)
+{
   ExprVariable e = {
       .name = own_string_n(parser->previous.start, parser->previous.length),
   };
@@ -134,7 +149,8 @@ static ParseFnResult variable(Parser *parser) {
       .as.expr = AS_EXPR_VARIABLE(e), .is_ok = true, .msg = NULL};
 }
 
-static ParseFnResult literal(Parser *parser) {
+static ParseFnResult literal(Parser *parser)
+{
   switch (parser->previous.type) {
     case TOKEN_NUMBER:
       return number(parser);
@@ -154,7 +170,8 @@ static ParseFnResult primary(Parser *parser);
 static ParseFnResult expression(Parser *parser);
 static ParseFnResult statement(Parser *parser);
 
-static ParseFnResult finish_call(Parser *parser, Expr callee) {
+static ParseFnResult finish_call(Parser *parser, Expr callee)
+{
   DynArray_Expr arguments = {0};
   if (!check(parser, TOKEN_RIGHT_PAREN)) {
     do {
@@ -170,7 +187,8 @@ static ParseFnResult finish_call(Parser *parser, Expr callee) {
       .as.expr = AS_EXPR_CALL(e), .is_ok = true, .msg = NULL};
 }
 
-static ParseFnResult call(Parser *parser) {
+static ParseFnResult call(Parser *parser)
+{
   Expr expr = HANDLE_EXPR(primary, parser);
   for (;;) {
     if (match(parser, 1, TOKEN_LEFT_PAREN)) {
@@ -203,7 +221,8 @@ static ParseFnResult call(Parser *parser) {
   return (ParseFnResult){.as.expr = expr, .is_ok = true, .msg = NULL};
 }
 
-static ParseFnResult unary(Parser *parser) {
+static ParseFnResult unary(Parser *parser)
+{
   if (match(parser, 5, TOKEN_MINUS, TOKEN_AMPERSAND, TOKEN_STAR, TOKEN_BANG,
             TOKEN_TILDE)) {
     char *op = own_string_n(parser->previous.start, parser->previous.length);
@@ -215,7 +234,8 @@ static ParseFnResult unary(Parser *parser) {
   return call(parser);
 }
 
-static ParseFnResult factor(Parser *parser) {
+static ParseFnResult factor(Parser *parser)
+{
   Expr expr = HANDLE_EXPR(unary, parser);
   while (match(parser, 3, TOKEN_STAR, TOKEN_SLASH, TOKEN_MOD)) {
     char *op = own_string_n(parser->previous.start, parser->previous.length);
@@ -230,7 +250,8 @@ static ParseFnResult factor(Parser *parser) {
   return (ParseFnResult){.as.expr = expr, .is_ok = true, .msg = NULL};
 }
 
-static ParseFnResult term(Parser *parser) {
+static ParseFnResult term(Parser *parser)
+{
   Expr expr = HANDLE_EXPR(factor, parser);
   while (match(parser, 3, TOKEN_PLUS, TOKEN_MINUS, TOKEN_PLUSPLUS)) {
     char *op = own_string_n(parser->previous.start, parser->previous.length);
@@ -245,7 +266,8 @@ static ParseFnResult term(Parser *parser) {
   return (ParseFnResult){.as.expr = expr, .is_ok = true, .msg = NULL};
 }
 
-static ParseFnResult bitwise_shift(Parser *parser) {
+static ParseFnResult bitwise_shift(Parser *parser)
+{
   Expr expr = HANDLE_EXPR(term, parser);
   while (match(parser, 2, TOKEN_GREATER_GREATER, TOKEN_LESS_LESS)) {
     char *op = own_string_n(parser->previous.start, parser->previous.length);
@@ -260,7 +282,8 @@ static ParseFnResult bitwise_shift(Parser *parser) {
   return (ParseFnResult){.as.expr = expr, .is_ok = true, .msg = NULL};
 }
 
-static ParseFnResult comparison(Parser *parser) {
+static ParseFnResult comparison(Parser *parser)
+{
   Expr expr = HANDLE_EXPR(bitwise_shift, parser);
   while (match(parser, 4, TOKEN_GREATER, TOKEN_LESS, TOKEN_GREATER_EQUAL,
                TOKEN_LESS_EQUAL)) {
@@ -276,7 +299,8 @@ static ParseFnResult comparison(Parser *parser) {
   return (ParseFnResult){.as.expr = expr, .is_ok = true, .msg = NULL};
 }
 
-static ParseFnResult equality(Parser *parser) {
+static ParseFnResult equality(Parser *parser)
+{
   Expr expr = HANDLE_EXPR(comparison, parser);
   while (match(parser, 2, TOKEN_DOUBLE_EQUAL, TOKEN_BANG_EQUAL)) {
     char *op = own_string_n(parser->previous.start, parser->previous.length);
@@ -291,7 +315,8 @@ static ParseFnResult equality(Parser *parser) {
   return (ParseFnResult){.as.expr = expr, .is_ok = true, .msg = NULL};
 }
 
-static ParseFnResult bitwise_and(Parser *parser) {
+static ParseFnResult bitwise_and(Parser *parser)
+{
   Expr expr = HANDLE_EXPR(equality, parser);
   while (match(parser, 1, TOKEN_AMPERSAND)) {
     char *op = own_string_n(parser->previous.start, parser->previous.length);
@@ -306,7 +331,8 @@ static ParseFnResult bitwise_and(Parser *parser) {
   return (ParseFnResult){.as.expr = expr, .is_ok = true, .msg = NULL};
 }
 
-static ParseFnResult bitwise_xor(Parser *parser) {
+static ParseFnResult bitwise_xor(Parser *parser)
+{
   Expr expr = HANDLE_EXPR(bitwise_and, parser);
   while (match(parser, 1, TOKEN_CARET)) {
     char *op = own_string_n(parser->previous.start, parser->previous.length);
@@ -321,7 +347,8 @@ static ParseFnResult bitwise_xor(Parser *parser) {
   return (ParseFnResult){.as.expr = expr, .is_ok = true, .msg = NULL};
 }
 
-static ParseFnResult bitwise_or(Parser *parser) {
+static ParseFnResult bitwise_or(Parser *parser)
+{
   Expr expr = HANDLE_EXPR(bitwise_xor, parser);
   while (match(parser, 1, TOKEN_PIPE)) {
     char *op = own_string_n(parser->previous.start, parser->previous.length);
@@ -336,7 +363,8 @@ static ParseFnResult bitwise_or(Parser *parser) {
   return (ParseFnResult){.as.expr = expr, .is_ok = true, .msg = NULL};
 }
 
-static ParseFnResult and_(Parser *parser) {
+static ParseFnResult and_(Parser *parser)
+{
   Expr expr = HANDLE_EXPR(bitwise_or, parser);
   while (match(parser, 1, TOKEN_DOUBLE_AMPERSAND)) {
     char *op = own_string_n(parser->previous.start, parser->previous.length);
@@ -351,7 +379,8 @@ static ParseFnResult and_(Parser *parser) {
   return (ParseFnResult){.as.expr = expr, .is_ok = true, .msg = NULL};
 }
 
-static ParseFnResult or_(Parser *parser) {
+static ParseFnResult or_(Parser *parser)
+{
   Expr expr = HANDLE_EXPR(and_, parser);
   while (match(parser, 1, TOKEN_DOUBLE_PIPE)) {
     char *op = own_string_n(parser->previous.start, parser->previous.length);
@@ -366,7 +395,8 @@ static ParseFnResult or_(Parser *parser) {
   return (ParseFnResult){.as.expr = expr, .is_ok = true, .msg = NULL};
 }
 
-static ParseFnResult assignment(Parser *parser) {
+static ParseFnResult assignment(Parser *parser)
+{
   Expr expr = HANDLE_EXPR(or_, parser);
   if (match(parser, 11, TOKEN_EQUAL, TOKEN_PLUS_EQUAL, TOKEN_MINUS_EQUAL,
             TOKEN_STAR_EQUAL, TOKEN_SLASH_EQUAL, TOKEN_MOD_EQUAL,
@@ -386,13 +416,15 @@ static ParseFnResult assignment(Parser *parser) {
 
 static ParseFnResult expression(Parser *parser) { return assignment(parser); }
 
-static ParseFnResult grouping(Parser *parser) {
+static ParseFnResult grouping(Parser *parser)
+{
   Expr exp = HANDLE_EXPR(expression, parser);
   CONSUME(parser, TOKEN_RIGHT_PAREN, "Unmatched closing parentheses.");
   return (ParseFnResult){.as.expr = exp, .is_ok = true, .msg = NULL};
 }
 
-static ParseFnResult block(Parser *parser) {
+static ParseFnResult block(Parser *parser)
+{
   parser->depth++;
   DynArray_Stmt stmts = {0};
   while (!check(parser, TOKEN_RIGHT_BRACE) && !check(parser, TOKEN_EOF)) {
@@ -408,7 +440,8 @@ static ParseFnResult block(Parser *parser) {
       .as.stmt = AS_STMT_BLOCK(body), .is_ok = true, .msg = NULL};
 }
 
-static ParseFnResult struct_initializer(Parser *parser) {
+static ParseFnResult struct_initializer(Parser *parser)
+{
   char *name = own_string_n(parser->previous.start, parser->previous.length);
   CONSUME(parser, TOKEN_LEFT_BRACE, "Expected '{' after struct name.");
   DynArray_Expr initializers = {0};
@@ -432,7 +465,8 @@ static ParseFnResult struct_initializer(Parser *parser) {
       .as.expr = AS_EXPR_STRUCT(structexp), .is_ok = true, .msg = NULL};
 }
 
-static ParseFnResult array_initializer(Parser *parser) {
+static ParseFnResult array_initializer(Parser *parser)
+{
   DynArray_Expr initializers = {0};
   do {
     dynarray_insert(&initializers, HANDLE_EXPR(expression, parser));
@@ -446,7 +480,8 @@ static ParseFnResult array_initializer(Parser *parser) {
       .as.expr = AS_EXPR_ARRAY(arrayexp), .is_ok = true, .msg = NULL};
 }
 
-static ParseFnResult primary(Parser *parser) {
+static ParseFnResult primary(Parser *parser)
+{
   if (match(parser, 1, TOKEN_IDENTIFIER)) {
     if (check(parser, TOKEN_LEFT_BRACE)) {
       return struct_initializer(parser);
@@ -465,7 +500,8 @@ static ParseFnResult primary(Parser *parser) {
   }
 }
 
-static ParseFnResult print_statement(Parser *parser) {
+static ParseFnResult print_statement(Parser *parser)
+{
   Expr exp = HANDLE_EXPR(expression, parser);
   CONSUME(parser, TOKEN_SEMICOLON,
           "Expected semicolon at the end of the expression.");
@@ -474,7 +510,8 @@ static ParseFnResult print_statement(Parser *parser) {
       .as.stmt = AS_STMT_PRINT(stmt), .is_ok = true, .msg = NULL};
 }
 
-static ParseFnResult let_statement(Parser *parser) {
+static ParseFnResult let_statement(Parser *parser)
+{
   Token identifier =
       CONSUME(parser, TOKEN_IDENTIFIER, "Expected identifier after 'let'.");
   char *name = own_string_n(identifier.start, identifier.length);
@@ -490,7 +527,8 @@ static ParseFnResult let_statement(Parser *parser) {
       .as.stmt = AS_STMT_LET(stmt), .is_ok = true, .msg = NULL};
 }
 
-static ParseFnResult expression_statement(Parser *parser) {
+static ParseFnResult expression_statement(Parser *parser)
+{
   Expr expr = HANDLE_EXPR(expression, parser);
   CONSUME(parser, TOKEN_SEMICOLON, "Expected ';' after expression");
   StmtExpr stmt = {.expr = expr};
@@ -498,7 +536,8 @@ static ParseFnResult expression_statement(Parser *parser) {
       .as.stmt = AS_STMT_EXPR(stmt), .is_ok = true, .msg = NULL};
 }
 
-static ParseFnResult if_statement(Parser *parser) {
+static ParseFnResult if_statement(Parser *parser)
+{
   CONSUME(parser, TOKEN_LEFT_PAREN, "Expected '(' after if.");
   Expr condition = HANDLE_EXPR(expression, parser);
   CONSUME(parser, TOKEN_RIGHT_PAREN, "Expected ')' after the condition.");
@@ -522,7 +561,8 @@ static ParseFnResult if_statement(Parser *parser) {
       .as.stmt = AS_STMT_IF(stmt), .is_ok = true, .msg = NULL};
 }
 
-static ParseFnResult while_statement(Parser *parser) {
+static ParseFnResult while_statement(Parser *parser)
+{
   CONSUME(parser, TOKEN_LEFT_PAREN, "Expected '(' after while.");
 
   Expr condition = HANDLE_EXPR(expression, parser);
@@ -540,7 +580,8 @@ static ParseFnResult while_statement(Parser *parser) {
       .as.stmt = AS_STMT_WHILE(stmt), .is_ok = true, .msg = NULL};
 }
 
-static ParseFnResult for_statement(Parser *parser) {
+static ParseFnResult for_statement(Parser *parser)
+{
   CONSUME(parser, TOKEN_LEFT_PAREN, "Expected '(' after for.");
 
   CONSUME(parser, TOKEN_LET, "Expected 'let' in initializer");
@@ -569,7 +610,8 @@ static ParseFnResult for_statement(Parser *parser) {
       .as.stmt = AS_STMT_FOR(stmt), .is_ok = true, .msg = NULL};
 }
 
-static ParseFnResult function_statement(Parser *parser) {
+static ParseFnResult function_statement(Parser *parser)
+{
   Token name =
       CONSUME(parser, TOKEN_IDENTIFIER, "Expected identifier after 'fn'.");
   CONSUME(parser, TOKEN_LEFT_PAREN, "Expected '(' after identifier.");
@@ -594,7 +636,8 @@ static ParseFnResult function_statement(Parser *parser) {
       .as.stmt = AS_STMT_FN(stmt), .is_ok = true, .msg = NULL};
 }
 
-static ParseFnResult decorator_statement(Parser *parser) {
+static ParseFnResult decorator_statement(Parser *parser)
+{
   Token decorator =
       CONSUME(parser, TOKEN_IDENTIFIER, "Expected identifier after '@'.");
   CONSUME(parser, TOKEN_FN, "Expected 'fn' after '@deco'.");
@@ -607,7 +650,8 @@ static ParseFnResult decorator_statement(Parser *parser) {
       .as.stmt = AS_STMT_DECORATOR(stmt), .is_ok = true, .msg = NULL};
 }
 
-static ParseFnResult return_statement(Parser *parser) {
+static ParseFnResult return_statement(Parser *parser)
+{
   Expr expr = HANDLE_EXPR(expression, parser);
   CONSUME(parser, TOKEN_SEMICOLON, "Expected ';' after return.");
   StmtReturn stmt = {
@@ -617,21 +661,24 @@ static ParseFnResult return_statement(Parser *parser) {
       .as.stmt = AS_STMT_RETURN(stmt), .is_ok = true, .msg = NULL};
 }
 
-static ParseFnResult break_statement(Parser *parser) {
+static ParseFnResult break_statement(Parser *parser)
+{
   CONSUME(parser, TOKEN_SEMICOLON, "Expected ';' after break.");
   StmtBreak stmt = {0};
   return (ParseFnResult){
       .as.stmt = AS_STMT_BREAK(stmt), .is_ok = true, .msg = NULL};
 }
 
-static ParseFnResult continue_statement(Parser *parser) {
+static ParseFnResult continue_statement(Parser *parser)
+{
   CONSUME(parser, TOKEN_SEMICOLON, "Expected ';' after continue.");
   StmtContinue stmt = {0};
   return (ParseFnResult){
       .as.stmt = AS_STMT_CONTINUE(stmt), .is_ok = true, .msg = NULL};
 }
 
-static ParseFnResult struct_statement(Parser *parser) {
+static ParseFnResult struct_statement(Parser *parser)
+{
   Token name =
       CONSUME(parser, TOKEN_IDENTIFIER, "Expected identifier after 'struct'.");
   CONSUME(parser, TOKEN_LEFT_BRACE, "Expected '{' after 'struct'.");
@@ -650,7 +697,8 @@ static ParseFnResult struct_statement(Parser *parser) {
       .as.stmt = AS_STMT_STRUCT(stmt), .is_ok = true, .msg = NULL};
 }
 
-static ParseFnResult impl_statement(Parser *parser) {
+static ParseFnResult impl_statement(Parser *parser)
+{
   Token name =
       CONSUME(parser, TOKEN_IDENTIFIER, "Expected identifier after 'impl'.");
   CONSUME(parser, TOKEN_LEFT_BRACE, "Expected '{' after identifier.");
@@ -666,7 +714,8 @@ static ParseFnResult impl_statement(Parser *parser) {
       .as.stmt = AS_STMT_IMPL(stmt), .is_ok = true, .msg = NULL};
 }
 
-static ParseFnResult use_statement(Parser *parser) {
+static ParseFnResult use_statement(Parser *parser)
+{
   Token path = CONSUME(parser, TOKEN_STRING, "Module path should be a string");
   CONSUME(parser, TOKEN_SEMICOLON,
           "expected semicolon at the end of use statement");
@@ -675,7 +724,8 @@ static ParseFnResult use_statement(Parser *parser) {
       .as.stmt = AS_STMT_USE(stmt), .is_ok = true, .msg = NULL};
 }
 
-static ParseFnResult yield_statement(Parser *parser) {
+static ParseFnResult yield_statement(Parser *parser)
+{
   Expr expr = HANDLE_EXPR(expression, parser);
   CONSUME(parser, TOKEN_SEMICOLON, "Expected ';' after yield statement.");
   StmtYield stmt = {.expr = expr};
@@ -683,7 +733,8 @@ static ParseFnResult yield_statement(Parser *parser) {
       .as.stmt = AS_STMT_YIELD(stmt), .is_ok = true, .msg = NULL};
 }
 
-static ParseFnResult assert_statement(Parser *parser) {
+static ParseFnResult assert_statement(Parser *parser)
+{
   Expr expr = HANDLE_EXPR(expression, parser);
   CONSUME(parser, TOKEN_SEMICOLON, "Expected ';' after assert statement.");
   StmtAssert stmt = {.expr = expr};
@@ -691,7 +742,8 @@ static ParseFnResult assert_statement(Parser *parser) {
       .as.stmt = AS_STMT_ASSERT(stmt), .is_ok = true, .msg = NULL};
 }
 
-static ParseFnResult statement(Parser *parser) {
+static ParseFnResult statement(Parser *parser)
+{
   if (match(parser, 1, TOKEN_PRINT)) {
     return print_statement(parser);
   } else if (match(parser, 1, TOKEN_LET)) {
@@ -729,7 +781,8 @@ static ParseFnResult statement(Parser *parser) {
   }
 }
 
-ParseResult parse(Parser *parser) {
+ParseResult parse(Parser *parser)
+{
   ParseResult result = {0};
   advance(parser);
   while (parser->current.type != TOKEN_EOF) {

@@ -16,23 +16,29 @@
 #include "util.h"
 
 #ifdef venom_debug_compiler
-static bool is_last(Module *parent, Module *child) {
+static bool is_last(Module *parent, Module *child)
+{
   return strcmp(parent->imports.data[parent->imports.count - 1]->path,
                 child->path) == 0;
 }
 
-static void print_prefix(int depth, bool is_grandparent_last) {
+static void print_prefix(int depth, bool is_grandparent_last)
+{
   for (int i = 0; i < depth; i++) {
-    if (i == 0) continue;
-    if (is_grandparent_last)
+    if (i == 0) {
+      continue;
+    }
+    if (is_grandparent_last) {
       printf("  ");
-    else
+    } else {
       printf("┃ ");
+    }
   }
 }
 
 static void print_module_tree(Compiler *compiler, Module *parent, Module *mod,
-                              int depth, bool is_parent_last) {
+                              int depth, bool is_parent_last)
+{
   bool last = is_last(parent, mod);
 
   if (depth == 0) {
@@ -69,7 +75,8 @@ static Builtin builtins[] = {
 
 Compiler *current_compiler = NULL;
 
-static void free_table_int(Table_int *table) {
+static void free_table_int(Table_int *table)
+{
   for (size_t i = 0; i < TABLE_MAX; i++) {
     if (table->indexes[i] != NULL) {
       Bucket *bucket = table->indexes[i];
@@ -78,7 +85,8 @@ static void free_table_int(Table_int *table) {
   }
 }
 
-static void free_table_function_ptr(Table_FunctionPtr *table) {
+static void free_table_function_ptr(Table_FunctionPtr *table)
+{
   for (size_t i = 0; i < TABLE_MAX; i++) {
     if (table->indexes[i] != NULL) {
       Bucket *bucket = table->indexes[i];
@@ -90,7 +98,8 @@ static void free_table_function_ptr(Table_FunctionPtr *table) {
   }
 }
 
-void free_table_struct_blueprints(Table_StructBlueprint *table) {
+void free_table_struct_blueprints(Table_StructBlueprint *table)
+{
   for (size_t i = 0; i < TABLE_MAX; i++) {
     if (table->indexes[i] != NULL) {
       Bucket *bucket = table->indexes[i];
@@ -106,7 +115,8 @@ void free_table_struct_blueprints(Table_StructBlueprint *table) {
   }
 }
 
-static void free_table_functions(Table_Function *table) {
+static void free_table_functions(Table_Function *table)
+{
   for (size_t i = 0; i < TABLE_MAX; i++) {
     if (table->indexes[i] != NULL) {
       Bucket *bucket = table->indexes[i];
@@ -115,7 +125,8 @@ static void free_table_functions(Table_Function *table) {
   }
 }
 
-static void free_table_compiled_modules(Table_module_ptr *table) {
+static void free_table_compiled_modules(Table_module_ptr *table)
+{
   for (size_t i = 0; i < TABLE_MAX; i++) {
     if (table->indexes[i] != NULL) {
       Bucket *bucket = table->indexes[i];
@@ -129,7 +140,8 @@ static void free_table_compiled_modules(Table_module_ptr *table) {
   }
 }
 
-static void free_table_labels(Table_Label *table) {
+static void free_table_labels(Table_Label *table)
+{
   for (size_t i = 0; i < TABLE_MAX; i++) {
     if (table->indexes[i] != NULL) {
       Bucket *bucket = table->indexes[i];
@@ -138,7 +150,8 @@ static void free_table_labels(Table_Label *table) {
   }
 }
 
-void free_compiler(Compiler *compiler) {
+void free_compiler(Compiler *compiler)
+{
   dynarray_free(&compiler->upvalues);
   dynarray_free(&compiler->loop_depths);
   free_table_struct_blueprints(compiler->struct_blueprints);
@@ -155,15 +168,19 @@ void free_compiler(Compiler *compiler) {
 
 void init_chunk(Bytecode *code) { memset(code, 0, sizeof(Bytecode)); }
 
-void free_chunk(Bytecode *code) {
+void free_chunk(Bytecode *code)
+{
   dynarray_free(&code->code);
-  for (size_t i = 0; i < code->sp.count; i++) free(code->sp.data[i]);
+  for (size_t i = 0; i < code->sp.count; i++) {
+    free(code->sp.data[i]);
+  }
   dynarray_free(&code->sp);
 }
 
 /* Check if the string is already present in the sp.
  * If not, add it first, and finally return the idx. */
-static uint32_t add_string(Bytecode *code, const char *string) {
+static uint32_t add_string(Bytecode *code, const char *string)
+{
   for (size_t idx = 0; idx < code->sp.count; idx++) {
     if (strcmp(code->sp.data[idx], string) == 0) {
       return idx;
@@ -173,11 +190,13 @@ static uint32_t add_string(Bytecode *code, const char *string) {
   return code->sp.count - 1;
 }
 
-static void emit_byte(Bytecode *code, uint8_t byte) {
+static void emit_byte(Bytecode *code, uint8_t byte)
+{
   dynarray_insert(&code->code, byte);
 }
 
-static void emit_bytes(Bytecode *code, int n, ...) {
+static void emit_bytes(Bytecode *code, int n, ...)
+{
   va_list ap;
   va_start(ap, n);
   for (int i = 0; i < n; i++) {
@@ -187,12 +206,14 @@ static void emit_bytes(Bytecode *code, int n, ...) {
   va_end(ap);
 }
 
-static void emit_uint32(Bytecode *code, uint32_t idx) {
+static void emit_uint32(Bytecode *code, uint32_t idx)
+{
   emit_bytes(code, 4, (idx >> 24) & 0xFF, (idx >> 16) & 0xFF, (idx >> 8) & 0xFF,
              idx & 0xFF);
 }
 
-static void emit_double(Bytecode *code, double x) {
+static void emit_double(Bytecode *code, double x)
+{
   union {
     double d;
     uint64_t raw;
@@ -206,7 +227,8 @@ static void emit_double(Bytecode *code, double x) {
       (uint8_t)(num.raw & 0xFF));
 }
 
-static int emit_placeholder(Bytecode *code, Opcode op) {
+static int emit_placeholder(Bytecode *code, Opcode op)
+{
   emit_bytes(code, 3, op, 0xFF, 0xFF);
   /* The opcode, followed by its 2-byte offset are the last
    * emitted bytes.
@@ -227,7 +249,8 @@ static int emit_placeholder(Bytecode *code, Opcode op) {
   return code->code.count - 3;
 }
 
-static void patch_placeholder(Bytecode *code, int op) {
+static void patch_placeholder(Bytecode *code, int op)
+{
   /* This function takes a zero-based index of the opcode,
    * 'op', and patches the following offset with the numb-
    * er of emitted instructions that come after the opcode
@@ -256,13 +279,18 @@ static void patch_placeholder(Bytecode *code, int op) {
   code->code.data[op + 2] = bytes_emitted & 0xFF;
 }
 
-static void add_upvalue(DynArray_int *upvalues, int idx) {
-  for (size_t i = 0; i < upvalues->count; i++)
-    if (upvalues->data[i] == idx) return;
+static void add_upvalue(DynArray_int *upvalues, int idx)
+{
+  for (size_t i = 0; i < upvalues->count; i++) {
+    if (upvalues->data[i] == idx) {
+      return;
+    }
+  }
   dynarray_insert(upvalues, idx);
 }
 
-static void emit_loop(Bytecode *code, int loop_start) {
+static void emit_loop(Bytecode *code, int loop_start)
+{
   /*
    * For example, consider the following bytecode for a simp-
    * le program on the side:
@@ -315,7 +343,8 @@ static void emit_loop(Bytecode *code, int loop_start) {
   emit_byte(code, offset & 0xFF);
 }
 
-static void emit_loop_cleanup(Bytecode *code) {
+static void emit_loop_cleanup(Bytecode *code)
+{
   /* Example:
    *
    * fn main() {
@@ -359,7 +388,8 @@ static void emit_loop_cleanup(Bytecode *code) {
 
 static void begin_scope() { current_compiler->depth++; }
 
-static void end_scope(Bytecode *code) {
+static void end_scope(Bytecode *code)
+{
   Compiler *c = current_compiler;
   c->depth--;
   while (c->locals_count > 0 &&
@@ -369,7 +399,8 @@ static void end_scope(Bytecode *code) {
   }
 }
 
-static void patch_jumps(Bytecode *code) {
+static void patch_jumps(Bytecode *code)
+{
   for (size_t i = 0; i < TABLE_MAX; i++) {
     if (current_compiler->labels->indexes[i]) {
       Label *l = table_get(current_compiler->labels,
@@ -378,7 +409,9 @@ static void patch_jumps(Bytecode *code) {
       int location = l->location;
       int patch_with = l->patch_with;
 
-      if (patch_with == -1) continue;
+      if (patch_with == -1) {
+        continue;
+      }
 
       code->code.data[location + 1] = ((patch_with - location - 3) >> 8) & 0xFF;
       code->code.data[location + 2] = ((patch_with) - (location)-3) & 0xFF;
@@ -388,11 +421,14 @@ static void patch_jumps(Bytecode *code) {
 
 /* Check if 'name' is present in the builtins table.
  * If it is, return its index in the sp, otherwise -1. */
-static Function *resolve_builtin(const char *name) {
+static Function *resolve_builtin(const char *name)
+{
   Compiler *current = current_compiler;
   while (current) {
     Function **f = table_get(current->builtins, name);
-    if (f) return *f;
+    if (f) {
+      return *f;
+    }
     current = current->next;
   }
   return NULL;
@@ -400,12 +436,14 @@ static Function *resolve_builtin(const char *name) {
 
 /* Check if 'name' is present in the globals dynarray.
  * If it is, return its index in the sp, otherwise -1. */
-static int resolve_global(Bytecode *code, const char *name) {
+static int resolve_global(Bytecode *code, const char *name)
+{
   Compiler *current = current_compiler;
   while (current) {
     for (size_t idx = 0; idx < current->globals_count; idx++) {
-      if (strcmp(current->globals[idx].name, name) == 0)
+      if (strcmp(current->globals[idx].name, name) == 0) {
         return add_string(code, name);
+      }
     }
     current = current->next;
   }
@@ -414,14 +452,18 @@ static int resolve_global(Bytecode *code, const char *name) {
 
 /* Check if 'name' is present in the locals dynarray.
  * If it is, return the index, otherwise return -1. */
-static int resolve_local(const char *name) {
+static int resolve_local(const char *name)
+{
   for (size_t idx = 0; idx < current_compiler->locals_count; idx++) {
-    if (strcmp(current_compiler->locals[idx].name, name) == 0) return idx;
+    if (strcmp(current_compiler->locals[idx].name, name) == 0) {
+      return idx;
+    }
   }
   return -1;
 }
 
-static int resolve_upvalue(const char *name) {
+static int resolve_upvalue(const char *name)
+{
   Compiler *current = current_compiler->next;
   while (current) {
     for (size_t idx = 0; idx < current->locals_count; idx++) {
@@ -435,31 +477,40 @@ static int resolve_upvalue(const char *name) {
   return -1;
 }
 
-static StructBlueprint *resolve_blueprint(const char *name) {
+static StructBlueprint *resolve_blueprint(const char *name)
+{
   Compiler *current = current_compiler;
   while (current) {
     StructBlueprint *bp = table_get(current->struct_blueprints, name);
-    if (bp) return bp;
+    if (bp) {
+      return bp;
+    }
     current = current->next;
   }
   return NULL;
 }
 
-static Module **resolve_module(const char *name) {
+static Module **resolve_module(const char *name)
+{
   Compiler *current = current_compiler;
   while (current) {
     Module **mp = table_get(current->compiled_modules, name);
-    if (mp) return mp;
+    if (mp) {
+      return mp;
+    }
     current = current->next;
   }
   return NULL;
 }
 
-static Function *resolve_func(const char *name) {
+static Function *resolve_func(const char *name)
+{
   Compiler *current = current_compiler;
   while (current) {
     Function *f = table_get(current->functions, name);
-    if (f) return f;
+    if (f) {
+      return f;
+    }
     current = current->next;
   }
   return NULL;
@@ -467,15 +518,18 @@ static Function *resolve_func(const char *name) {
 
 #define COMPILE_EXPR(code, exp)       \
   result = compile_expr(code, (exp)); \
-  if (!result.is_ok) return result;
+  if (!result.is_ok)                  \
+    return result;
 
 #define COMPILE_STMT(code, stmt)       \
   result = compile_stmt(code, (stmt)); \
-  if (!result.is_ok) return result;
+  if (!result.is_ok)                   \
+    return result;
 
 static CompileResult compile_expr(Bytecode *code, const Expr *expr);
 
-static CompileResult compile_expr_lit(Bytecode *code, const Expr *expr) {
+static CompileResult compile_expr_lit(Bytecode *code, const Expr *expr)
+{
   CompileResult result = {.is_ok = true, .chunk = NULL, .msg = NULL};
 
   ExprLiteral expr_lit = expr->as.expr_literal;
@@ -509,7 +563,8 @@ static CompileResult compile_expr_lit(Bytecode *code, const Expr *expr) {
   return result;
 }
 
-static CompileResult compile_expr_var(Bytecode *code, const Expr *expr) {
+static CompileResult compile_expr_var(Bytecode *code, const Expr *expr)
+{
   CompileResult result = {.is_ok = true, .chunk = NULL, .msg = NULL};
   ExprVariable expr_var = expr->as.expr_variable;
 
@@ -542,7 +597,8 @@ static CompileResult compile_expr_var(Bytecode *code, const Expr *expr) {
   COMPILER_ERROR("Variable '%s' is not defined.", expr_var.name);
 }
 
-static CompileResult compile_expr_una(Bytecode *code, const Expr *expr) {
+static CompileResult compile_expr_una(Bytecode *code, const Expr *expr)
+{
   CompileResult result = {.is_ok = true, .chunk = NULL, .msg = NULL};
 
   ExprUnary expr_unary = expr->as.expr_unary;
@@ -615,7 +671,8 @@ static CompileResult compile_expr_una(Bytecode *code, const Expr *expr) {
   return result;
 }
 
-static CompileResult compile_expr_bin(Bytecode *code, const Expr *expr) {
+static CompileResult compile_expr_bin(Bytecode *code, const Expr *expr)
+{
   CompileResult result = {.is_ok = true, .chunk = NULL, .msg = NULL};
 
   ExprBinary expr_bin = expr->as.expr_binary;
@@ -727,7 +784,8 @@ static CompileResult compile_expr_bin(Bytecode *code, const Expr *expr) {
   return result;
 }
 
-static CompileResult compile_expr_call(Bytecode *code, const Expr *expr) {
+static CompileResult compile_expr_call(Bytecode *code, const Expr *expr)
+{
   CompileResult result = {.is_ok = true, .chunk = NULL, .msg = NULL};
 
   ExprCall expr_call = expr->as.expr_call;
@@ -814,13 +872,17 @@ static CompileResult compile_expr_call(Bytecode *code, const Expr *expr) {
     /* If it is not a local, try resolving it as upvalue. */
     if (idx == -1) {
       idx = resolve_upvalue(var.name);
-      if (idx != -1) is_upvalue = true;
+      if (idx != -1) {
+        is_upvalue = true;
+      }
     }
 
     /* If it is not an upvalue, try resolving it as global. */
     if (idx == -1) {
       idx = resolve_global(code, var.name);
-      if (idx != -1) is_global = true;
+      if (idx != -1) {
+        is_global = true;
+      }
     }
 
     /* Bail out if it's neither local nor a global. */
@@ -840,17 +902,19 @@ static CompileResult compile_expr_call(Bytecode *code, const Expr *expr) {
       emit_uint32(code, idx);
     }
 
-    if (f && f->is_gen)
+    if (f && f->is_gen) {
       emit_byte(code, OP_MKGEN);
-    else
+    } else {
       /* Emit OP_CALL followed by the argument count. */
       emit_bytes(code, 2, OP_CALL, expr_call.arguments.count);
+    }
   }
 
   return result;
 }
 
-static CompileResult compile_expr_get(Bytecode *code, const Expr *expr) {
+static CompileResult compile_expr_get(Bytecode *code, const Expr *expr)
+{
   CompileResult result = {.is_ok = true, .chunk = NULL, .msg = NULL};
 
   ExprGet expr_get = expr->as.expr_get;
@@ -871,31 +935,34 @@ static CompileResult compile_expr_get(Bytecode *code, const Expr *expr) {
   return result;
 }
 
-static void handle_specop(Bytecode *code, const char *op) {
-  if (strcmp(op, "+=") == 0)
+static void handle_specop(Bytecode *code, const char *op)
+{
+  if (strcmp(op, "+=") == 0) {
     emit_byte(code, OP_ADD);
-  else if (strcmp(op, "-=") == 0)
+  } else if (strcmp(op, "-=") == 0) {
     emit_byte(code, OP_SUB);
-  else if (strcmp(op, "*=") == 0)
+  } else if (strcmp(op, "*=") == 0) {
     emit_byte(code, OP_MUL);
-  else if (strcmp(op, "/=") == 0)
+  } else if (strcmp(op, "/=") == 0) {
     emit_byte(code, OP_DIV);
-  else if (strcmp(op, "%=") == 0)
+  } else if (strcmp(op, "%=") == 0) {
     emit_byte(code, OP_MOD);
-  else if (strcmp(op, "&=") == 0)
+  } else if (strcmp(op, "&=") == 0) {
     emit_byte(code, OP_BITAND);
-  else if (strcmp(op, "|=") == 0)
+  } else if (strcmp(op, "|=") == 0) {
     emit_byte(code, OP_BITOR);
-  else if (strcmp(op, "^=") == 0)
+  } else if (strcmp(op, "^=") == 0) {
     emit_byte(code, OP_BITXOR);
-  else if (strcmp(op, ">>=") == 0)
+  } else if (strcmp(op, ">>=") == 0) {
     emit_byte(code, OP_BITSHR);
-  else if (strcmp(op, "<<=") == 0)
+  } else if (strcmp(op, "<<=") == 0) {
     emit_byte(code, OP_BITSHL);
+  }
 }
 
 static CompileResult compile_assign_var(Bytecode *code, ExprAssign e,
-                                        bool is_compound) {
+                                        bool is_compound)
+{
   CompileResult result = {.is_ok = true, .chunk = NULL, .msg = NULL};
 
   ExprVariable expr_var = e.lhs->as.expr_variable;
@@ -909,13 +976,17 @@ static CompileResult compile_assign_var(Bytecode *code, ExprAssign e,
   /* If it is not an upvalue, try resolving it as global. */
   if (idx == -1) {
     idx = resolve_upvalue(expr_var.name);
-    if (idx != -1) is_upvalue = true;
+    if (idx != -1) {
+      is_upvalue = true;
+    }
   }
 
   /* If it is not an upvalue, try resolving it as global. */
   if (idx == -1) {
     idx = resolve_global(code, expr_var.name);
-    if (idx != -1) is_global = true;
+    if (idx != -1) {
+      is_global = true;
+    }
   }
 
   /* Bail out if it's neither local nor a global. */
@@ -925,12 +996,13 @@ static CompileResult compile_assign_var(Bytecode *code, ExprAssign e,
 
   if (is_compound) {
     /* Get the variable onto the top of the stack. */
-    if (is_global)
+    if (is_global) {
       emit_byte(code, OP_GET_GLOBAL);
-    else if (is_upvalue)
+    } else if (is_upvalue) {
       emit_byte(code, OP_GET_UPVALUE);
-    else
+    } else {
       emit_byte(code, OP_DEEPGET);
+    }
 
     emit_uint32(code, idx);
 
@@ -946,12 +1018,13 @@ static CompileResult compile_assign_var(Bytecode *code, ExprAssign e,
   }
 
   /* Emit the appropriate assignment opcode. */
-  if (is_global)
+  if (is_global) {
     emit_byte(code, OP_SET_GLOBAL);
-  else if (is_upvalue)
+  } else if (is_upvalue) {
     emit_byte(code, OP_SET_UPVALUE);
-  else
+  } else {
     emit_byte(code, OP_DEEPSET);
+  }
 
   emit_uint32(code, idx);
 
@@ -959,7 +1032,8 @@ static CompileResult compile_assign_var(Bytecode *code, ExprAssign e,
 }
 
 static CompileResult compile_assign_get(Bytecode *code, ExprAssign e,
-                                        bool is_compound) {
+                                        bool is_compound)
+{
   CompileResult result = {.is_ok = true, .chunk = NULL, .msg = NULL};
 
   ExprGet expr_get = e.lhs->as.expr_get;
@@ -997,7 +1071,8 @@ static CompileResult compile_assign_get(Bytecode *code, ExprAssign e,
 }
 
 static CompileResult compile_assign_una(Bytecode *code, ExprAssign e,
-                                        bool is_compound) {
+                                        bool is_compound)
+{
   CompileResult result = {.is_ok = true, .chunk = NULL, .msg = NULL};
 
   ExprUnary expr_unary = e.lhs->as.expr_unary;
@@ -1021,7 +1096,8 @@ static CompileResult compile_assign_una(Bytecode *code, ExprAssign e,
 }
 
 static CompileResult compile_assign_sub(Bytecode *code, ExprAssign e,
-                                        bool is_compound) {
+                                        bool is_compound)
+{
   CompileResult result = {.is_ok = true, .chunk = NULL, .msg = NULL};
 
   ExprSubscript expr_subscript = e.lhs->as.expr_subscript;
@@ -1045,7 +1121,8 @@ static CompileResult compile_assign_sub(Bytecode *code, ExprAssign e,
   return result;
 }
 
-static CompileResult compile_expr_ass(Bytecode *code, const Expr *expr) {
+static CompileResult compile_expr_ass(Bytecode *code, const Expr *expr)
+{
   CompileResult result = {.is_ok = true, .chunk = NULL, .msg = NULL};
 
   ExprAssign expr_assign = expr->as.expr_assign;
@@ -1071,7 +1148,8 @@ static CompileResult compile_expr_ass(Bytecode *code, const Expr *expr) {
   return result;
 }
 
-static CompileResult compile_expr_struct(Bytecode *code, const Expr *expr) {
+static CompileResult compile_expr_struct(Bytecode *code, const Expr *expr)
+{
   CompileResult result = {.is_ok = true, .chunk = NULL, .msg = NULL};
 
   ExprStruct expr_struct = expr->as.expr_struct;
@@ -1117,7 +1195,8 @@ static CompileResult compile_expr_struct(Bytecode *code, const Expr *expr) {
 }
 
 static CompileResult compile_expr_struct_initializer(Bytecode *code,
-                                                     const Expr *expr) {
+                                                     const Expr *expr)
+{
   CompileResult result = {.is_ok = true, .chunk = NULL, .msg = NULL};
 
   ExprStructInitializer expr_struct_initializer =
@@ -1137,7 +1216,8 @@ static CompileResult compile_expr_struct_initializer(Bytecode *code,
   return result;
 }
 
-static CompileResult compile_expr_array(Bytecode *code, const Expr *expr) {
+static CompileResult compile_expr_array(Bytecode *code, const Expr *expr)
+{
   CompileResult result = {.is_ok = true, .chunk = NULL, .msg = NULL};
 
   ExprArray expr_array = expr->as.expr_array;
@@ -1157,7 +1237,8 @@ static CompileResult compile_expr_array(Bytecode *code, const Expr *expr) {
   return result;
 }
 
-static CompileResult compile_expr_subscript(Bytecode *code, const Expr *expr) {
+static CompileResult compile_expr_subscript(Bytecode *code, const Expr *expr)
+{
   CompileResult result = {.is_ok = true, .chunk = NULL, .msg = NULL};
   ExprSubscript expr_subscript = expr->as.expr_subscript;
 
@@ -1195,13 +1276,15 @@ static CompileExprHandler expression_handler[] = {
     [EXPR_SUBSCRIPT] = {.fn = compile_expr_subscript, .name = "EXPR_SUBSCRIPT"},
 };
 
-static CompileResult compile_expr(Bytecode *code, const Expr *expr) {
+static CompileResult compile_expr(Bytecode *code, const Expr *expr)
+{
   return expression_handler[expr->kind].fn(code, expr);
 }
 
 static CompileResult compile_stmt(Bytecode *code, const Stmt *stmt);
 
-static CompileResult compile_stmt_print(Bytecode *code, const Stmt *stmt) {
+static CompileResult compile_stmt_print(Bytecode *code, const Stmt *stmt)
+{
   CompileResult result = {.is_ok = true, .chunk = NULL, .msg = NULL};
 
   StmtPrint s = stmt->as.stmt_print;
@@ -1211,7 +1294,8 @@ static CompileResult compile_stmt_print(Bytecode *code, const Stmt *stmt) {
   return result;
 }
 
-static CompileResult compile_stmt_let(Bytecode *code, const Stmt *stmt) {
+static CompileResult compile_stmt_let(Bytecode *code, const Stmt *stmt)
+{
   CompileResult result = {.is_ok = true, .chunk = NULL, .msg = NULL};
 
   if (current_compiler->locals_count >= 256) {
@@ -1255,7 +1339,8 @@ static CompileResult compile_stmt_let(Bytecode *code, const Stmt *stmt) {
   return result;
 }
 
-static CompileResult compile_stmt_expr(Bytecode *code, const Stmt *stmt) {
+static CompileResult compile_stmt_expr(Bytecode *code, const Stmt *stmt)
+{
   CompileResult result = {.is_ok = true, .chunk = NULL, .msg = NULL};
 
   StmtExpr stmt_expr = stmt->as.stmt_expr;
@@ -1277,7 +1362,8 @@ static CompileResult compile_stmt_expr(Bytecode *code, const Stmt *stmt) {
   return result;
 }
 
-static CompileResult compile_stmt_block(Bytecode *code, const Stmt *stmt) {
+static CompileResult compile_stmt_block(Bytecode *code, const Stmt *stmt)
+{
   CompileResult result = {.is_ok = true, .chunk = NULL, .msg = NULL};
 
   begin_scope();
@@ -1293,7 +1379,8 @@ static CompileResult compile_stmt_block(Bytecode *code, const Stmt *stmt) {
   return result;
 }
 
-static CompileResult compile_stmt_if(Bytecode *code, const Stmt *stmt) {
+static CompileResult compile_stmt_if(Bytecode *code, const Stmt *stmt)
+{
   CompileResult result = {.is_ok = true, .chunk = NULL, .msg = NULL};
 
   StmtIf stmt_if = stmt->as.stmt_if;
@@ -1333,7 +1420,8 @@ static CompileResult compile_stmt_if(Bytecode *code, const Stmt *stmt) {
   return result;
 }
 
-static CompileResult compile_stmt_while(Bytecode *code, const Stmt *stmt) {
+static CompileResult compile_stmt_while(Bytecode *code, const Stmt *stmt)
+{
   CompileResult result = {.is_ok = true, .chunk = NULL, .msg = NULL};
 
   StmtWhile stmt_while = stmt->as.stmt_while;
@@ -1395,7 +1483,8 @@ static CompileResult compile_stmt_while(Bytecode *code, const Stmt *stmt) {
   return result;
 }
 
-static CompileResult compile_stmt_for(Bytecode *code, const Stmt *stmt) {
+static CompileResult compile_stmt_for(Bytecode *code, const Stmt *stmt)
+{
   CompileResult result = {.is_ok = true, .chunk = NULL, .msg = NULL};
 
   StmtFor stmt_for = stmt->as.stmt_for;
@@ -1498,7 +1587,8 @@ static CompileResult compile_stmt_for(Bytecode *code, const Stmt *stmt) {
   return result;
 }
 
-Compiler *new_compiler(void) {
+Compiler *new_compiler(void)
+{
   Compiler compiler = {0};
   memset(&compiler, 0, sizeof(Compiler));
   compiler.functions = calloc(1, sizeof(Table_Function));
@@ -1518,7 +1608,8 @@ Compiler *new_compiler(void) {
   return ALLOC(compiler);
 }
 
-static CompileResult compile_stmt_fn(Bytecode *code, const Stmt *stmt) {
+static CompileResult compile_stmt_fn(Bytecode *code, const Stmt *stmt)
+{
   CompileResult result = {.is_ok = true, .chunk = NULL, .msg = NULL};
 
   Compiler *old_compiler = current_compiler;
@@ -1596,7 +1687,8 @@ static CompileResult compile_stmt_fn(Bytecode *code, const Stmt *stmt) {
   return result;
 }
 
-static CompileResult compile_stmt_decorator(Bytecode *code, const Stmt *stmt) {
+static CompileResult compile_stmt_decorator(Bytecode *code, const Stmt *stmt)
+{
   CompileResult result = {.is_ok = true, .chunk = NULL, .msg = NULL};
 
   StmtDecorator stmt_decorator = stmt->as.stmt_decorator;
@@ -1629,7 +1721,8 @@ static CompileResult compile_stmt_decorator(Bytecode *code, const Stmt *stmt) {
   return result;
 }
 
-static CompileResult compile_stmt_struct(Bytecode *code, const Stmt *stmt) {
+static CompileResult compile_stmt_struct(Bytecode *code, const Stmt *stmt)
+{
   CompileResult result = {.is_ok = true, .chunk = NULL, .msg = NULL};
 
   StmtStruct stmt_struct = stmt->as.stmt_struct;
@@ -1662,7 +1755,8 @@ static CompileResult compile_stmt_struct(Bytecode *code, const Stmt *stmt) {
   return result;
 }
 
-static CompileResult compile_stmt_return(Bytecode *code, const Stmt *stmt) {
+static CompileResult compile_stmt_return(Bytecode *code, const Stmt *stmt)
+{
   CompileResult result = {.is_ok = true, .chunk = NULL, .msg = NULL};
 
   StmtReturn stmt_return = stmt->as.stmt_return;
@@ -1702,13 +1796,15 @@ static CompileResult compile_stmt_return(Bytecode *code, const Stmt *stmt) {
   return result;
 }
 
-static void emit_named_jump(Bytecode *code, char *label) {
+static void emit_named_jump(Bytecode *code, char *label)
+{
   int jmp = emit_placeholder(code, OP_JMP);
   Label exit_label = {.location = jmp, .patch_with = -1};
   table_insert(current_compiler->labels, label, exit_label);
 }
 
-static CompileResult compile_stmt_break(Bytecode *code, const Stmt *stmt) {
+static CompileResult compile_stmt_break(Bytecode *code, const Stmt *stmt)
+{
   CompileResult result = {.is_ok = true, .chunk = NULL, .msg = NULL};
 
   size_t len = lblen(stmt->as.stmt_break.label, 0) + strlen("_exit");
@@ -1722,7 +1818,8 @@ static CompileResult compile_stmt_break(Bytecode *code, const Stmt *stmt) {
   return result;
 }
 
-static CompileResult compile_stmt_continue(Bytecode *code, const Stmt *stmt) {
+static CompileResult compile_stmt_continue(Bytecode *code, const Stmt *stmt)
+{
   CompileResult result = {.is_ok = true, .chunk = NULL, .msg = NULL};
 
   Label *loop_start =
@@ -1733,7 +1830,8 @@ static CompileResult compile_stmt_continue(Bytecode *code, const Stmt *stmt) {
   return result;
 }
 
-static CompileResult compile_stmt_impl(Bytecode *code, const Stmt *stmt) {
+static CompileResult compile_stmt_impl(Bytecode *code, const Stmt *stmt)
+{
   CompileResult result = {.is_ok = true, .chunk = NULL, .msg = NULL};
   StmtImpl stmt_impl = stmt->as.stmt_impl;
 
@@ -1772,16 +1870,20 @@ static CompileResult compile_stmt_impl(Bytecode *code, const Stmt *stmt) {
   return result;
 }
 
-static bool is_cyclic(Compiler *compiler, Module *mod) {
+static bool is_cyclic(Compiler *compiler, Module *mod)
+{
   Module *current = mod;
   while (current->parent) {
-    if (strcmp(current->parent->path, mod->path) == 0) return true;
+    if (strcmp(current->parent->path, mod->path) == 0) {
+      return true;
+    }
     current = current->parent;
   }
   return false;
 }
 
-static CompileResult compile_stmt_use(Bytecode *code, const Stmt *stmt) {
+static CompileResult compile_stmt_use(Bytecode *code, const Stmt *stmt)
+{
   CompileResult result = {.is_ok = true, .chunk = NULL, .msg = NULL};
   StmtUse stmt_use = stmt->as.stmt_use;
 
@@ -1828,7 +1930,9 @@ static CompileResult compile_stmt_use(Bytecode *code, const Stmt *stmt) {
 
     table_insert(current_compiler->compiled_modules, stmt_use.path, importee);
 
-    if (is_cyclic(current_compiler, importee)) COMPILER_ERROR("Cycle.");
+    if (is_cyclic(current_compiler, importee)) {
+      COMPILER_ERROR("Cycle.");
+    }
 
     for (size_t i = 0; i < ast.count; i++) {
       COMPILE_STMT(code, &ast.data[i]);
@@ -1850,7 +1954,9 @@ static CompileResult compile_stmt_use(Bytecode *code, const Stmt *stmt) {
         .data[current_compiler->current_mod->imports.count - 1]
         ->parent = current_compiler->current_mod;
 
-    if (is_cyclic(current_compiler, *cached_module)) COMPILER_ERROR("Cycle.");
+    if (is_cyclic(current_compiler, *cached_module)) {
+      COMPILER_ERROR("Cycle.");
+    }
 
 #ifdef venom_debug_compiler
     printf("using cached import for: %s\n", (*cached_module)->path);
@@ -1864,7 +1970,8 @@ static CompileResult compile_stmt_use(Bytecode *code, const Stmt *stmt) {
   return result;
 }
 
-static CompileResult compile_stmt_yield(Bytecode *code, const Stmt *stmt) {
+static CompileResult compile_stmt_yield(Bytecode *code, const Stmt *stmt)
+{
   CompileResult result = {.is_ok = true, .chunk = NULL, .msg = NULL};
 
   StmtYield stmt_yield = stmt->as.stmt_yield;
@@ -1880,7 +1987,8 @@ static CompileResult compile_stmt_yield(Bytecode *code, const Stmt *stmt) {
   return result;
 }
 
-static CompileResult compile_stmt_assert(Bytecode *code, const Stmt *stmt) {
+static CompileResult compile_stmt_assert(Bytecode *code, const Stmt *stmt)
+{
   CompileResult result = {.is_ok = true, .chunk = NULL, .msg = NULL};
 
   StmtAssert stmt_assert = stmt->as.stmt_assert;
@@ -1917,11 +2025,13 @@ static CompileHandler stmt_handler[] = {
     [STMT_ASSERT] = {.fn = compile_stmt_assert, .name = "STMT_ASSERT"},
 };
 
-static CompileResult compile_stmt(Bytecode *code, const Stmt *stmt) {
+static CompileResult compile_stmt(Bytecode *code, const Stmt *stmt)
+{
   return stmt_handler[stmt->kind].fn(code, stmt);
 }
 
-void free_compile_result(CompileResult *result) {
+void free_compile_result(CompileResult *result)
+{
   if (result->chunk) {
     free_chunk(result->chunk);
     free(result->chunk);
@@ -1931,7 +2041,8 @@ void free_compile_result(CompileResult *result) {
   }
 }
 
-CompileResult compile(const DynArray_Stmt *ast) {
+CompileResult compile(const DynArray_Stmt *ast)
+{
   CompileResult result = {0};
 
   Bytecode *chunk = malloc(sizeof(Bytecode));

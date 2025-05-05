@@ -5,16 +5,19 @@
 #include <stdlib.h>
 #include <string.h>
 
-void init_tokenizer(Tokenizer *tokenizer, char *source) {
+void init_tokenizer(Tokenizer *tokenizer, char *source)
+{
   tokenizer->current = source;
   tokenizer->line = 1;
 }
 
-static char peek(const Tokenizer *tokenizer, int distance) {
+static char peek(const Tokenizer *tokenizer, int distance)
+{
   return tokenizer->current[distance];
 }
 
-static bool match(Tokenizer *tokenizer, char target) {
+static bool match(Tokenizer *tokenizer, char target)
+{
   if (peek(tokenizer, 0) == target) {
     tokenizer->current++;
     return true;
@@ -26,18 +29,20 @@ static char advance(Tokenizer *tokenizer) { return *tokenizer->current++; }
 
 static bool is_digit(const char c) { return c >= '0' && c <= '9'; }
 
-static bool is_alpha(const char c) {
+static bool is_alpha(const char c)
+{
   return (c >= 'a' && c <= 'z') || (c >= 'A' && c <= 'Z') || c == '_';
 }
 
 static bool is_alnum(const char c) { return is_alpha(c) || is_digit(c); }
 
-static bool is_at_end(const Tokenizer *tokenizer) {
+static bool is_at_end(const Tokenizer *tokenizer)
+{
   return peek(tokenizer, 0) == '\0';
 }
 
-static Token make_token(const Tokenizer *tokenizer, TokenType type,
-                        int length) {
+static Token make_token(const Tokenizer *tokenizer, TokenType type, int length)
+{
   return (Token){
       .type = type,
       .start = tokenizer->current - length,
@@ -45,32 +50,70 @@ static Token make_token(const Tokenizer *tokenizer, TokenType type,
   };
 }
 
-static void print_token(const Token *token) {
+static void print_token(const Token *token)
+{
   printf("%.*s", token->length, token->start);
 }
 
 static TokenType check_keyword(const Tokenizer *tokenizer, int start_pos,
-                               int length) {
+                               int length)
+{
   char *lexeme = tokenizer->current - length;
 
-  if (strncmp(lexeme, "fn", 2) == 0 && length == 2) return TOKEN_FN;
-  if (strncmp(lexeme, "let", 3) == 0 && length == 3) return TOKEN_LET;
-  if (strncmp(lexeme, "if", 2) == 0 && length == 2) return TOKEN_IF;
-  if (strncmp(lexeme, "else", 4) == 0 && length == 4) return TOKEN_ELSE;
-  if (strncmp(lexeme, "for", 3) == 0 && length == 3) return TOKEN_FOR;
-  if (strncmp(lexeme, "while", 5) == 0 && length == 5) return TOKEN_WHILE;
-  if (strncmp(lexeme, "return", 6) == 0 && length == 6) return TOKEN_RETURN;
-  if (strncmp(lexeme, "print", 5) == 0 && length == 5) return TOKEN_PRINT;
-  if (strncmp(lexeme, "yield", 5) == 0 && length == 5) return TOKEN_YIELD;
-  if (strncmp(lexeme, "break", 5) == 0 && length == 5) return TOKEN_BREAK;
-  if (strncmp(lexeme, "continue", 8) == 0 && length == 8) return TOKEN_CONTINUE;
-  if (strncmp(lexeme, "struct", 6) == 0 && length == 6) return TOKEN_STRUCT;
-  if (strncmp(lexeme, "use", 3) == 0 && length == 3) return TOKEN_USE;
-  if (strncmp(lexeme, "impl", 4) == 0 && length == 4) return TOKEN_IMPL;
-  if (strncmp(lexeme, "true", 4) == 0 && length == 4) return TOKEN_TRUE;
-  if (strncmp(lexeme, "false", 5) == 0 && length == 5) return TOKEN_FALSE;
-  if (strncmp(lexeme, "assert", 6) == 0 && length == 6) return TOKEN_ASSERT;
-  if (strncmp(lexeme, "null", 4) == 0 && length == 4) return TOKEN_NULL;
+  if (strncmp(lexeme, "fn", 2) == 0 && length == 2) {
+    return TOKEN_FN;
+  }
+  if (strncmp(lexeme, "let", 3) == 0 && length == 3) {
+    return TOKEN_LET;
+  }
+  if (strncmp(lexeme, "if", 2) == 0 && length == 2) {
+    return TOKEN_IF;
+  }
+  if (strncmp(lexeme, "else", 4) == 0 && length == 4) {
+    return TOKEN_ELSE;
+  }
+  if (strncmp(lexeme, "for", 3) == 0 && length == 3) {
+    return TOKEN_FOR;
+  }
+  if (strncmp(lexeme, "while", 5) == 0 && length == 5) {
+    return TOKEN_WHILE;
+  }
+  if (strncmp(lexeme, "return", 6) == 0 && length == 6) {
+    return TOKEN_RETURN;
+  }
+  if (strncmp(lexeme, "print", 5) == 0 && length == 5) {
+    return TOKEN_PRINT;
+  }
+  if (strncmp(lexeme, "yield", 5) == 0 && length == 5) {
+    return TOKEN_YIELD;
+  }
+  if (strncmp(lexeme, "break", 5) == 0 && length == 5) {
+    return TOKEN_BREAK;
+  }
+  if (strncmp(lexeme, "continue", 8) == 0 && length == 8) {
+    return TOKEN_CONTINUE;
+  }
+  if (strncmp(lexeme, "struct", 6) == 0 && length == 6) {
+    return TOKEN_STRUCT;
+  }
+  if (strncmp(lexeme, "use", 3) == 0 && length == 3) {
+    return TOKEN_USE;
+  }
+  if (strncmp(lexeme, "impl", 4) == 0 && length == 4) {
+    return TOKEN_IMPL;
+  }
+  if (strncmp(lexeme, "true", 4) == 0 && length == 4) {
+    return TOKEN_TRUE;
+  }
+  if (strncmp(lexeme, "false", 5) == 0 && length == 5) {
+    return TOKEN_FALSE;
+  }
+  if (strncmp(lexeme, "assert", 6) == 0 && length == 6) {
+    return TOKEN_ASSERT;
+  }
+  if (strncmp(lexeme, "null", 4) == 0 && length == 4) {
+    return TOKEN_NULL;
+  }
 
   return TOKEN_IDENTIFIER;
 }
@@ -83,7 +126,8 @@ typedef enum {
   STATE_DONE,
 } TokenizerState;
 
-static Token get_token(Tokenizer *tokenizer) {
+static Token get_token(Tokenizer *tokenizer)
+{
   TokenizerState state = STATE_START;
   int length = 0;
 
@@ -348,16 +392,20 @@ static Token get_token(Tokenizer *tokenizer) {
   return make_token(tokenizer, TOKEN_ERROR, 0);
 }
 
-void print_tokens(const DynArray_Token *tokens) {
+void print_tokens(const DynArray_Token *tokens)
+{
   printf("[");
   for (size_t i = 0; i < tokens->count; i++) {
     print_token(&tokens->data[i]);
-    if (i < tokens->count - 1) printf(", ");
+    if (i < tokens->count - 1) {
+      printf(", ");
+    }
   }
   printf("]\n");
 }
 
-TokenizeResult tokenize(Tokenizer *tokenizer) {
+TokenizeResult tokenize(Tokenizer *tokenizer)
+{
   TokenizeResult result = {0};
 
   Token t;

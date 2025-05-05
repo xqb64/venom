@@ -26,7 +26,8 @@ typedef struct {
   char *msg;
 } ArgParseResult;
 
-static int run(Arguments *args) {
+static int run(Arguments *args)
+{
   int result = 0;
 
   char *source = read_file(args->file);
@@ -141,7 +142,8 @@ cleanup_after_lex:
   return result;
 }
 
-static ArgParseResult parse_args(int argc, char *argv[]) {
+static ArgParseResult parse_args(int argc, char *argv[])
+{
   static const struct option long_opts[] = {
       {"lex", no_argument, 0, 'l'},
       {"parse", no_argument, 0, 'p'},
@@ -195,7 +197,8 @@ static ArgParseResult parse_args(int argc, char *argv[]) {
   return (ArgParseResult){.args = args, .is_ok = true, .msg = NULL};
 }
 
-int main(int argc, char *argv[]) {
+int main(int argc, char *argv[])
+{
   ArgParseResult arg_parse_result;
   Arguments args;
 

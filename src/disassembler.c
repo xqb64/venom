@@ -57,7 +57,8 @@ DisassembleHandler disassemble_handler[] = {
     [OP_HLT] = {.opcode = "OP_HLT"},
 };
 
-void disassemble(Bytecode *code) {
+void disassemble(Bytecode *code)
+{
 #define READ_UINT8() (*++ip)
 #define READ_INT16() (ip += 2, (int16_t)((ip[-1] << 8) | ip[0]))
 
@@ -96,7 +97,9 @@ void disassemble(Bytecode *code) {
         printf(" (name: %s, paramcount: %d, location: %d, upvalue_count: %d)",
                code->sp.data[name_idx], paramcount, location, upvalue_count);
 
-        for (size_t i = 0; i < upvalue_count; i++) READ_UINT32();
+        for (size_t i = 0; i < upvalue_count; i++) {
+          READ_UINT32();
+        }
 
         break;
       }

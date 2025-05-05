@@ -9,8 +9,11 @@
 #include "util.h"
 
 static Bucket *clone_bucket(Bucket *src, const Expr *src_items, Expr *dst_items,
-                            size_t *dst_count) {
-  if (!src) return NULL;
+                            size_t *dst_count)
+{
+  if (!src) {
+    return NULL;
+  }
 
   Bucket *new = malloc(sizeof(Bucket));
   new->key = own_string(src->key);
@@ -22,7 +25,8 @@ static Bucket *clone_bucket(Bucket *src, const Expr *src_items, Expr *dst_items,
   return new;
 }
 
-void free_table_expr(const Table_Expr *table) {
+void free_table_expr(const Table_Expr *table)
+{
   for (size_t i = 0; i < TABLE_MAX; i++) {
     if (table->indexes[i]) {
       Bucket *head = table->indexes[i];
@@ -41,7 +45,8 @@ void free_table_expr(const Table_Expr *table) {
   }
 }
 
-Table_Expr clone_table_expr(const Table_Expr *src) {
+Table_Expr clone_table_expr(const Table_Expr *src)
+{
   Table_Expr clone = {0};
 
   for (size_t i = 0; i < TABLE_MAX; i++) {
@@ -59,7 +64,8 @@ Table_Expr clone_table_expr(const Table_Expr *src) {
   return clone;
 }
 
-void free_expression(const Expr *expr) {
+void free_expression(const Expr *expr)
+{
   switch (expr->kind) {
     case EXPR_LITERAL: {
       ExprLiteral expr_lit = expr->as.expr_literal;
@@ -155,7 +161,8 @@ void free_expression(const Expr *expr) {
   }
 }
 
-void free_stmt(const Stmt *stmt) {
+void free_stmt(const Stmt *stmt)
+{
   switch (stmt->kind) {
     case STMT_PRINT: {
       free_expression(&stmt->as.stmt_print.expr);
@@ -280,7 +287,8 @@ void free_stmt(const Stmt *stmt) {
   }
 }
 
-static void print_literal(const ExprLiteral *literal) {
+static void print_literal(const ExprLiteral *literal)
+{
   switch (literal->kind) {
     case LIT_BOOLEAN: {
       printf("%s", literal->as._bool ? "true" : "false");
@@ -303,12 +311,14 @@ static void print_literal(const ExprLiteral *literal) {
   }
 }
 
-#define INDENT(n)                               \
-  do {                                          \
-    for (int s = 0; s < (n); s++) putchar(' '); \
+#define INDENT(n)                 \
+  do {                            \
+    for (int s = 0; s < (n); s++) \
+      putchar(' ');               \
   } while (0)
 
-void print_expression(const Expr *expr, int indent) {
+void print_expression(const Expr *expr, int indent)
+{
   switch (expr->kind) {
     case EXPR_LITERAL: {
       printf("Literal(\n");
@@ -322,7 +332,9 @@ void print_expression(const Expr *expr, int indent) {
       printf("members: [");
       for (size_t i = 0; i < expr->as.expr_array.elements.count; i++) {
         print_expression(&expr->as.expr_array.elements.data[i], indent + 4);
-        if (i < expr->as.expr_array.elements.count - 1) printf(", ");
+        if (i < expr->as.expr_array.elements.count - 1) {
+          printf(", ");
+        }
       }
       printf("]");
       break;
@@ -337,7 +349,9 @@ void print_expression(const Expr *expr, int indent) {
         INDENT(indent + 8);
         print_expression(&expr->as.expr_struct.initializers.data[i],
                          indent + 8);
-        if (i < expr->as.expr_struct.initializers.count - 1) printf(",\n");
+        if (i < expr->as.expr_struct.initializers.count - 1) {
+          printf(",\n");
+        }
       }
       break;
     }
@@ -416,7 +430,9 @@ void print_expression(const Expr *expr, int indent) {
       printf("arguments: [");
       for (size_t i = 0; i < expr->as.expr_call.arguments.count; i++) {
         print_expression(&expr->as.expr_call.arguments.data[i], indent + 4);
-        if (i < expr->as.expr_call.arguments.count - 1) printf(", ");
+        if (i < expr->as.expr_call.arguments.count - 1) {
+          printf(", ");
+        }
       }
       printf("]");
       break;
@@ -429,8 +445,11 @@ void print_expression(const Expr *expr, int indent) {
   printf(")");
 }
 
-void print_stmt(const Stmt *stmt, int indent, bool continuation) {
-  if (!continuation) INDENT(indent);
+void print_stmt(const Stmt *stmt, int indent, bool continuation)
+{
+  if (!continuation) {
+    INDENT(indent);
+  }
 
   switch (stmt->kind) {
     case STMT_LET: {
@@ -458,7 +477,9 @@ void print_stmt(const Stmt *stmt, int indent, bool continuation) {
       printf("Block(\n");
       for (size_t i = 0; i < stmt->as.stmt_block.stmts.count; i++) {
         print_stmt(&stmt->as.stmt_block.stmts.data[i], indent + 4, false);
-        if (i < stmt->as.stmt_block.stmts.count - 1) printf(",\n");
+        if (i < stmt->as.stmt_block.stmts.count - 1) {
+          printf(",\n");
+        }
       }
       break;
     }
@@ -506,10 +527,11 @@ void print_stmt(const Stmt *stmt, int indent, bool continuation) {
       printf(",\n");
       INDENT(indent + 4);
       printf("else: ");
-      if (stmt->as.stmt_if.else_branch)
+      if (stmt->as.stmt_if.else_branch) {
         print_stmt(stmt->as.stmt_if.else_branch, indent + 4, true);
-      else
+      } else {
         printf("null");
+      }
       break;
     }
     case STMT_EXPR: {
@@ -565,7 +587,9 @@ void print_stmt(const Stmt *stmt, int indent, bool continuation) {
       printf("properties: [");
       for (size_t i = 0; i < stmt->as.stmt_struct.properties.count; i++) {
         printf("%s", stmt->as.stmt_struct.properties.data[i]);
-        if (i < stmt->as.stmt_struct.properties.count - 1) printf(", ");
+        if (i < stmt->as.stmt_struct.properties.count - 1) {
+          printf(", ");
+        }
       }
       printf("]");
       break;
@@ -578,7 +602,9 @@ void print_stmt(const Stmt *stmt, int indent, bool continuation) {
       printf("methods: [");
       for (size_t i = 0; i < stmt->as.stmt_impl.methods.count; i++) {
         print_stmt(&stmt->as.stmt_impl.methods.data[i], indent + 4, true);
-        if (i < stmt->as.stmt_impl.methods.count - 1) printf(", ");
+        if (i < stmt->as.stmt_impl.methods.count - 1) {
+          printf(", ");
+        }
       }
       printf("]");
       break;
@@ -591,7 +617,8 @@ void print_stmt(const Stmt *stmt, int indent, bool continuation) {
   printf(")");
 }
 
-ExprLiteral clone_literal(const ExprLiteral *literal) {
+ExprLiteral clone_literal(const ExprLiteral *literal)
+{
   ExprLiteral clone;
 
   clone.kind = literal->kind;
@@ -616,7 +643,8 @@ ExprLiteral clone_literal(const ExprLiteral *literal) {
   return clone;
 }
 
-Expr clone_expr(const Expr *expr) {
+Expr clone_expr(const Expr *expr)
+{
   Expr clone;
 
   clone.kind = expr->kind;
@@ -670,7 +698,8 @@ Expr clone_expr(const Expr *expr) {
   return clone;
 }
 
-Stmt clone_stmt(const Stmt *stmt) {
+Stmt clone_stmt(const Stmt *stmt)
+{
   Stmt copy;
 
   copy.kind = stmt->kind;
@@ -785,7 +814,8 @@ Stmt clone_stmt(const Stmt *stmt) {
   return copy;
 }
 
-DynArray_Stmt clone_ast(const DynArray_Stmt *ast) {
+DynArray_Stmt clone_ast(const DynArray_Stmt *ast)
+{
   DynArray_Stmt copy = {0};
 
   for (size_t i = 0; i < ast->count; i++) {
@@ -796,14 +826,17 @@ DynArray_Stmt clone_ast(const DynArray_Stmt *ast) {
   return copy;
 }
 
-void pretty_print(const DynArray_Stmt *ast) {
+void pretty_print(const DynArray_Stmt *ast)
+{
   int indent = 0;
 
   printf("Program(\n");
 
   for (size_t i = 0; i < ast->count; i++) {
     print_stmt(&ast->data[i], indent + 4, false);
-    if (i < ast->count - 1) printf(",\n");
+    if (i < ast->count - 1) {
+      printf(",\n");
+    }
   }
 
   printf("\n)\n");

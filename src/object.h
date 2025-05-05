@@ -255,7 +255,8 @@ typedef DynArray(Object) DynArray_Object;
 #define GENERATOR_VAL(obj) \
   (Object)(SIGN_BIT | QNAN | ((uint64_t)(uintptr_t)(obj)) | TAG_GENERATOR)
 
-inline double object2num(Object value) {
+inline double object2num(Object value)
+{
   union {
     double num;
     uint64_t bits;
@@ -264,7 +265,8 @@ inline double object2num(Object value) {
   return data.num;
 }
 
-inline Object num2object(double num) {
+inline Object num2object(double num)
+{
   union {
     double num;
     uint64_t bits;
@@ -407,7 +409,8 @@ typedef Table(Function) Table_Function;
 
 #define OBJ_TYPE(value) (AS_OBJ(value)->type)
 
-inline const char *get_object_type(const Object *object) {
+inline const char *get_object_type(const Object *object)
+{
   if (IS_STRING(*object)) {
     return "string";
   } else if (IS_STRUCT(*object)) {
@@ -464,7 +467,8 @@ typedef struct Generator {
   GeneratorState state;
 } Generator;
 
-inline void objincref(Object *obj) {
+inline void objincref(Object *obj)
+{
 #ifdef NAN_BOXING
   if (IS_STRING(*obj)) {
     ++AS_STRING(*obj)->refcount;
@@ -496,7 +500,8 @@ inline void objincref(Object *obj) {
 
 inline void dealloc(Object *obj);
 
-inline void objdecref(Object *obj) {
+inline void objdecref(Object *obj)
+{
 #ifdef NAN_BOXING
   if (IS_STRING(*obj)) {
     if (--AS_STRING(*obj)->refcount == 0) {
@@ -583,7 +588,8 @@ inline void objdecref(Object *obj) {
 #endif
 }
 
-inline void dealloc(Object *obj) {
+inline void dealloc(Object *obj)
+{
 #ifdef NAN_BOXING
   if (IS_STRUCT(*obj)) {
     for (size_t i = 0; i < TABLE_MAX; i++) {
@@ -655,16 +661,35 @@ inline void dealloc(Object *obj) {
 }
 
 #ifdef NAN_BOXING
-inline ObjectType type(const Object *obj) {
-  if (IS_ARRAY(*obj)) return OBJ_ARRAY;
-  if (IS_BOOL(*obj)) return OBJ_BOOLEAN;
-  if (IS_CLOSURE(*obj)) return OBJ_CLOSURE;
-  if (IS_GENERATOR(*obj)) return OBJ_GENERATOR;
-  if (IS_NULL(*obj)) return OBJ_NULL;
-  if (IS_NUM(*obj)) return OBJ_NUMBER;
-  if (IS_PTR(*obj)) return OBJ_PTR;
-  if (IS_STRING(*obj)) return OBJ_STRING;
-  if (IS_STRUCT(*obj)) return OBJ_STRUCT;
+inline ObjectType type(const Object *obj)
+{
+  if (IS_ARRAY(*obj)) {
+    return OBJ_ARRAY;
+  }
+  if (IS_BOOL(*obj)) {
+    return OBJ_BOOLEAN;
+  }
+  if (IS_CLOSURE(*obj)) {
+    return OBJ_CLOSURE;
+  }
+  if (IS_GENERATOR(*obj)) {
+    return OBJ_GENERATOR;
+  }
+  if (IS_NULL(*obj)) {
+    return OBJ_NULL;
+  }
+  if (IS_NUM(*obj)) {
+    return OBJ_NUMBER;
+  }
+  if (IS_PTR(*obj)) {
+    return OBJ_PTR;
+  }
+  if (IS_STRING(*obj)) {
+    return OBJ_STRING;
+  }
+  if (IS_STRUCT(*obj)) {
+    return OBJ_STRUCT;
+  }
   assert(0);
 }
 #else
