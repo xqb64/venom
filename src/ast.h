@@ -4,6 +4,7 @@
 #include <stdbool.h>
 
 #include "dynarray.h"
+#include "table.h"
 
 typedef struct Expr Expr;
 typedef DynArray(Expr) DynArray_Expr;
@@ -124,6 +125,10 @@ typedef struct Expr
         ExprSubscript expr_subscript;
     } as;
 } Expr;
+
+typedef Table(Expr) Table_Expr;
+Table_Expr clone_table_expr(const Table_Expr *table);
+void free_table_expr(const Table_Expr *table);
 
 #define TO_EXPR_LIT(exp)       ((exp).as.expr_lit)
 #define TO_EXPR_VAR(exp)       ((exp).as.expr_var)
@@ -334,5 +339,9 @@ void print_stmt(Stmt *stmt, int indent, bool continuation);
 void pretty_print(DynArray_Stmt *stmts);
 void free_stmt(Stmt stmt);
 void free_expression(Expr expr);
+ExprLit clone_literal(const ExprLit *literal);
+Expr clone_expr(const Expr *expr);
+Stmt clone_stmt(const Stmt *stmt);
+DynArray_Stmt clone_ast(const DynArray_Stmt *ast);
 
 #endif
