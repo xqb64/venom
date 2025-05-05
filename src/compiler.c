@@ -558,12 +558,12 @@ static CompileResult compile_expr_lit(Bytecode *code, const Expr *expr)
 {
     CompileResult result = {.is_ok = true, .chunk = NULL, .msg = NULL};
 
-    ExprLit e = expr->as.expr_lit;
-    switch (e.kind)
+    ExprLit expr_lit = expr->as.expr_lit;
+    switch (expr_lit.kind)
     {
         case LIT_BOOL: {
             emit_byte(code, OP_TRUE);
-            if (!e.as._bool)
+            if (!expr_lit.as._bool)
             {
                 emit_byte(code, OP_NOT);
             }
@@ -571,11 +571,11 @@ static CompileResult compile_expr_lit(Bytecode *code, const Expr *expr)
         }
         case LIT_NUM: {
             emit_byte(code, OP_CONST);
-            emit_double(code, e.as._double);
+            emit_double(code, expr_lit.as._double);
             break;
         }
         case LIT_STR: {
-            uint32_t str_idx = add_string(code, e.as.str);
+            uint32_t str_idx = add_string(code, expr_lit.as.str);
             emit_byte(code, OP_STR);
             emit_uint32(code, str_idx);
             break;
@@ -594,10 +594,10 @@ static CompileResult compile_expr_lit(Bytecode *code, const Expr *expr)
 static CompileResult compile_expr_var(Bytecode *code, const Expr *expr)
 {
     CompileResult result = {.is_ok = true, .chunk = NULL, .msg = NULL};
-    ExprVar e = expr->as.expr_var;
+    ExprVar expr_var = expr->as.expr_var;
 
     /* Try to resolve the variable as local. */
-    int idx = resolve_local(e.name);
+    int idx = resolve_local(expr_var.name);
     if (idx != -1)
     {
         emit_byte(code, OP_DEEPGET);
@@ -606,7 +606,7 @@ static CompileResult compile_expr_var(Bytecode *code, const Expr *expr)
     }
 
     /* Try to resolve the variable as upvalue. */
-    int upvalue_idx = resolve_upvalue(e.name);
+    int upvalue_idx = resolve_upvalue(expr_var.name);
     if (upvalue_idx != -1)
     {
         emit_byte(code, OP_GET_UPVALUE);
@@ -616,7 +616,7 @@ static CompileResult compile_expr_var(Bytecode *code, const Expr *expr)
     }
 
     /* Try to resolve the variable as global. */
-    int name_idx = resolve_global(code, e.name);
+    int name_idx = resolve_global(code, expr_var.name);
     if (name_idx != -1)
     {
         emit_byte(code, OP_GET_GLOBAL);
@@ -625,35 +625,35 @@ static CompileResult compile_expr_var(Bytecode *code, const Expr *expr)
     }
 
     /* The variable is not defined, bail out. */
-    COMPILER_ERROR("Variable '%s' is not defined.", e.name);
+    COMPILER_ERROR("Variable '%s' is not defined.", expr_var.name);
 }
 
 static CompileResult compile_expr_una(Bytecode *code, const Expr *expr)
 {
     CompileResult result = {.is_ok = true, .chunk = NULL, .msg = NULL};
 
-    ExprUnary e = expr->as.expr_una;
-    if (strcmp(e.op, "-") == 0)
+    ExprUnary expr_unary = expr->as.expr_una;
+    if (strcmp(expr_unary.op, "-") == 0)
     {
-        COMPILE_EXPR(code, e.expr);
+        COMPILE_EXPR(code, expr_unary.expr);
         emit_byte(code, OP_NEG);
     }
-    else if (strcmp(e.op, "!") == 0)
+    else if (strcmp(expr_unary.op, "!") == 0)
     {
-        COMPILE_EXPR(code, e.expr);
+        COMPILE_EXPR(code, expr_unary.expr);
         emit_byte(code, OP_NOT);
     }
-    else if (strcmp(e.op, "*") == 0)
+    else if (strcmp(expr_unary.op, "*") == 0)
     {
-        COMPILE_EXPR(code, e.expr);
+        COMPILE_EXPR(code, expr_unary.expr);
         emit_byte(code, OP_DEREF);
     }
-    else if (strcmp(e.op, "&") == 0)
+    else if (strcmp(expr_unary.op, "&") == 0)
     {
-        switch (e.expr->kind)
+        switch (expr_unary.expr->kind)
         {
             case EXPR_VAR: {
-                ExprVar var = e.expr->as.expr_var;
+                ExprVar var = expr_unary.expr->as.expr_var;
 
                 /* Try to resolve the variable as local. */
                 int idx = resolve_local(var.name);
@@ -687,7 +687,7 @@ static CompileResult compile_expr_una(Bytecode *code, const Expr *expr)
                 break;
             }
             case EXPR_GET: {
-                ExprGet getexp = e.expr->as.expr_get;
+                ExprGet getexp = expr_unary.expr->as.expr_get;
                 /* Compile the part that comes be-
                  * fore the member access operator. */
                 COMPILE_EXPR(code, getexp.expr);
@@ -707,9 +707,9 @@ static CompileResult compile_expr_una(Bytecode *code, const Expr *expr)
                 break;
         }
     }
-    else if (strcmp(e.op, "~") == 0)
+    else if (strcmp(expr_unary.op, "~") == 0)
     {
-        COMPILE_EXPR(code, e.expr);
+        COMPILE_EXPR(code, expr_unary.expr);
         emit_byte(code, OP_BITNOT);
     }
 
@@ -720,11 +720,11 @@ static CompileResult compile_expr_bin(Bytecode *code, const Expr *expr)
 {
     CompileResult result = {.is_ok = true, .chunk = NULL, .msg = NULL};
 
-    ExprBin e = expr->as.expr_bin;
+    ExprBin expr_bin = expr->as.expr_bin;
 
-    COMPILE_EXPR(code, e.lhs);
+    COMPILE_EXPR(code, expr_bin.lhs);
 
-    if (strcmp(e.op, "&&") == 0)
+    if (strcmp(expr_bin.op, "&&") == 0)
     {
         /* For logical AND, we need to short-circuit when the left-hand side
          * is falsey.
@@ -749,7 +749,7 @@ static CompileResult compile_expr_bin(Bytecode *code, const Expr *expr)
          * If the left-hand side is truthy, the vm will evaluate the rhs and
          * skip over pushing 'false' on the stack. */
         int end_jump = emit_placeholder(code, OP_JZ);
-        COMPILE_EXPR(code, e.rhs);
+        COMPILE_EXPR(code, expr_bin.rhs);
         int false_jump = emit_placeholder(code, OP_JMP);
         patch_placeholder(code, end_jump);
         emit_bytes(code, 2, OP_TRUE, OP_NOT);
@@ -757,7 +757,7 @@ static CompileResult compile_expr_bin(Bytecode *code, const Expr *expr)
 
         return result;
     }
-    else if (strcmp(e.op, "||") == 0)
+    else if (strcmp(expr_bin.op, "||") == 0)
     {
         /* For logical OR, we need to short-circuit when the left-hand side
          * is truthy.
@@ -785,79 +785,79 @@ static CompileResult compile_expr_bin(Bytecode *code, const Expr *expr)
         emit_byte(code, OP_TRUE);
         int end_jump = emit_placeholder(code, OP_JMP);
         patch_placeholder(code, true_jump);
-        COMPILE_EXPR(code, e.rhs);
+        COMPILE_EXPR(code, expr_bin.rhs);
         patch_placeholder(code, end_jump);
 
         return result;
     }
 
-    COMPILE_EXPR(code, e.rhs);
+    COMPILE_EXPR(code, expr_bin.rhs);
 
-    if (strcmp(e.op, "+") == 0)
+    if (strcmp(expr_bin.op, "+") == 0)
     {
         emit_byte(code, OP_ADD);
     }
-    else if (strcmp(e.op, "-") == 0)
+    else if (strcmp(expr_bin.op, "-") == 0)
     {
         emit_byte(code, OP_SUB);
     }
-    else if (strcmp(e.op, "*") == 0)
+    else if (strcmp(expr_bin.op, "*") == 0)
     {
         emit_byte(code, OP_MUL);
     }
-    else if (strcmp(e.op, "/") == 0)
+    else if (strcmp(expr_bin.op, "/") == 0)
     {
         emit_byte(code, OP_DIV);
     }
-    else if (strcmp(e.op, "%%") == 0)
+    else if (strcmp(expr_bin.op, "%%") == 0)
     {
         emit_byte(code, OP_MOD);
     }
-    else if (strcmp(e.op, "&") == 0)
+    else if (strcmp(expr_bin.op, "&") == 0)
     {
         emit_byte(code, OP_BITAND);
     }
-    else if (strcmp(e.op, "|") == 0)
+    else if (strcmp(expr_bin.op, "|") == 0)
     {
         emit_byte(code, OP_BITOR);
     }
-    else if (strcmp(e.op, "^") == 0)
+    else if (strcmp(expr_bin.op, "^") == 0)
     {
         emit_byte(code, OP_BITXOR);
     }
-    else if (strcmp(e.op, ">") == 0)
+    else if (strcmp(expr_bin.op, ">") == 0)
     {
         emit_byte(code, OP_GT);
     }
-    else if (strcmp(e.op, "<") == 0)
+    else if (strcmp(expr_bin.op, "<") == 0)
     {
         emit_byte(code, OP_LT);
     }
-    else if (strcmp(e.op, ">=") == 0)
+    else if (strcmp(expr_bin.op, ">=") == 0)
     {
         emit_bytes(code, 2, OP_LT, OP_NOT);
     }
-    else if (strcmp(e.op, "<=") == 0)
+    else if (strcmp(expr_bin.op, "<=") == 0)
     {
         emit_bytes(code, 2, OP_GT, OP_NOT);
     }
-    else if (strcmp(e.op, "==") == 0)
+    else if (strcmp(expr_bin.op, "==") == 0)
     {
         emit_byte(code, OP_EQ);
     }
-    else if (strcmp(e.op, "!=") == 0)
+    else if (strcmp(expr_bin.op, "!=") == 0)
     {
         emit_bytes(code, 2, OP_EQ, OP_NOT);
     }
-    else if (strcmp(e.op, "<<") == 0)
+    else if (strcmp(expr_bin.op, "<<") == 0)
     {
         emit_byte(code, OP_BITSHL);
     }
-    else if (strcmp(e.op, ">>") == 0)
+    else if (strcmp(expr_bin.op, ">>") == 0)
     {
         emit_byte(code, OP_BITSHR);
     }
-    else if (strcmp(e.op, "++") == 0)
+    else if (strcmp(expr_bin.op, "++") == 0)
     {
         emit_byte(code, OP_STRCAT);
     }
@@ -869,11 +869,11 @@ static CompileResult compile_expr_call(Bytecode *code, const Expr *expr)
 {
     CompileResult result = {.is_ok = true, .chunk = NULL, .msg = NULL};
 
-    ExprCall e = expr->as.expr_call;
+    ExprCall expr_call = expr->as.expr_call;
 
-    if (e.callee->kind == EXPR_GET)
+    if (expr_call.callee->kind == EXPR_GET)
     {
-        ExprGet getexp = e.callee->as.expr_get;
+        ExprGet getexp = expr_call.callee->as.expr_get;
 
         /* Compile the part that comes before the member access
          * operator. */
@@ -887,74 +887,74 @@ static CompileResult compile_expr_call(Bytecode *code, const Expr *expr)
 
         char *method = getexp.property_name;
 
-        for (size_t i = 0; i < e.arguments.count; i++)
+        for (size_t i = 0; i < expr_call.arguments.count; i++)
         {
-            COMPILE_EXPR(code, &e.arguments.data[i]);
+            COMPILE_EXPR(code, &expr_call.arguments.data[i]);
         }
 
         emit_byte(code, OP_CALL_METHOD);
         emit_uint32(code, add_string(code, method));
-        emit_uint32(code, e.arguments.count);
+        emit_uint32(code, expr_call.arguments.count);
     }
-    else if (e.callee->kind == EXPR_VAR)
+    else if (expr_call.callee->kind == EXPR_VAR)
     {
-        ExprVar var = e.callee->as.expr_var;
+        ExprVar var = expr_call.callee->as.expr_var;
 
         Function *b = resolve_builtin(var.name);
         if (b)
         {
             if (strcmp(b->name, "next") == 0)
             {
-                for (size_t i = 0; i < e.arguments.count; i++)
+                for (size_t i = 0; i < expr_call.arguments.count; i++)
                 {
-                    COMPILE_EXPR(code, &e.arguments.data[i]);
+                    COMPILE_EXPR(code, &expr_call.arguments.data[i]);
                 }
                 emit_byte(code, OP_RESUME);
             }
             else if (strcmp(b->name, "len") == 0)
             {
-                for (size_t i = 0; i < e.arguments.count; i++)
+                for (size_t i = 0; i < expr_call.arguments.count; i++)
                 {
-                    COMPILE_EXPR(code, &e.arguments.data[i]);
+                    COMPILE_EXPR(code, &expr_call.arguments.data[i]);
                 }
                 emit_byte(code, OP_LEN);
             }
             else if (strcmp(b->name, "hasattr") == 0)
             {
-                for (size_t i = 0; i < e.arguments.count; i++)
+                for (size_t i = 0; i < expr_call.arguments.count; i++)
                 {
-                    COMPILE_EXPR(code, &e.arguments.data[i]);
+                    COMPILE_EXPR(code, &expr_call.arguments.data[i]);
                 }
                 emit_byte(code, OP_HASATTR);
             }
             else if (strcmp(b->name, "getattr") == 0)
             {
-                COMPILE_EXPR(code, &e.arguments.data[0]);
+                COMPILE_EXPR(code, &expr_call.arguments.data[0]);
                 emit_bytes(code, 1, OP_GETATTR);
-                emit_uint32(code, add_string(code, e.arguments.data[1].as.expr_lit.as.str));
+                emit_uint32(code, add_string(code, expr_call.arguments.data[1].as.expr_lit.as.str));
             }
             else if (strcmp(b->name, "setattr") == 0)
             {
-                COMPILE_EXPR(code, &e.arguments.data[0]);
-                COMPILE_EXPR(code, &e.arguments.data[2]);
+                COMPILE_EXPR(code, &expr_call.arguments.data[0]);
+                COMPILE_EXPR(code, &expr_call.arguments.data[2]);
 
                 emit_byte(code, OP_SETATTR);
-                emit_uint32(code, add_string(code, e.arguments.data[1].as.expr_lit.as.str));
+                emit_uint32(code, add_string(code, expr_call.arguments.data[1].as.expr_lit.as.str));
             }
 
             return result;
         }
 
         Function *f = resolve_func(var.name);
-        if (f && f->paramcount != e.arguments.count)
+        if (f && f->paramcount != expr_call.arguments.count)
         {
             COMPILER_ERROR("Function '%s' requires %ld arguments.", f->name, f->paramcount);
         }
 
         /* Then compile the arguments */
-        for (size_t i = 0; i < e.arguments.count; i++)
+        for (size_t i = 0; i < expr_call.arguments.count; i++)
         {
-            COMPILE_EXPR(code, &e.arguments.data[i]);
+            COMPILE_EXPR(code, &expr_call.arguments.data[i]);
         }
 
         bool is_global = false;
@@ -1006,7 +1006,7 @@ static CompileResult compile_expr_call(Bytecode *code, const Expr *expr)
             emit_byte(code, OP_MKGEN);
         else
             /* Emit OP_CALL followed by the argument count. */
-            emit_bytes(code, 2, OP_CALL, e.arguments.count);
+            emit_bytes(code, 2, OP_CALL, expr_call.arguments.count);
     }
 
     return result;
@@ -1016,21 +1016,21 @@ static CompileResult compile_expr_get(Bytecode *code, const Expr *expr)
 {
     CompileResult result = {.is_ok = true, .chunk = NULL, .msg = NULL};
 
-    ExprGet e = expr->as.expr_get;
+    ExprGet expr_get = expr->as.expr_get;
 
     /* Compile the part that comes before the member access
      * operator. */
-    COMPILE_EXPR(code, e.expr);
+    COMPILE_EXPR(code, expr_get.expr);
 
     /* Deref it if the operator is -> */
-    if (strcmp(e.op, "->") == 0)
+    if (strcmp(expr_get.op, "->") == 0)
     {
         emit_byte(code, OP_DEREF);
     }
 
     /* Emit OP_GETATTR with the index of the property name. */
     emit_byte(code, OP_GETATTR);
-    emit_uint32(code, add_string(code, e.property_name));
+    emit_uint32(code, add_string(code, expr_get.property_name));
 
     return result;
 }
@@ -1063,18 +1063,18 @@ static CompileResult compile_assign_var(Bytecode *code, ExprAssign e, bool is_co
 {
     CompileResult result = {.is_ok = true, .chunk = NULL, .msg = NULL};
 
-    ExprVar var = e.lhs->as.expr_var;
+    ExprVar expr_var = e.lhs->as.expr_var;
 
     bool is_global = false;
     bool is_upvalue = false;
 
     /* Try to resolve the variable as local. */
-    int idx = resolve_local(var.name);
+    int idx = resolve_local(expr_var.name);
 
     /* If it is not an upvalue, try resolving it as global. */
     if (idx == -1)
     {
-        idx = resolve_upvalue(var.name);
+        idx = resolve_upvalue(expr_var.name);
         if (idx != -1)
             is_upvalue = true;
     }
@@ -1082,7 +1082,7 @@ static CompileResult compile_assign_var(Bytecode *code, ExprAssign e, bool is_co
     /* If it is not an upvalue, try resolving it as global. */
     if (idx == -1)
     {
-        idx = resolve_global(code, var.name);
+        idx = resolve_global(code, expr_var.name);
         if (idx != -1)
             is_global = true;
     }
@@ -1090,7 +1090,7 @@ static CompileResult compile_assign_var(Bytecode *code, ExprAssign e, bool is_co
     /* Bail out if it's neither local nor a global. */
     if (idx == -1)
     {
-        COMPILER_ERROR("Variable '%s' is not defined.", var.name);
+        COMPILER_ERROR("Variable '%s' is not defined.", expr_var.name);
     }
 
     if (is_compound)
@@ -1135,13 +1135,13 @@ static CompileResult compile_assign_get(Bytecode *code, ExprAssign e, bool is_co
 {
     CompileResult result = {.is_ok = true, .chunk = NULL, .msg = NULL};
 
-    ExprGet getexp = e.lhs->as.expr_get;
+    ExprGet expr_get = e.lhs->as.expr_get;
 
     /* Compile the part that comes before the member access operator. */
-    COMPILE_EXPR(code, getexp.expr);
+    COMPILE_EXPR(code, expr_get.expr);
 
     /* Deref it if the operator is -> */
-    if (strcmp(getexp.op, "->") == 0)
+    if (strcmp(expr_get.op, "->") == 0)
     {
         emit_byte(code, OP_DEREF);
     }
@@ -1150,7 +1150,7 @@ static CompileResult compile_assign_get(Bytecode *code, ExprAssign e, bool is_co
     {
         /* Get the property onto the top of the stack. */
         emit_byte(code, OP_GETATTR);
-        emit_uint32(code, add_string(code, getexp.property_name));
+        emit_uint32(code, add_string(code, expr_get.property_name));
 
         /* Compile the right-hand side of the assignment. */
         COMPILE_EXPR(code, e.rhs);
@@ -1165,7 +1165,7 @@ static CompileResult compile_assign_get(Bytecode *code, ExprAssign e, bool is_co
 
     /* Set the property name to the rhs of the get expr. */
     emit_byte(code, OP_SETATTR);
-    emit_uint32(code, add_string(code, getexp.property_name));
+    emit_uint32(code, add_string(code, expr_get.property_name));
 
     /* Pop the struct off the stack. */
     emit_byte(code, OP_POP);
@@ -1177,10 +1177,10 @@ static CompileResult compile_assign_una(Bytecode *code, ExprAssign e, bool is_co
 {
     CompileResult result = {.is_ok = true, .chunk = NULL, .msg = NULL};
 
-    ExprUnary unary = e.lhs->as.expr_una;
+    ExprUnary expr_unary = e.lhs->as.expr_una;
 
     /* Compile the inner expression. */
-    COMPILE_EXPR(code, unary.expr);
+    COMPILE_EXPR(code, expr_unary.expr);
     if (is_compound)
     {
         /* Compile the right-hand side of the assignment. */
@@ -1204,13 +1204,13 @@ static CompileResult compile_assign_sub(Bytecode *code, ExprAssign e, bool is_co
 {
     CompileResult result = {.is_ok = true, .chunk = NULL, .msg = NULL};
 
-    ExprSubscript subscriptexpr = e.lhs->as.expr_subscript;
+    ExprSubscript expr_subscript = e.lhs->as.expr_subscript;
 
     /* Compile the subscriptee. */
-    COMPILE_EXPR(code, subscriptexpr.expr);
+    COMPILE_EXPR(code, expr_subscript.expr);
 
     /* Compile the index. */
-    COMPILE_EXPR(code, subscriptexpr.index);
+    COMPILE_EXPR(code, expr_subscript.index);
 
     if (is_compound)
     {
@@ -1232,22 +1232,22 @@ static CompileResult compile_expr_ass(Bytecode *code, const Expr *expr)
 {
     CompileResult result = {.is_ok = true, .chunk = NULL, .msg = NULL};
 
-    ExprAssign e = expr->as.expr_ass;
-    bool compound_assign = strcmp(e.op, "=") != 0;
+    ExprAssign expr_assign = expr->as.expr_ass;
+    bool compound_assign = strcmp(expr_assign.op, "=") != 0;
 
-    switch (e.lhs->kind)
+    switch (expr_assign.lhs->kind)
     {
         case EXPR_VAR:
-            compile_assign_var(code, e, compound_assign);
+            compile_assign_var(code, expr_assign, compound_assign);
             break;
         case EXPR_GET:
-            compile_assign_get(code, e, compound_assign);
+            compile_assign_get(code, expr_assign, compound_assign);
             break;
         case EXPR_UNA:
-            compile_assign_una(code, e, compound_assign);
+            compile_assign_una(code, expr_assign, compound_assign);
             break;
         case EXPR_SUBSCRIPT:
-            compile_assign_sub(code, e, compound_assign);
+            compile_assign_sub(code, expr_assign, compound_assign);
             break;
         default:
             COMPILER_ERROR("Invalid assignment.");
@@ -1260,29 +1260,29 @@ static CompileResult compile_expr_struct(Bytecode *code, const Expr *expr)
 {
     CompileResult result = {.is_ok = true, .chunk = NULL, .msg = NULL};
 
-    ExprStruct e = expr->as.expr_struct;
+    ExprStruct expr_struct = expr->as.expr_struct;
 
     /* Look up the struct with that name in current_compiler->structs. */
-    StructBlueprint *blueprint = resolve_blueprint(e.name);
+    StructBlueprint *blueprint = resolve_blueprint(expr_struct.name);
 
     /* If it is not found, bail out. */
     if (!blueprint)
     {
-        COMPILER_ERROR("struct '%s' is not defined.\n", e.name);
+        COMPILER_ERROR("struct '%s' is not defined.\n", expr_struct.name);
     }
 
     /* If the number of properties in the struct blueprint does
      * not match the number of provided initializers, bail out. */
-    if (blueprint->property_indexes->count != e.initializers.count)
+    if (blueprint->property_indexes->count != expr_struct.initializers.count)
     {
         COMPILER_ERROR("struct '%s' requires %ld initializers.\n", blueprint->name,
                        blueprint->property_indexes->count);
     }
 
     /* Check if the initializer names match the property names. */
-    for (size_t i = 0; i < e.initializers.count; i++)
+    for (size_t i = 0; i < expr_struct.initializers.count; i++)
     {
-        ExprStructInit siexp = e.initializers.data[i].as.expr_struct_init;
+        ExprStructInit siexp = expr_struct.initializers.data[i].as.expr_struct_init;
         char *propname = siexp.property->as.expr_var.name;
         int *propidx = table_get(blueprint->property_indexes, propname);
         if (!propidx)
@@ -1297,9 +1297,9 @@ static CompileResult compile_expr_struct(Bytecode *code, const Expr *expr)
     emit_uint32(code, add_string(code, blueprint->name));
 
     /* Finally, we compile the initializers. */
-    for (size_t i = 0; i < e.initializers.count; i++)
+    for (size_t i = 0; i < expr_struct.initializers.count; i++)
     {
-        COMPILE_EXPR(code, &e.initializers.data[i]);
+        COMPILE_EXPR(code, &expr_struct.initializers.data[i]);
     }
 
     return result;
@@ -1309,13 +1309,13 @@ static CompileResult compile_expr_struct_init(Bytecode *code, const Expr *expr)
 {
     CompileResult result = {.is_ok = true, .chunk = NULL, .msg = NULL};
 
-    ExprStructInit e = expr->as.expr_struct_init;
+    ExprStructInit expr_struct_init = expr->as.expr_struct_init;
 
     /* First, we compile the value of the initializer,
      * since OP_SETATTR expects it to be on the stack. */
-    COMPILE_EXPR(code, e.value);
+    COMPILE_EXPR(code, expr_struct_init.value);
 
-    ExprVar property = e.property->as.expr_var;
+    ExprVar property = expr_struct_init.property->as.expr_var;
 
     /* Finally, we emit OP_SETATTR with the property's
      * name index. */
@@ -1329,20 +1329,20 @@ static CompileResult compile_expr_array(Bytecode *code, const Expr *expr)
 {
     CompileResult result = {.is_ok = true, .chunk = NULL, .msg = NULL};
 
-    ExprArray e = expr->as.expr_array;
+    ExprArray expr_array = expr->as.expr_array;
 
     /* First, we compile the array elements in reverse. Why? If we had
      * done [1, 2, 3], when the vm popped these elements, it would ha-
      * ve got them in reversed order, that is, [3, 2, 1]. Compiling in
      * reverse avoids the overhead of sorting the elements at runtime. */
-    for (int i = e.elements.count - 1; i >= 0; i--)
+    for (int i = expr_array.elements.count - 1; i >= 0; i--)
     {
-        COMPILE_EXPR(code, &e.elements.data[i]);
+        COMPILE_EXPR(code, &expr_array.elements.data[i]);
     }
 
     /* Then, we emit OP_ARRAY and the number of elements. */
     emit_byte(code, OP_ARRAY);
-    emit_uint32(code, e.elements.count);
+    emit_uint32(code, expr_array.elements.count);
 
     return result;
 }
@@ -1350,13 +1350,13 @@ static CompileResult compile_expr_array(Bytecode *code, const Expr *expr)
 static CompileResult compile_expr_subscript(Bytecode *code, const Expr *expr)
 {
     CompileResult result = {.is_ok = true, .chunk = NULL, .msg = NULL};
-    ExprSubscript e = expr->as.expr_subscript;
+    ExprSubscript expr_subscript = expr->as.expr_subscript;
 
     /* First, we compile the expr. */
-    COMPILE_EXPR(code, e.expr);
+    COMPILE_EXPR(code, expr_subscript.expr);
 
     /* Then, we compile the index. */
-    COMPILE_EXPR(code, e.index);
+    COMPILE_EXPR(code, expr_subscript.index);
 
     /* Then, we emit OP_SUBSCRIPT. */
     emit_byte(code, OP_SUBSCRIPT);
@@ -1458,9 +1458,9 @@ static CompileResult compile_stmt_expr(Bytecode *code, const Stmt *stmt)
 {
     CompileResult result = {.is_ok = true, .chunk = NULL, .msg = NULL};
 
-    StmtExpr e = stmt->as.stmt_expr;
+    StmtExpr stmt_expr = stmt->as.stmt_expr;
 
-    COMPILE_EXPR(code, &e.expr);
+    COMPILE_EXPR(code, &stmt_expr.expr);
 
     /* If the expression statement was just a call, like:
      *
@@ -1470,7 +1470,7 @@ static CompileResult compile_stmt_expr(Bytecode *code, const Stmt *stmt)
      *
      * Pop the return value off the stack, so it does not
      * interfere with later execution. */
-    if (e.expr.kind == EXPR_CALL)
+    if (stmt_expr.expr.kind == EXPR_CALL)
     {
         emit_byte(code, OP_POP);
     }
@@ -1483,12 +1483,12 @@ static CompileResult compile_stmt_block(Bytecode *code, const Stmt *stmt)
     CompileResult result = {.is_ok = true, .chunk = NULL, .msg = NULL};
 
     begin_scope();
-    StmtBlock s = stmt->as.stmt_block;
+    StmtBlock stmt_block = stmt->as.stmt_block;
 
     /* Compile the body of the black. */
-    for (size_t i = 0; i < s.stmts.count; i++)
+    for (size_t i = 0; i < stmt_block.stmts.count; i++)
     {
-        COMPILE_STMT(code, &s.stmts.data[i]);
+        COMPILE_STMT(code, &stmt_block.stmts.data[i]);
     }
 
     end_scope(code);
@@ -1500,12 +1500,12 @@ static CompileResult compile_stmt_if(Bytecode *code, const Stmt *stmt)
 {
     CompileResult result = {.is_ok = true, .chunk = NULL, .msg = NULL};
 
-    StmtIf s = stmt->as.stmt_if;
+    StmtIf stmt_if = stmt->as.stmt_if;
 
     /* We first compile the conditional expression because the VM
     .* expects a bool placed on the stack by the time it encount-
      * ers a conditional jump, that is, OP_JZ. */
-    COMPILE_EXPR(code, &s.condition);
+    COMPILE_EXPR(code, &stmt_if.condition);
 
     /* Then, we emit OP_JZ, which jumps to the else clause if the
      * condition is falsey. Because we don't know the size of the
@@ -1516,7 +1516,7 @@ static CompileResult compile_stmt_if(Bytecode *code, const Stmt *stmt)
      * find out its size. */
     int then_jump = emit_placeholder(code, OP_JZ);
 
-    COMPILE_STMT(code, s.then_branch);
+    COMPILE_STMT(code, stmt_if.then_branch);
 
     /* Then, we emit OP_JMP, which jumps over the else branch, in
      * case the then branch was taken. */
@@ -1526,9 +1526,9 @@ static CompileResult compile_stmt_if(Bytecode *code, const Stmt *stmt)
     patch_placeholder(code, then_jump);
 
     /* Then, we compile the else branch if it exists. */
-    if (s.else_branch != NULL)
+    if (stmt_if.else_branch != NULL)
     {
-        COMPILE_STMT(code, s.else_branch);
+        COMPILE_STMT(code, stmt_if.else_branch);
     }
 
     /* Finally, we patch the else jump. If the else branch wasn't
@@ -1542,7 +1542,7 @@ static CompileResult compile_stmt_while(Bytecode *code, const Stmt *stmt)
 {
     CompileResult result = {.is_ok = true, .chunk = NULL, .msg = NULL};
 
-    StmtWhile s = stmt->as.stmt_while;
+    StmtWhile stmt_while = stmt->as.stmt_while;
 
     /* We need to mark the beginning of the loop before we compile
      * the conditional expression, so that we know where to return
@@ -1551,12 +1551,12 @@ static CompileResult compile_stmt_while(Bytecode *code, const Stmt *stmt)
     int loop_start = code->code.count;
 
     Label label = {.location = loop_start, .patch_with = -1};
-    table_insert(current_compiler->labels, s.label, label);
+    table_insert(current_compiler->labels, stmt_while.label, label);
 
     /* We then compile the condition because the VM expects a bool
      * placed on the stack by the time it encounters a conditional
      * jump, that is, OP_JZ. */
-    COMPILE_EXPR(code, &s.condition);
+    COMPILE_EXPR(code, &stmt_while.condition);
 
     /* We then emit OP_JZ which breaks out of the loop if the con-
      * dition is falsey. Because we don't know the size of the by-
@@ -1569,7 +1569,7 @@ static CompileResult compile_stmt_while(Bytecode *code, const Stmt *stmt)
     dynarray_insert(&current_compiler->loop_depths, current_compiler->depth);
 
     /* Then, we compile the body of the loop. */
-    COMPILE_STMT(code, s.body);
+    COMPILE_STMT(code, stmt_while.body);
 
     /* Pop the loop depth as it's no longer needed. */
     dynarray_pop(&current_compiler->loop_depths);
@@ -1580,7 +1580,7 @@ static CompileResult compile_stmt_while(Bytecode *code, const Stmt *stmt)
     emit_loop(code, loop_start);
 
     char *exit_label = malloc(256);
-    snprintf(exit_label, 256, "%s_exit", s.label);
+    snprintf(exit_label, 256, "%s_exit", stmt_while.label);
 
     Label *loop_exit = table_get(current_compiler->labels, exit_label);
     if (!loop_exit)
@@ -1607,9 +1607,9 @@ static CompileResult compile_stmt_for(Bytecode *code, const Stmt *stmt)
 {
     CompileResult result = {.is_ok = true, .chunk = NULL, .msg = NULL};
 
-    StmtFor s = stmt->as.stmt_for;
+    StmtFor stmt_for = stmt->as.stmt_for;
 
-    ExprAssign assignment = s.initializer.as.expr_ass;
+    ExprAssign assignment = stmt_for.initializer.as.expr_ass;
     ExprVar variable = assignment.lhs->as.expr_var;
 
     /* Insert the initializer variable name into the current_compiler->locals
@@ -1629,10 +1629,10 @@ static CompileResult compile_stmt_for(Bytecode *code, const Stmt *stmt)
     int loop_start = code->code.count;
 
     Label label = {.location = loop_start, .patch_with = -1};
-    table_insert(current_compiler->labels, s.label, label);
+    table_insert(current_compiler->labels, stmt_for.label, label);
 
     /* Compile the conditional expression. */
-    COMPILE_EXPR(code, &s.condition);
+    COMPILE_EXPR(code, &stmt_for.condition);
 
     /* Emit OP_JZ in case the condition is falsey so that we can break
      * out of the loop. Because we don't know the size of the bytecode
@@ -1650,7 +1650,7 @@ static CompileResult compile_stmt_for(Bytecode *code, const Stmt *stmt)
     int loop_continuation = code->code.count;
 
     /* Compile the advancement expression. */
-    COMPILE_EXPR(code, &s.advancement);
+    COMPILE_EXPR(code, &stmt_for.advancement);
 
     /* After the loop body is executed, we jump to the advancement and
      * execute it. This means we need to evaluate the condition again,
@@ -1663,15 +1663,15 @@ static CompileResult compile_stmt_for(Bytecode *code, const Stmt *stmt)
 
     /* Patch the loop_start we inserted to point to loop_continuation.
      * This is the place just before the advancement. */
-    Label *ls = table_get(current_compiler->labels, s.label);
+    Label *ls = table_get(current_compiler->labels, stmt_for.label);
     ls->location = loop_continuation;
-    table_insert(current_compiler->labels, s.label, *ls);
+    table_insert(current_compiler->labels, stmt_for.label, *ls);
 
     /* Mark the loop depth (needed for break and continue). */
     dynarray_insert(&current_compiler->loop_depths, current_compiler->depth);
 
     /* Compile the loop body. */
-    COMPILE_STMT(code, s.body);
+    COMPILE_STMT(code, stmt_for.body);
 
     /* Pop the loop depth as it's no longer needed. */
     dynarray_pop(&current_compiler->loop_depths);
@@ -1681,8 +1681,10 @@ static CompileResult compile_stmt_for(Bytecode *code, const Stmt *stmt)
 
     current_compiler->locals_count--;
 
-    char *exit_label = malloc(256);
-    snprintf(exit_label, 256, "%s_exit", s.label);
+    int len = lblen(stmt_for.label, 0) + strlen("_exit");
+
+    char *exit_label = malloc(len);
+    snprintf(exit_label, len, "%s_exit", stmt_for.label);
 
     Label *loop_exit = table_get(current_compiler->labels, exit_label);
     if (!loop_exit)
@@ -1739,13 +1741,13 @@ static CompileResult compile_stmt_fn(Bytecode *code, const Stmt *stmt)
     current_compiler->next = old_compiler;
     current_compiler->depth = old_compiler->depth;
 
-    StmtFn s = stmt->as.stmt_fn;
+    StmtFn stmt_fn = stmt->as.stmt_fn;
 
-    int funcname_idx = add_string(code, s.name);
+    int funcname_idx = add_string(code, stmt_fn.name);
 
     Function func = {
         .name = code->sp.data[funcname_idx],
-        .paramcount = s.parameters.count,
+        .paramcount = stmt_fn.parameters.count,
         .location = code->code.count + 3,
     };
 
@@ -1763,10 +1765,10 @@ static CompileResult compile_stmt_fn(Bytecode *code, const Stmt *stmt)
         .captured = false,
     };
 
-    for (size_t i = 0; i < s.parameters.count; i++)
+    for (size_t i = 0; i < stmt_fn.parameters.count; i++)
     {
         current_compiler->locals[current_compiler->locals_count++] = (Local) {
-            .name = s.parameters.data[i],
+            .name = stmt_fn.parameters.data[i],
             .depth = current_compiler->depth,
             .captured = false,
         };
@@ -1777,7 +1779,7 @@ static CompileResult compile_stmt_fn(Bytecode *code, const Stmt *stmt)
     int jump = emit_placeholder(code, OP_JMP);
 
     /* Compile the function body. */
-    COMPILE_STMT(code, s.body);
+    COMPILE_STMT(code, stmt_fn.body);
 
     /* Finally, patch the jump. */
     patch_placeholder(code, jump);
@@ -1815,19 +1817,21 @@ static CompileResult compile_stmt_deco(Bytecode *code, const Stmt *stmt)
 {
     CompileResult result = {.is_ok = true, .chunk = NULL, .msg = NULL};
 
-    COMPILE_STMT(code, stmt->as.stmt_deco.fn);
+    StmtDeco stmt_deco = stmt->as.stmt_deco;
+
+    COMPILE_STMT(code, stmt_deco.fn);
 
     emit_byte(code, OP_GET_GLOBAL);
-    emit_uint32(code, add_string(code, stmt->as.stmt_deco.fn->as.stmt_fn.name));
+    emit_uint32(code, add_string(code, stmt_deco.fn->as.stmt_fn.name));
 
     emit_byte(code, OP_GET_GLOBAL);
-    emit_uint32(code, add_string(code, stmt->as.stmt_deco.name));
+    emit_uint32(code, add_string(code, stmt_deco.name));
 
     emit_byte(code, OP_CALL);
 
     uint32_t argcount;
 
-    Function *f = resolve_func(stmt->as.stmt_deco.name);
+    Function *f = resolve_func(stmt_deco.name);
 
     if (f)
     {
@@ -1841,7 +1845,7 @@ static CompileResult compile_stmt_deco(Bytecode *code, const Stmt *stmt)
     emit_byte(code, argcount);
 
     emit_byte(code, OP_SET_GLOBAL);
-    emit_uint32(code, add_string(code, stmt->as.stmt_deco.fn->as.stmt_fn.name));
+    emit_uint32(code, add_string(code, stmt_deco.fn->as.stmt_fn.name));
 
     return result;
 }
@@ -1850,7 +1854,7 @@ static CompileResult compile_stmt_struct(Bytecode *code, const Stmt *stmt)
 {
     CompileResult result = {.is_ok = true, .chunk = NULL, .msg = NULL};
 
-    StmtStruct s = stmt->as.stmt_struct;
+    StmtStruct stmt_struct = stmt->as.stmt_struct;
 
     /* Emit some bytecode in the following format:
      *
@@ -1861,17 +1865,17 @@ static CompileResult compile_stmt_struct(Bytecode *code, const Stmt *stmt)
      *    4-byte index of the property name in the sp
      *    4-byte index of the property in the 'items' */
     emit_byte(code, OP_STRUCT_BLUEPRINT);
-    emit_uint32(code, add_string(code, s.name));
-    emit_uint32(code, s.properties.count);
+    emit_uint32(code, add_string(code, stmt_struct.name));
+    emit_uint32(code, stmt_struct.properties.count);
 
-    StructBlueprint blueprint = {.name = s.name,
+    StructBlueprint blueprint = {.name = stmt_struct.name,
                                  .property_indexes = calloc(1, sizeof(Table_int)),
                                  .methods = calloc(1, sizeof(Table_Function))};
 
-    for (size_t i = 0; i < s.properties.count; i++)
+    for (size_t i = 0; i < stmt_struct.properties.count; i++)
     {
-        emit_uint32(code, add_string(code, s.properties.data[i]));
-        table_insert(blueprint.property_indexes, s.properties.data[i], i);
+        emit_uint32(code, add_string(code, stmt_struct.properties.data[i]));
+        table_insert(blueprint.property_indexes, stmt_struct.properties.data[i], i);
         emit_uint32(code, i);
     }
 
@@ -1885,10 +1889,10 @@ static CompileResult compile_stmt_return(Bytecode *code, const Stmt *stmt)
 {
     CompileResult result = {.is_ok = true, .chunk = NULL, .msg = NULL};
 
-    StmtRet s = stmt->as.stmt_return;
+    StmtRet stmt_return = stmt->as.stmt_return;
 
     /* Compile the return value. */
-    COMPILE_EXPR(code, &s.returnval);
+    COMPILE_EXPR(code, &stmt_return.returnval);
 
     /* We need to perform the stack cleanup, but the return value
      * mustn't be lost, so we'll (ab)use OP_DEEPSET for this job.
@@ -1962,36 +1966,36 @@ static CompileResult compile_stmt_continue(Bytecode *code, const Stmt *stmt)
 static CompileResult compile_stmt_impl(Bytecode *code, const Stmt *stmt)
 {
     CompileResult result = {.is_ok = true, .chunk = NULL, .msg = NULL};
-    StmtImpl s = stmt->as.stmt_impl;
+    StmtImpl stmt_impl = stmt->as.stmt_impl;
 
     /* Look up the struct with that name in compiler->structs. */
-    StructBlueprint *blueprint = table_get(current_compiler->struct_blueprints, s.name);
+    StructBlueprint *blueprint = table_get(current_compiler->struct_blueprints, stmt_impl.name);
 
     /* If it is not found, bail out. */
     if (!blueprint)
     {
-        COMPILER_ERROR("struct '%s' is not defined.\n", s.name);
+        COMPILER_ERROR("struct '%s' is not defined.\n", stmt_impl.name);
     }
 
-    for (size_t i = 0; i < s.methods.count; i++)
+    for (size_t i = 0; i < stmt_impl.methods.count; i++)
     {
-        StmtFn func = s.methods.data[i].as.stmt_fn;
+        StmtFn func = stmt_impl.methods.data[i].as.stmt_fn;
         Function f = {
             .name = func.name,
             .paramcount = func.parameters.count,
             .location = code->code.count + 3,
         };
         table_insert(blueprint->methods, func.name, ALLOC(f));
-        COMPILE_STMT(code, &s.methods.data[i]);
+        COMPILE_STMT(code, &stmt_impl.methods.data[i]);
     }
 
     emit_byte(code, OP_IMPL);
     emit_uint32(code, add_string(code, blueprint->name));
-    emit_uint32(code, s.methods.count);
+    emit_uint32(code, stmt_impl.methods.count);
 
-    for (size_t i = 0; i < s.methods.count; i++)
+    for (size_t i = 0; i < stmt_impl.methods.count; i++)
     {
-        StmtFn func = s.methods.data[i].as.stmt_fn;
+        StmtFn func = stmt_impl.methods.data[i].as.stmt_fn;
         Function **f = table_get(blueprint->methods, func.name);
         emit_uint32(code, add_string(code, (*f)->name));
         emit_uint32(code, (*f)->paramcount);
