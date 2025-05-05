@@ -2,7 +2,7 @@
 
 #include "table.h"
 
-void print_object(Object *object)
+void print_object(const Object *object)
 {
     if (IS_BOOL(*object))
     {
@@ -67,7 +67,7 @@ void print_object(Object *object)
     }
 }
 
-static inline bool is_refcounted(Object *obj)
+static inline bool is_refcounted(const Object *obj)
 {
     return IS_CLOSURE(*obj) || IS_STRUCT(*obj) || IS_STRING(*obj) || IS_ARRAY(*obj) ||
            IS_GENERATOR(*obj);
@@ -96,8 +96,8 @@ void free_table_object(const Table_Object *table)
 extern inline void dealloc(Object *obj);
 extern inline void objdecref(Object *obj);
 extern inline void objincref(Object *obj);
-extern inline const char *get_object_type(Object *object);
-extern inline ObjectType type(Object *object);
+extern inline const char *get_object_type(const Object *object);
+extern inline ObjectType type(const Object *object);
 
 #ifdef NAN_BOXING
 extern inline double object2num(Object value);

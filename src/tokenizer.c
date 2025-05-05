@@ -11,7 +11,7 @@ void init_tokenizer(Tokenizer *tokenizer, char *source)
     tokenizer->line = 1;
 }
 
-static char peek(Tokenizer *tokenizer, int distance)
+static char peek(const Tokenizer *tokenizer, int distance)
 {
     return tokenizer->current[distance];
 }
@@ -31,27 +31,27 @@ static char advance(Tokenizer *tokenizer)
     return *tokenizer->current++;
 }
 
-static bool is_digit(char c)
+static bool is_digit(const char c)
 {
     return c >= '0' && c <= '9';
 }
 
-static bool is_alpha(char c)
+static bool is_alpha(const char c)
 {
     return (c >= 'a' && c <= 'z') || (c >= 'A' && c <= 'Z') || c == '_';
 }
 
-static bool is_alnum(char c)
+static bool is_alnum(const char c)
 {
     return is_alpha(c) || is_digit(c);
 }
 
-static bool is_at_end(Tokenizer *tokenizer)
+static bool is_at_end(const Tokenizer *tokenizer)
 {
     return peek(tokenizer, 0) == '\0';
 }
 
-static Token make_token(Tokenizer *tokenizer, TokenType type, int length)
+static Token make_token(const Tokenizer *tokenizer, TokenType type, int length)
 {
     return (Token) {
         .type = type,
@@ -60,12 +60,12 @@ static Token make_token(Tokenizer *tokenizer, TokenType type, int length)
     };
 }
 
-static void print_token(Token *token)
+static void print_token(const Token *token)
 {
     printf("%.*s", token->length, token->start);
 }
 
-static TokenType check_keyword(Tokenizer *tokenizer, int start_pos, int length)
+static TokenType check_keyword(const Tokenizer *tokenizer, int start_pos, int length)
 {
     char *lexeme = tokenizer->current - length;
 
@@ -431,7 +431,7 @@ static Token get_token(Tokenizer *tokenizer)
     return make_token(tokenizer, TOKEN_ERROR, 0);
 }
 
-void print_tokens(DynArray_Token *tokens)
+void print_tokens(const DynArray_Token *tokens)
 {
     printf("[");
     for (size_t i = 0; i < tokens->count; i++)

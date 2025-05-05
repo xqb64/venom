@@ -36,7 +36,7 @@
         r.as.stmt;                        \
     })
 
-void init_parser(Parser *parser, DynArray_Token *tokens)
+void init_parser(Parser *parser, const DynArray_Token *tokens)
 {
     memset(parser, 0, sizeof(Parser));
     parser->tokens = tokens;
@@ -46,7 +46,7 @@ static Token pop_front(Parser *parser)
 {
     if (parser->idx < parser->tokens->count)
         return parser->tokens->data[parser->idx++];
-    return (Token) {.type = TOKEN_EOF};
+    return (Token) {.type = TOKEN_EOF, .length = 0, .start = NULL};
 }
 
 static Token next_token(Parser *parser)

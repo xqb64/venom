@@ -357,7 +357,7 @@ typedef struct Object
 
 #endif
 
-void print_object(Object *obj);
+void print_object(const Object *obj);
 
 typedef struct String
 {
@@ -399,7 +399,7 @@ typedef Table(Function) Table_Function;
 
 #define OBJ_TYPE(value) (AS_OBJ(value)->type)
 
-inline const char *get_object_type(Object *object)
+inline const char *get_object_type(const Object *object)
 {
     if (IS_STRING(*object))
     {
@@ -726,7 +726,7 @@ inline void dealloc(Object *obj)
 }
 
 #ifdef NAN_BOXING
-inline ObjectType type(Object *obj)
+inline ObjectType type(const Object *obj)
 {
     if (IS_ARRAY(*obj))
         return OBJ_ARRAY;
@@ -749,7 +749,7 @@ inline ObjectType type(Object *obj)
     assert(0);
 }
 #else
-inline ObjectType type(Object *obj)
+inline ObjectType type(const Object *obj)
 {
     return obj->type;
 }

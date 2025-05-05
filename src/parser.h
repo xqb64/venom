@@ -11,7 +11,7 @@ typedef struct
     Token current;
     Token previous;
     size_t depth;
-    DynArray_Token *tokens;
+    const DynArray_Token *tokens;
     size_t idx;
 } Parser;
 
@@ -38,7 +38,7 @@ typedef struct
     char *msg;
 } ParseResult;
 
-void init_parser(Parser *parser, DynArray_Token *tokens);
+void init_parser(Parser *parser, const DynArray_Token *tokens);
 ParseResult parse(Parser *parser);
 
 #endif

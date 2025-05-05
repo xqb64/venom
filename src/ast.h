@@ -334,9 +334,9 @@ typedef struct Stmt
 #define AS_STMT_YIELD(stmt)    ((Stmt) {.kind = STMT_YIELD, .as.stmt_yield = (stmt)})
 #define AS_STMT_ASSERT(stmt)   ((Stmt) {.kind = STMT_ASSERT, .as.stmt_assert = (stmt)})
 
-void print_expression(Expr *expr, int indent);
-void print_stmt(Stmt *stmt, int indent, bool continuation);
-void pretty_print(DynArray_Stmt *stmts);
+void print_expression(const Expr *expr, int indent);
+void print_stmt(const Stmt *stmt, int indent, bool continuation);
+void pretty_print(const DynArray_Stmt *stmts);
 void free_stmt(Stmt stmt);
 void free_expression(Expr expr);
 ExprLit clone_literal(const ExprLit *literal);

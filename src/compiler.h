@@ -150,7 +150,7 @@ void free_chunk(Bytecode *code);
 Compiler *new_compiler(void);
 void free_compiler(Compiler *compiler);
 
-CompileResult compile(DynArray_Stmt *ast);
+CompileResult compile(const DynArray_Stmt *ast);
 
 void free_compile_result(CompileResult *result);
 

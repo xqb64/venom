@@ -10,7 +10,7 @@
 #include "table.h"
 #include "util.h"
 
-Expr constant_fold_expr(Expr *target, bool *is_modified)
+static Expr constant_fold_expr(const Expr *target, bool *is_modified)
 {
 #define HANDLE_OPER(result_type, as_type, expr, oper, literal_kind)                            \
     do                                                                                         \
@@ -72,7 +72,7 @@ Expr constant_fold_expr(Expr *target, bool *is_modified)
 
     if (target->kind == EXPR_BIN)
     {
-        ExprBin *binexpr = &target->as.expr_bin;
+        const ExprBin *binexpr = &target->as.expr_bin;
 
         Expr new_lhs = constant_fold_expr(binexpr->lhs, is_modified);
         Expr new_rhs = constant_fold_expr(binexpr->rhs, is_modified);
@@ -86,7 +86,7 @@ Expr constant_fold_expr(Expr *target, bool *is_modified)
     }
     else if (target->kind == EXPR_ASS)
     {
-        ExprAssign *assignexpr = &target->as.expr_ass;
+        const ExprAssign *assignexpr = &target->as.expr_ass;
 
         Expr new_rhs = constant_fold_expr(assignexpr->rhs, is_modified);
 
@@ -98,7 +98,7 @@ Expr constant_fold_expr(Expr *target, bool *is_modified)
     }
     else if (target->kind == EXPR_CALL)
     {
-        ExprCall *callexpr = &target->as.expr_call;
+        const ExprCall *callexpr = &target->as.expr_call;
 
         DynArray_Expr arguments = {0};
         for (size_t i = 0; i < callexpr->arguments.count; i++)
@@ -115,7 +115,7 @@ Expr constant_fold_expr(Expr *target, bool *is_modified)
     }
     else if (target->kind == EXPR_STRUCT)
     {
-        ExprStruct *structexpr = &target->as.expr_struct;
+        const ExprStruct *structexpr = &target->as.expr_struct;
 
         DynArray_Expr initializers = {0};
         for (size_t i = 0; i < structexpr->initializers.count; i++)
@@ -132,7 +132,8 @@ Expr constant_fold_expr(Expr *target, bool *is_modified)
     }
     else if (target->kind == EXPR_S_INIT)
     {
-        ExprStructInit *structinitexpr = &target->as.expr_s_init;
+        const ExprStructInit *structinitexpr = &target->as.expr_s_init;
+
         Expr folded = constant_fold_expr(structinitexpr->value, is_modified);
         Expr structinit_expr = clone_expr(structinitexpr->property);
         ExprStructInit new_struct_init_expr = {.value = ALLOC(folded),
@@ -161,12 +162,12 @@ Expr constant_fold_expr(Expr *target, bool *is_modified)
 #undef APPLY
 }
 
-Stmt constant_fold_stmt(Stmt *stmt, bool *is_modified)
+static Stmt constant_fold_stmt(const Stmt *stmt, bool *is_modified)
 {
     switch (stmt->kind)
     {
         case STMT_PRINT: {
-            Expr *expr = &stmt->as.stmt_print.exp;
+            const Expr *expr = &stmt->as.stmt_print.exp;
             Expr folded = constant_fold_expr(expr, is_modified);
             StmtPrint print_stmt = {.exp = folded};
             return AS_STMT_PRINT(print_stmt);
@@ -214,7 +215,7 @@ Stmt constant_fold_stmt(Stmt *stmt, bool *is_modified)
             return AS_STMT_BLOCK(block_stmt);
         }
         case STMT_ASSERT: {
-            Expr *expr = &stmt->as.stmt_assert.exp;
+            const Expr *expr = &stmt->as.stmt_assert.exp;
             Expr folded = constant_fold_expr(expr, is_modified);
             StmtAssert assert_stmt = {.exp = folded};
             return AS_STMT_ASSERT(assert_stmt);
@@ -225,23 +226,23 @@ Stmt constant_fold_stmt(Stmt *stmt, bool *is_modified)
             return AS_STMT_DECO(deco_stmt);
         }
         case STMT_EXPR: {
-            Expr *expr = &stmt->as.stmt_expr.exp;
+            const Expr *expr = &stmt->as.stmt_expr.exp;
             StmtExpr expr_stmt = {.exp = constant_fold_expr(expr, is_modified)};
             return AS_STMT_EXPR(expr_stmt);
         }
         case STMT_RETURN: {
-            Expr *expr = &stmt->as.stmt_return.returnval;
+            const Expr *expr = &stmt->as.stmt_return.returnval;
             StmtRet ret_stmt = {.returnval = constant_fold_expr(expr, is_modified)};
             return AS_STMT_RETURN(ret_stmt);
         }
         case STMT_YIELD: {
-            Expr *expr = &stmt->as.stmt_yield.exp;
+            const Expr *expr = &stmt->as.stmt_yield.exp;
             Expr folded = constant_fold_expr(expr, is_modified);
             StmtYield yield_stmt = {.exp = folded};
             return AS_STMT_YIELD(yield_stmt);
         }
         case STMT_WHILE: {
-            Expr *expr = &stmt->as.stmt_while.condition;
+            const Expr *expr = &stmt->as.stmt_while.condition;
             Expr folded = constant_fold_expr(expr, is_modified);
             char *label = own_string(stmt->as.stmt_while.label);
             Stmt body = constant_fold_stmt(stmt->as.stmt_while.body, is_modified);
@@ -251,9 +252,9 @@ Stmt constant_fold_stmt(Stmt *stmt, bool *is_modified)
             return AS_STMT_WHILE(while_stmt);
         }
         case STMT_FOR: {
-            Expr *init = &stmt->as.stmt_for.initializer;
-            Expr *cond = &stmt->as.stmt_for.condition;
-            Expr *advancement = &stmt->as.stmt_for.advancement;
+            const Expr *init = &stmt->as.stmt_for.initializer;
+            const Expr *cond = &stmt->as.stmt_for.condition;
+            const Expr *advancement = &stmt->as.stmt_for.advancement;
 
             Expr folded_init = constant_fold_expr(init, is_modified);
             Expr folded_cond = constant_fold_expr(cond, is_modified);
@@ -306,7 +307,7 @@ Stmt constant_fold_stmt(Stmt *stmt, bool *is_modified)
     }
 }
 
-Expr propagate_copies_expr(Expr *expr, Table_Expr *copies, bool *is_modified)
+static Expr propagate_copies_expr(const Expr *expr, Table_Expr *copies, bool *is_modified)
 {
     switch (expr->kind)
     {
@@ -325,7 +326,7 @@ Expr propagate_copies_expr(Expr *expr, Table_Expr *copies, bool *is_modified)
             return AS_EXPR_VAR(var_expr);
         }
         case EXPR_BIN: {
-            ExprBin *binexpr = &expr->as.expr_bin;
+            const ExprBin *binexpr = &expr->as.expr_bin;
 
             Expr new_lhs = propagate_copies_expr(expr->as.expr_bin.lhs, copies, is_modified);
             Expr new_rhs = propagate_copies_expr(expr->as.expr_bin.rhs, copies, is_modified);
@@ -407,12 +408,12 @@ Expr propagate_copies_expr(Expr *expr, Table_Expr *copies, bool *is_modified)
     }
 }
 
-Stmt propagate_copies_stmt(Stmt *stmt, Table_Expr *copies, bool *is_modified)
+static Stmt propagate_copies_stmt(const Stmt *stmt, Table_Expr *copies, bool *is_modified)
 {
     switch (stmt->kind)
     {
         case STMT_LET: {
-            Expr *init = &stmt->as.stmt_let.initializer;
+            const Expr *init = &stmt->as.stmt_let.initializer;
 
             table_remove(copies, stmt->as.stmt_let.name);
 
@@ -558,7 +559,7 @@ Stmt propagate_copies_stmt(Stmt *stmt, Table_Expr *copies, bool *is_modified)
     }
 }
 
-DynArray_Stmt optimize(DynArray_Stmt *ast)
+DynArray_Stmt optimize(const DynArray_Stmt *ast)
 {
     bool is_modified;
     DynArray_Stmt original = clone_ast(ast);

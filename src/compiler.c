@@ -199,7 +199,7 @@ void free_chunk(Bytecode *code)
 
 /* Check if the string is already present in the sp.
  * If not, add it first, and finally return the idx. */
-static uint32_t add_string(Bytecode *code, char *string)
+static uint32_t add_string(Bytecode *code, const char *string)
 {
     for (size_t idx = 0; idx < code->sp.count; idx++)
     {
@@ -443,7 +443,7 @@ static void patch_jumps(Bytecode *code)
 
 /* Check if 'name' is present in the builtins table.
  * If it is, return its index in the sp, otherwise -1. */
-static Function *resolve_builtin(char *name)
+static Function *resolve_builtin(const char *name)
 {
     Compiler *current = current_compiler;
     while (current)
@@ -458,7 +458,7 @@ static Function *resolve_builtin(char *name)
 
 /* Check if 'name' is present in the globals dynarray.
  * If it is, return its index in the sp, otherwise -1. */
-static int resolve_global(Bytecode *code, char *name)
+static int resolve_global(Bytecode *code, const char *name)
 {
     Compiler *current = current_compiler;
     while (current)
@@ -475,7 +475,7 @@ static int resolve_global(Bytecode *code, char *name)
 
 /* Check if 'name' is present in the locals dynarray.
  * If it is, return the index, otherwise return -1. */
-static int resolve_local(char *name)
+static int resolve_local(const char *name)
 {
     for (size_t idx = 0; idx < current_compiler->locals_count; idx++)
     {
@@ -485,7 +485,7 @@ static int resolve_local(char *name)
     return -1;
 }
 
-static int resolve_upvalue(char *name)
+static int resolve_upvalue(const char *name)
 {
     Compiler *current = current_compiler->next;
     while (current)
@@ -503,7 +503,7 @@ static int resolve_upvalue(char *name)
     return -1;
 }
 
-static StructBlueprint *resolve_blueprint(char *name)
+static StructBlueprint *resolve_blueprint(const char *name)
 {
     Compiler *current = current_compiler;
     while (current)
@@ -516,7 +516,7 @@ static StructBlueprint *resolve_blueprint(char *name)
     return NULL;
 }
 
-static Module **resolve_module(char *name)
+static Module **resolve_module(const char *name)
 {
     Compiler *current = current_compiler;
     while (current)
@@ -529,7 +529,7 @@ static Module **resolve_module(char *name)
     return NULL;
 }
 
-static Function *resolve_func(char *name)
+static Function *resolve_func(const char *name)
 {
     Compiler *current = current_compiler;
     while (current)
@@ -2180,7 +2180,7 @@ void free_compile_result(CompileResult *result)
     }
 }
 
-CompileResult compile(DynArray_Stmt *ast)
+CompileResult compile(const DynArray_Stmt *ast)
 {
     CompileResult result = {0};
 

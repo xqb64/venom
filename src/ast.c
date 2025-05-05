@@ -303,7 +303,7 @@ void free_stmt(Stmt stmt)
     }
 }
 
-static void print_literal(ExprLit *literal)
+static void print_literal(const ExprLit *literal)
 {
     switch (literal->kind)
     {
@@ -335,7 +335,7 @@ static void print_literal(ExprLit *literal)
             putchar(' ');             \
     } while (0)
 
-void print_expression(Expr *expr, int indent)
+void print_expression(const Expr *expr, int indent)
 {
     switch (expr->kind)
     {
@@ -463,7 +463,7 @@ void print_expression(Expr *expr, int indent)
     printf(")");
 }
 
-void print_stmt(Stmt *stmt, int indent, bool continuation)
+void print_stmt(const Stmt *stmt, int indent, bool continuation)
 {
     if (!continuation)
         INDENT(indent);
@@ -850,7 +850,7 @@ DynArray_Stmt clone_ast(const DynArray_Stmt *ast)
     return copy;
 }
 
-void pretty_print(DynArray_Stmt *stmts)
+void pretty_print(const DynArray_Stmt *stmts)
 {
     int indent = 0;
 

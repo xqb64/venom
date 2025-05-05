@@ -79,7 +79,7 @@ typedef enum
 
 typedef struct
 {
-    char *start;
+    const char *start;
     TokenType type;
     int length;
 } Token;
@@ -96,11 +96,11 @@ typedef struct
 {
     DynArray_Token tokens;
     bool is_ok;
-    char *msg;
+    const char *msg;
 } TokenizeResult;
 
 void init_tokenizer(Tokenizer *tokenizer, char *source);
 TokenizeResult tokenize(Tokenizer *tokenizer);
-void print_tokens(DynArray_Token *tokens);
+void print_tokens(const DynArray_Token *tokens);
 
 #endif
