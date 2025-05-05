@@ -763,7 +763,7 @@ static Stmt clone_stmt(Stmt *stmt)
         }
         case STMT_DECO: {
             Stmt body = clone_stmt(stmt->as.stmt_deco.fn);
-            copy.as.stmt_deco.fn = ALLOC(body); 
+            copy.as.stmt_deco.fn = ALLOC(body);
             copy.as.stmt_deco.name = own_string(stmt->as.stmt_deco.name);
             break;
         }
