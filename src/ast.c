@@ -72,28 +72,28 @@ void free_expression(const Expr *expr)
 {
     switch (expr->kind)
     {
-        case EXPR_LIT: {
-            ExprLit expr_lit = expr->as.expr_lit;
-            if (expr_lit.kind == LIT_STR)
+        case EXPR_LITERAL: {
+            ExprLiteral expr_lit = expr->as.expr_literal;
+            if (expr_lit.kind == LIT_STRING)
             {
                 free(expr_lit.as.str);
             }
             break;
         }
-        case EXPR_VAR: {
-            ExprVar expr_var = expr->as.expr_var;
+        case EXPR_VARIABLE: {
+            ExprVariable expr_var = expr->as.expr_variable;
             free(expr_var.name);
             break;
         }
-        case EXPR_UNA: {
-            ExprUnary expr_unary = expr->as.expr_una;
+        case EXPR_UNARY: {
+            ExprUnary expr_unary = expr->as.expr_unary;
             free_expression(expr_unary.expr);
             free(expr_unary.expr);
             free(expr_unary.op);
             break;
         }
-        case EXPR_BIN: {
-            ExprBin expr_bin = expr->as.expr_bin;
+        case EXPR_BINARY: {
+            ExprBinary expr_bin = expr->as.expr_binary;
             free_expression(expr_bin.lhs);
             free_expression(expr_bin.rhs);
             free(expr_bin.lhs);
@@ -131,12 +131,12 @@ void free_expression(const Expr *expr)
             dynarray_free(&expr_struct.initializers);
             break;
         }
-        case EXPR_STRUCT_INIT: {
-            ExprStructInit expr_struct_init = expr->as.expr_struct_init;
-            free_expression(expr_struct_init.property);
-            free_expression(expr_struct_init.value);
-            free(expr_struct_init.value);
-            free(expr_struct_init.property);
+        case EXPR_STRUCT_INITIALIZER: {
+            ExprStructInitializer expr_struct_initializer = expr->as.expr_struct_initializer;
+            free_expression(expr_struct_initializer.property);
+            free_expression(expr_struct_initializer.value);
+            free(expr_struct_initializer.value);
+            free(expr_struct_initializer.property);
             break;
         }
         case EXPR_GET: {
@@ -238,7 +238,7 @@ void free_stmt(const Stmt *stmt)
             break;
         }
         case STMT_RETURN: {
-            free_expression(&stmt->as.stmt_return.returnval);
+            free_expression(&stmt->as.stmt_return.expr);
             break;
         }
         case STMT_EXPR: {
@@ -260,10 +260,10 @@ void free_stmt(const Stmt *stmt)
             free(stmt->as.stmt_fn.body);
             break;
         }
-        case STMT_DECO: {
-            free(stmt->as.stmt_deco.name);
-            free_stmt(stmt->as.stmt_deco.fn);
-            free(stmt->as.stmt_deco.fn);
+        case STMT_DECORATOR: {
+            free(stmt->as.stmt_decorator.name);
+            free_stmt(stmt->as.stmt_decorator.fn);
+            free(stmt->as.stmt_decorator.fn);
             break;
         }
         case STMT_STRUCT: {
@@ -301,11 +301,11 @@ void free_stmt(const Stmt *stmt)
     }
 }
 
-static void print_literal(const ExprLit *literal)
+static void print_literal(const ExprLiteral *literal)
 {
     switch (literal->kind)
     {
-        case LIT_BOOL: {
+        case LIT_BOOLEAN: {
             printf("%s", literal->as._bool ? "true" : "false");
             break;
         }
@@ -313,11 +313,11 @@ static void print_literal(const ExprLit *literal)
             printf("null");
             break;
         }
-        case LIT_NUM: {
+        case LIT_NUMBER: {
             printf("%.16g", literal->as._double);
             break;
         }
-        case LIT_STR: {
+        case LIT_STRING: {
             printf("%s", literal->as.str);
             break;
         }
@@ -337,10 +337,10 @@ void print_expression(const Expr *expr, int indent)
 {
     switch (expr->kind)
     {
-        case EXPR_LIT: {
+        case EXPR_LITERAL: {
             printf("Literal(\n");
             INDENT(indent + 4);
-            print_literal(&expr->as.expr_lit);
+            print_literal(&expr->as.expr_literal);
             break;
         }
         case EXPR_ARRAY: {
@@ -371,23 +371,23 @@ void print_expression(const Expr *expr, int indent)
             }
             break;
         }
-        case EXPR_STRUCT_INIT: {
+        case EXPR_STRUCT_INITIALIZER: {
             printf("StructInit(\n");
             INDENT(indent + 4);
             printf("property: ");
-            print_expression(expr->as.expr_struct_init.property, indent + 4);
+            print_expression(expr->as.expr_struct_initializer.property, indent + 4);
             printf(",\n");
             INDENT(indent + 4);
             printf("value: ");
-            print_expression(expr->as.expr_struct_init.value, indent + 4);
+            print_expression(expr->as.expr_struct_initializer.value, indent + 4);
             break;
         }
-        case EXPR_BIN: {
+        case EXPR_BINARY: {
             printf("Binary(\n");
             INDENT(indent + 4);
-            print_expression(expr->as.expr_bin.lhs, indent + 4);
-            printf(" %s ", expr->as.expr_bin.op);
-            print_expression(expr->as.expr_bin.rhs, indent + 4);
+            print_expression(expr->as.expr_binary.lhs, indent + 4);
+            printf(" %s ", expr->as.expr_binary.op);
+            print_expression(expr->as.expr_binary.rhs, indent + 4);
             break;
         }
         case EXPR_GET: {
@@ -412,20 +412,20 @@ void print_expression(const Expr *expr, int indent)
             print_expression(expr->as.expr_subscript.index, indent + 4);
             break;
         }
-        case EXPR_UNA: {
+        case EXPR_UNARY: {
             printf("Unary(\n");
             INDENT(indent + 4);
             printf("exp: ");
-            print_expression(expr->as.expr_una.expr, indent + 4);
+            print_expression(expr->as.expr_unary.expr, indent + 4);
             printf(",\n");
             INDENT(indent + 4);
-            printf("op: %s", expr->as.expr_una.op);
+            printf("op: %s", expr->as.expr_unary.op);
             break;
         }
-        case EXPR_VAR: {
+        case EXPR_VARIABLE: {
             printf("Variable(\n");
             INDENT(indent + 4);
-            printf("name: %s", expr->as.expr_var.name);
+            printf("name: %s", expr->as.expr_variable.name);
             break;
         }
         case EXPR_ASSIGN: {
@@ -558,7 +558,7 @@ void print_stmt(const Stmt *stmt, int indent, bool continuation)
         case STMT_RETURN: {
             printf("Return(\n");
             INDENT(indent + 4);
-            print_expression(&stmt->as.stmt_return.returnval, indent + 4);
+            print_expression(&stmt->as.stmt_return.expr, indent + 4);
             break;
         }
         case STMT_BREAK: {
@@ -585,13 +585,13 @@ void print_stmt(const Stmt *stmt, int indent, bool continuation)
             print_expression(&stmt->as.stmt_yield.expr, indent + 4);
             break;
         }
-        case STMT_DECO: {
+        case STMT_DECORATOR: {
             printf("Decorator(\n");
             INDENT(indent + 4);
-            printf("name: %s,\n", stmt->as.stmt_deco.name);
+            printf("name: %s,\n", stmt->as.stmt_decorator.name);
             INDENT(indent + 4);
             printf("fn: ");
-            print_stmt(stmt->as.stmt_deco.fn, indent + 4, true);
+            print_stmt(stmt->as.stmt_decorator.fn, indent + 4, true);
             break;
         }
         case STMT_STRUCT: {
@@ -632,23 +632,23 @@ void print_stmt(const Stmt *stmt, int indent, bool continuation)
     printf(")");
 }
 
-ExprLit clone_literal(const ExprLit *literal)
+ExprLiteral clone_literal(const ExprLiteral *literal)
 {
-    ExprLit clone;
+    ExprLiteral clone;
 
     clone.kind = literal->kind;
 
     switch (literal->kind)
     {
-        case LIT_NUM: {
+        case LIT_NUMBER: {
             clone.as._double = literal->as._double;
             break;
         }
-        case LIT_BOOL: {
+        case LIT_BOOLEAN: {
             clone.as._bool = literal->as._bool;
             break;
         }
-        case LIT_STR: {
+        case LIT_STRING: {
             clone.as.str = own_string(literal->as.str);
             break;
         }
@@ -667,12 +667,12 @@ Expr clone_expr(const Expr *expr)
 
     switch (expr->kind)
     {
-        case EXPR_BIN: {
-            Expr lhs = clone_expr(expr->as.expr_bin.lhs);
-            Expr rhs = clone_expr(expr->as.expr_bin.rhs);
-            clone.as.expr_bin.lhs = ALLOC(lhs);
-            clone.as.expr_bin.rhs = ALLOC(rhs);
-            clone.as.expr_bin.op = own_string(expr->as.expr_bin.op);
+        case EXPR_BINARY: {
+            Expr lhs = clone_expr(expr->as.expr_binary.lhs);
+            Expr rhs = clone_expr(expr->as.expr_binary.rhs);
+            clone.as.expr_binary.lhs = ALLOC(lhs);
+            clone.as.expr_binary.rhs = ALLOC(rhs);
+            clone.as.expr_binary.op = own_string(expr->as.expr_binary.op);
             break;
         }
         case EXPR_ASSIGN: {
@@ -683,9 +683,9 @@ Expr clone_expr(const Expr *expr)
             clone.as.expr_assign.op = own_string(expr->as.expr_assign.op);
             break;
         }
-        case EXPR_UNA: {
-            Expr exp = clone_expr(expr->as.expr_una.expr);
-            clone.as.expr_una.expr = ALLOC(exp);
+        case EXPR_UNARY: {
+            Expr exp = clone_expr(expr->as.expr_unary.expr);
+            clone.as.expr_unary.expr = ALLOC(exp);
             break;
         }
         case EXPR_CALL: {
@@ -700,13 +700,13 @@ Expr clone_expr(const Expr *expr)
             clone.as.expr_call.callee = ALLOC(callee_expr);
             break;
         }
-        case EXPR_LIT: {
-            ExprLit cloned = clone_literal(&expr->as.expr_lit);
-            clone.as.expr_lit = cloned;
+        case EXPR_LITERAL: {
+            ExprLiteral cloned = clone_literal(&expr->as.expr_literal);
+            clone.as.expr_literal = cloned;
             break;
         }
-        case EXPR_VAR: {
-            clone.as.expr_var.name = own_string(expr->as.expr_var.name);
+        case EXPR_VARIABLE: {
+            clone.as.expr_variable.name = own_string(expr->as.expr_variable.name);
             break;
         }
         default:
@@ -777,10 +777,10 @@ Stmt clone_stmt(const Stmt *stmt)
             copy.as.stmt_assert.expr = clone_expr(&stmt->as.stmt_assert.expr);
             break;
         }
-        case STMT_DECO: {
-            Stmt body = clone_stmt(stmt->as.stmt_deco.fn);
-            copy.as.stmt_deco.fn = ALLOC(body);
-            copy.as.stmt_deco.name = own_string(stmt->as.stmt_deco.name);
+        case STMT_DECORATOR: {
+            Stmt body = clone_stmt(stmt->as.stmt_decorator.fn);
+            copy.as.stmt_decorator.fn = ALLOC(body);
+            copy.as.stmt_decorator.name = own_string(stmt->as.stmt_decorator.name);
             break;
         }
         case STMT_IF: {
@@ -808,7 +808,7 @@ Stmt clone_stmt(const Stmt *stmt)
             break;
         }
         case STMT_RETURN: {
-            copy.as.stmt_return.returnval = clone_expr(&stmt->as.stmt_return.returnval);
+            copy.as.stmt_return.expr = clone_expr(&stmt->as.stmt_return.expr);
             break;
         }
         case STMT_YIELD: {

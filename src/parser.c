@@ -107,43 +107,43 @@ static ParseFnResult boolean(Parser *parser)
         default:
             assert(0);
     }
-    ExprLit e = {
-        .kind = LIT_BOOL,
+    ExprLiteral e = {
+        .kind = LIT_BOOLEAN,
         .as._bool = b,
     };
-    return (ParseFnResult) {.as.expr = AS_EXPR_LIT(e), .is_ok = true, .msg = NULL};
+    return (ParseFnResult) {.as.expr = AS_EXPR_LITERAL(e), .is_ok = true, .msg = NULL};
 }
 
 static ParseFnResult null(Parser *parser)
 {
     return (ParseFnResult) {
-        .as.expr = AS_EXPR_LIT((ExprLit) {.kind = LIT_NULL}), .is_ok = true, .msg = NULL};
+        .as.expr = AS_EXPR_LITERAL((ExprLiteral) {.kind = LIT_NULL}), .is_ok = true, .msg = NULL};
 }
 
 static ParseFnResult number(Parser *parser)
 {
-    ExprLit e = {
-        .kind = LIT_NUM,
+    ExprLiteral e = {
+        .kind = LIT_NUMBER,
         .as._double = strtod(parser->previous.start, NULL),
     };
-    return (ParseFnResult) {.as.expr = AS_EXPR_LIT(e), .is_ok = true, .msg = NULL};
+    return (ParseFnResult) {.as.expr = AS_EXPR_LITERAL(e), .is_ok = true, .msg = NULL};
 }
 
 static ParseFnResult string(Parser *parser)
 {
-    ExprLit e = {
-        .kind = LIT_STR,
+    ExprLiteral e = {
+        .kind = LIT_STRING,
         .as.str = own_string_n(parser->previous.start, parser->previous.length - 1),
     };
-    return (ParseFnResult) {.as.expr = AS_EXPR_LIT(e), .is_ok = true, .msg = NULL};
+    return (ParseFnResult) {.as.expr = AS_EXPR_LITERAL(e), .is_ok = true, .msg = NULL};
 }
 
 static ParseFnResult variable(Parser *parser)
 {
-    ExprVar e = {
+    ExprVariable e = {
         .name = own_string_n(parser->previous.start, parser->previous.length),
     };
-    return (ParseFnResult) {.as.expr = AS_EXPR_VAR(e), .is_ok = true, .msg = NULL};
+    return (ParseFnResult) {.as.expr = AS_EXPR_VARIABLE(e), .is_ok = true, .msg = NULL};
 }
 
 static ParseFnResult literal(Parser *parser)
@@ -234,7 +234,7 @@ static ParseFnResult unary(Parser *parser)
         char *op = own_string_n(parser->previous.start, parser->previous.length);
         Expr right = HANDLE_EXPR(unary, parser);
         ExprUnary e = {.expr = ALLOC(right), .op = op};
-        return (ParseFnResult) {.as.expr = AS_EXPR_UNA(e), .is_ok = true, .msg = NULL};
+        return (ParseFnResult) {.as.expr = AS_EXPR_UNARY(e), .is_ok = true, .msg = NULL};
     }
     return call(parser);
 }
@@ -246,12 +246,12 @@ static ParseFnResult factor(Parser *parser)
     {
         char *op = own_string_n(parser->previous.start, parser->previous.length);
         Expr right = HANDLE_EXPR(unary, parser);
-        ExprBin binexp = {
+        ExprBinary binexp = {
             .lhs = ALLOC(expr),
             .rhs = ALLOC(right),
             .op = op,
         };
-        expr = AS_EXPR_BIN(binexp);
+        expr = AS_EXPR_BINARY(binexp);
     }
     return (ParseFnResult) {.as.expr = expr, .is_ok = true, .msg = NULL};
 }
@@ -263,12 +263,12 @@ static ParseFnResult term(Parser *parser)
     {
         char *op = own_string_n(parser->previous.start, parser->previous.length);
         Expr right = HANDLE_EXPR(factor, parser);
-        ExprBin binexp = {
+        ExprBinary binexp = {
             .lhs = ALLOC(expr),
             .rhs = ALLOC(right),
             .op = op,
         };
-        expr = AS_EXPR_BIN(binexp);
+        expr = AS_EXPR_BINARY(binexp);
     }
     return (ParseFnResult) {.as.expr = expr, .is_ok = true, .msg = NULL};
 }
@@ -280,12 +280,12 @@ static ParseFnResult bitwise_shift(Parser *parser)
     {
         char *op = own_string_n(parser->previous.start, parser->previous.length);
         Expr right = HANDLE_EXPR(term, parser);
-        ExprBin binexp = {
+        ExprBinary binexp = {
             .lhs = ALLOC(expr),
             .rhs = ALLOC(right),
             .op = op,
         };
-        expr = AS_EXPR_BIN(binexp);
+        expr = AS_EXPR_BINARY(binexp);
     }
     return (ParseFnResult) {.as.expr = expr, .is_ok = true, .msg = NULL};
 }
@@ -297,12 +297,12 @@ static ParseFnResult comparison(Parser *parser)
     {
         char *op = own_string_n(parser->previous.start, parser->previous.length);
         Expr right = HANDLE_EXPR(bitwise_shift, parser);
-        ExprBin binexp = {
+        ExprBinary binexp = {
             .lhs = ALLOC(expr),
             .rhs = ALLOC(right),
             .op = op,
         };
-        expr = AS_EXPR_BIN(binexp);
+        expr = AS_EXPR_BINARY(binexp);
     }
     return (ParseFnResult) {.as.expr = expr, .is_ok = true, .msg = NULL};
 }
@@ -314,12 +314,12 @@ static ParseFnResult equality(Parser *parser)
     {
         char *op = own_string_n(parser->previous.start, parser->previous.length);
         Expr right = HANDLE_EXPR(comparison, parser);
-        ExprBin binexp = {
+        ExprBinary binexp = {
             .lhs = ALLOC(expr),
             .rhs = ALLOC(right),
             .op = op,
         };
-        expr = AS_EXPR_BIN(binexp);
+        expr = AS_EXPR_BINARY(binexp);
     }
     return (ParseFnResult) {.as.expr = expr, .is_ok = true, .msg = NULL};
 }
@@ -331,12 +331,12 @@ static ParseFnResult bitwise_and(Parser *parser)
     {
         char *op = own_string_n(parser->previous.start, parser->previous.length);
         Expr right = HANDLE_EXPR(equality, parser);
-        ExprBin binexp = {
+        ExprBinary binexp = {
             .lhs = ALLOC(expr),
             .rhs = ALLOC(right),
             .op = op,
         };
-        expr = AS_EXPR_BIN(binexp);
+        expr = AS_EXPR_BINARY(binexp);
     }
     return (ParseFnResult) {.as.expr = expr, .is_ok = true, .msg = NULL};
 }
@@ -348,12 +348,12 @@ static ParseFnResult bitwise_xor(Parser *parser)
     {
         char *op = own_string_n(parser->previous.start, parser->previous.length);
         Expr right = HANDLE_EXPR(bitwise_and, parser);
-        ExprBin binexp = {
+        ExprBinary binexp = {
             .lhs = ALLOC(expr),
             .rhs = ALLOC(right),
             .op = op,
         };
-        expr = AS_EXPR_BIN(binexp);
+        expr = AS_EXPR_BINARY(binexp);
     }
     return (ParseFnResult) {.as.expr = expr, .is_ok = true, .msg = NULL};
 }
@@ -365,12 +365,12 @@ static ParseFnResult bitwise_or(Parser *parser)
     {
         char *op = own_string_n(parser->previous.start, parser->previous.length);
         Expr right = HANDLE_EXPR(bitwise_xor, parser);
-        ExprBin binexp = {
+        ExprBinary binexp = {
             .lhs = ALLOC(expr),
             .rhs = ALLOC(right),
             .op = op,
         };
-        expr = AS_EXPR_BIN(binexp);
+        expr = AS_EXPR_BINARY(binexp);
     }
     return (ParseFnResult) {.as.expr = expr, .is_ok = true, .msg = NULL};
 }
@@ -382,12 +382,12 @@ static ParseFnResult and_(Parser *parser)
     {
         char *op = own_string_n(parser->previous.start, parser->previous.length);
         Expr right = HANDLE_EXPR(bitwise_or, parser);
-        ExprBin binexp = {
+        ExprBinary binexp = {
             .lhs = ALLOC(expr),
             .rhs = ALLOC(right),
             .op = op,
         };
-        expr = AS_EXPR_BIN(binexp);
+        expr = AS_EXPR_BINARY(binexp);
     }
     return (ParseFnResult) {.as.expr = expr, .is_ok = true, .msg = NULL};
 }
@@ -399,12 +399,12 @@ static ParseFnResult or_(Parser *parser)
     {
         char *op = own_string_n(parser->previous.start, parser->previous.length);
         Expr right = HANDLE_EXPR(and_, parser);
-        ExprBin binexp = {
+        ExprBinary binexp = {
             .lhs = ALLOC(expr),
             .rhs = ALLOC(right),
             .op = op,
         };
-        expr = AS_EXPR_BIN(binexp);
+        expr = AS_EXPR_BINARY(binexp);
     }
     return (ParseFnResult) {.as.expr = expr, .is_ok = true, .msg = NULL};
 }
@@ -467,11 +467,11 @@ static ParseFnResult struct_initializer(Parser *parser)
         Expr property = HANDLE_EXPR(expression, parser);
         CONSUME(parser, TOKEN_COLON, "Expected ':' after property name.");
         Expr value = HANDLE_EXPR(expression, parser);
-        ExprStructInit structinitexp = {
+        ExprStructInitializer structinitexp = {
             .property = ALLOC(property),
             .value = ALLOC(value),
         };
-        dynarray_insert(&initializers, AS_EXPR_STRUCT_INIT(structinitexp));
+        dynarray_insert(&initializers, AS_EXPR_STRUCT_INITIALIZER(structinitexp));
     } while (match(parser, 1, TOKEN_COMMA));
     CONSUME(parser, TOKEN_RIGHT_BRACE, "Expected '}' after struct initialization.");
     ExprStruct structexp = {
@@ -657,19 +657,19 @@ static ParseFnResult decorator_statement(Parser *parser)
     Token decorator = CONSUME(parser, TOKEN_IDENTIFIER, "Expected identifier after '@'.");
     CONSUME(parser, TOKEN_FN, "Expected 'fn' after '@deco'.");
     Stmt fn = HANDLE_STMT(function_statement, parser);
-    StmtDeco stmt = {
+    StmtDecorator stmt = {
         .name = own_string_n(decorator.start, decorator.length),
         .fn = ALLOC(fn),
     };
-    return (ParseFnResult) {.as.stmt = AS_STMT_DECO(stmt), .is_ok = true, .msg = NULL};
+    return (ParseFnResult) {.as.stmt = AS_STMT_DECORATOR(stmt), .is_ok = true, .msg = NULL};
 }
 
 static ParseFnResult return_statement(Parser *parser)
 {
     Expr expr = HANDLE_EXPR(expression, parser);
     CONSUME(parser, TOKEN_SEMICOLON, "Expected ';' after return.");
-    StmtRet stmt = {
-        .returnval = expr,
+    StmtReturn stmt = {
+        .expr = expr,
     };
     return (ParseFnResult) {.as.stmt = AS_STMT_RETURN(stmt), .is_ok = true, .msg = NULL};
 }

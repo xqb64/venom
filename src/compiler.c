@@ -558,10 +558,10 @@ static CompileResult compile_expr_lit(Bytecode *code, const Expr *expr)
 {
     CompileResult result = {.is_ok = true, .chunk = NULL, .msg = NULL};
 
-    ExprLit expr_lit = expr->as.expr_lit;
+    ExprLiteral expr_lit = expr->as.expr_literal;
     switch (expr_lit.kind)
     {
-        case LIT_BOOL: {
+        case LIT_BOOLEAN: {
             emit_byte(code, OP_TRUE);
             if (!expr_lit.as._bool)
             {
@@ -569,12 +569,12 @@ static CompileResult compile_expr_lit(Bytecode *code, const Expr *expr)
             }
             break;
         }
-        case LIT_NUM: {
+        case LIT_NUMBER: {
             emit_byte(code, OP_CONST);
             emit_double(code, expr_lit.as._double);
             break;
         }
-        case LIT_STR: {
+        case LIT_STRING: {
             uint32_t str_idx = add_string(code, expr_lit.as.str);
             emit_byte(code, OP_STR);
             emit_uint32(code, str_idx);
@@ -594,7 +594,7 @@ static CompileResult compile_expr_lit(Bytecode *code, const Expr *expr)
 static CompileResult compile_expr_var(Bytecode *code, const Expr *expr)
 {
     CompileResult result = {.is_ok = true, .chunk = NULL, .msg = NULL};
-    ExprVar expr_var = expr->as.expr_var;
+    ExprVariable expr_var = expr->as.expr_variable;
 
     /* Try to resolve the variable as local. */
     int idx = resolve_local(expr_var.name);
@@ -632,7 +632,7 @@ static CompileResult compile_expr_una(Bytecode *code, const Expr *expr)
 {
     CompileResult result = {.is_ok = true, .chunk = NULL, .msg = NULL};
 
-    ExprUnary expr_unary = expr->as.expr_una;
+    ExprUnary expr_unary = expr->as.expr_unary;
     if (strcmp(expr_unary.op, "-") == 0)
     {
         COMPILE_EXPR(code, expr_unary.expr);
@@ -652,8 +652,8 @@ static CompileResult compile_expr_una(Bytecode *code, const Expr *expr)
     {
         switch (expr_unary.expr->kind)
         {
-            case EXPR_VAR: {
-                ExprVar var = expr_unary.expr->as.expr_var;
+            case EXPR_VARIABLE: {
+                ExprVariable var = expr_unary.expr->as.expr_variable;
 
                 /* Try to resolve the variable as local. */
                 int idx = resolve_local(var.name);
@@ -720,7 +720,7 @@ static CompileResult compile_expr_bin(Bytecode *code, const Expr *expr)
 {
     CompileResult result = {.is_ok = true, .chunk = NULL, .msg = NULL};
 
-    ExprBin expr_bin = expr->as.expr_bin;
+    ExprBinary expr_bin = expr->as.expr_binary;
 
     COMPILE_EXPR(code, expr_bin.lhs);
 
@@ -896,9 +896,9 @@ static CompileResult compile_expr_call(Bytecode *code, const Expr *expr)
         emit_uint32(code, add_string(code, method));
         emit_uint32(code, expr_call.arguments.count);
     }
-    else if (expr_call.callee->kind == EXPR_VAR)
+    else if (expr_call.callee->kind == EXPR_VARIABLE)
     {
-        ExprVar var = expr_call.callee->as.expr_var;
+        ExprVariable var = expr_call.callee->as.expr_variable;
 
         Function *b = resolve_builtin(var.name);
         if (b)
@@ -931,7 +931,8 @@ static CompileResult compile_expr_call(Bytecode *code, const Expr *expr)
             {
                 COMPILE_EXPR(code, &expr_call.arguments.data[0]);
                 emit_bytes(code, 1, OP_GETATTR);
-                emit_uint32(code, add_string(code, expr_call.arguments.data[1].as.expr_lit.as.str));
+                emit_uint32(code,
+                            add_string(code, expr_call.arguments.data[1].as.expr_literal.as.str));
             }
             else if (strcmp(b->name, "setattr") == 0)
             {
@@ -939,7 +940,8 @@ static CompileResult compile_expr_call(Bytecode *code, const Expr *expr)
                 COMPILE_EXPR(code, &expr_call.arguments.data[2]);
 
                 emit_byte(code, OP_SETATTR);
-                emit_uint32(code, add_string(code, expr_call.arguments.data[1].as.expr_lit.as.str));
+                emit_uint32(code,
+                            add_string(code, expr_call.arguments.data[1].as.expr_literal.as.str));
             }
 
             return result;
@@ -1063,7 +1065,7 @@ static CompileResult compile_assign_var(Bytecode *code, ExprAssign e, bool is_co
 {
     CompileResult result = {.is_ok = true, .chunk = NULL, .msg = NULL};
 
-    ExprVar expr_var = e.lhs->as.expr_var;
+    ExprVariable expr_var = e.lhs->as.expr_variable;
 
     bool is_global = false;
     bool is_upvalue = false;
@@ -1177,7 +1179,7 @@ static CompileResult compile_assign_una(Bytecode *code, ExprAssign e, bool is_co
 {
     CompileResult result = {.is_ok = true, .chunk = NULL, .msg = NULL};
 
-    ExprUnary expr_unary = e.lhs->as.expr_una;
+    ExprUnary expr_unary = e.lhs->as.expr_unary;
 
     /* Compile the inner expression. */
     COMPILE_EXPR(code, expr_unary.expr);
@@ -1237,13 +1239,13 @@ static CompileResult compile_expr_ass(Bytecode *code, const Expr *expr)
 
     switch (expr_assign.lhs->kind)
     {
-        case EXPR_VAR:
+        case EXPR_VARIABLE:
             compile_assign_var(code, expr_assign, compound_assign);
             break;
         case EXPR_GET:
             compile_assign_get(code, expr_assign, compound_assign);
             break;
-        case EXPR_UNA:
+        case EXPR_UNARY:
             compile_assign_una(code, expr_assign, compound_assign);
             break;
         case EXPR_SUBSCRIPT:
@@ -1282,8 +1284,8 @@ static CompileResult compile_expr_struct(Bytecode *code, const Expr *expr)
     /* Check if the initializer names match the property names. */
     for (size_t i = 0; i < expr_struct.initializers.count; i++)
     {
-        ExprStructInit siexp = expr_struct.initializers.data[i].as.expr_struct_init;
-        char *propname = siexp.property->as.expr_var.name;
+        ExprStructInitializer siexp = expr_struct.initializers.data[i].as.expr_struct_initializer;
+        char *propname = siexp.property->as.expr_variable.name;
         int *propidx = table_get(blueprint->property_indexes, propname);
         if (!propidx)
         {
@@ -1305,17 +1307,17 @@ static CompileResult compile_expr_struct(Bytecode *code, const Expr *expr)
     return result;
 }
 
-static CompileResult compile_expr_struct_init(Bytecode *code, const Expr *expr)
+static CompileResult compile_expr_struct_initializer(Bytecode *code, const Expr *expr)
 {
     CompileResult result = {.is_ok = true, .chunk = NULL, .msg = NULL};
 
-    ExprStructInit expr_struct_init = expr->as.expr_struct_init;
+    ExprStructInitializer expr_struct_initializer = expr->as.expr_struct_initializer;
 
     /* First, we compile the value of the initializer,
      * since OP_SETATTR expects it to be on the stack. */
-    COMPILE_EXPR(code, expr_struct_init.value);
+    COMPILE_EXPR(code, expr_struct_initializer.value);
 
-    ExprVar property = expr_struct_init.property->as.expr_var;
+    ExprVariable property = expr_struct_initializer.property->as.expr_variable;
 
     /* Finally, we emit OP_SETATTR with the property's
      * name index. */
@@ -1373,15 +1375,16 @@ typedef struct
 } CompileExprHandler;
 
 static CompileExprHandler expression_handler[] = {
-    [EXPR_LIT] = {.fn = compile_expr_lit, .name = "EXPR_LIT"},
-    [EXPR_VAR] = {.fn = compile_expr_var, .name = "EXPR_VAR"},
-    [EXPR_UNA] = {.fn = compile_expr_una, .name = "EXPR_UNA"},
-    [EXPR_BIN] = {.fn = compile_expr_bin, .name = "EXPR_BIN"},
+    [EXPR_LITERAL] = {.fn = compile_expr_lit, .name = "EXPR_LITERAL"},
+    [EXPR_VARIABLE] = {.fn = compile_expr_var, .name = "EXPR_VARIABLE"},
+    [EXPR_UNARY] = {.fn = compile_expr_una, .name = "EXPR_UNARY"},
+    [EXPR_BINARY] = {.fn = compile_expr_bin, .name = "EXPR_BINARY"},
     [EXPR_CALL] = {.fn = compile_expr_call, .name = "EXPR_CALL"},
     [EXPR_GET] = {.fn = compile_expr_get, .name = "EXPR_GET"},
     [EXPR_ASSIGN] = {.fn = compile_expr_ass, .name = "EXPR_ASS"},
     [EXPR_STRUCT] = {.fn = compile_expr_struct, .name = "EXPR_STRUCT"},
-    [EXPR_STRUCT_INIT] = {.fn = compile_expr_struct_init, .name = "EXPR_S_INIT"},
+    [EXPR_STRUCT_INITIALIZER] = {.fn = compile_expr_struct_initializer,
+                                 .name = "EXPR_STRUCT_INITIALIZER"},
     [EXPR_ARRAY] = {.fn = compile_expr_array, .name = "EXPR_ARRAY"},
     [EXPR_SUBSCRIPT] = {.fn = compile_expr_subscript, .name = "EXPR_SUBSCRIPT"},
 };
@@ -1610,7 +1613,7 @@ static CompileResult compile_stmt_for(Bytecode *code, const Stmt *stmt)
     StmtFor stmt_for = stmt->as.stmt_for;
 
     ExprAssign assignment = stmt_for.initializer.as.expr_assign;
-    ExprVar variable = assignment.lhs->as.expr_var;
+    ExprVariable variable = assignment.lhs->as.expr_variable;
 
     /* Insert the initializer variable name into the current_compiler->locals
      * dynarray, since the condition that follows the initializer ex-
@@ -1813,25 +1816,25 @@ static CompileResult compile_stmt_fn(Bytecode *code, const Stmt *stmt)
     return result;
 }
 
-static CompileResult compile_stmt_deco(Bytecode *code, const Stmt *stmt)
+static CompileResult compile_stmt_decorator(Bytecode *code, const Stmt *stmt)
 {
     CompileResult result = {.is_ok = true, .chunk = NULL, .msg = NULL};
 
-    StmtDeco stmt_deco = stmt->as.stmt_deco;
+    StmtDecorator stmt_decorator = stmt->as.stmt_decorator;
 
-    COMPILE_STMT(code, stmt_deco.fn);
-
-    emit_byte(code, OP_GET_GLOBAL);
-    emit_uint32(code, add_string(code, stmt_deco.fn->as.stmt_fn.name));
+    COMPILE_STMT(code, stmt_decorator.fn);
 
     emit_byte(code, OP_GET_GLOBAL);
-    emit_uint32(code, add_string(code, stmt_deco.name));
+    emit_uint32(code, add_string(code, stmt_decorator.fn->as.stmt_fn.name));
+
+    emit_byte(code, OP_GET_GLOBAL);
+    emit_uint32(code, add_string(code, stmt_decorator.name));
 
     emit_byte(code, OP_CALL);
 
     uint32_t argcount;
 
-    Function *f = resolve_func(stmt_deco.name);
+    Function *f = resolve_func(stmt_decorator.name);
 
     if (f)
     {
@@ -1845,7 +1848,7 @@ static CompileResult compile_stmt_deco(Bytecode *code, const Stmt *stmt)
     emit_byte(code, argcount);
 
     emit_byte(code, OP_SET_GLOBAL);
-    emit_uint32(code, add_string(code, stmt_deco.fn->as.stmt_fn.name));
+    emit_uint32(code, add_string(code, stmt_decorator.fn->as.stmt_fn.name));
 
     return result;
 }
@@ -1889,10 +1892,10 @@ static CompileResult compile_stmt_return(Bytecode *code, const Stmt *stmt)
 {
     CompileResult result = {.is_ok = true, .chunk = NULL, .msg = NULL};
 
-    StmtRet stmt_return = stmt->as.stmt_return;
+    StmtReturn stmt_return = stmt->as.stmt_return;
 
     /* Compile the return value. */
-    COMPILE_EXPR(code, &stmt_return.returnval);
+    COMPILE_EXPR(code, &stmt_return.expr);
 
     /* We need to perform the stack cleanup, but the return value
      * mustn't be lost, so we'll (ab)use OP_DEEPSET for this job.
@@ -2156,7 +2159,7 @@ static CompileHandler stmt_handler[] = {
     [STMT_FOR] = {.fn = compile_stmt_for, .name = "STMT_FOR"},
     [STMT_FN] = {.fn = compile_stmt_fn, .name = "STMT_FN"},
     [STMT_IMPL] = {.fn = compile_stmt_impl, .name = "STMT_IMPL"},
-    [STMT_DECO] = {.fn = compile_stmt_deco, .name = "STMT_DECO"},
+    [STMT_DECORATOR] = {.fn = compile_stmt_decorator, .name = "STMT_DECORATOR"},
     [STMT_STRUCT] = {.fn = compile_stmt_struct, .name = "STMT_STRUCT"},
     [STMT_RETURN] = {.fn = compile_stmt_return, .name = "STMT_RETURN"},
     [STMT_BREAK] = {.fn = compile_stmt_break, .name = "STMT_BREAK"},

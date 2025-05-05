@@ -12,77 +12,77 @@
 
 static Expr constant_fold_expr(const Expr *target, bool *is_modified)
 {
-#define HANDLE_OPER(result_type, as_type, expr, oper, literal_kind)                            \
-    do                                                                                         \
-    {                                                                                          \
-        if (strcmp((expr)->op, #oper) == 0)                                                    \
-        {                                                                                      \
-            result_type folded_const = lhs.as._##as_type oper rhs.as._##as_type;               \
-            ExprLit folded_expr = {.kind = (literal_kind), .as._##result_type = folded_const}; \
-                                                                                               \
-            *is_modified = true;                                                               \
-                                                                                               \
-            free_expression((expr)->lhs);                                                      \
-            free_expression((expr)->rhs);                                                      \
-                                                                                               \
-            free((expr)->lhs);                                                                 \
-            free((expr)->rhs);                                                                 \
-            free((expr)->op);                                                                  \
-                                                                                               \
-            return AS_EXPR_LIT(folded_expr);                                                   \
-        }                                                                                      \
+#define HANDLE_OPER(result_type, as_type, expr, oper, literal_kind)                                \
+    do                                                                                             \
+    {                                                                                              \
+        if (strcmp((expr)->op, #oper) == 0)                                                        \
+        {                                                                                          \
+            result_type folded_const = lhs.as._##as_type oper rhs.as._##as_type;                   \
+            ExprLiteral folded_expr = {.kind = (literal_kind), .as._##result_type = folded_const}; \
+                                                                                                   \
+            *is_modified = true;                                                                   \
+                                                                                                   \
+            free_expression((expr)->lhs);                                                          \
+            free_expression((expr)->rhs);                                                          \
+                                                                                                   \
+            free((expr)->lhs);                                                                     \
+            free((expr)->rhs);                                                                     \
+            free((expr)->op);                                                                      \
+                                                                                                   \
+            return AS_EXPR_LITERAL(folded_expr);                                                   \
+        }                                                                                          \
     } while (0)
 
-#define APPLY_NUMERIC(expr)                          \
-    HANDLE_OPER(double, double, (expr), +, LIT_NUM); \
-    HANDLE_OPER(double, double, (expr), -, LIT_NUM); \
-    HANDLE_OPER(double, double, (expr), *, LIT_NUM); \
-    HANDLE_OPER(double, double, (expr), /, LIT_NUM); \
-    HANDLE_OPER(bool, double, (expr), <, LIT_BOOL);  \
-    HANDLE_OPER(bool, double, (expr), >, LIT_BOOL);  \
-    HANDLE_OPER(bool, double, (expr), <=, LIT_BOOL); \
-    HANDLE_OPER(bool, double, (expr), >=, LIT_BOOL); \
-    HANDLE_OPER(bool, double, (expr), ==, LIT_BOOL); \
-    HANDLE_OPER(bool, double, (expr), !=, LIT_BOOL);
+#define APPLY_NUMERIC(expr)                             \
+    HANDLE_OPER(double, double, (expr), +, LIT_NUMBER); \
+    HANDLE_OPER(double, double, (expr), -, LIT_NUMBER); \
+    HANDLE_OPER(double, double, (expr), *, LIT_NUMBER); \
+    HANDLE_OPER(double, double, (expr), /, LIT_NUMBER); \
+    HANDLE_OPER(bool, double, (expr), <, LIT_BOOLEAN);  \
+    HANDLE_OPER(bool, double, (expr), >, LIT_BOOLEAN);  \
+    HANDLE_OPER(bool, double, (expr), <=, LIT_BOOLEAN); \
+    HANDLE_OPER(bool, double, (expr), >=, LIT_BOOLEAN); \
+    HANDLE_OPER(bool, double, (expr), ==, LIT_BOOLEAN); \
+    HANDLE_OPER(bool, double, (expr), !=, LIT_BOOLEAN);
 
-#define APPLY_BOOLEAN(expr)                        \
-    HANDLE_OPER(bool, bool, (expr), ==, LIT_BOOL); \
-    HANDLE_OPER(bool, bool, (expr), !=, LIT_BOOL); \
-    HANDLE_OPER(bool, bool, (expr), &&, LIT_BOOL); \
-    HANDLE_OPER(bool, bool, (expr), ||, LIT_BOOL);
+#define APPLY_BOOLEAN(expr)                           \
+    HANDLE_OPER(bool, bool, (expr), ==, LIT_BOOLEAN); \
+    HANDLE_OPER(bool, bool, (expr), !=, LIT_BOOLEAN); \
+    HANDLE_OPER(bool, bool, (expr), &&, LIT_BOOLEAN); \
+    HANDLE_OPER(bool, bool, (expr), ||, LIT_BOOLEAN);
 
-#define APPLY(expr)                                                         \
-    do                                                                      \
-    {                                                                       \
-        if ((expr)->lhs->kind == EXPR_LIT && (expr)->rhs->kind == EXPR_LIT) \
-        {                                                                   \
-            ExprLit lhs = (expr)->lhs->as.expr_lit;                         \
-            ExprLit rhs = (expr)->rhs->as.expr_lit;                         \
-                                                                            \
-            if (lhs.kind == LIT_NUM && rhs.kind == LIT_NUM)                 \
-            {                                                               \
-                APPLY_NUMERIC((expr));                                      \
-            }                                                               \
-            else if (lhs.kind == LIT_BOOL && rhs.kind == LIT_BOOL)          \
-            {                                                               \
-                APPLY_BOOLEAN((expr));                                      \
-            }                                                               \
-        }                                                                   \
+#define APPLY(expr)                                                                 \
+    do                                                                              \
+    {                                                                               \
+        if ((expr)->lhs->kind == EXPR_LITERAL && (expr)->rhs->kind == EXPR_LITERAL) \
+        {                                                                           \
+            ExprLiteral lhs = (expr)->lhs->as.expr_literal;                         \
+            ExprLiteral rhs = (expr)->rhs->as.expr_literal;                         \
+                                                                                    \
+            if (lhs.kind == LIT_NUMBER && rhs.kind == LIT_NUMBER)                   \
+            {                                                                       \
+                APPLY_NUMERIC((expr));                                              \
+            }                                                                       \
+            else if (lhs.kind == LIT_BOOLEAN && rhs.kind == LIT_BOOLEAN)            \
+            {                                                                       \
+                APPLY_BOOLEAN((expr));                                              \
+            }                                                                       \
+        }                                                                           \
     } while (0)
 
-    if (target->kind == EXPR_BIN)
+    if (target->kind == EXPR_BINARY)
     {
-        const ExprBin *binexpr = &target->as.expr_bin;
+        const ExprBinary *binexpr = &target->as.expr_binary;
 
         Expr new_lhs = constant_fold_expr(binexpr->lhs, is_modified);
         Expr new_rhs = constant_fold_expr(binexpr->rhs, is_modified);
 
-        ExprBin new_binexpr = {
+        ExprBinary new_binexpr = {
             .lhs = ALLOC(new_lhs), .rhs = ALLOC(new_rhs), .op = own_string(binexpr->op)};
 
         APPLY(&new_binexpr);
 
-        return AS_EXPR_BIN(new_binexpr);
+        return AS_EXPR_BINARY(new_binexpr);
     }
     else if (target->kind == EXPR_ASSIGN)
     {
@@ -130,23 +130,23 @@ static Expr constant_fold_expr(const Expr *target, bool *is_modified)
 
         return AS_EXPR_STRUCT(new_struct_expr);
     }
-    else if (target->kind == EXPR_STRUCT_INIT)
+    else if (target->kind == EXPR_STRUCT_INITIALIZER)
     {
-        const ExprStructInit *structinitexpr = &target->as.expr_struct_init;
+        const ExprStructInitializer *expr_struct_initializer = &target->as.expr_struct_initializer;
 
-        Expr folded = constant_fold_expr(structinitexpr->value, is_modified);
-        Expr structinit_expr = clone_expr(structinitexpr->property);
-        ExprStructInit new_struct_init_expr = {.value = ALLOC(folded),
-                                               .property = ALLOC(structinit_expr)};
+        Expr folded = constant_fold_expr(expr_struct_initializer->value, is_modified);
+        Expr cloned_siexpr = clone_expr(expr_struct_initializer->property);
+        ExprStructInitializer new_struct_init_expr = {.value = ALLOC(folded),
+                                                      .property = ALLOC(cloned_siexpr)};
 
-        return AS_EXPR_STRUCT_INIT(new_struct_init_expr);
+        return AS_EXPR_STRUCT_INITIALIZER(new_struct_init_expr);
     }
-    else if (target->kind == EXPR_LIT)
+    else if (target->kind == EXPR_LITERAL)
     {
-        ExprLit lit_expr = clone_literal(&target->as.expr_lit);
-        return AS_EXPR_LIT(lit_expr);
+        ExprLiteral lit_expr = clone_literal(&target->as.expr_literal);
+        return AS_EXPR_LITERAL(lit_expr);
     }
-    else if (target->kind == EXPR_VAR)
+    else if (target->kind == EXPR_VARIABLE)
     {
         Expr cloned_target = clone_expr(target);
         return cloned_target;
@@ -220,10 +220,11 @@ static Stmt constant_fold_stmt(const Stmt *stmt, bool *is_modified)
             StmtAssert assert_stmt = {.expr = folded};
             return AS_STMT_ASSERT(assert_stmt);
         }
-        case STMT_DECO: {
-            Stmt fn = constant_fold_stmt(stmt->as.stmt_deco.fn, is_modified);
-            StmtDeco deco_stmt = {.fn = ALLOC(fn), .name = own_string(stmt->as.stmt_deco.name)};
-            return AS_STMT_DECO(deco_stmt);
+        case STMT_DECORATOR: {
+            Stmt fn = constant_fold_stmt(stmt->as.stmt_decorator.fn, is_modified);
+            StmtDecorator deco_stmt = {.fn = ALLOC(fn),
+                                       .name = own_string(stmt->as.stmt_decorator.name)};
+            return AS_STMT_DECORATOR(deco_stmt);
         }
         case STMT_EXPR: {
             const Expr *expr = &stmt->as.stmt_expr.expr;
@@ -231,8 +232,8 @@ static Stmt constant_fold_stmt(const Stmt *stmt, bool *is_modified)
             return AS_STMT_EXPR(expr_stmt);
         }
         case STMT_RETURN: {
-            const Expr *expr = &stmt->as.stmt_return.returnval;
-            StmtRet ret_stmt = {.returnval = constant_fold_expr(expr, is_modified)};
+            const Expr *expr = &stmt->as.stmt_return.expr;
+            StmtReturn ret_stmt = {.expr = constant_fold_expr(expr, is_modified)};
             return AS_STMT_RETURN(ret_stmt);
         }
         case STMT_YIELD: {
@@ -311,39 +312,40 @@ static Expr propagate_copies_expr(const Expr *expr, Table_Expr *copies, bool *is
 {
     switch (expr->kind)
     {
-        case EXPR_LIT: {
+        case EXPR_LITERAL: {
             return *expr;
         }
-        case EXPR_VAR: {
-            char *name = expr->as.expr_var.name;
+        case EXPR_VARIABLE: {
+            char *name = expr->as.expr_variable.name;
             Expr *resolved = table_get(copies, name);
             if (resolved)
             {
                 *is_modified = true;
                 return clone_expr(resolved);
             }
-            ExprVar var_expr = {.name = own_string(name)};
-            return AS_EXPR_VAR(var_expr);
+            ExprVariable var_expr = {.name = own_string(name)};
+            return AS_EXPR_VARIABLE(var_expr);
         }
-        case EXPR_BIN: {
-            const ExprBin *binexpr = &expr->as.expr_bin;
+        case EXPR_BINARY: {
+            const ExprBinary *binexpr = &expr->as.expr_binary;
 
-            Expr new_lhs = propagate_copies_expr(expr->as.expr_bin.lhs, copies, is_modified);
-            Expr new_rhs = propagate_copies_expr(expr->as.expr_bin.rhs, copies, is_modified);
+            Expr new_lhs = propagate_copies_expr(expr->as.expr_binary.lhs, copies, is_modified);
+            Expr new_rhs = propagate_copies_expr(expr->as.expr_binary.rhs, copies, is_modified);
 
-            ExprBin new_binexpr = {.lhs = ALLOC(new_lhs),
-                                   .rhs = ALLOC(new_rhs),
-                                   .op = own_string(expr->as.expr_bin.op)};
+            ExprBinary new_binexpr = {.lhs = ALLOC(new_lhs),
+                                      .rhs = ALLOC(new_rhs),
+                                      .op = own_string(expr->as.expr_binary.op)};
 
-            return AS_EXPR_BIN(new_binexpr);
+            return AS_EXPR_BINARY(new_binexpr);
         }
         case EXPR_ASSIGN: {
             Expr *lhs = expr->as.expr_assign.lhs;
-            if (lhs->kind == EXPR_VAR)
+            if (lhs->kind == EXPR_VARIABLE)
             {
-                table_remove(copies, lhs->as.expr_var.name);
+                table_remove(copies, lhs->as.expr_variable.name);
             }
-            Expr propagated_rhs = propagate_copies_expr(expr->as.expr_assign.rhs, copies, is_modified);
+            Expr propagated_rhs =
+                propagate_copies_expr(expr->as.expr_assign.rhs, copies, is_modified);
 
             Expr cloned_lhs = clone_expr(lhs);
             ExprAssign assign_expr = {.lhs = ALLOC(cloned_lhs),
@@ -369,11 +371,11 @@ static Expr propagate_copies_expr(const Expr *expr, Table_Expr *copies, bool *is
                                 .expr = ALLOC(propagated)};
             return AS_EXPR_GET(get_expr);
         }
-        case EXPR_UNA: {
-            Expr propagated = propagate_copies_expr(expr->as.expr_una.expr, copies, is_modified);
-            ExprUnary unary_expr = {.op = own_string(expr->as.expr_una.op),
+        case EXPR_UNARY: {
+            Expr propagated = propagate_copies_expr(expr->as.expr_unary.expr, copies, is_modified);
+            ExprUnary unary_expr = {.op = own_string(expr->as.expr_unary.op),
                                     .expr = ALLOC(propagated)};
-            return AS_EXPR_UNA(unary_expr);
+            return AS_EXPR_UNARY(unary_expr);
         }
         case EXPR_SUBSCRIPT: {
             Expr propagated =
@@ -395,13 +397,13 @@ static Expr propagate_copies_expr(const Expr *expr, Table_Expr *copies, bool *is
                                       .initializers = initializers};
             return AS_EXPR_STRUCT(struct_expr);
         }
-        case EXPR_STRUCT_INIT: {
+        case EXPR_STRUCT_INITIALIZER: {
             Expr propagated =
-                propagate_copies_expr(expr->as.expr_struct_init.value, copies, is_modified);
-            Expr cloned_expr = clone_expr(expr->as.expr_struct_init.property);
-            ExprStructInit struct_init_expr = {.value = ALLOC(propagated),
-                                               .property = ALLOC(cloned_expr)};
-            return AS_EXPR_STRUCT_INIT(struct_init_expr);
+                propagate_copies_expr(expr->as.expr_struct_initializer.value, copies, is_modified);
+            Expr cloned_expr = clone_expr(expr->as.expr_struct_initializer.property);
+            ExprStructInitializer struct_init_expr = {.value = ALLOC(propagated),
+                                                      .property = ALLOC(cloned_expr)};
+            return AS_EXPR_STRUCT_INITIALIZER(struct_init_expr);
         }
         default:
             assert(0);
@@ -417,7 +419,7 @@ static Stmt propagate_copies_stmt(const Stmt *stmt, Table_Expr *copies, bool *is
 
             table_remove(copies, stmt->as.stmt_let.name);
 
-            if (init->kind == EXPR_VAR || init->kind == EXPR_LIT)
+            if (init->kind == EXPR_VARIABLE || init->kind == EXPR_LITERAL)
             {
                 table_insert(copies, stmt->as.stmt_let.name, clone_expr(init));
             }
@@ -463,11 +465,12 @@ static Stmt propagate_copies_stmt(const Stmt *stmt, Table_Expr *copies, bool *is
             StmtAssert assert_stmt = {.expr = propagated};
             return AS_STMT_ASSERT(assert_stmt);
         }
-        case STMT_DECO: {
-            Stmt propagated = propagate_copies_stmt(stmt->as.stmt_deco.fn, copies, is_modified);
-            StmtDeco deco_stmt = {.name = own_string(stmt->as.stmt_deco.name),
-                                  .fn = ALLOC(propagated)};
-            return AS_STMT_DECO(deco_stmt);
+        case STMT_DECORATOR: {
+            Stmt propagated =
+                propagate_copies_stmt(stmt->as.stmt_decorator.fn, copies, is_modified);
+            StmtDecorator deco_stmt = {.name = own_string(stmt->as.stmt_decorator.name),
+                                       .fn = ALLOC(propagated)};
+            return AS_STMT_DECORATOR(deco_stmt);
         }
         case STMT_EXPR: {
             Expr propagated = propagate_copies_expr(&stmt->as.stmt_expr.expr, copies, is_modified);
@@ -542,8 +545,8 @@ static Stmt propagate_copies_stmt(const Stmt *stmt, Table_Expr *copies, bool *is
         }
         case STMT_RETURN: {
             Expr propagated =
-                propagate_copies_expr(&stmt->as.stmt_return.returnval, copies, is_modified);
-            StmtRet ret_stmt = {.returnval = propagated};
+                propagate_copies_expr(&stmt->as.stmt_return.expr, copies, is_modified);
+            StmtReturn ret_stmt = {.expr = propagated};
             return AS_STMT_RETURN(ret_stmt);
         }
         case STMT_BREAK: {
