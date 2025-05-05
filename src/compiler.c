@@ -552,9 +552,9 @@ static Function *resolve_func(const char *name)
     if (!result.is_ok)                   \
         return result;
 
-static CompileResult compile_expr(Bytecode *code, Expr *exp);
+static CompileResult compile_expr(Bytecode *code, const Expr *exp);
 
-static CompileResult compile_expr_lit(Bytecode *code, Expr *exp)
+static CompileResult compile_expr_lit(Bytecode *code, const Expr *exp)
 {
     CompileResult result = {.is_ok = true, .chunk = NULL, .msg = NULL};
 
@@ -591,7 +591,7 @@ static CompileResult compile_expr_lit(Bytecode *code, Expr *exp)
     return result;
 }
 
-static CompileResult compile_expr_var(Bytecode *code, Expr *exp)
+static CompileResult compile_expr_var(Bytecode *code, const Expr *exp)
 {
     CompileResult result = {.is_ok = true, .chunk = NULL, .msg = NULL};
     ExprVar e = exp->as.expr_var;
@@ -628,7 +628,7 @@ static CompileResult compile_expr_var(Bytecode *code, Expr *exp)
     COMPILER_ERROR("Variable '%s' is not defined.", e.name);
 }
 
-static CompileResult compile_expr_una(Bytecode *code, Expr *exp)
+static CompileResult compile_expr_una(Bytecode *code, const Expr *exp)
 {
     CompileResult result = {.is_ok = true, .chunk = NULL, .msg = NULL};
 
@@ -716,7 +716,7 @@ static CompileResult compile_expr_una(Bytecode *code, Expr *exp)
     return result;
 }
 
-static CompileResult compile_expr_bin(Bytecode *code, Expr *exp)
+static CompileResult compile_expr_bin(Bytecode *code, const Expr *exp)
 {
     CompileResult result = {.is_ok = true, .chunk = NULL, .msg = NULL};
 
@@ -865,7 +865,7 @@ static CompileResult compile_expr_bin(Bytecode *code, Expr *exp)
     return result;
 }
 
-static CompileResult compile_expr_call(Bytecode *code, Expr *exp)
+static CompileResult compile_expr_call(Bytecode *code, const Expr *exp)
 {
     CompileResult result = {.is_ok = true, .chunk = NULL, .msg = NULL};
 
@@ -1012,7 +1012,7 @@ static CompileResult compile_expr_call(Bytecode *code, Expr *exp)
     return result;
 }
 
-static CompileResult compile_expr_get(Bytecode *code, Expr *exp)
+static CompileResult compile_expr_get(Bytecode *code, const Expr *exp)
 {
     CompileResult result = {.is_ok = true, .chunk = NULL, .msg = NULL};
 
@@ -1228,7 +1228,7 @@ static CompileResult compile_assign_sub(Bytecode *code, ExprAssign e, bool is_co
     return result;
 }
 
-static CompileResult compile_expr_ass(Bytecode *code, Expr *exp)
+static CompileResult compile_expr_ass(Bytecode *code, const Expr *exp)
 {
     CompileResult result = {.is_ok = true, .chunk = NULL, .msg = NULL};
 
@@ -1256,7 +1256,7 @@ static CompileResult compile_expr_ass(Bytecode *code, Expr *exp)
     return result;
 }
 
-static CompileResult compile_expr_struct(Bytecode *code, Expr *exp)
+static CompileResult compile_expr_struct(Bytecode *code, const Expr *exp)
 {
     CompileResult result = {.is_ok = true, .chunk = NULL, .msg = NULL};
 
@@ -1305,7 +1305,7 @@ static CompileResult compile_expr_struct(Bytecode *code, Expr *exp)
     return result;
 }
 
-static CompileResult compile_expr_s_init(Bytecode *code, Expr *exp)
+static CompileResult compile_expr_s_init(Bytecode *code, const Expr *exp)
 {
     CompileResult result = {.is_ok = true, .chunk = NULL, .msg = NULL};
 
@@ -1325,7 +1325,7 @@ static CompileResult compile_expr_s_init(Bytecode *code, Expr *exp)
     return result;
 }
 
-static CompileResult compile_expr_array(Bytecode *code, Expr *exp)
+static CompileResult compile_expr_array(Bytecode *code, const Expr *exp)
 {
     CompileResult result = {.is_ok = true, .chunk = NULL, .msg = NULL};
 
@@ -1347,7 +1347,7 @@ static CompileResult compile_expr_array(Bytecode *code, Expr *exp)
     return result;
 }
 
-static CompileResult compile_expr_subscript(Bytecode *code, Expr *exp)
+static CompileResult compile_expr_subscript(Bytecode *code, const Expr *exp)
 {
     CompileResult result = {.is_ok = true, .chunk = NULL, .msg = NULL};
     ExprSubscript e = exp->as.expr_subscript;
@@ -1364,7 +1364,7 @@ static CompileResult compile_expr_subscript(Bytecode *code, Expr *exp)
     return result;
 }
 
-typedef CompileResult (*CompileExprHandlerFn)(Bytecode *code, Expr *exp);
+typedef CompileResult (*CompileExprHandlerFn)(Bytecode *code, const Expr *exp);
 
 typedef struct
 {
@@ -1386,14 +1386,14 @@ static CompileExprHandler expression_handler[] = {
     [EXPR_SUBSCRIPT] = {.fn = compile_expr_subscript, .name = "EXPR_SUBSCRIPT"},
 };
 
-static CompileResult compile_expr(Bytecode *code, Expr *exp)
+static CompileResult compile_expr(Bytecode *code, const Expr *exp)
 {
     return expression_handler[exp->kind].fn(code, exp);
 }
 
-static CompileResult compile_stmt(Bytecode *code, Stmt *stmt);
+static CompileResult compile_stmt(Bytecode *code, const Stmt *stmt);
 
-static CompileResult compile_stmt_print(Bytecode *code, Stmt *stmt)
+static CompileResult compile_stmt_print(Bytecode *code, const Stmt *stmt)
 {
     CompileResult result = {.is_ok = true, .chunk = NULL, .msg = NULL};
 
@@ -1404,7 +1404,7 @@ static CompileResult compile_stmt_print(Bytecode *code, Stmt *stmt)
     return result;
 }
 
-static CompileResult compile_stmt_let(Bytecode *code, Stmt *stmt)
+static CompileResult compile_stmt_let(Bytecode *code, const Stmt *stmt)
 {
     CompileResult result = {.is_ok = true, .chunk = NULL, .msg = NULL};
 
@@ -1454,7 +1454,7 @@ static CompileResult compile_stmt_let(Bytecode *code, Stmt *stmt)
     return result;
 }
 
-static CompileResult compile_stmt_expr(Bytecode *code, Stmt *stmt)
+static CompileResult compile_stmt_expr(Bytecode *code, const Stmt *stmt)
 {
     CompileResult result = {.is_ok = true, .chunk = NULL, .msg = NULL};
 
@@ -1478,7 +1478,7 @@ static CompileResult compile_stmt_expr(Bytecode *code, Stmt *stmt)
     return result;
 }
 
-static CompileResult compile_stmt_block(Bytecode *code, Stmt *stmt)
+static CompileResult compile_stmt_block(Bytecode *code, const Stmt *stmt)
 {
     CompileResult result = {.is_ok = true, .chunk = NULL, .msg = NULL};
 
@@ -1496,7 +1496,7 @@ static CompileResult compile_stmt_block(Bytecode *code, Stmt *stmt)
     return result;
 }
 
-static CompileResult compile_stmt_if(Bytecode *code, Stmt *stmt)
+static CompileResult compile_stmt_if(Bytecode *code, const Stmt *stmt)
 {
     CompileResult result = {.is_ok = true, .chunk = NULL, .msg = NULL};
 
@@ -1538,7 +1538,7 @@ static CompileResult compile_stmt_if(Bytecode *code, Stmt *stmt)
     return result;
 }
 
-static CompileResult compile_stmt_while(Bytecode *code, Stmt *stmt)
+static CompileResult compile_stmt_while(Bytecode *code, const Stmt *stmt)
 {
     CompileResult result = {.is_ok = true, .chunk = NULL, .msg = NULL};
 
@@ -1603,7 +1603,7 @@ static CompileResult compile_stmt_while(Bytecode *code, Stmt *stmt)
     return result;
 }
 
-static CompileResult compile_stmt_for(Bytecode *code, Stmt *stmt)
+static CompileResult compile_stmt_for(Bytecode *code, const Stmt *stmt)
 {
     CompileResult result = {.is_ok = true, .chunk = NULL, .msg = NULL};
 
@@ -1730,7 +1730,7 @@ Compiler *new_compiler(void)
     return ALLOC(compiler);
 }
 
-static CompileResult compile_stmt_fn(Bytecode *code, Stmt *stmt)
+static CompileResult compile_stmt_fn(Bytecode *code, const Stmt *stmt)
 {
     CompileResult result = {.is_ok = true, .chunk = NULL, .msg = NULL};
 
@@ -1811,7 +1811,7 @@ static CompileResult compile_stmt_fn(Bytecode *code, Stmt *stmt)
     return result;
 }
 
-static CompileResult compile_stmt_deco(Bytecode *code, Stmt *stmt)
+static CompileResult compile_stmt_deco(Bytecode *code, const Stmt *stmt)
 {
     CompileResult result = {.is_ok = true, .chunk = NULL, .msg = NULL};
 
@@ -1846,7 +1846,7 @@ static CompileResult compile_stmt_deco(Bytecode *code, Stmt *stmt)
     return result;
 }
 
-static CompileResult compile_stmt_struct(Bytecode *code, Stmt *stmt)
+static CompileResult compile_stmt_struct(Bytecode *code, const Stmt *stmt)
 {
     CompileResult result = {.is_ok = true, .chunk = NULL, .msg = NULL};
 
@@ -1881,7 +1881,7 @@ static CompileResult compile_stmt_struct(Bytecode *code, Stmt *stmt)
     return result;
 }
 
-static CompileResult compile_stmt_return(Bytecode *code, Stmt *stmt)
+static CompileResult compile_stmt_return(Bytecode *code, const Stmt *stmt)
 {
     CompileResult result = {.is_ok = true, .chunk = NULL, .msg = NULL};
 
@@ -1933,7 +1933,7 @@ static void emit_named_jump(Bytecode *code, char *label)
     table_insert(current_compiler->labels, label, exit_label);
 }
 
-static CompileResult compile_stmt_break(Bytecode *code, Stmt *stmt)
+static CompileResult compile_stmt_break(Bytecode *code, const Stmt *stmt)
 {
     CompileResult result = {.is_ok = true, .chunk = NULL, .msg = NULL};
 
@@ -1948,7 +1948,7 @@ static CompileResult compile_stmt_break(Bytecode *code, Stmt *stmt)
     return result;
 }
 
-static CompileResult compile_stmt_continue(Bytecode *code, Stmt *stmt)
+static CompileResult compile_stmt_continue(Bytecode *code, const Stmt *stmt)
 {
     CompileResult result = {.is_ok = true, .chunk = NULL, .msg = NULL};
 
@@ -1959,7 +1959,7 @@ static CompileResult compile_stmt_continue(Bytecode *code, Stmt *stmt)
     return result;
 }
 
-static CompileResult compile_stmt_impl(Bytecode *code, Stmt *stmt)
+static CompileResult compile_stmt_impl(Bytecode *code, const Stmt *stmt)
 {
     CompileResult result = {.is_ok = true, .chunk = NULL, .msg = NULL};
     StmtImpl s = stmt->as.stmt_impl;
@@ -2013,7 +2013,7 @@ static bool is_cyclic(Compiler *compiler, Module *mod)
     return false;
 }
 
-static CompileResult compile_stmt_use(Bytecode *code, Stmt *stmt)
+static CompileResult compile_stmt_use(Bytecode *code, const Stmt *stmt)
 {
     CompileResult result = {.is_ok = true, .chunk = NULL, .msg = NULL};
     StmtUse stmt_use = stmt->as.stmt_use;
@@ -2106,7 +2106,7 @@ static CompileResult compile_stmt_use(Bytecode *code, Stmt *stmt)
     return result;
 }
 
-static CompileResult compile_stmt_yield(Bytecode *code, Stmt *stmt)
+static CompileResult compile_stmt_yield(Bytecode *code, const Stmt *stmt)
 {
     CompileResult result = {.is_ok = true, .chunk = NULL, .msg = NULL};
 
@@ -2123,7 +2123,7 @@ static CompileResult compile_stmt_yield(Bytecode *code, Stmt *stmt)
     return result;
 }
 
-static CompileResult compile_stmt_assert(Bytecode *code, Stmt *stmt)
+static CompileResult compile_stmt_assert(Bytecode *code, const Stmt *stmt)
 {
     CompileResult result = {.is_ok = true, .chunk = NULL, .msg = NULL};
 
@@ -2134,7 +2134,7 @@ static CompileResult compile_stmt_assert(Bytecode *code, Stmt *stmt)
     return result;
 }
 
-typedef CompileResult (*CompileHandlerFn)(Bytecode *code, Stmt *stmt);
+typedef CompileResult (*CompileHandlerFn)(Bytecode *code, const Stmt *stmt);
 
 typedef struct
 {
@@ -2162,7 +2162,7 @@ static CompileHandler stmt_handler[] = {
     [STMT_ASSERT] = {.fn = compile_stmt_assert, .name = "STMT_ASSERT"},
 };
 
-static CompileResult compile_stmt(Bytecode *code, Stmt *stmt)
+static CompileResult compile_stmt(Bytecode *code, const Stmt *stmt)
 {
     return stmt_handler[stmt->kind].fn(code, stmt);
 }
