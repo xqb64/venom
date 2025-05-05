@@ -1045,7 +1045,7 @@ static void handle_specop(Bytecode *code, const char *op)
         emit_byte(code, OP_MUL);
     else if (strcmp(op, "/=") == 0)
         emit_byte(code, OP_DIV);
-    else if (strcmp(op, "%%=") == 0)
+    else if (strcmp(op, "%=") == 0)
         emit_byte(code, OP_MOD);
     else if (strcmp(op, "&=") == 0)
         emit_byte(code, OP_BITAND);
