@@ -86,13 +86,13 @@ static int run(Arguments *args)
 
     if (args->optimize)
     {
-        DynArray_Stmt tmp = optimize(&cooked_ast);
+        DynArray_Stmt optimized_ast = optimize(&cooked_ast);
         for (size_t i = 0; i < cooked_ast.count; i++)
         {
             free_stmt(&cooked_ast.data[i]);
         }
         dynarray_free(&cooked_ast);
-        cooked_ast = tmp;
+        cooked_ast = optimized_ast;
     }
 
     Compiler *compiler = current_compiler = new_compiler();
