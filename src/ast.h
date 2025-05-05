@@ -22,7 +22,7 @@ typedef enum
     EXPR_GET,
     EXPR_ASS,
     EXPR_STRUCT,
-    EXPR_S_INIT,
+    EXPR_STRUCT_INIT,
     EXPR_ARRAY,
     EXPR_SUBSCRIPT,
 } ExprKind;
@@ -52,7 +52,7 @@ typedef struct ExprVar
 
 typedef struct ExprUnary
 {
-    Expr *exp;
+    Expr *expr;
     char *op;
 } ExprUnary;
 
@@ -71,7 +71,7 @@ typedef struct ExprCall
 
 typedef struct ExprGet
 {
-    Expr *exp;
+    Expr *expr;
     char *property_name;
     char *op;
 } ExprGet;
@@ -120,7 +120,7 @@ typedef struct Expr
         ExprGet expr_get;
         ExprAssign expr_ass;
         ExprStruct expr_struct;
-        ExprStructInit expr_s_init;
+        ExprStructInit expr_struct_init;
         ExprArray expr_array;
         ExprSubscript expr_subscript;
     } as;
@@ -130,18 +130,18 @@ typedef Table(Expr) Table_Expr;
 Table_Expr clone_table_expr(const Table_Expr *table);
 void free_table_expr(const Table_Expr *table);
 
-#define AS_EXPR_LIT(exp)       ((Expr) {.kind = EXPR_LIT, .as.expr_lit = (exp)})
-#define AS_EXPR_VAR(exp)       ((Expr) {.kind = EXPR_VAR, .as.expr_var = (exp)})
-#define AS_EXPR_UNA(exp)       ((Expr) {.kind = EXPR_UNA, .as.expr_una = (exp)})
-#define AS_EXPR_BIN(exp)       ((Expr) {.kind = EXPR_BIN, .as.expr_bin = (exp)})
-#define AS_EXPR_CALL(exp)      ((Expr) {.kind = EXPR_CALL, .as.expr_call = (exp)})
-#define AS_EXPR_GET(exp)       ((Expr) {.kind = EXPR_GET, .as.expr_get = (exp)})
-#define AS_EXPR_ASS(exp)       ((Expr) {.kind = EXPR_ASS, .as.expr_ass = (exp)})
-#define AS_EXPR_LOG(exp)       ((Expr) {.kind = EXPR_LOG, .as.expr_log = (exp)})
-#define AS_EXPR_STRUCT(exp)    ((Expr) {.kind = EXPR_STRUCT, .as.expr_struct = (exp)})
-#define AS_EXPR_S_INIT(exp)    ((Expr) {.kind = EXPR_S_INIT, .as.expr_s_init = (exp)})
-#define AS_EXPR_ARRAY(exp)     ((Expr) {.kind = EXPR_ARRAY, .as.expr_array = (exp)})
-#define AS_EXPR_SUBSCRIPT(exp) ((Expr) {.kind = EXPR_SUBSCRIPT, .as.expr_subscript = (exp)})
+#define AS_EXPR_LIT(exp)         ((Expr) {.kind = EXPR_LIT, .as.expr_lit = (exp)})
+#define AS_EXPR_VAR(exp)         ((Expr) {.kind = EXPR_VAR, .as.expr_var = (exp)})
+#define AS_EXPR_UNA(exp)         ((Expr) {.kind = EXPR_UNA, .as.expr_una = (exp)})
+#define AS_EXPR_BIN(exp)         ((Expr) {.kind = EXPR_BIN, .as.expr_bin = (exp)})
+#define AS_EXPR_CALL(exp)        ((Expr) {.kind = EXPR_CALL, .as.expr_call = (exp)})
+#define AS_EXPR_GET(exp)         ((Expr) {.kind = EXPR_GET, .as.expr_get = (exp)})
+#define AS_EXPR_ASS(exp)         ((Expr) {.kind = EXPR_ASS, .as.expr_ass = (exp)})
+#define AS_EXPR_LOG(exp)         ((Expr) {.kind = EXPR_LOG, .as.expr_log = (exp)})
+#define AS_EXPR_STRUCT(exp)      ((Expr) {.kind = EXPR_STRUCT, .as.expr_struct = (exp)})
+#define AS_EXPR_STRUCT_INIT(exp) ((Expr) {.kind = EXPR_STRUCT_INIT, .as.expr_struct_init = (exp)})
+#define AS_EXPR_ARRAY(exp)       ((Expr) {.kind = EXPR_ARRAY, .as.expr_array = (exp)})
+#define AS_EXPR_SUBSCRIPT(exp)   ((Expr) {.kind = EXPR_SUBSCRIPT, .as.expr_subscript = (exp)})
 
 typedef enum
 {
@@ -172,12 +172,12 @@ typedef struct
 
 typedef struct
 {
-    Expr exp;
+    Expr expr;
 } StmtPrint;
 
 typedef struct
 {
-    Expr exp;
+    Expr expr;
 } StmtExpr;
 
 typedef struct
@@ -256,12 +256,12 @@ typedef struct
 
 typedef struct
 {
-    Expr exp;
+    Expr expr;
 } StmtYield;
 
 typedef struct
 {
-    Expr exp;
+    Expr expr;
 } StmtAssert;
 
 typedef struct Stmt

@@ -542,9 +542,9 @@ static Function *resolve_func(const char *name)
     return NULL;
 }
 
-#define COMPILE_EXPR(code, exp)          \
-    result = compile_expr(code, (exp));  \
-    if (!result.is_ok)                   \
+#define COMPILE_EXPR(code, exp)         \
+    result = compile_expr(code, (exp)); \
+    if (!result.is_ok)                  \
         return result;
 
 #define COMPILE_STMT(code, stmt)         \
@@ -635,25 +635,25 @@ static CompileResult compile_expr_una(Bytecode *code, const Expr *exp)
     ExprUnary e = exp->as.expr_una;
     if (strcmp(e.op, "-") == 0)
     {
-        COMPILE_EXPR(code, e.exp);
+        COMPILE_EXPR(code, e.expr);
         emit_byte(code, OP_NEG);
     }
     else if (strcmp(e.op, "!") == 0)
     {
-        COMPILE_EXPR(code, e.exp);
+        COMPILE_EXPR(code, e.expr);
         emit_byte(code, OP_NOT);
     }
     else if (strcmp(e.op, "*") == 0)
     {
-        COMPILE_EXPR(code, e.exp);
+        COMPILE_EXPR(code, e.expr);
         emit_byte(code, OP_DEREF);
     }
     else if (strcmp(e.op, "&") == 0)
     {
-        switch (e.exp->kind)
+        switch (e.expr->kind)
         {
             case EXPR_VAR: {
-                ExprVar var = e.exp->as.expr_var;
+                ExprVar var = e.expr->as.expr_var;
 
                 /* Try to resolve the variable as local. */
                 int idx = resolve_local(var.name);
@@ -687,10 +687,10 @@ static CompileResult compile_expr_una(Bytecode *code, const Expr *exp)
                 break;
             }
             case EXPR_GET: {
-                ExprGet getexp = e.exp->as.expr_get;
+                ExprGet getexp = e.expr->as.expr_get;
                 /* Compile the part that comes be-
                  * fore the member access operator. */
-                COMPILE_EXPR(code, getexp.exp);
+                COMPILE_EXPR(code, getexp.expr);
                 /* Deref if the operator is '->'. */
                 if (strcmp(getexp.op, "->") == 0)
                 {
@@ -709,7 +709,7 @@ static CompileResult compile_expr_una(Bytecode *code, const Expr *exp)
     }
     else if (strcmp(e.op, "~") == 0)
     {
-        COMPILE_EXPR(code, e.exp);
+        COMPILE_EXPR(code, e.expr);
         emit_byte(code, OP_BITNOT);
     }
 
@@ -877,7 +877,7 @@ static CompileResult compile_expr_call(Bytecode *code, const Expr *exp)
 
         /* Compile the part that comes before the member access
          * operator. */
-        COMPILE_EXPR(code, getexp.exp);
+        COMPILE_EXPR(code, getexp.expr);
 
         /* Deref it if the operator is -> */
         if (strcmp(getexp.op, "->") == 0)
@@ -1020,7 +1020,7 @@ static CompileResult compile_expr_get(Bytecode *code, const Expr *exp)
 
     /* Compile the part that comes before the member access
      * operator. */
-    COMPILE_EXPR(code, e.exp);
+    COMPILE_EXPR(code, e.expr);
 
     /* Deref it if the operator is -> */
     if (strcmp(e.op, "->") == 0)
@@ -1138,7 +1138,7 @@ static CompileResult compile_assign_get(Bytecode *code, ExprAssign e, bool is_co
     ExprGet getexp = e.lhs->as.expr_get;
 
     /* Compile the part that comes before the member access operator. */
-    COMPILE_EXPR(code, getexp.exp);
+    COMPILE_EXPR(code, getexp.expr);
 
     /* Deref it if the operator is -> */
     if (strcmp(getexp.op, "->") == 0)
@@ -1180,7 +1180,7 @@ static CompileResult compile_assign_una(Bytecode *code, ExprAssign e, bool is_co
     ExprUnary unary = e.lhs->as.expr_una;
 
     /* Compile the inner expression. */
-    COMPILE_EXPR(code, unary.exp);
+    COMPILE_EXPR(code, unary.expr);
     if (is_compound)
     {
         /* Compile the right-hand side of the assignment. */
@@ -1282,7 +1282,7 @@ static CompileResult compile_expr_struct(Bytecode *code, const Expr *exp)
     /* Check if the initializer names match the property names. */
     for (size_t i = 0; i < e.initializers.count; i++)
     {
-        ExprStructInit siexp = e.initializers.data[i].as.expr_s_init;
+        ExprStructInit siexp = e.initializers.data[i].as.expr_struct_init;
         char *propname = siexp.property->as.expr_var.name;
         int *propidx = table_get(blueprint->property_indexes, propname);
         if (!propidx)
@@ -1305,11 +1305,11 @@ static CompileResult compile_expr_struct(Bytecode *code, const Expr *exp)
     return result;
 }
 
-static CompileResult compile_expr_s_init(Bytecode *code, const Expr *exp)
+static CompileResult compile_expr_struct_init(Bytecode *code, const Expr *exp)
 {
     CompileResult result = {.is_ok = true, .chunk = NULL, .msg = NULL};
 
-    ExprStructInit e = exp->as.expr_s_init;
+    ExprStructInit e = exp->as.expr_struct_init;
 
     /* First, we compile the value of the initializer,
      * since OP_SETATTR expects it to be on the stack. */
@@ -1381,7 +1381,7 @@ static CompileExprHandler expression_handler[] = {
     [EXPR_GET] = {.fn = compile_expr_get, .name = "EXPR_GET"},
     [EXPR_ASS] = {.fn = compile_expr_ass, .name = "EXPR_ASS"},
     [EXPR_STRUCT] = {.fn = compile_expr_struct, .name = "EXPR_STRUCT"},
-    [EXPR_S_INIT] = {.fn = compile_expr_s_init, .name = "EXPR_S_INIT"},
+    [EXPR_STRUCT_INIT] = {.fn = compile_expr_struct_init, .name = "EXPR_S_INIT"},
     [EXPR_ARRAY] = {.fn = compile_expr_array, .name = "EXPR_ARRAY"},
     [EXPR_SUBSCRIPT] = {.fn = compile_expr_subscript, .name = "EXPR_SUBSCRIPT"},
 };
@@ -1398,7 +1398,7 @@ static CompileResult compile_stmt_print(Bytecode *code, const Stmt *stmt)
     CompileResult result = {.is_ok = true, .chunk = NULL, .msg = NULL};
 
     StmtPrint s = stmt->as.stmt_print;
-    COMPILE_EXPR(code, &s.exp);
+    COMPILE_EXPR(code, &s.expr);
     emit_byte(code, OP_PRINT);
 
     return result;
@@ -1460,7 +1460,7 @@ static CompileResult compile_stmt_expr(Bytecode *code, const Stmt *stmt)
 
     StmtExpr e = stmt->as.stmt_expr;
 
-    COMPILE_EXPR(code, &e.exp);
+    COMPILE_EXPR(code, &e.expr);
 
     /* If the expression statement was just a call, like:
      *
@@ -1470,7 +1470,7 @@ static CompileResult compile_stmt_expr(Bytecode *code, const Stmt *stmt)
      *
      * Pop the return value off the stack, so it does not
      * interfere with later execution. */
-    if (e.exp.kind == EXPR_CALL)
+    if (e.expr.kind == EXPR_CALL)
     {
         emit_byte(code, OP_POP);
     }
@@ -2111,7 +2111,7 @@ static CompileResult compile_stmt_yield(Bytecode *code, const Stmt *stmt)
     CompileResult result = {.is_ok = true, .chunk = NULL, .msg = NULL};
 
     StmtYield stmt_yield = stmt->as.stmt_yield;
-    COMPILE_EXPR(code, &stmt_yield.exp);
+    COMPILE_EXPR(code, &stmt_yield.expr);
     emit_byte(code, OP_YIELD);
 
     Function *f = resolve_func(current_compiler->current_fn->name);
@@ -2128,7 +2128,7 @@ static CompileResult compile_stmt_assert(Bytecode *code, const Stmt *stmt)
     CompileResult result = {.is_ok = true, .chunk = NULL, .msg = NULL};
 
     StmtAssert stmt_assert = stmt->as.stmt_assert;
-    COMPILE_EXPR(code, &stmt_assert.exp);
+    COMPILE_EXPR(code, &stmt_assert.expr);
     emit_byte(code, OP_ASSERT);
 
     return result;

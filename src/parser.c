@@ -202,7 +202,7 @@ static ParseFnResult call(Parser *parser)
                 CONSUME(parser, TOKEN_IDENTIFIER, "Expected property name after '.'");
 
             ExprGet get_expr = {
-                .exp = ALLOC(expr),
+                .expr = ALLOC(expr),
                 .property_name = own_string_n(property_name.start, property_name.length),
                 .op = op,
             };
@@ -233,7 +233,7 @@ static ParseFnResult unary(Parser *parser)
     {
         char *op = own_string_n(parser->previous.start, parser->previous.length);
         Expr right = HANDLE_EXPR(unary, parser);
-        ExprUnary e = {.exp = ALLOC(right), .op = op};
+        ExprUnary e = {.expr = ALLOC(right), .op = op};
         return (ParseFnResult) {.as.expr = AS_EXPR_UNA(e), .is_ok = true, .msg = NULL};
     }
     return call(parser);
@@ -471,7 +471,7 @@ static ParseFnResult struct_initializer(Parser *parser)
             .property = ALLOC(property),
             .value = ALLOC(value),
         };
-        dynarray_insert(&initializers, AS_EXPR_S_INIT(structinitexp));
+        dynarray_insert(&initializers, AS_EXPR_STRUCT_INIT(structinitexp));
     } while (match(parser, 1, TOKEN_COMMA));
     CONSUME(parser, TOKEN_RIGHT_BRACE, "Expected '}' after struct initialization.");
     ExprStruct structexp = {
@@ -530,7 +530,7 @@ static ParseFnResult print_statement(Parser *parser)
 {
     Expr exp = HANDLE_EXPR(expression, parser);
     CONSUME(parser, TOKEN_SEMICOLON, "Expected semicolon at the end of the expression.");
-    StmtPrint stmt = {.exp = exp};
+    StmtPrint stmt = {.expr = exp};
     return (ParseFnResult) {.as.stmt = AS_STMT_PRINT(stmt), .is_ok = true, .msg = NULL};
 }
 
@@ -552,7 +552,7 @@ static ParseFnResult expression_statement(Parser *parser)
 {
     Expr expr = HANDLE_EXPR(expression, parser);
     CONSUME(parser, TOKEN_SEMICOLON, "Expected ';' after expression");
-    StmtExpr stmt = {.exp = expr};
+    StmtExpr stmt = {.expr = expr};
     return (ParseFnResult) {.as.stmt = AS_STMT_EXPR(stmt), .is_ok = true, .msg = NULL};
 }
 
@@ -734,7 +734,7 @@ static ParseFnResult yield_statement(Parser *parser)
 {
     Expr expr = HANDLE_EXPR(expression, parser);
     CONSUME(parser, TOKEN_SEMICOLON, "Expected ';' after yield statement.");
-    StmtYield stmt = {.exp = expr};
+    StmtYield stmt = {.expr = expr};
     return (ParseFnResult) {.as.stmt = AS_STMT_YIELD(stmt), .is_ok = true, .msg = NULL};
 }
 
@@ -742,7 +742,7 @@ static ParseFnResult assert_statement(Parser *parser)
 {
     Expr expr = HANDLE_EXPR(expression, parser);
     CONSUME(parser, TOKEN_SEMICOLON, "Expected ';' after assert statement.");
-    StmtAssert stmt = {.exp = expr};
+    StmtAssert stmt = {.expr = expr};
     return (ParseFnResult) {.as.stmt = AS_STMT_ASSERT(stmt), .is_ok = true, .msg = NULL};
 }
 

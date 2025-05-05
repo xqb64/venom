@@ -87,8 +87,8 @@ void free_expression(const Expr *expr)
         }
         case EXPR_UNA: {
             ExprUnary expr_unary = expr->as.expr_una;
-            free_expression(expr_unary.exp);
-            free(expr_unary.exp);
+            free_expression(expr_unary.expr);
+            free(expr_unary.expr);
             free(expr_unary.op);
             break;
         }
@@ -131,8 +131,8 @@ void free_expression(const Expr *expr)
             dynarray_free(&expr_struct.initializers);
             break;
         }
-        case EXPR_S_INIT: {
-            ExprStructInit expr_struct_init = expr->as.expr_s_init;
+        case EXPR_STRUCT_INIT: {
+            ExprStructInit expr_struct_init = expr->as.expr_struct_init;
             free_expression(expr_struct_init.property);
             free_expression(expr_struct_init.value);
             free(expr_struct_init.value);
@@ -141,9 +141,9 @@ void free_expression(const Expr *expr)
         }
         case EXPR_GET: {
             ExprGet expr_get = expr->as.expr_get;
-            free_expression(expr_get.exp);
+            free_expression(expr_get.expr);
             free(expr_get.property_name);
-            free(expr_get.exp);
+            free(expr_get.expr);
             free(expr_get.op);
             break;
         }
@@ -174,7 +174,7 @@ void free_stmt(const Stmt *stmt)
     switch (stmt->kind)
     {
         case STMT_PRINT: {
-            free_expression(&stmt->as.stmt_print.exp);
+            free_expression(&stmt->as.stmt_print.expr);
             break;
         }
         case STMT_IMPL: {
@@ -242,7 +242,7 @@ void free_stmt(const Stmt *stmt)
             break;
         }
         case STMT_EXPR: {
-            free_expression(&stmt->as.stmt_expr.exp);
+            free_expression(&stmt->as.stmt_expr.expr);
             break;
         }
         case STMT_FN: {
@@ -280,11 +280,11 @@ void free_stmt(const Stmt *stmt)
             break;
         }
         case STMT_YIELD: {
-            free_expression(&stmt->as.stmt_yield.exp);
+            free_expression(&stmt->as.stmt_yield.expr);
             break;
         }
         case STMT_ASSERT: {
-            free_expression(&stmt->as.stmt_assert.exp);
+            free_expression(&stmt->as.stmt_assert.expr);
             break;
         }
         case STMT_BREAK: {
@@ -371,15 +371,15 @@ void print_expression(const Expr *expr, int indent)
             }
             break;
         }
-        case EXPR_S_INIT: {
+        case EXPR_STRUCT_INIT: {
             printf("StructInit(\n");
             INDENT(indent + 4);
             printf("property: ");
-            print_expression(expr->as.expr_s_init.property, indent + 4);
+            print_expression(expr->as.expr_struct_init.property, indent + 4);
             printf(",\n");
             INDENT(indent + 4);
             printf("value: ");
-            print_expression(expr->as.expr_s_init.value, indent + 4);
+            print_expression(expr->as.expr_struct_init.value, indent + 4);
             break;
         }
         case EXPR_BIN: {
@@ -398,7 +398,7 @@ void print_expression(const Expr *expr, int indent)
             printf("op: `%s`\n", expr->as.expr_get.op);
             INDENT(indent + 4);
             printf("exp: ");
-            print_expression(expr->as.expr_get.exp, indent + 4);
+            print_expression(expr->as.expr_get.expr, indent + 4);
             break;
         }
         case EXPR_SUBSCRIPT: {
@@ -416,7 +416,7 @@ void print_expression(const Expr *expr, int indent)
             printf("Unary(\n");
             INDENT(indent + 4);
             printf("exp: ");
-            print_expression(expr->as.expr_una.exp, indent + 4);
+            print_expression(expr->as.expr_una.expr, indent + 4);
             printf(",\n");
             INDENT(indent + 4);
             printf("op: %s", expr->as.expr_una.op);
@@ -480,7 +480,7 @@ void print_stmt(const Stmt *stmt, int indent, bool continuation)
         case STMT_PRINT: {
             printf("Print(\n");
             INDENT(indent + 4);
-            print_expression(&stmt->as.stmt_print.exp, indent + 4);
+            print_expression(&stmt->as.stmt_print.expr, indent + 4);
             break;
         }
         case STMT_FN: {
@@ -552,7 +552,7 @@ void print_stmt(const Stmt *stmt, int indent, bool continuation)
         case STMT_EXPR: {
             printf("Expr(\n");
             INDENT(indent + 4);
-            print_expression(&stmt->as.stmt_expr.exp, indent + 4);
+            print_expression(&stmt->as.stmt_expr.expr, indent + 4);
             break;
         }
         case STMT_RETURN: {
@@ -572,7 +572,7 @@ void print_stmt(const Stmt *stmt, int indent, bool continuation)
         case STMT_ASSERT: {
             printf("Assert(\n");
             INDENT(indent + 4);
-            print_expression(&stmt->as.stmt_assert.exp, indent + 4);
+            print_expression(&stmt->as.stmt_assert.expr, indent + 4);
             break;
         }
         case STMT_USE: {
@@ -582,7 +582,7 @@ void print_stmt(const Stmt *stmt, int indent, bool continuation)
         case STMT_YIELD: {
             printf("Yield(\n");
             INDENT(indent + 4);
-            print_expression(&stmt->as.stmt_yield.exp, indent + 4);
+            print_expression(&stmt->as.stmt_yield.expr, indent + 4);
             break;
         }
         case STMT_DECO: {
@@ -684,8 +684,8 @@ Expr clone_expr(const Expr *expr)
             break;
         }
         case EXPR_UNA: {
-            Expr exp = clone_expr(expr->as.expr_una.exp);
-            clone.as.expr_una.exp = ALLOC(exp);
+            Expr exp = clone_expr(expr->as.expr_una.expr);
+            clone.as.expr_una.expr = ALLOC(exp);
             break;
         }
         case EXPR_CALL: {
@@ -742,7 +742,7 @@ Stmt clone_stmt(const Stmt *stmt)
             break;
         }
         case STMT_PRINT: {
-            copy.as.stmt_print.exp = clone_expr(&stmt->as.stmt_print.exp);
+            copy.as.stmt_print.expr = clone_expr(&stmt->as.stmt_print.expr);
             break;
         }
         case STMT_WHILE: {
@@ -762,7 +762,7 @@ Stmt clone_stmt(const Stmt *stmt)
             break;
         }
         case STMT_EXPR: {
-            copy.as.stmt_expr.exp = clone_expr(&stmt->as.stmt_expr.exp);
+            copy.as.stmt_expr.expr = clone_expr(&stmt->as.stmt_expr.expr);
             break;
         }
         case STMT_BREAK: {
@@ -774,7 +774,7 @@ Stmt clone_stmt(const Stmt *stmt)
             break;
         }
         case STMT_ASSERT: {
-            copy.as.stmt_assert.exp = clone_expr(&stmt->as.stmt_assert.exp);
+            copy.as.stmt_assert.expr = clone_expr(&stmt->as.stmt_assert.expr);
             break;
         }
         case STMT_DECO: {
@@ -812,7 +812,7 @@ Stmt clone_stmt(const Stmt *stmt)
             break;
         }
         case STMT_YIELD: {
-            copy.as.stmt_yield.exp = clone_expr(&stmt->as.stmt_yield.exp);
+            copy.as.stmt_yield.expr = clone_expr(&stmt->as.stmt_yield.expr);
             break;
         }
         case STMT_USE: {

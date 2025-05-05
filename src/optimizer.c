@@ -130,16 +130,16 @@ static Expr constant_fold_expr(const Expr *target, bool *is_modified)
 
         return AS_EXPR_STRUCT(new_struct_expr);
     }
-    else if (target->kind == EXPR_S_INIT)
+    else if (target->kind == EXPR_STRUCT_INIT)
     {
-        const ExprStructInit *structinitexpr = &target->as.expr_s_init;
+        const ExprStructInit *structinitexpr = &target->as.expr_struct_init;
 
         Expr folded = constant_fold_expr(structinitexpr->value, is_modified);
         Expr structinit_expr = clone_expr(structinitexpr->property);
         ExprStructInit new_struct_init_expr = {.value = ALLOC(folded),
                                                .property = ALLOC(structinit_expr)};
 
-        return AS_EXPR_S_INIT(new_struct_init_expr);
+        return AS_EXPR_STRUCT_INIT(new_struct_init_expr);
     }
     else if (target->kind == EXPR_LIT)
     {
@@ -167,9 +167,9 @@ static Stmt constant_fold_stmt(const Stmt *stmt, bool *is_modified)
     switch (stmt->kind)
     {
         case STMT_PRINT: {
-            const Expr *expr = &stmt->as.stmt_print.exp;
+            const Expr *expr = &stmt->as.stmt_print.expr;
             Expr folded = constant_fold_expr(expr, is_modified);
-            StmtPrint print_stmt = {.exp = folded};
+            StmtPrint print_stmt = {.expr = folded};
             return AS_STMT_PRINT(print_stmt);
         }
         case STMT_LET: {
@@ -215,9 +215,9 @@ static Stmt constant_fold_stmt(const Stmt *stmt, bool *is_modified)
             return AS_STMT_BLOCK(block_stmt);
         }
         case STMT_ASSERT: {
-            const Expr *expr = &stmt->as.stmt_assert.exp;
+            const Expr *expr = &stmt->as.stmt_assert.expr;
             Expr folded = constant_fold_expr(expr, is_modified);
-            StmtAssert assert_stmt = {.exp = folded};
+            StmtAssert assert_stmt = {.expr = folded};
             return AS_STMT_ASSERT(assert_stmt);
         }
         case STMT_DECO: {
@@ -226,8 +226,8 @@ static Stmt constant_fold_stmt(const Stmt *stmt, bool *is_modified)
             return AS_STMT_DECO(deco_stmt);
         }
         case STMT_EXPR: {
-            const Expr *expr = &stmt->as.stmt_expr.exp;
-            StmtExpr expr_stmt = {.exp = constant_fold_expr(expr, is_modified)};
+            const Expr *expr = &stmt->as.stmt_expr.expr;
+            StmtExpr expr_stmt = {.expr = constant_fold_expr(expr, is_modified)};
             return AS_STMT_EXPR(expr_stmt);
         }
         case STMT_RETURN: {
@@ -236,9 +236,9 @@ static Stmt constant_fold_stmt(const Stmt *stmt, bool *is_modified)
             return AS_STMT_RETURN(ret_stmt);
         }
         case STMT_YIELD: {
-            const Expr *expr = &stmt->as.stmt_yield.exp;
+            const Expr *expr = &stmt->as.stmt_yield.expr;
             Expr folded = constant_fold_expr(expr, is_modified);
-            StmtYield yield_stmt = {.exp = folded};
+            StmtYield yield_stmt = {.expr = folded};
             return AS_STMT_YIELD(yield_stmt);
         }
         case STMT_WHILE: {
@@ -363,16 +363,16 @@ static Expr propagate_copies_expr(const Expr *expr, Table_Expr *copies, bool *is
             return AS_EXPR_ARRAY(array_expr);
         }
         case EXPR_GET: {
-            Expr propagated = propagate_copies_expr(expr->as.expr_get.exp, copies, is_modified);
+            Expr propagated = propagate_copies_expr(expr->as.expr_get.expr, copies, is_modified);
             ExprGet get_expr = {.op = own_string(expr->as.expr_get.op),
                                 .property_name = own_string(expr->as.expr_get.property_name),
-                                .exp = ALLOC(propagated)};
+                                .expr = ALLOC(propagated)};
             return AS_EXPR_GET(get_expr);
         }
         case EXPR_UNA: {
-            Expr propagated = propagate_copies_expr(expr->as.expr_una.exp, copies, is_modified);
+            Expr propagated = propagate_copies_expr(expr->as.expr_una.expr, copies, is_modified);
             ExprUnary unary_expr = {.op = own_string(expr->as.expr_una.op),
-                                    .exp = ALLOC(propagated)};
+                                    .expr = ALLOC(propagated)};
             return AS_EXPR_UNA(unary_expr);
         }
         case EXPR_SUBSCRIPT: {
@@ -395,13 +395,13 @@ static Expr propagate_copies_expr(const Expr *expr, Table_Expr *copies, bool *is
                                       .initializers = initializers};
             return AS_EXPR_STRUCT(struct_expr);
         }
-        case EXPR_S_INIT: {
+        case EXPR_STRUCT_INIT: {
             Expr propagated =
-                propagate_copies_expr(expr->as.expr_s_init.value, copies, is_modified);
-            Expr cloned_expr = clone_expr(expr->as.expr_s_init.property);
+                propagate_copies_expr(expr->as.expr_struct_init.value, copies, is_modified);
+            Expr cloned_expr = clone_expr(expr->as.expr_struct_init.property);
             ExprStructInit struct_init_expr = {.value = ALLOC(propagated),
                                                .property = ALLOC(cloned_expr)};
-            return AS_EXPR_S_INIT(struct_init_expr);
+            return AS_EXPR_STRUCT_INIT(struct_init_expr);
         }
         default:
             assert(0);
@@ -430,9 +430,9 @@ static Stmt propagate_copies_stmt(const Stmt *stmt, Table_Expr *copies, bool *is
             return AS_STMT_LET(let_stmt);
         }
         case STMT_PRINT: {
-            Expr expr = propagate_copies_expr(&stmt->as.stmt_print.exp, copies, is_modified);
+            Expr expr = propagate_copies_expr(&stmt->as.stmt_print.expr, copies, is_modified);
 
-            StmtPrint print_stmt = {.exp = expr};
+            StmtPrint print_stmt = {.expr = expr};
             return AS_STMT_PRINT(print_stmt);
         }
         case STMT_FN: {
@@ -458,8 +458,9 @@ static Stmt propagate_copies_stmt(const Stmt *stmt, Table_Expr *copies, bool *is
             return AS_STMT_BLOCK(block_stmt);
         }
         case STMT_ASSERT: {
-            Expr propagated = propagate_copies_expr(&stmt->as.stmt_assert.exp, copies, is_modified);
-            StmtAssert assert_stmt = {.exp = propagated};
+            Expr propagated =
+                propagate_copies_expr(&stmt->as.stmt_assert.expr, copies, is_modified);
+            StmtAssert assert_stmt = {.expr = propagated};
             return AS_STMT_ASSERT(assert_stmt);
         }
         case STMT_DECO: {
@@ -469,8 +470,8 @@ static Stmt propagate_copies_stmt(const Stmt *stmt, Table_Expr *copies, bool *is
             return AS_STMT_DECO(deco_stmt);
         }
         case STMT_EXPR: {
-            Expr propagated = propagate_copies_expr(&stmt->as.stmt_expr.exp, copies, is_modified);
-            StmtExpr expr_stmt = {.exp = propagated};
+            Expr propagated = propagate_copies_expr(&stmt->as.stmt_expr.expr, copies, is_modified);
+            StmtExpr expr_stmt = {.expr = propagated};
             return AS_STMT_EXPR(expr_stmt);
             break;
         }
