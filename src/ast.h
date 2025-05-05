@@ -130,19 +130,6 @@ typedef Table(Expr) Table_Expr;
 Table_Expr clone_table_expr(const Table_Expr *table);
 void free_table_expr(const Table_Expr *table);
 
-#define TO_EXPR_LIT(exp)       ((exp).as.expr_lit)
-#define TO_EXPR_VAR(exp)       ((exp).as.expr_var)
-#define TO_EXPR_UNA(exp)       ((exp).as.expr_una)
-#define TO_EXPR_BIN(exp)       ((exp).as.expr_bin)
-#define TO_EXPR_CALL(exp)      ((exp).as.expr_call)
-#define TO_EXPR_GET(exp)       ((exp).as.expr_get)
-#define TO_EXPR_ASS(exp)       ((exp).as.expr_ass)
-#define TO_EXPR_LOG(exp)       ((exp).as.expr_log)
-#define TO_EXPR_STRUCT(exp)    ((exp).as.expr_struct)
-#define TO_EXPR_S_INIT(exp)    ((exp).as.expr_s_init)
-#define TO_EXPR_ARRAY(exp)     ((exp).as.expr_array)
-#define TO_EXPR_SUBSCRIPT(exp) ((exp).as.expr_subscript)
-
 #define AS_EXPR_LIT(exp)       ((Expr) {.kind = EXPR_LIT, .as.expr_lit = (exp)})
 #define AS_EXPR_VAR(exp)       ((Expr) {.kind = EXPR_VAR, .as.expr_var = (exp)})
 #define AS_EXPR_UNA(exp)       ((Expr) {.kind = EXPR_UNA, .as.expr_una = (exp)})
@@ -300,21 +287,6 @@ typedef struct Stmt
         StmtAssert stmt_assert;
     } as;
 } Stmt;
-
-#define TO_STMT_PRINT(stmt)  ((stmt).as.stmt_print)
-#define TO_STMT_LET(stmt)    ((stmt).as.stmt_let)
-#define TO_STMT_EXPR(stmt)   ((stmt).as.stmt_expr)
-#define TO_STMT_BLOCK(stmt)  ((stmt)->as.stmt_block)
-#define TO_STMT_FN(stmt)     ((stmt).as.stmt_fn)
-#define TO_STMT_IF(stmt)     ((stmt).as.stmt_if)
-#define TO_STMT_WHILE(stmt)  ((stmt).as.stmt_while)
-#define TO_STMT_FOR(stmt)    ((stmt).as.stmt_for)
-#define TO_STMT_RETURN(stmt) ((stmt).as.stmt_return)
-#define TO_STMT_STRUCT(stmt) ((stmt).as.stmt_struct)
-#define TO_STMT_IMPL(stmt)   ((stmt).as.stmt_impl)
-#define TO_STMT_USE(stmt)    ((stmt).as.stmt_use)
-#define TO_STMT_YIELD(stmt)  ((stmt).as.stmt_yield)
-#define TO_STMT_ASSERT(stmt) ((stmt).as.stmt_assert)
 
 #define AS_STMT_PRINT(stmt)    ((Stmt) {.kind = STMT_PRINT, .as.stmt_print = (stmt)})
 #define AS_STMT_LET(stmt)      ((Stmt) {.kind = STMT_LET, .as.stmt_let = (stmt)})
