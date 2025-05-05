@@ -20,7 +20,7 @@ typedef enum
     EXPR_BIN,
     EXPR_CALL,
     EXPR_GET,
-    EXPR_ASS,
+    EXPR_ASSIGN,
     EXPR_STRUCT,
     EXPR_STRUCT_INIT,
     EXPR_ARRAY,
@@ -118,7 +118,7 @@ typedef struct Expr
         ExprBin expr_bin;
         ExprCall expr_call;
         ExprGet expr_get;
-        ExprAssign expr_ass;
+        ExprAssign expr_assign;
         ExprStruct expr_struct;
         ExprStructInit expr_struct_init;
         ExprArray expr_array;
@@ -136,7 +136,7 @@ void free_table_expr(const Table_Expr *table);
 #define AS_EXPR_BIN(exp)         ((Expr) {.kind = EXPR_BIN, .as.expr_bin = (exp)})
 #define AS_EXPR_CALL(exp)        ((Expr) {.kind = EXPR_CALL, .as.expr_call = (exp)})
 #define AS_EXPR_GET(exp)         ((Expr) {.kind = EXPR_GET, .as.expr_get = (exp)})
-#define AS_EXPR_ASS(exp)         ((Expr) {.kind = EXPR_ASS, .as.expr_ass = (exp)})
+#define AS_EXPR_ASSIGN(exp)      ((Expr) {.kind = EXPR_ASSIGN, .as.expr_assign = (exp)})
 #define AS_EXPR_LOG(exp)         ((Expr) {.kind = EXPR_LOG, .as.expr_log = (exp)})
 #define AS_EXPR_STRUCT(exp)      ((Expr) {.kind = EXPR_STRUCT, .as.expr_struct = (exp)})
 #define AS_EXPR_STRUCT_INIT(exp) ((Expr) {.kind = EXPR_STRUCT_INIT, .as.expr_struct_init = (exp)})

@@ -84,9 +84,9 @@ static Expr constant_fold_expr(const Expr *target, bool *is_modified)
 
         return AS_EXPR_BIN(new_binexpr);
     }
-    else if (target->kind == EXPR_ASS)
+    else if (target->kind == EXPR_ASSIGN)
     {
-        const ExprAssign *assignexpr = &target->as.expr_ass;
+        const ExprAssign *assignexpr = &target->as.expr_assign;
 
         Expr new_rhs = constant_fold_expr(assignexpr->rhs, is_modified);
 
@@ -94,7 +94,7 @@ static Expr constant_fold_expr(const Expr *target, bool *is_modified)
         ExprAssign new_assignexpr = {
             .op = own_string(assignexpr->op), .lhs = ALLOC(lhs), .rhs = ALLOC(new_rhs)};
 
-        return AS_EXPR_ASS(new_assignexpr);
+        return AS_EXPR_ASSIGN(new_assignexpr);
     }
     else if (target->kind == EXPR_CALL)
     {
@@ -337,19 +337,19 @@ static Expr propagate_copies_expr(const Expr *expr, Table_Expr *copies, bool *is
 
             return AS_EXPR_BIN(new_binexpr);
         }
-        case EXPR_ASS: {
-            Expr *lhs = expr->as.expr_ass.lhs;
+        case EXPR_ASSIGN: {
+            Expr *lhs = expr->as.expr_assign.lhs;
             if (lhs->kind == EXPR_VAR)
             {
                 table_remove(copies, lhs->as.expr_var.name);
             }
-            Expr propagated_rhs = propagate_copies_expr(expr->as.expr_ass.rhs, copies, is_modified);
+            Expr propagated_rhs = propagate_copies_expr(expr->as.expr_assign.rhs, copies, is_modified);
 
             Expr cloned_lhs = clone_expr(lhs);
             ExprAssign assign_expr = {.lhs = ALLOC(cloned_lhs),
                                       .rhs = ALLOC(propagated_rhs),
-                                      .op = own_string(expr->as.expr_ass.op)};
-            return AS_EXPR_ASS(assign_expr);
+                                      .op = own_string(expr->as.expr_assign.op)};
+            return AS_EXPR_ASSIGN(assign_expr);
         }
         case EXPR_ARRAY: {
             DynArray_Expr elements = {0};

@@ -423,7 +423,7 @@ static ParseFnResult assignment(Parser *parser)
             .rhs = ALLOC(right),
             .op = op,
         };
-        expr = AS_EXPR_ASS(assignexp);
+        expr = AS_EXPR_ASSIGN(assignexp);
     }
     return (ParseFnResult) {.as.expr = expr, .is_ok = true, .msg = NULL};
 }

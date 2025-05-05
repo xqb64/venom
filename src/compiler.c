@@ -1232,7 +1232,7 @@ static CompileResult compile_expr_ass(Bytecode *code, const Expr *expr)
 {
     CompileResult result = {.is_ok = true, .chunk = NULL, .msg = NULL};
 
-    ExprAssign expr_assign = expr->as.expr_ass;
+    ExprAssign expr_assign = expr->as.expr_assign;
     bool compound_assign = strcmp(expr_assign.op, "=") != 0;
 
     switch (expr_assign.lhs->kind)
@@ -1379,7 +1379,7 @@ static CompileExprHandler expression_handler[] = {
     [EXPR_BIN] = {.fn = compile_expr_bin, .name = "EXPR_BIN"},
     [EXPR_CALL] = {.fn = compile_expr_call, .name = "EXPR_CALL"},
     [EXPR_GET] = {.fn = compile_expr_get, .name = "EXPR_GET"},
-    [EXPR_ASS] = {.fn = compile_expr_ass, .name = "EXPR_ASS"},
+    [EXPR_ASSIGN] = {.fn = compile_expr_ass, .name = "EXPR_ASS"},
     [EXPR_STRUCT] = {.fn = compile_expr_struct, .name = "EXPR_STRUCT"},
     [EXPR_STRUCT_INIT] = {.fn = compile_expr_struct_init, .name = "EXPR_S_INIT"},
     [EXPR_ARRAY] = {.fn = compile_expr_array, .name = "EXPR_ARRAY"},
@@ -1609,7 +1609,7 @@ static CompileResult compile_stmt_for(Bytecode *code, const Stmt *stmt)
 
     StmtFor stmt_for = stmt->as.stmt_for;
 
-    ExprAssign assignment = stmt_for.initializer.as.expr_ass;
+    ExprAssign assignment = stmt_for.initializer.as.expr_assign;
     ExprVar variable = assignment.lhs->as.expr_var;
 
     /* Insert the initializer variable name into the current_compiler->locals

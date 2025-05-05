@@ -101,8 +101,8 @@ void free_expression(const Expr *expr)
             free(expr_bin.op);
             break;
         }
-        case EXPR_ASS: {
-            ExprAssign expr_assign = expr->as.expr_ass;
+        case EXPR_ASSIGN: {
+            ExprAssign expr_assign = expr->as.expr_assign;
             free_expression(expr_assign.lhs);
             free_expression(expr_assign.rhs);
             free(expr_assign.lhs);
@@ -428,12 +428,12 @@ void print_expression(const Expr *expr, int indent)
             printf("name: %s", expr->as.expr_var.name);
             break;
         }
-        case EXPR_ASS: {
+        case EXPR_ASSIGN: {
             printf("Assign(\n");
             INDENT(indent + 4);
-            print_expression(expr->as.expr_ass.lhs, indent + 4);
-            printf(" %s ", expr->as.expr_ass.op);
-            print_expression(expr->as.expr_ass.rhs, indent + 4);
+            print_expression(expr->as.expr_assign.lhs, indent + 4);
+            printf(" %s ", expr->as.expr_assign.op);
+            print_expression(expr->as.expr_assign.rhs, indent + 4);
             break;
         }
         case EXPR_CALL: {
@@ -675,12 +675,12 @@ Expr clone_expr(const Expr *expr)
             clone.as.expr_bin.op = own_string(expr->as.expr_bin.op);
             break;
         }
-        case EXPR_ASS: {
-            Expr lhs = clone_expr(expr->as.expr_ass.lhs);
-            Expr rhs = clone_expr(expr->as.expr_ass.rhs);
-            clone.as.expr_ass.lhs = ALLOC(lhs);
-            clone.as.expr_ass.rhs = ALLOC(rhs);
-            clone.as.expr_ass.op = own_string(expr->as.expr_ass.op);
+        case EXPR_ASSIGN: {
+            Expr lhs = clone_expr(expr->as.expr_assign.lhs);
+            Expr rhs = clone_expr(expr->as.expr_assign.rhs);
+            clone.as.expr_assign.lhs = ALLOC(lhs);
+            clone.as.expr_assign.rhs = ALLOC(rhs);
+            clone.as.expr_assign.op = own_string(expr->as.expr_assign.op);
             break;
         }
         case EXPR_UNA: {
