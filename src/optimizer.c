@@ -742,6 +742,15 @@ static Stmt clone_stmt(Stmt *stmt)
             copy.as.stmt_while.body = ALLOC(body);
             break;
         }
+        case STMT_FOR: {
+            copy.as.stmt_for.initializer = clone_expr(&stmt->as.stmt_for.initializer);
+            copy.as.stmt_for.condition = clone_expr(&stmt->as.stmt_for.condition);
+            copy.as.stmt_for.advancement = clone_expr(&stmt->as.stmt_for.advancement);
+            Stmt body = clone_stmt(stmt->as.stmt_for.body);
+            copy.as.stmt_for.body = ALLOC(body);
+            copy.as.stmt_for.label = own_string(stmt->as.stmt_for.label);
+            break;
+        }
         case STMT_EXPR: {
             copy.as.stmt_expr.exp = clone_expr(&stmt->as.stmt_expr.exp);
             break;
@@ -754,8 +763,64 @@ static Stmt clone_stmt(Stmt *stmt)
             copy.as.stmt_continue.label = own_string(stmt->as.stmt_continue.label);
             break;
         }
-        default:
+        case STMT_ASSERT: {
+            copy.as.stmt_assert.exp = clone_expr(&stmt->as.stmt_assert.exp);
             break;
+        }
+        case STMT_DECO: {
+            Stmt body = clone_stmt(stmt->as.stmt_deco.fn);
+            copy.as.stmt_deco.fn = ALLOC(body); 
+            copy.as.stmt_deco.name = own_string(stmt->as.stmt_deco.name);
+            break;
+        }
+        case STMT_IF: {
+            copy.as.stmt_if.condition = clone_expr(&stmt->as.stmt_if.condition);
+            Stmt then_branch = clone_stmt(stmt->as.stmt_if.then_branch);
+            Stmt *else_branch = NULL;
+            if (stmt->as.stmt_if.else_branch)
+            {
+                Stmt s = clone_stmt(stmt->as.stmt_if.else_branch);
+                *else_branch = s;
+            }
+            copy.as.stmt_if.then_branch = ALLOC(then_branch);
+            copy.as.stmt_if.else_branch = else_branch;
+            break;
+        }
+        case STMT_IMPL: {
+            copy.as.stmt_impl.name = own_string(stmt->as.stmt_impl.name);
+            DynArray_Stmt methods = {0};
+            for (size_t i = 0; i < stmt->as.stmt_impl.methods.count; i++)
+            {
+                Stmt s = clone_stmt(&stmt->as.stmt_impl.methods.data[i]);
+                dynarray_insert(&methods, s);
+            }
+            copy.as.stmt_impl.methods = methods;
+            break;
+        }
+        case STMT_RETURN: {
+            copy.as.stmt_return.returnval = clone_expr(&stmt->as.stmt_return.returnval);
+            break;
+        }
+        case STMT_YIELD: {
+            copy.as.stmt_yield.exp = clone_expr(&stmt->as.stmt_yield.exp);
+            break;
+        }
+        case STMT_USE: {
+            copy.as.stmt_use.path = own_string(stmt->as.stmt_use.path);
+            break;
+        }
+        case STMT_STRUCT: {
+            copy.as.stmt_struct.name = own_string(stmt->as.stmt_struct.name);
+            DynArray_char_ptr properties = {0};
+            for (size_t i = 0; i < stmt->as.stmt_struct.properties.count; i++)
+            {
+                char *s = own_string(stmt->as.stmt_struct.properties.data[i]);
+                dynarray_insert(&properties, s);
+            }
+            break;
+        }
+        default:
+            assert(0);
     }
 
     return copy;
