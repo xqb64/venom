@@ -22,8 +22,8 @@ static Expr constant_fold_expr(const Expr *target, bool *is_modified)
                                                                                                \
             *is_modified = true;                                                               \
                                                                                                \
-            free_expression(*(expr)->lhs);                                                     \
-            free_expression(*(expr)->rhs);                                                     \
+            free_expression((expr)->lhs);                                                      \
+            free_expression((expr)->rhs);                                                      \
                                                                                                \
             free((expr)->lhs);                                                                 \
             free((expr)->rhs);                                                                 \
@@ -574,20 +574,20 @@ DynArray_Stmt optimize(const DynArray_Stmt *ast)
         {
             Stmt folded = constant_fold_stmt(&original.data[i], &is_modified);
             Stmt propagated = propagate_copies_stmt(&folded, &copies, &is_modified);
-            free_stmt(folded);
+            free_stmt(&folded);
             dynarray_insert(&optimized_ast, propagated);
         }
 
         free_table_expr(&copies);
 
         for (size_t i = 0; i < original.count; i++)
-            free_stmt(original.data[i]);
+            free_stmt(&original.data[i]);
         dynarray_free(&original);
 
         original = clone_ast(&optimized_ast);
 
         for (size_t i = 0; i < optimized_ast.count; i++)
-            free_stmt(optimized_ast.data[i]);
+            free_stmt(&optimized_ast.data[i]);
         dynarray_free(&optimized_ast);
 
     } while (is_modified);

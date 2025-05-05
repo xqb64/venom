@@ -8,7 +8,6 @@
 
 #include "util.h"
 
-
 static Bucket *clone_bucket(Bucket *src, const Expr *src_items, Expr *dst_items, size_t *dst_count)
 {
     if (!src)
@@ -44,10 +43,9 @@ void free_table_expr(const Table_Expr *table)
 
     for (size_t i = 0; i < table->count; i++)
     {
-        free_expression(table->items[i]);
+        free_expression(&table->items[i]);
     }
 }
-
 
 Table_Expr clone_table_expr(const Table_Expr *src)
 {
@@ -70,100 +68,100 @@ Table_Expr clone_table_expr(const Table_Expr *src)
     return clone;
 }
 
-void free_expression(Expr e)
+void free_expression(const Expr *expr)
 {
-    switch (e.kind)
+    switch (expr->kind)
     {
         case EXPR_LIT: {
-            ExprLit litexpr = TO_EXPR_LIT(e);
-            if (litexpr.kind == LIT_STR)
+            ExprLit expr_lit = expr->as.expr_lit;
+            if (expr_lit.kind == LIT_STR)
             {
-                free(litexpr.as.str);
+                free(expr_lit.as.str);
             }
             break;
         }
         case EXPR_VAR: {
-            ExprVar varexpr = TO_EXPR_VAR(e);
-            free(varexpr.name);
+            ExprVar expr_var = expr->as.expr_var;
+            free(expr_var.name);
             break;
         }
         case EXPR_UNA: {
-            ExprUnary unaryexpr = TO_EXPR_UNA(e);
-            free_expression(*unaryexpr.exp);
-            free(unaryexpr.exp);
-            free(unaryexpr.op);
+            ExprUnary expr_unary = expr->as.expr_una;
+            free_expression(expr_unary.exp);
+            free(expr_unary.exp);
+            free(expr_unary.op);
             break;
         }
         case EXPR_BIN: {
-            ExprBin binexpr = TO_EXPR_BIN(e);
-            free_expression(*binexpr.lhs);
-            free_expression(*binexpr.rhs);
-            free(binexpr.lhs);
-            free(binexpr.rhs);
-            free(binexpr.op);
+            ExprBin expr_bin = expr->as.expr_bin;
+            free_expression(expr_bin.lhs);
+            free_expression(expr_bin.rhs);
+            free(expr_bin.lhs);
+            free(expr_bin.rhs);
+            free(expr_bin.op);
             break;
         }
         case EXPR_ASS: {
-            ExprAssign assignexpr = TO_EXPR_ASS(e);
-            free_expression(*assignexpr.lhs);
-            free_expression(*assignexpr.rhs);
-            free(assignexpr.lhs);
-            free(assignexpr.rhs);
-            free(assignexpr.op);
+            ExprAssign expr_assign = expr->as.expr_ass;
+            free_expression(expr_assign.lhs);
+            free_expression(expr_assign.rhs);
+            free(expr_assign.lhs);
+            free(expr_assign.rhs);
+            free(expr_assign.op);
             break;
         }
         case EXPR_CALL: {
-            ExprCall callexpr = TO_EXPR_CALL(e);
-            free_expression(*callexpr.callee);
-            free(callexpr.callee);
-            for (size_t i = 0; i < callexpr.arguments.count; i++)
+            ExprCall expr_call = expr->as.expr_call;
+            free_expression(expr_call.callee);
+            free(expr_call.callee);
+            for (size_t i = 0; i < expr_call.arguments.count; i++)
             {
-                free_expression(callexpr.arguments.data[i]);
+                free_expression(&expr_call.arguments.data[i]);
             }
-            dynarray_free(&callexpr.arguments);
+            dynarray_free(&expr_call.arguments);
             break;
         }
         case EXPR_STRUCT: {
-            ExprStruct structexpr = TO_EXPR_STRUCT(e);
-            free(structexpr.name);
-            for (size_t i = 0; i < structexpr.initializers.count; i++)
+            ExprStruct expr_struct = expr->as.expr_struct;
+            free(expr_struct.name);
+            for (size_t i = 0; i < expr_struct.initializers.count; i++)
             {
-                free_expression(structexpr.initializers.data[i]);
+                free_expression(&expr_struct.initializers.data[i]);
             }
-            dynarray_free(&structexpr.initializers);
+            dynarray_free(&expr_struct.initializers);
             break;
         }
         case EXPR_S_INIT: {
-            ExprStructInit structinitexpr = TO_EXPR_S_INIT(e);
-            free_expression(*structinitexpr.property);
-            free_expression(*structinitexpr.value);
-            free(structinitexpr.value);
-            free(structinitexpr.property);
+            ExprStructInit expr_struct_init = expr->as.expr_s_init;
+            free_expression(expr_struct_init.property);
+            free_expression(expr_struct_init.value);
+            free(expr_struct_init.value);
+            free(expr_struct_init.property);
             break;
         }
         case EXPR_GET: {
-            ExprGet getexpr = TO_EXPR_GET(e);
-            free_expression(*getexpr.exp);
-            free(getexpr.property_name);
-            free(getexpr.exp);
-            free(getexpr.op);
+            ExprGet expr_get = expr->as.expr_get;
+            free_expression(expr_get.exp);
+            free(expr_get.property_name);
+            free(expr_get.exp);
+            free(expr_get.op);
             break;
         }
         case EXPR_ARRAY: {
-            ExprArray arrayexpr = TO_EXPR_ARRAY(e);
-            for (size_t i = 0; i < arrayexpr.elements.count; i++)
+            ExprArray expr_array = expr->as.expr_array;
+            for (size_t i = 0; i < expr_array.elements.count; i++)
             {
-                free_expression(arrayexpr.elements.data[i]);
+                free_expression(&expr_array.elements.data[i]);
             }
-            dynarray_free(&arrayexpr.elements);
+            dynarray_free(&expr_array.elements);
             break;
         }
         case EXPR_SUBSCRIPT: {
-            ExprSubscript subscriptexpr = TO_EXPR_SUBSCRIPT(e);
-            free_expression(*subscriptexpr.expr);
-            free_expression(*subscriptexpr.index);
-            free(subscriptexpr.expr);
-            free(subscriptexpr.index);
+            ExprSubscript expr_subscript = expr->as.expr_subscript;
+            free_expression(expr_subscript.expr);
+            free_expression(expr_subscript.index);
+            free(expr_subscript.expr);
+            free(expr_subscript.index);
             break;
         }
         default:
@@ -171,134 +169,134 @@ void free_expression(Expr e)
     }
 }
 
-void free_stmt(Stmt stmt)
+void free_stmt(const Stmt *stmt)
 {
-    switch (stmt.kind)
+    switch (stmt->kind)
     {
         case STMT_PRINT: {
-            free_expression(TO_STMT_PRINT(stmt).exp);
+            free_expression(&stmt->as.stmt_print.exp);
             break;
         }
         case STMT_IMPL: {
-            free(TO_STMT_IMPL(stmt).name);
-            for (size_t i = 0; i < TO_STMT_IMPL(stmt).methods.count; i++)
+            free(stmt->as.stmt_impl.name);
+            for (size_t i = 0; i < stmt->as.stmt_impl.methods.count; i++)
             {
-                free_stmt(TO_STMT_IMPL(stmt).methods.data[i]);
+                free_stmt(&stmt->as.stmt_impl.methods.data[i]);
             }
-            dynarray_free(&TO_STMT_IMPL(stmt).methods);
+            dynarray_free(&stmt->as.stmt_impl.methods);
             break;
         }
         case STMT_LET: {
-            free_expression(TO_STMT_LET(stmt).initializer);
-            free(stmt.as.stmt_let.name);
+            free_expression(&stmt->as.stmt_let.initializer);
+            free(stmt->as.stmt_let.name);
             break;
         }
         case STMT_BLOCK: {
-            for (size_t i = 0; i < TO_STMT_BLOCK(&stmt).stmts.count; i++)
+            for (size_t i = 0; i < stmt->as.stmt_block.stmts.count; i++)
             {
-                free_stmt(TO_STMT_BLOCK(&stmt).stmts.data[i]);
+                free_stmt(&stmt->as.stmt_block.stmts.data[i]);
             }
-            dynarray_free(&TO_STMT_BLOCK(&stmt).stmts);
+            dynarray_free(&stmt->as.stmt_block.stmts);
             break;
         }
         case STMT_IF: {
-            free_expression(TO_STMT_IF(stmt).condition);
+            free_expression(&stmt->as.stmt_if.condition);
 
-            free_stmt(*TO_STMT_IF(stmt).then_branch);
-            free(TO_STMT_IF(stmt).then_branch);
+            free_stmt(stmt->as.stmt_if.then_branch);
+            free(stmt->as.stmt_if.then_branch);
 
-            if (TO_STMT_IF(stmt).else_branch != NULL)
+            if (stmt->as.stmt_if.else_branch != NULL)
             {
-                free_stmt(*TO_STMT_IF(stmt).else_branch);
-                free(TO_STMT_IF(stmt).else_branch);
+                free_stmt(stmt->as.stmt_if.else_branch);
+                free(stmt->as.stmt_if.else_branch);
             }
 
             break;
         }
         case STMT_WHILE: {
-            free(TO_STMT_WHILE(stmt).label);
-            free_expression(TO_STMT_WHILE(stmt).condition);
-            for (size_t i = 0; i < TO_STMT_BLOCK(TO_STMT_WHILE(stmt).body).stmts.count; i++)
+            free(stmt->as.stmt_while.label);
+            free_expression(&stmt->as.stmt_while.condition);
+            for (size_t i = 0; i < stmt->as.stmt_while.body->as.stmt_block.stmts.count; i++)
             {
-                free_stmt(TO_STMT_BLOCK(TO_STMT_WHILE(stmt).body).stmts.data[i]);
+                free_stmt(&stmt->as.stmt_while.body->as.stmt_block.stmts.data[i]);
             }
-            dynarray_free(&TO_STMT_BLOCK(TO_STMT_WHILE(stmt).body).stmts);
-            free(TO_STMT_WHILE(stmt).body);
+            dynarray_free(&stmt->as.stmt_while.body->as.stmt_block.stmts);
+            free(stmt->as.stmt_while.body);
             break;
         }
         case STMT_FOR: {
-            free(TO_STMT_FOR(stmt).label);
-            free_expression(TO_STMT_FOR(stmt).initializer);
-            free_expression(TO_STMT_FOR(stmt).condition);
-            free_expression(TO_STMT_FOR(stmt).advancement);
-            for (size_t i = 0; i < TO_STMT_BLOCK(TO_STMT_FOR(stmt).body).stmts.count; i++)
+            free(stmt->as.stmt_for.label);
+            free_expression(&stmt->as.stmt_for.initializer);
+            free_expression(&stmt->as.stmt_for.condition);
+            free_expression(&stmt->as.stmt_for.advancement);
+            for (size_t i = 0; i < stmt->as.stmt_for.body->as.stmt_block.stmts.count; i++)
             {
-                free_stmt(TO_STMT_BLOCK(TO_STMT_FOR(stmt).body).stmts.data[i]);
+                free_stmt(&stmt->as.stmt_for.body->as.stmt_block.stmts.data[i]);
             }
-            dynarray_free(&TO_STMT_BLOCK(TO_STMT_FOR(stmt).body).stmts);
-            free(TO_STMT_FOR(stmt).body);
+            dynarray_free(&stmt->as.stmt_for.body->as.stmt_block.stmts);
+            free(stmt->as.stmt_for.body);
             break;
         }
         case STMT_RETURN: {
-            free_expression(TO_STMT_RETURN(stmt).returnval);
+            free_expression(&stmt->as.stmt_return.returnval);
             break;
         }
         case STMT_EXPR: {
-            free_expression(TO_STMT_EXPR(stmt).exp);
+            free_expression(&stmt->as.stmt_expr.exp);
             break;
         }
         case STMT_FN: {
-            free(TO_STMT_FN(stmt).name);
-            for (size_t i = 0; i < TO_STMT_FN(stmt).parameters.count; i++)
+            free(stmt->as.stmt_fn.name);
+            for (size_t i = 0; i < stmt->as.stmt_fn.parameters.count; i++)
             {
-                free(TO_STMT_FN(stmt).parameters.data[i]);
+                free(stmt->as.stmt_fn.parameters.data[i]);
             }
-            dynarray_free(&TO_STMT_FN(stmt).parameters);
-            for (size_t i = 0; i < TO_STMT_BLOCK(TO_STMT_FN(stmt).body).stmts.count; i++)
+            dynarray_free(&stmt->as.stmt_fn.parameters);
+            for (size_t i = 0; i < stmt->as.stmt_fn.body->as.stmt_block.stmts.count; i++)
             {
-                free_stmt(TO_STMT_BLOCK(TO_STMT_FN(stmt).body).stmts.data[i]);
+                free_stmt(&stmt->as.stmt_fn.body->as.stmt_block.stmts.data[i]);
             }
-            dynarray_free(&TO_STMT_BLOCK(TO_STMT_FN(stmt).body).stmts);
-            free(TO_STMT_FN(stmt).body);
+            dynarray_free(&stmt->as.stmt_fn.body->as.stmt_block.stmts);
+            free(stmt->as.stmt_fn.body);
             break;
         }
         case STMT_DECO: {
-            free(stmt.as.stmt_deco.name);
-            free_stmt(*stmt.as.stmt_deco.fn);
-            free(stmt.as.stmt_deco.fn);
+            free(stmt->as.stmt_deco.name);
+            free_stmt(stmt->as.stmt_deco.fn);
+            free(stmt->as.stmt_deco.fn);
             break;
         }
         case STMT_STRUCT: {
-            free(TO_STMT_STRUCT(stmt).name);
-            for (size_t i = 0; i < TO_STMT_STRUCT(stmt).properties.count; i++)
+            free(stmt->as.stmt_struct.name);
+            for (size_t i = 0; i < stmt->as.stmt_struct.properties.count; i++)
             {
-                free(TO_STMT_STRUCT(stmt).properties.data[i]);
+                free(stmt->as.stmt_struct.properties.data[i]);
             }
-            dynarray_free(&TO_STMT_STRUCT(stmt).properties);
+            dynarray_free(&stmt->as.stmt_struct.properties);
             break;
         }
         case STMT_USE: {
-            free(TO_STMT_USE(stmt).path);
+            free(stmt->as.stmt_use.path);
             break;
         }
         case STMT_YIELD: {
-            free_expression(TO_STMT_YIELD(stmt).exp);
+            free_expression(&stmt->as.stmt_yield.exp);
             break;
         }
         case STMT_ASSERT: {
-            free_expression(TO_STMT_ASSERT(stmt).exp);
+            free_expression(&stmt->as.stmt_assert.exp);
             break;
         }
         case STMT_BREAK: {
-            free(stmt.as.stmt_break.label);
+            free(stmt->as.stmt_break.label);
             break;
         }
         case STMT_CONTINUE: {
-            free(stmt.as.stmt_continue.label);
+            free(stmt->as.stmt_continue.label);
             break;
         }
         default:
-            print_stmt(&stmt, 0, false);
+            print_stmt(stmt, 0, false);
             assert(0);
     }
 }
@@ -735,6 +733,7 @@ Stmt clone_stmt(const Stmt *stmt)
             copy.as.stmt_fn.name = own_string(stmt->as.stmt_fn.name);
             Stmt body = clone_stmt(stmt->as.stmt_fn.body);
             copy.as.stmt_fn.body = ALLOC(body);
+            ;
             break;
         }
         case STMT_BLOCK: {

@@ -2076,7 +2076,7 @@ static CompileResult compile_stmt_use(Bytecode *code, Stmt stmt)
 
         for (size_t i = 0; i < ast.count; i++)
         {
-            free_stmt(ast.data[i]);
+            free_stmt(&ast.data[i]);
         }
         dynarray_free(&ast);
 

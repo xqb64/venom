@@ -337,8 +337,8 @@ typedef struct Stmt
 void print_expression(const Expr *expr, int indent);
 void print_stmt(const Stmt *stmt, int indent, bool continuation);
 void pretty_print(const DynArray_Stmt *ast);
-void free_stmt(Stmt stmt);
-void free_expression(Expr expr);
+void free_stmt(const Stmt *stmt);
+void free_expression(const Expr *expr);
 ExprLit clone_literal(const ExprLit *literal);
 Expr clone_expr(const Expr *expr);
 Stmt clone_stmt(const Stmt *stmt);
