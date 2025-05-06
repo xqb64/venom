@@ -235,11 +235,7 @@ static inline ExecResult handle_op_print(VM *vm, Bytecode *code, uint8_t **ip)
 }
 
 /* OP_ADD pops two objects off the stack, adds them, and
- * pushes the result back on the stack.
- *
- * SAFETY: It is up to the user to ensure the two objec-
- * ts are numbers, because this handler does not do run-
- * time type checks. */
+ * pushes the result back on the stack. */
 static inline ExecResult handle_op_add(VM *vm, Bytecode *code, uint8_t **ip)
 {
   ExecResult r = {.is_ok = true, .msg = NULL};
@@ -248,11 +244,7 @@ static inline ExecResult handle_op_add(VM *vm, Bytecode *code, uint8_t **ip)
 }
 
 /* OP_SUB pops two objects off the stack, subs them, and
- * pushes the result back on the stack.
- *
- * SAFETY: It is up to the user to ensure the two objec-
- * ts are numbers, because this handler does not do run-
- * time type checks. */
+ * pushes the result back on the stack. */
 static inline ExecResult handle_op_sub(VM *vm, Bytecode *code, uint8_t **ip)
 {
   ExecResult r = {.is_ok = true, .msg = NULL};
@@ -261,11 +253,7 @@ static inline ExecResult handle_op_sub(VM *vm, Bytecode *code, uint8_t **ip)
 }
 
 /* OP_MUL pops two objects off the stack, muls them, and
- * pushes the result back on the stack.
- *
- * SAFETY: It is up to the user to ensure the two objec-
- * ts are numbers, because this handler does not do run-
- * time type checks. */
+ * pushes the result back on the stack. */
 static inline ExecResult handle_op_mul(VM *vm, Bytecode *code, uint8_t **ip)
 {
   ExecResult r = {.is_ok = true, .msg = NULL};
@@ -274,11 +262,7 @@ static inline ExecResult handle_op_mul(VM *vm, Bytecode *code, uint8_t **ip)
 }
 
 /* OP_DIV pops two objects off the stack, divs them, and
- * pushes the result back on the stack.
- *
- * SAFETY: It is up to the user to ensure the two objec-
- * ts are numbers, because this handler does not do run-
- * time type checks. */
+ * pushes the result back on the stack. */
 static inline ExecResult handle_op_div(VM *vm, Bytecode *code, uint8_t **ip)
 {
   ExecResult r = {.is_ok = true, .msg = NULL};
@@ -287,11 +271,7 @@ static inline ExecResult handle_op_div(VM *vm, Bytecode *code, uint8_t **ip)
 }
 
 /* OP_MOD pops two objects off the stack, mods them, and
- * pushes the result back on the stack.
- *
- * SAFETY: It is up to the user to ensure the two objec-
- * ts are numbers, because this handler does not do run-
- * time type checks. */
+ * pushes the result back on the stack. */
 static inline ExecResult handle_op_mod(VM *vm, Bytecode *code, uint8_t **ip)
 {
   ExecResult r = {.is_ok = true, .msg = NULL};
@@ -308,11 +288,7 @@ static inline ExecResult handle_op_mod(VM *vm, Bytecode *code, uint8_t **ip)
 
 /* OP_BITAND pops two objects off the stack, clamps them
  * to [0, UINT64_MAX], performs the bitwise AND operati-
- * on on them, and pushes the result back on the stack.
- *
- * SAFETY: It is up to the user to ensure the two objec-
- * ts are numbers, because this handler does not do run-
- * time type checks. */
+ * on on them, and pushes the result back on the stack. */
 static inline ExecResult handle_op_bitand(VM *vm, Bytecode *code, uint8_t **ip)
 {
   ExecResult r = {.is_ok = true, .msg = NULL};
@@ -322,11 +298,7 @@ static inline ExecResult handle_op_bitand(VM *vm, Bytecode *code, uint8_t **ip)
 
 /* OP_BITOR pops two objects off the stack, clamps them
  * to [0, UINT64_MAX], performs the bitwise OR operati-
- * on on them, and pushes the result back on the stack.
- *
- * SAFETY: It is up to the user to ensure the two objec-
- * ts are numbers, because this handler does not do run-
- * time type checks. */
+ * on on them, and pushes the result back on the stack. */
 static inline ExecResult handle_op_bitor(VM *vm, Bytecode *code, uint8_t **ip)
 {
   ExecResult r = {.is_ok = true, .msg = NULL};
@@ -336,11 +308,7 @@ static inline ExecResult handle_op_bitor(VM *vm, Bytecode *code, uint8_t **ip)
 
 /* OP_BITXOR pops two objects off the stack, clamps them
  * to [0, UINT64_MAX], performs the bitwise XOR operati-
- * on on them, and pushes the result back on the stack.
- *
- * SAFETY: It is up to the user to ensure the two objec-
- * ts are numbers, because this handler does not do run-
- * time type checks. */
+ * on on them, and pushes the result back on the stack. */
 static inline ExecResult handle_op_bitxor(VM *vm, Bytecode *code, uint8_t **ip)
 {
   ExecResult r = {.is_ok = true, .msg = NULL};
@@ -350,11 +318,7 @@ static inline ExecResult handle_op_bitxor(VM *vm, Bytecode *code, uint8_t **ip)
 
 /* OP_BITNOT pops an object off the stack, clamps it to
  * to [0, UINT64_MAX], performs the bitwise NOT operat-
- * ion on it, and pushes the result back on the stack.
- *
- * SAFETY: It is up to the user to ensure the object is a
- * number because this handler does not do a runtime type
- * check. */
+ * ion on it, and pushes the result back on the stack. */
 static inline ExecResult handle_op_bitnot(VM *vm, Bytecode *code, uint8_t **ip)
 {
   ExecResult r = {.is_ok = true, .msg = NULL};
@@ -371,11 +335,7 @@ static inline ExecResult handle_op_bitnot(VM *vm, Bytecode *code, uint8_t **ip)
 
 /* OP_BITSHL pops two objects off the stack, clamps them
  * to [0, UINT64_MAX], performs the bitwise SHL operati-
- * on on them, and pushes the result back on the stack.
- *
- * SAFETY: It is up to the user to ensure the two objec-
- * ts are numbers, because this handler does not do run-
- * time type checks. */
+ * on on them, and pushes the result back on the stack. */
 static inline ExecResult handle_op_bitshl(VM *vm, Bytecode *code, uint8_t **ip)
 {
   ExecResult r = {.is_ok = true, .msg = NULL};
@@ -385,11 +345,7 @@ static inline ExecResult handle_op_bitshl(VM *vm, Bytecode *code, uint8_t **ip)
 
 /* OP_BITSHR pops two objects off the stack, clamps them
  * to [0, UINT64_MAX], performs the bitwise SHR operati-
- * on on them, and pushes the result back on the stack.
- *
- * SAFETY: It is up to the user to ensure the two objec-
- * ts are numbers, because this handler does not do run-
- * time type checks. */
+ * on on them, and pushes the result back on the stack. */
 static inline ExecResult handle_op_bitshr(VM *vm, Bytecode *code, uint8_t **ip)
 {
   ExecResult r = {.is_ok = true, .msg = NULL};
@@ -403,11 +359,7 @@ static inline ExecResult handle_op_bitshr(VM *vm, Bytecode *code, uint8_t **ip)
  *
  * REFCOUNTING: Since the two objects might be refcoun-
  * ted, the reference count for both must be decrement-
- * ed.
- *
- * SAFETY: It is up to the user to ensure the two objec-
- * ts are bools, because this handler does not do runti-
- * me type checks. */
+ * ed. */
 static inline ExecResult handle_op_eq(VM *vm, Bytecode *code, uint8_t **ip)
 {
   ExecResult r = {.is_ok = true, .msg = NULL};
@@ -424,11 +376,7 @@ static inline ExecResult handle_op_eq(VM *vm, Bytecode *code, uint8_t **ip)
 
 /* OP_GT pops two objects off the stack, compares them us-
  * ing the GT operation, and pushes the result back on the
- * stack.
- *
- * SAFETY: It is up to the user to ensure the two objects
- * are numbers, because this handler does not do runtime
- * type checks. */
+ * stack. */
 static inline ExecResult handle_op_gt(VM *vm, Bytecode *code, uint8_t **ip)
 {
   ExecResult r = {.is_ok = true, .msg = NULL};
@@ -438,11 +386,7 @@ static inline ExecResult handle_op_gt(VM *vm, Bytecode *code, uint8_t **ip)
 
 /* OP_LT pops two objects off the stack, compares them us-
  * ing the LT operation, and pushes the result back on the
- * stack.
- *
- * SAFETY: It is up to the user to ensure the two objects
- * are numbers, because this handler does not do runtime
- * type checks. */
+ * stack. */
 static inline ExecResult handle_op_lt(VM *vm, Bytecode *code, uint8_t **ip)
 {
   ExecResult r = {.is_ok = true, .msg = NULL};
