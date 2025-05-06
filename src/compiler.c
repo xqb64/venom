@@ -166,7 +166,10 @@ void free_compiler(Compiler *compiler)
   free(compiler->labels);
 }
 
-void init_chunk(Bytecode *code) { memset(code, 0, sizeof(Bytecode)); }
+void init_chunk(Bytecode *code)
+{
+  memset(code, 0, sizeof(Bytecode));
+}
 
 void free_chunk(Bytecode *code)
 {
@@ -386,7 +389,10 @@ static void emit_loop_cleanup(Bytecode *code)
   }
 }
 
-static void begin_scope() { current_compiler->depth++; }
+static void begin_scope()
+{
+  current_compiler->depth++;
+}
 
 static void end_scope(Bytecode *code)
 {

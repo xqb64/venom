@@ -50,7 +50,10 @@ static Token pop_front(Parser *parser)
   return (Token) {.type = TOKEN_EOF, .length = 0, .start = NULL};
 }
 
-static Token next_token(Parser *parser) { return pop_front(parser); }
+static Token next_token(Parser *parser)
+{
+  return pop_front(parser);
+}
 
 static Token advance(Parser *parser)
 {
@@ -414,7 +417,10 @@ static ParseFnResult assignment(Parser *parser)
   return (ParseFnResult) {.as.expr = expr, .is_ok = true, .msg = NULL};
 }
 
-static ParseFnResult expression(Parser *parser) { return assignment(parser); }
+static ParseFnResult expression(Parser *parser)
+{
+  return assignment(parser);
+}
 
 static ParseFnResult grouping(Parser *parser)
 {

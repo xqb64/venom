@@ -32,11 +32,20 @@ void free_vm(VM *vm)
   free(vm->blueprints);
 }
 
-static inline void push(VM *vm, Object obj) { vm->stack[vm->tos++] = obj; }
+static inline void push(VM *vm, Object obj)
+{
+  vm->stack[vm->tos++] = obj;
+}
 
-static inline Object pop(VM *vm) { return vm->stack[--vm->tos]; }
+static inline Object pop(VM *vm)
+{
+  return vm->stack[--vm->tos];
+}
 
-static inline Object peek(VM *vm, int n) { return vm->stack[vm->tos - 1 - n]; }
+static inline Object peek(VM *vm, int n)
+{
+  return vm->stack[vm->tos - 1 - n];
+}
 
 static inline uint64_t clamp(double d)
 {

@@ -1,5 +1,6 @@
 BasedOnStyle: Google
 InsertBraces: true
+AllowShortFunctionsOnASingleLine: None
 AllowShortBlocksOnASingleLine: Never
 AllowShortIfStatementsOnASingleLine: Never
 AllowShortLoopsOnASingleLine: false

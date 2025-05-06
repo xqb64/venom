@@ -25,16 +25,25 @@ static bool match(Tokenizer *tokenizer, char target)
   return false;
 }
 
-static char advance(Tokenizer *tokenizer) { return *tokenizer->current++; }
+static char advance(Tokenizer *tokenizer)
+{
+  return *tokenizer->current++;
+}
 
-static bool is_digit(const char c) { return c >= '0' && c <= '9'; }
+static bool is_digit(const char c)
+{
+  return c >= '0' && c <= '9';
+}
 
 static bool is_alpha(const char c)
 {
   return (c >= 'a' && c <= 'z') || (c >= 'A' && c <= 'Z') || c == '_';
 }
 
-static bool is_alnum(const char c) { return is_alpha(c) || is_digit(c); }
+static bool is_alnum(const char c)
+{
+  return is_alpha(c) || is_digit(c);
+}
 
 static bool is_at_end(const Tokenizer *tokenizer)
 {

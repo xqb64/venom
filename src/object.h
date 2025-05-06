@@ -694,7 +694,10 @@ inline ObjectType type(const Object *obj)
   assert(0);
 }
 #else
-inline ObjectType type(const Object *obj) { return obj->type; }
+inline ObjectType type(const Object *obj)
+{
+  return obj->type;
+}
 #endif
 
 #endif
