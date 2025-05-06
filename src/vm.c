@@ -396,31 +396,29 @@ static inline ExecResult handle_op_lt(VM *vm, Bytecode *code, uint8_t **ip)
 
 /* OP_NOT pops an object off the stack, performs the
  * logical NOT operation on it by inverting its bool
- * value, and pushes the result back on the stack.
- *
- * SAFETY: It is up to the user to ensure the object
- * is a bool, because this handler does not do a ru-
- * ntime type check. */
+ * value, and pushes the result back on the stack. */
 static inline ExecResult handle_op_not(VM *vm, Bytecode *code, uint8_t **ip)
 {
   ExecResult r = {.is_ok = true, .msg = NULL};
   Object obj = pop(vm);
+  if (!IS_BOOL(obj)) {
+    RUNTIME_ERROR("cannot '!' object of type %s", get_object_type(&obj));
+  }
   push(vm, BOOL_VAL(AS_BOOL(obj) ^ 1));
   return r;
 }
 
 /* OP_NEG pops an object off the stack, performs the
  * logical NEG operation on it by negating its value,
- * and pushes the result back on the stack.
- *
- * SAFETY: It is up to the user to ensure the object is
- * a number, because this handler does not do a runtime
- * type check. */
+ * and pushes the result back on the stack. */
 static inline ExecResult handle_op_neg(VM *vm, Bytecode *code, uint8_t **ip)
 {
   ExecResult r = {.is_ok = true, .msg = NULL};
 
   Object original = pop(vm);
+  if (!IS_NUM(original)) {
+    RUNTIME_ERROR("cannot '-' object of type %s", get_object_type(&original));
+  }
   Object negated = NUM_VAL(-AS_NUM(original));
   push(vm, negated);
   return r;
