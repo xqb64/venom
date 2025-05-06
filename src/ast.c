@@ -6,6 +6,7 @@
 #include <stdlib.h>
 #include <string.h>
 
+#include "dynarray.h"
 #include "util.h"
 
 void free_expression(const Expr *expr)
@@ -361,7 +362,34 @@ Expr clone_expr(const Expr *expr)
       clone.as.expr_variable.name = own_string(expr->as.expr_variable.name);
       break;
     }
+    case EXPR_ARRAY: {
+      DynArray_Expr elements = {0};
+      for (size_t i = 0; i < expr->as.expr_array.elements.count; i++) {
+        Expr cloned = clone_expr(&expr->as.expr_array.elements.data[i]);
+        dynarray_insert(&elements, cloned);
+      }
+      clone.as.expr_array.elements = elements;
+      break;
+    }
+    case EXPR_SUBSCRIPT: {
+      Expr cloned_expr = clone_expr(expr->as.expr_subscript.expr);
+      Expr cloned_index = clone_expr(expr->as.expr_subscript.index);
+      clone.as.expr_subscript.expr = ALLOC(cloned_expr);
+      clone.as.expr_subscript.index = ALLOC(cloned_index);
+      break;
+    }
+    case EXPR_STRUCT: {
+      DynArray_Expr initializers = {0};
+      for (size_t i = 0; i < expr->as.expr_struct.initializers.count; i++) {
+        Expr cloned = expr->as.expr_struct.initializers.data[i];
+        dynarray_insert(&initializers, cloned);
+      }
+      clone.as.expr_struct.initializers = initializers;
+      clone.as.expr_struct.name = own_string(expr->as.expr_struct.name);
+      break;
+    }
     default:
+      print_expression(expr, 0);
       assert(0);
   }
 
@@ -478,6 +506,7 @@ Stmt clone_stmt(const Stmt *stmt)
       break;
     }
     default:
+      print_stmt(stmt, 0, false);
       assert(0);
   }
 
