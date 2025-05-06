@@ -79,7 +79,7 @@ static int run(Arguments *args)
 
   if (args->optimize) {
     DynArray_Stmt optimized_ast = optimize(&cooked_ast);
-    free_ast(&optimized_ast);
+    free_ast(&cooked_ast);
     cooked_ast = optimized_ast;
   }
 
