@@ -232,6 +232,14 @@ void free_stmt(const Stmt *stmt)
   }
 }
 
+void free_ast(const DynArray_Stmt *ast)
+{
+  for (size_t i = 0; i < ast->count; i++) {
+    free_stmt(&ast->data[i]);
+  }
+  dynarray_free(ast);
+}
+
 void free_table_expr(const Table_Expr *table)
 {
   for (size_t i = 0; i < TABLE_MAX; i++) {
@@ -411,9 +419,13 @@ Stmt clone_stmt(const Stmt *stmt)
     }
     case STMT_FN: {
       clone.as.stmt_fn.name = own_string(stmt->as.stmt_fn.name);
+      DynArray_char_ptr parameters = {0};
+      for (size_t i = 0; i < stmt->as.stmt_fn.parameters.count; i++) {
+        dynarray_insert(&parameters, own_string(stmt->as.stmt_fn.parameters.data[i]));
+      }
+      clone.as.stmt_fn.parameters = parameters;
       Stmt body = clone_stmt(stmt->as.stmt_fn.body);
       clone.as.stmt_fn.body = ALLOC(body);
-      ;
       break;
     }
     case STMT_BLOCK: {

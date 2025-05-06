@@ -79,10 +79,7 @@ static int run(Arguments *args)
 
   if (args->optimize) {
     DynArray_Stmt optimized_ast = optimize(&cooked_ast);
-    for (size_t i = 0; i < cooked_ast.count; i++) {
-      free_stmt(&cooked_ast.data[i]);
-    }
-    dynarray_free(&cooked_ast);
+    free_ast(&optimized_ast);
     cooked_ast = optimized_ast;
   }
 
@@ -130,10 +127,7 @@ cleanup_after_compile:
   free_compile_result(&compile_result);
 
 cleanup_after_parse:
-  for (size_t i = 0; i < cooked_ast.count; i++) {
-    free_stmt(&cooked_ast.data[i]);
-  }
-  dynarray_free(&cooked_ast);
+  free_ast(&cooked_ast);
 
 cleanup_after_lex:
   dynarray_free(&tokenize_result.tokens);

@@ -163,7 +163,12 @@ static Stmt constant_fold_stmt(const Stmt *stmt, bool *is_modified)
     }
     case STMT_FN: {
       Stmt body = constant_fold_stmt(stmt->as.stmt_fn.body, is_modified);
+      DynArray_char_ptr cloned_params = {0};
+      for (size_t i = 0; i < stmt->as.stmt_fn.parameters.count; i++) {
+        dynarray_insert(&cloned_params, own_string(stmt->as.stmt_fn.parameters.data[i]));
+      }
       StmtFn fn_stmt = {.body = ALLOC(body),
+                        .parameters = cloned_params,
                         .name = own_string(stmt->as.stmt_fn.name)};
       return AS_STMT_FN(fn_stmt);
     }
@@ -291,6 +296,7 @@ static Stmt constant_fold_stmt(const Stmt *stmt, bool *is_modified)
       return AS_STMT_STRUCT(struct_stmt);
     }
     default:
+      print_stmt(stmt, 0, false);
       assert(0);
   }
 }
@@ -394,7 +400,18 @@ static Expr propagate_copies_expr(const Expr *expr, Table_Expr *copies,
                                                 .property = ALLOC(cloned_expr)};
       return AS_EXPR_STRUCT_INITIALIZER(struct_init_expr);
     }
+    case EXPR_CALL: {
+      DynArray_Expr propagated_args = {0};
+      for (size_t i = 0; i < expr->as.expr_call.arguments.count; i++) {
+        Expr propagated_arg = propagate_copies_expr(&expr->as.expr_call.arguments.data[i], copies, is_modified);
+        dynarray_insert(&propagated_args, propagated_arg);
+      }
+      Expr cloned_callee = clone_expr(expr->as.expr_call.callee);
+      ExprCall call_expr = {.callee = ALLOC(cloned_callee), .arguments = propagated_args};
+      return AS_EXPR_CALL(call_expr);
+    }
     default:
+      print_expr(expr, 0);
       assert(0);
   }
 }
@@ -430,7 +447,12 @@ static Stmt propagate_copies_stmt(const Stmt *stmt, Table_Expr *copies,
       Table_Expr cloned_copies = clone_table_expr(copies);
       Stmt body = propagate_copies_stmt(stmt->as.stmt_fn.body, &cloned_copies,
                                         is_modified);
+      DynArray_char_ptr cloned_params = {0};
+      for (size_t i = 0; i < stmt->as.stmt_fn.parameters.count; i++) {
+        dynarray_insert(&cloned_params, own_string(stmt->as.stmt_fn.parameters.data[i]));
+      }
       StmtFn fn_stmt = {.body = ALLOC(body),
+                        .parameters = cloned_params,
                         .name = own_string(stmt->as.stmt_fn.name)};
       free_table_expr(&cloned_copies);
       return AS_STMT_FN(fn_stmt);
@@ -576,20 +598,12 @@ DynArray_Stmt optimize(const DynArray_Stmt *ast)
     }
 
     free_table_expr(&copies);
-
-    for (size_t i = 0; i < original.count; i++) {
-      free_stmt(&original.data[i]);
-    }
-    dynarray_free(&original);
+    free_ast(&original);
 
     original = clone_ast(&optimized_ast);
-
-    for (size_t i = 0; i < optimized_ast.count; i++) {
-      free_stmt(&optimized_ast.data[i]);
-    }
-    dynarray_free(&optimized_ast);
-
-  } while (is_modified);
+    
+    free_ast(&optimized_ast);
+} while (is_modified);
 
   return original;
 }
