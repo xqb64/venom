@@ -102,6 +102,7 @@ void free_expr(const Expr *expr)
       break;
     }
     default:
+      print_expr(expr, 0);
       assert(0);
   }
 }
@@ -692,7 +693,7 @@ void print_expr(const Expr *expr, int indent)
       break;
     }
     default:
-      break;
+      assert(0);
   }
   printf("\n");
   INDENT(indent);
@@ -864,7 +865,7 @@ void print_stmt(const Stmt *stmt, int indent, bool continuation)
       break;
     }
     default:
-      break;
+      assert(0);
   }
   printf("\n");
   INDENT(indent);
