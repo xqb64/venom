@@ -2033,9 +2033,6 @@ static CompileHandler stmt_handler[] = {
 
 static CompileResult compile_stmt(Bytecode *code, const Stmt *stmt)
 {
-  print_stmt(stmt, 0, false);
-  fflush(stderr);
-  fflush(stdout);
   return stmt_handler[stmt->kind].fn(code, stmt);
 }
 

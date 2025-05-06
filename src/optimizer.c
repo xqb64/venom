@@ -165,7 +165,8 @@ static Stmt constant_fold_stmt(const Stmt *stmt, bool *is_modified)
       Stmt body = constant_fold_stmt(stmt->as.stmt_fn.body, is_modified);
       DynArray_char_ptr cloned_params = {0};
       for (size_t i = 0; i < stmt->as.stmt_fn.parameters.count; i++) {
-        dynarray_insert(&cloned_params, own_string(stmt->as.stmt_fn.parameters.data[i]));
+        dynarray_insert(&cloned_params,
+                        own_string(stmt->as.stmt_fn.parameters.data[i]));
       }
       StmtFn fn_stmt = {.body = ALLOC(body),
                         .parameters = cloned_params,
@@ -403,11 +404,13 @@ static Expr propagate_copies_expr(const Expr *expr, Table_Expr *copies,
     case EXPR_CALL: {
       DynArray_Expr propagated_args = {0};
       for (size_t i = 0; i < expr->as.expr_call.arguments.count; i++) {
-        Expr propagated_arg = propagate_copies_expr(&expr->as.expr_call.arguments.data[i], copies, is_modified);
+        Expr propagated_arg = propagate_copies_expr(
+            &expr->as.expr_call.arguments.data[i], copies, is_modified);
         dynarray_insert(&propagated_args, propagated_arg);
       }
       Expr cloned_callee = clone_expr(expr->as.expr_call.callee);
-      ExprCall call_expr = {.callee = ALLOC(cloned_callee), .arguments = propagated_args};
+      ExprCall call_expr = {.callee = ALLOC(cloned_callee),
+                            .arguments = propagated_args};
       return AS_EXPR_CALL(call_expr);
     }
     default:
@@ -449,7 +452,8 @@ static Stmt propagate_copies_stmt(const Stmt *stmt, Table_Expr *copies,
                                         is_modified);
       DynArray_char_ptr cloned_params = {0};
       for (size_t i = 0; i < stmt->as.stmt_fn.parameters.count; i++) {
-        dynarray_insert(&cloned_params, own_string(stmt->as.stmt_fn.parameters.data[i]));
+        dynarray_insert(&cloned_params,
+                        own_string(stmt->as.stmt_fn.parameters.data[i]));
       }
       StmtFn fn_stmt = {.body = ALLOC(body),
                         .parameters = cloned_params,
@@ -601,9 +605,9 @@ DynArray_Stmt optimize(const DynArray_Stmt *ast)
     free_ast(&original);
 
     original = clone_ast(&optimized_ast);
-    
+
     free_ast(&optimized_ast);
-} while (is_modified);
+  } while (is_modified);
 
   return original;
 }

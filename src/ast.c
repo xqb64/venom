@@ -421,7 +421,8 @@ Stmt clone_stmt(const Stmt *stmt)
       clone.as.stmt_fn.name = own_string(stmt->as.stmt_fn.name);
       DynArray_char_ptr parameters = {0};
       for (size_t i = 0; i < stmt->as.stmt_fn.parameters.count; i++) {
-        dynarray_insert(&parameters, own_string(stmt->as.stmt_fn.parameters.data[i]));
+        dynarray_insert(&parameters,
+                        own_string(stmt->as.stmt_fn.parameters.data[i]));
       }
       clone.as.stmt_fn.parameters = parameters;
       Stmt body = clone_stmt(stmt->as.stmt_fn.body);
