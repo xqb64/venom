@@ -60,16 +60,17 @@ DisassembleHandler disassemble_handler[] = {
 void disassemble(Bytecode *code)
 {
 #define READ_UINT8() (*++ip)
-#define READ_INT16() (ip += 2, (int16_t)((ip[-1] << 8) | ip[0]))
+#define READ_INT16() (ip += 2, (int16_t) ((ip[-1] << 8) | ip[0]))
 
 #define READ_UINT32() \
-  (ip += 4, (uint32_t)((ip[-3] << 24) | (ip[-2] << 16) | (ip[-1] << 8) | ip[0]))
+  (ip += 4,           \
+   (uint32_t) ((ip[-3] << 24) | (ip[-2] << 16) | (ip[-1] << 8) | ip[0]))
 
-#define READ_DOUBLE()                                                      \
-  (ip += 8, (double)(((uint64_t)ip[-7] << 56) | ((uint64_t)ip[-6] << 48) | \
-                     ((uint64_t)ip[-5] << 40) | ((uint64_t)ip[-4] << 32) | \
-                     ((uint64_t)ip[-3] << 24) | ((uint64_t)ip[-2] << 16) | \
-                     ((uint64_t)ip[-1] << 8) | (uint64_t)ip[0]))
+#define READ_DOUBLE()                                                         \
+  (ip += 8, (double) (((uint64_t) ip[-7] << 56) | ((uint64_t) ip[-6] << 48) | \
+                      ((uint64_t) ip[-5] << 40) | ((uint64_t) ip[-4] << 32) | \
+                      ((uint64_t) ip[-3] << 24) | ((uint64_t) ip[-2] << 16) | \
+                      ((uint64_t) ip[-1] << 8) | (uint64_t) ip[0]))
 
   for (uint8_t *ip = code->code.data; ip < &code->code.data[code->code.count];
        ip++) {

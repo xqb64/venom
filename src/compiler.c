@@ -220,11 +220,11 @@ static void emit_double(Bytecode *code, double x)
   } num;
   num.d = x;
   emit_bytes(
-      code, 8, (uint8_t)((num.raw >> 56) & 0xFF),
-      (uint8_t)((num.raw >> 48) & 0xFF), (uint8_t)((num.raw >> 40) & 0xFF),
-      (uint8_t)((num.raw >> 32) & 0xFF), (uint8_t)((num.raw >> 24) & 0xFF),
-      (uint8_t)((num.raw >> 16) & 0xFF), (uint8_t)((num.raw >> 8) & 0xFF),
-      (uint8_t)(num.raw & 0xFF));
+      code, 8, (uint8_t) ((num.raw >> 56) & 0xFF),
+      (uint8_t) ((num.raw >> 48) & 0xFF), (uint8_t) ((num.raw >> 40) & 0xFF),
+      (uint8_t) ((num.raw >> 32) & 0xFF), (uint8_t) ((num.raw >> 24) & 0xFF),
+      (uint8_t) ((num.raw >> 16) & 0xFF), (uint8_t) ((num.raw >> 8) & 0xFF),
+      (uint8_t) (num.raw & 0xFF));
 }
 
 static int emit_placeholder(Bytecode *code, Opcode op)
@@ -414,7 +414,7 @@ static void patch_jumps(Bytecode *code)
       }
 
       code->code.data[location + 1] = ((patch_with - location - 3) >> 8) & 0xFF;
-      code->code.data[location + 2] = ((patch_with) - (location)-3) & 0xFF;
+      code->code.data[location + 2] = ((patch_with) - (location) -3) & 0xFF;
     }
   }
 }
@@ -1318,13 +1318,13 @@ static CompileResult compile_stmt_let(Bytecode *code, const Stmt *stmt)
    * to pop off the stack when we do stack cleanup. */
 
   if (current_compiler->depth == 0) {
-    current_compiler->globals[current_compiler->globals_count++] = (Local){
+    current_compiler->globals[current_compiler->globals_count++] = (Local) {
         .name = code->sp.data[name_idx],
         .captured = false,
         .depth = current_compiler->depth,
     };
   } else {
-    current_compiler->locals[current_compiler->locals_count++] = (Local){
+    current_compiler->locals[current_compiler->locals_count++] = (Local) {
         .name = code->sp.data[name_idx],
         .captured = false,
         .depth = current_compiler->depth,
@@ -1495,7 +1495,7 @@ static CompileResult compile_stmt_for(Bytecode *code, const Stmt *stmt)
   /* Insert the initializer variable name into the current_compiler->locals
    * dynarray, since the condition that follows the initializer ex-
    * pects it to be there. */
-  current_compiler->locals[current_compiler->locals_count++] = (Local){
+  current_compiler->locals[current_compiler->locals_count++] = (Local) {
       .name = variable.name,
       .captured = false,
       .depth = current_compiler->depth,
@@ -1636,14 +1636,14 @@ static CompileResult compile_stmt_fn(Bytecode *code, const Stmt *stmt)
   size_t *count = current_compiler->depth == 0
                       ? &current_compiler->next->globals_count
                       : &current_compiler->next->locals_count;
-  array[(*count)++] = (Local){
+  array[(*count)++] = (Local) {
       .name = func.name,
       .depth = current_compiler->depth,
       .captured = false,
   };
 
   for (size_t i = 0; i < stmt_fn.parameters.count; i++) {
-    current_compiler->locals[current_compiler->locals_count++] = (Local){
+    current_compiler->locals[current_compiler->locals_count++] = (Local) {
         .name = stmt_fn.parameters.data[i],
         .depth = current_compiler->depth,
         .captured = false,

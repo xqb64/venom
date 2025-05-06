@@ -117,23 +117,24 @@ Table_Expr clone_table_expr(const Table_Expr *table);
 void free_table_expr(const Table_Expr *table);
 
 #define AS_EXPR_LITERAL(exp) \
-  ((Expr){.kind = EXPR_LITERAL, .as.expr_literal = (exp)})
+  ((Expr) {.kind = EXPR_LITERAL, .as.expr_literal = (exp)})
 #define AS_EXPR_VARIABLE(exp) \
-  ((Expr){.kind = EXPR_VARIABLE, .as.expr_variable = (exp)})
-#define AS_EXPR_UNARY(exp) ((Expr){.kind = EXPR_UNARY, .as.expr_unary = (exp)})
+  ((Expr) {.kind = EXPR_VARIABLE, .as.expr_variable = (exp)})
+#define AS_EXPR_UNARY(exp) ((Expr) {.kind = EXPR_UNARY, .as.expr_unary = (exp)})
 #define AS_EXPR_BINARY(exp) \
-  ((Expr){.kind = EXPR_BINARY, .as.expr_binary = (exp)})
-#define AS_EXPR_CALL(exp) ((Expr){.kind = EXPR_CALL, .as.expr_call = (exp)})
-#define AS_EXPR_GET(exp) ((Expr){.kind = EXPR_GET, .as.expr_get = (exp)})
+  ((Expr) {.kind = EXPR_BINARY, .as.expr_binary = (exp)})
+#define AS_EXPR_CALL(exp) ((Expr) {.kind = EXPR_CALL, .as.expr_call = (exp)})
+#define AS_EXPR_GET(exp) ((Expr) {.kind = EXPR_GET, .as.expr_get = (exp)})
 #define AS_EXPR_ASSIGN(exp) \
-  ((Expr){.kind = EXPR_ASSIGN, .as.expr_assign = (exp)})
+  ((Expr) {.kind = EXPR_ASSIGN, .as.expr_assign = (exp)})
 #define AS_EXPR_STRUCT(exp) \
-  ((Expr){.kind = EXPR_STRUCT, .as.expr_struct = (exp)})
-#define AS_EXPR_STRUCT_INITIALIZER(exp) \
-  ((Expr){.kind = EXPR_STRUCT_INITIALIZER, .as.expr_struct_initializer = (exp)})
-#define AS_EXPR_ARRAY(exp) ((Expr){.kind = EXPR_ARRAY, .as.expr_array = (exp)})
+  ((Expr) {.kind = EXPR_STRUCT, .as.expr_struct = (exp)})
+#define AS_EXPR_STRUCT_INITIALIZER(exp)     \
+  ((Expr) {.kind = EXPR_STRUCT_INITIALIZER, \
+           .as.expr_struct_initializer = (exp)})
+#define AS_EXPR_ARRAY(exp) ((Expr) {.kind = EXPR_ARRAY, .as.expr_array = (exp)})
 #define AS_EXPR_SUBSCRIPT(exp) \
-  ((Expr){.kind = EXPR_SUBSCRIPT, .as.expr_subscript = (exp)})
+  ((Expr) {.kind = EXPR_SUBSCRIPT, .as.expr_subscript = (exp)})
 
 typedef enum {
   STMT_LET,
@@ -262,32 +263,32 @@ typedef struct Stmt {
 } Stmt;
 
 #define AS_STMT_PRINT(stmt) \
-  ((Stmt){.kind = STMT_PRINT, .as.stmt_print = (stmt)})
-#define AS_STMT_LET(stmt) ((Stmt){.kind = STMT_LET, .as.stmt_let = (stmt)})
-#define AS_STMT_EXPR(stmt) ((Stmt){.kind = STMT_EXPR, .as.stmt_expr = (stmt)})
+  ((Stmt) {.kind = STMT_PRINT, .as.stmt_print = (stmt)})
+#define AS_STMT_LET(stmt) ((Stmt) {.kind = STMT_LET, .as.stmt_let = (stmt)})
+#define AS_STMT_EXPR(stmt) ((Stmt) {.kind = STMT_EXPR, .as.stmt_expr = (stmt)})
 #define AS_STMT_BLOCK(stmt) \
-  ((Stmt){.kind = STMT_BLOCK, .as.stmt_block = (stmt)})
-#define AS_STMT_FN(stmt) ((Stmt){.kind = STMT_FN, .as.stmt_fn = (stmt)})
+  ((Stmt) {.kind = STMT_BLOCK, .as.stmt_block = (stmt)})
+#define AS_STMT_FN(stmt) ((Stmt) {.kind = STMT_FN, .as.stmt_fn = (stmt)})
 #define AS_STMT_DECORATOR(stmt) \
-  ((Stmt){.kind = STMT_DECORATOR, .as.stmt_decorator = (stmt)})
-#define AS_STMT_IF(stmt) ((Stmt){.kind = STMT_IF, .as.stmt_if = (stmt)})
+  ((Stmt) {.kind = STMT_DECORATOR, .as.stmt_decorator = (stmt)})
+#define AS_STMT_IF(stmt) ((Stmt) {.kind = STMT_IF, .as.stmt_if = (stmt)})
 #define AS_STMT_WHILE(stmt) \
-  ((Stmt){.kind = STMT_WHILE, .as.stmt_while = (stmt)})
-#define AS_STMT_FOR(stmt) ((Stmt){.kind = STMT_FOR, .as.stmt_for = (stmt)})
+  ((Stmt) {.kind = STMT_WHILE, .as.stmt_while = (stmt)})
+#define AS_STMT_FOR(stmt) ((Stmt) {.kind = STMT_FOR, .as.stmt_for = (stmt)})
 #define AS_STMT_BREAK(stmt) \
-  ((Stmt){.kind = STMT_BREAK, .as.stmt_break = (stmt)})
+  ((Stmt) {.kind = STMT_BREAK, .as.stmt_break = (stmt)})
 #define AS_STMT_CONTINUE(stmt) \
-  ((Stmt){.kind = STMT_CONTINUE, .as.stmt_continue = (stmt)})
+  ((Stmt) {.kind = STMT_CONTINUE, .as.stmt_continue = (stmt)})
 #define AS_STMT_RETURN(stmt) \
-  ((Stmt){.kind = STMT_RETURN, .as.stmt_return = (stmt)})
+  ((Stmt) {.kind = STMT_RETURN, .as.stmt_return = (stmt)})
 #define AS_STMT_STRUCT(stmt) \
-  ((Stmt){.kind = STMT_STRUCT, .as.stmt_struct = (stmt)})
-#define AS_STMT_IMPL(stmt) ((Stmt){.kind = STMT_IMPL, .as.stmt_impl = (stmt)})
-#define AS_STMT_USE(stmt) ((Stmt){.kind = STMT_USE, .as.stmt_use = (stmt)})
+  ((Stmt) {.kind = STMT_STRUCT, .as.stmt_struct = (stmt)})
+#define AS_STMT_IMPL(stmt) ((Stmt) {.kind = STMT_IMPL, .as.stmt_impl = (stmt)})
+#define AS_STMT_USE(stmt) ((Stmt) {.kind = STMT_USE, .as.stmt_use = (stmt)})
 #define AS_STMT_YIELD(stmt) \
-  ((Stmt){.kind = STMT_YIELD, .as.stmt_yield = (stmt)})
+  ((Stmt) {.kind = STMT_YIELD, .as.stmt_yield = (stmt)})
 #define AS_STMT_ASSERT(stmt) \
-  ((Stmt){.kind = STMT_ASSERT, .as.stmt_assert = (stmt)})
+  ((Stmt) {.kind = STMT_ASSERT, .as.stmt_assert = (stmt)})
 
 void print_expression(const Expr *expr, int indent);
 void print_stmt(const Stmt *stmt, int indent, bool continuation);

@@ -45,7 +45,7 @@ static inline uint64_t clamp(double d)
   } else if (d > UINT64_MAX) {
     return UINT64_MAX;
   } else {
-    return (uint64_t)d;
+    return (uint64_t) d;
   }
 }
 
@@ -81,7 +81,7 @@ static inline uint64_t clamp(double d)
                                                                    \
     uint64_t result = clamped_a op clamped_b;                      \
                                                                    \
-    Object obj = NUM_VAL((double)result);                          \
+    Object obj = NUM_VAL((double) result);                         \
                                                                    \
     push(vm, obj);                                                 \
   } while (0)
@@ -97,17 +97,17 @@ static inline uint64_t clamp(double d)
    * ucted from the two bytes. Then the ip will be \
    * incremented by the mainloop again to point to \
    * the next opcode that comes after the jump. */ \
-  (*ip += 2, (int16_t)(((*ip)[-1] << 8) | (*ip)[0]))
+  (*ip += 2, (int16_t) (((*ip)[-1] << 8) | (*ip)[0]))
 
-#define READ_UINT32()                                           \
-  (*ip += 4, (uint32_t)(((*ip)[-3] << 24) | ((*ip)[-2] << 16) | \
-                        ((*ip)[-1] << 8) | (*ip)[0]))
+#define READ_UINT32()                                            \
+  (*ip += 4, (uint32_t) (((*ip)[-3] << 24) | ((*ip)[-2] << 16) | \
+                         ((*ip)[-1] << 8) | (*ip)[0]))
 
-#define READ_DOUBLE()                                                     \
-  (*ip += 8, (((uint64_t)(*ip)[-7] << 56) | ((uint64_t)(*ip)[-6] << 48) | \
-              ((uint64_t)(*ip)[-5] << 40) | ((uint64_t)(*ip)[-4] << 32) | \
-              ((uint64_t)(*ip)[-3] << 24) | ((uint64_t)(*ip)[-2] << 16) | \
-              ((uint64_t)(*ip)[-1] << 8) | (uint64_t)(*ip)[0]))
+#define READ_DOUBLE()                                                       \
+  (*ip += 8, (((uint64_t) (*ip)[-7] << 56) | ((uint64_t) (*ip)[-6] << 48) | \
+              ((uint64_t) (*ip)[-5] << 40) | ((uint64_t) (*ip)[-4] << 32) | \
+              ((uint64_t) (*ip)[-3] << 24) | ((uint64_t) (*ip)[-2] << 16) | \
+              ((uint64_t) (*ip)[-1] << 8) | (uint64_t) (*ip)[0]))
 
 #define PRINT_STACK()                      \
   do {                                     \
@@ -957,12 +957,12 @@ static inline ExecResult handle_op_closure(VM *vm, Bytecode *code, uint8_t **ip)
   location = READ_UINT32();
   upvalue_count = READ_UINT32();
 
-  f = (Function){.name = code->sp.data[name_idx],
-                 .paramcount = paramcount,
-                 .location = location,
-                 .upvalue_count = upvalue_count};
+  f = (Function) {.name = code->sp.data[name_idx],
+                  .paramcount = paramcount,
+                  .location = location,
+                  .upvalue_count = upvalue_count};
 
-  c = (Closure){
+  c = (Closure) {
       .upvalues = malloc(sizeof(Upvalue *) * f.upvalue_count),
       .upvalue_count = f.upvalue_count,
       .refcount = 1,
@@ -1157,7 +1157,7 @@ static inline ExecResult handle_op_arrayset(VM *vm, Bytecode *code,
   Object index = pop(vm);
   Object subscriptee = pop(vm);
   Array *array = AS_ARRAY(subscriptee);
-  array->elements.data[(int)AS_NUM(index)] = value;
+  array->elements.data[(int) AS_NUM(index)] = value;
   objdecref(&subscriptee);
   return r;
 }
@@ -1175,7 +1175,7 @@ static inline ExecResult handle_op_subscript(VM *vm, Bytecode *code,
   ExecResult r = {.is_ok = true, .msg = NULL};
   Object index = pop(vm);
   Object object = pop(vm);
-  Object value = AS_ARRAY(object)->elements.data[(int)AS_NUM(index)];
+  Object value = AS_ARRAY(object)->elements.data[(int) AS_NUM(index)];
   push(vm, value);
   objincref(&value);
   objdecref(&object);

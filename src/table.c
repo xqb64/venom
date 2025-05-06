@@ -7,7 +7,7 @@ void *access_if_idx_not_null(void *array, size_t itemsize, int *i)
   }
 
   // Casting to char*, so that we can give the offset as bytes.
-  return (char *)array + (*i) * itemsize;
+  return (char *) array + (*i) * itemsize;
 }
 
 int *list_find(Bucket *head, const char *item)
@@ -61,7 +61,7 @@ uint32_t hash(const char *key, int length)
   /* copy-paste from 'crafting interpreters' */
   uint32_t hash = 2166136261u;
   for (int i = 0; i < length; i++) {
-    hash ^= (uint8_t)key[i];
+    hash ^= (uint8_t) key[i];
     hash *= 16777619;
   }
   return hash;
@@ -82,7 +82,7 @@ void table_remove_impl(Bucket **head, const char *key, void *items,
       }
 
       // Clear item from items array
-      memset((char *)items + curr->value * itemsize, 0, itemsize);
+      memset((char *) items + curr->value * itemsize, 0, itemsize);
 
       // Free the bucket node
       free(curr->key);

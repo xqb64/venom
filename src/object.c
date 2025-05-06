@@ -30,7 +30,7 @@ void print_object(const Object *object)
     }
     printf(" }, ref: %d>", AS_STRUCT(*object)->refcount);
   } else if (IS_PTR(*object)) {
-    printf("PTR ('%p')", (void *)AS_PTR(*object));
+    printf("PTR ('%p')", (void *) AS_PTR(*object));
   } else if (IS_ARRAY(*object)) {
     Array *array = AS_ARRAY(*object);
     printf("[");

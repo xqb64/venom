@@ -90,8 +90,8 @@ typedef enum {
  * As for the other objects, we'll set the SIGN_BIT, QNAN, tag them acco-
  * rdingly, and use a pointer to the object. */
 
-#define SIGN_BIT ((uint64_t)0x8000000000000000)
-#define QNAN ((uint64_t)0x7ffc000000000000)
+#define SIGN_BIT ((uint64_t) 0x8000000000000000)
+#define QNAN ((uint64_t) 0x7ffc000000000000)
 
 #define TAG_NULL 1
 #define TAG_FALSE 2
@@ -174,52 +174,53 @@ typedef DynArray(Object) DynArray_Object;
 /* To convert a value to an Object pointer, we need to clear the SIGN_BIT,
  * QNAN, and the tag. Finally, we cast the result to Object pointer. */
 #define AS_OBJ(value) \
-  ((Object *)(uintptr_t)(((value) & ~(SIGN_BIT | QNAN | 0x2000000000007))))
+  ((Object *) (uintptr_t) (((value) & ~(SIGN_BIT | QNAN | 0x2000000000007))))
 
 /* To convert a value to a Struct pointer, we need to clear the SIGN_BIT,
  * QNAN, and the tag. Finaly, we cast the result to Struct pointer. */
-#define AS_STRUCT(object)                                              \
-  ((IS_STRUCT(object))                                                 \
-       ? (Struct *)((uintptr_t)((object) &                             \
-                                ~(SIGN_BIT | QNAN | 0x2000000000007))) \
+#define AS_STRUCT(object)                                                \
+  ((IS_STRUCT(object))                                                   \
+       ? (Struct *) ((uintptr_t) ((object) &                             \
+                                  ~(SIGN_BIT | QNAN | 0x2000000000007))) \
        : NULL)
 
 /* To convert a value to a String pointer, we need to clear the SIGN_BIT,
  * QNAN, and the tag. Finally, we cast the result to String pointer. */
-#define AS_STRING(object)                                              \
-  ((IS_STRING(object))                                                 \
-       ? (String *)((uintptr_t)((object) &                             \
-                                ~(SIGN_BIT | QNAN | 0x2000000000007))) \
+#define AS_STRING(object)                                                \
+  ((IS_STRING(object))                                                   \
+       ? (String *) ((uintptr_t) ((object) &                             \
+                                  ~(SIGN_BIT | QNAN | 0x2000000000007))) \
        : NULL)
 
 /* To convert a value to a pointer Object, we need to clear the SIGN_BIT,
  * QNAN, and the tag. Finally, we cast the result to Object pointer. */
-#define AS_PTR(object)                                                       \
-  ((IS_PTR(object)) ? (Object *)((uintptr_t)((object) & ~(SIGN_BIT | QNAN |  \
-                                                          0x2000000000007))) \
+#define AS_PTR(object)                                                         \
+  ((IS_PTR(object)) ? (Object *) ((uintptr_t) ((object) & ~(SIGN_BIT | QNAN |  \
+                                                            0x2000000000007))) \
                     : NULL)
 
 /* To convert a value to an array Object, we need to clear the SIGN_BIT,
  * QNAN, and the tag. Finally, we cast the result to Array pointer. */
-#define AS_ARRAY(object)                                                      \
-  ((IS_ARRAY(object)) ? (Array *)((uintptr_t)((object) & ~(SIGN_BIT | QNAN |  \
-                                                           0x2000000000007))) \
-                      : NULL)
+#define AS_ARRAY(object)                                                \
+  ((IS_ARRAY(object))                                                   \
+       ? (Array *) ((uintptr_t) ((object) &                             \
+                                 ~(SIGN_BIT | QNAN | 0x2000000000007))) \
+       : NULL)
 
 /* To convert a value to a closure Object, we need to clear the SIGN_BIT,
  * QNAN, and the tag. Finally, we cast the result to Closure pointer. */
-#define AS_CLOSURE(object)                                              \
-  ((IS_CLOSURE(object))                                                 \
-       ? (Closure *)((uintptr_t)((object) &                             \
-                                 ~(SIGN_BIT | QNAN | 0x2000000000007))) \
+#define AS_CLOSURE(object)                                                \
+  ((IS_CLOSURE(object))                                                   \
+       ? (Closure *) ((uintptr_t) ((object) &                             \
+                                   ~(SIGN_BIT | QNAN | 0x2000000000007))) \
        : NULL)
 
 /* To convert a value to a generator Object, we need to clear the SIGN_BIT,
  * QNAN, and the tag. Finally, we cast the result to Generator pointer. */
-#define AS_GENERATOR(object)                                              \
-  ((IS_GENERATOR(object))                                                 \
-       ? (Generator *)((uintptr_t)((object) &                             \
-                                   ~(SIGN_BIT | QNAN | 0x2000000000007))) \
+#define AS_GENERATOR(object)                                                \
+  ((IS_GENERATOR(object))                                                   \
+       ? (Generator *) ((uintptr_t) ((object) &                             \
+                                     ~(SIGN_BIT | QNAN | 0x2000000000007))) \
        : NULL)
 
 #define BOOL_VAL(b) ((b) ? TRUE_VAL : FALSE_VAL)
@@ -228,9 +229,9 @@ typedef DynArray(Object) DynArray_Object;
  * it, then sprinkle a little type punning on top of it.
  *
  * Likewise for 'true' and 'null'. */
-#define FALSE_VAL ((Object)(uint64_t)(QNAN | TAG_FALSE))
-#define TRUE_VAL ((Object)(uint64_t)(QNAN | TAG_TRUE))
-#define NULL_VAL ((Object)(uint64_t)(QNAN | TAG_NULL))
+#define FALSE_VAL ((Object) (uint64_t) (QNAN | TAG_FALSE))
+#define TRUE_VAL ((Object) (uint64_t) (QNAN | TAG_TRUE))
+#define NULL_VAL ((Object) (uint64_t) (QNAN | TAG_NULL))
 #define NUM_VAL(num) num2object(num)
 
 /* To construct a Struct object, we set the SIGN_BIT, QNAN, and tag it as
@@ -238,22 +239,22 @@ typedef DynArray(Object) DynArray_Object;
  *
  * Likewise for String, Array, Closure and Object pointer. */
 #define STRUCT_VAL(obj) \
-  (Object)(SIGN_BIT | QNAN | ((uint64_t)(uintptr_t)(obj)) | TAG_STRUCT)
+  (Object)(SIGN_BIT | QNAN | ((uint64_t) (uintptr_t) (obj)) | TAG_STRUCT)
 
 #define STRING_VAL(obj) \
-  (Object)(SIGN_BIT | QNAN | ((uint64_t)(uintptr_t)(obj)) | TAG_STRING)
+  (Object)(SIGN_BIT | QNAN | ((uint64_t) (uintptr_t) (obj)) | TAG_STRING)
 
 #define PTR_VAL(obj) \
-  (Object)(SIGN_BIT | QNAN | ((uint64_t)(uintptr_t)(obj)) | TAG_PTR)
+  (Object)(SIGN_BIT | QNAN | ((uint64_t) (uintptr_t) (obj)) | TAG_PTR)
 
 #define ARRAY_VAL(obj) \
-  (Object)(SIGN_BIT | QNAN | ((uint64_t)(uintptr_t)(obj)) | TAG_ARRAY)
+  (Object)(SIGN_BIT | QNAN | ((uint64_t) (uintptr_t) (obj)) | TAG_ARRAY)
 
 #define CLOSURE_VAL(obj) \
-  (Object)(SIGN_BIT | QNAN | ((uint64_t)(uintptr_t)(obj)) | TAG_CLOSURE)
+  (Object)(SIGN_BIT | QNAN | ((uint64_t) (uintptr_t) (obj)) | TAG_CLOSURE)
 
 #define GENERATOR_VAL(obj) \
-  (Object)(SIGN_BIT | QNAN | ((uint64_t)(uintptr_t)(obj)) | TAG_GENERATOR)
+  (Object)(SIGN_BIT | QNAN | ((uint64_t) (uintptr_t) (obj)) | TAG_GENERATOR)
 
 inline double object2num(Object value)
 {
@@ -354,21 +355,21 @@ typedef struct Object {
 #define AS_STRUCT_BLUEPRINT(object) ((object).as.struct_blueprint)
 #define AS_GENERATOR(object) ((object).as.generator)
 
-#define NUM_VAL(thing) ((Object){.type = OBJ_NUMBER, .as.dval = (thing)})
-#define BOOL_VAL(thing) ((Object){.type = OBJ_BOOLEAN, .as.bval = (thing)})
-#define STRING_VAL(thing) ((Object){.type = OBJ_STRING, .as.str = (thing)})
+#define NUM_VAL(thing) ((Object) {.type = OBJ_NUMBER, .as.dval = (thing)})
+#define BOOL_VAL(thing) ((Object) {.type = OBJ_BOOLEAN, .as.bval = (thing)})
+#define STRING_VAL(thing) ((Object) {.type = OBJ_STRING, .as.str = (thing)})
 #define STRUCT_VAL(thing) \
-  ((Object){.type = OBJ_STRUCT, .as.structobj = (thing)})
-#define PTR_VAL(thing) ((Object){.type = OBJ_PTR, .as.ptr = (thing)})
-#define ARRAY_VAL(thing) ((Object){.type = OBJ_ARRAY, .as.array = (thing)})
-#define FUNC_VAL(thing) ((Object){.type = OBJ_FUNC, .as.func = (thing)})
+  ((Object) {.type = OBJ_STRUCT, .as.structobj = (thing)})
+#define PTR_VAL(thing) ((Object) {.type = OBJ_PTR, .as.ptr = (thing)})
+#define ARRAY_VAL(thing) ((Object) {.type = OBJ_ARRAY, .as.array = (thing)})
+#define FUNC_VAL(thing) ((Object) {.type = OBJ_FUNC, .as.func = (thing)})
 #define CLOSURE_VAL(thing) \
-  ((Object){.type = OBJ_CLOSURE, .as.closure = (thing)})
+  ((Object) {.type = OBJ_CLOSURE, .as.closure = (thing)})
 #define UPVALUE_VAL(thing) \
-  ((Object){.type = OBJ_UPVALUE, .as.upvalue = (thing)})
+  ((Object) {.type = OBJ_UPVALUE, .as.upvalue = (thing)})
 #define GENERATOR_VAL(thing) \
-  ((Object){.type = OBJ_GENERATOR, .as.generator = (thing)})
-#define NULL_VAL ((Object){.type = OBJ_NULL})
+  ((Object) {.type = OBJ_GENERATOR, .as.generator = (thing)})
+#define NULL_VAL ((Object) {.type = OBJ_NULL})
 
 #endif
 

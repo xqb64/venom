@@ -4,3 +4,5 @@ AllowShortBlocksOnASingleLine: Never
 AllowShortIfStatementsOnASingleLine: Never
 AllowShortLoopsOnASingleLine: false
 BreakBeforeBraces: Linux
+SpaceAfterCStyleCast: true
+

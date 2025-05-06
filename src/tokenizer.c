@@ -43,7 +43,7 @@ static bool is_at_end(const Tokenizer *tokenizer)
 
 static Token make_token(const Tokenizer *tokenizer, TokenType type, int length)
 {
-  return (Token){
+  return (Token) {
       .type = type,
       .start = tokenizer->current - length,
       .length = length,

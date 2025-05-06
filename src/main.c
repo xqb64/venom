@@ -173,7 +173,7 @@ static ArgParseResult parse_args(int argc, char *argv[])
         do_optimize = 1;
         break;
       default:
-        return (ArgParseResult){
+        return (ArgParseResult) {
             .args = {0},
             .msg = "usage: %s [--lex] [--parse] [--ir] [--optimize]",
             .is_ok = false};
@@ -181,9 +181,9 @@ static ArgParseResult parse_args(int argc, char *argv[])
   }
 
   if (do_lex + do_parse + do_ir > 1) {
-    return (ArgParseResult){.args = {0},
-                            .msg = "Please specify exactly one option.",
-                            .is_ok = false};
+    return (ArgParseResult) {.args = {0},
+                             .msg = "Please specify exactly one option.",
+                             .is_ok = false};
   }
 
   Arguments args;
@@ -194,7 +194,7 @@ static ArgParseResult parse_args(int argc, char *argv[])
   args.optimize = do_optimize;
   args.file = argv[optind];
 
-  return (ArgParseResult){.args = args, .is_ok = true, .msg = NULL};
+  return (ArgParseResult) {.args = args, .is_ok = true, .msg = NULL};
 }
 
 int main(int argc, char *argv[])
