@@ -8,62 +8,6 @@
 
 #include "util.h"
 
-static Bucket *clone_bucket(Bucket *src, const Expr *src_items, Expr *dst_items,
-                            size_t *dst_count)
-{
-  if (!src) {
-    return NULL;
-  }
-
-  Bucket *new = malloc(sizeof(Bucket));
-  new->key = own_string(src->key);
-
-  dst_items[*dst_count] = clone_expr(&src_items[src->value]);
-  new->value = (*dst_count)++;
-
-  new->next = clone_bucket(src->next, src_items, dst_items, dst_count);
-  return new;
-}
-
-void free_table_expr(const Table_Expr *table)
-{
-  for (size_t i = 0; i < TABLE_MAX; i++) {
-    if (table->indexes[i]) {
-      Bucket *head = table->indexes[i];
-      Bucket *tmp;
-      while (head != NULL) {
-        tmp = head;
-        head = head->next;
-        free(tmp->key);
-        free(tmp);
-      }
-    }
-  }
-
-  for (size_t i = 0; i < table->count; i++) {
-    free_expression(&table->items[i]);
-  }
-}
-
-Table_Expr clone_table_expr(const Table_Expr *src)
-{
-  Table_Expr clone = {0};
-
-  for (size_t i = 0; i < TABLE_MAX; i++) {
-    if (src->indexes[i]) {
-      clone.indexes[i] =
-          clone_bucket(src->indexes[i], src->items, clone.items, &clone.count);
-    }
-  }
-
-  /* FIXME */
-  for (size_t i = 0; i < src->count; i++) {
-    clone.items[i] = clone_expr(&src->items[i]);
-  }
-
-  return clone;
-}
-
 void free_expression(const Expr *expr)
 {
   switch (expr->kind) {
@@ -285,6 +229,271 @@ void free_stmt(const Stmt *stmt)
       print_stmt(stmt, 0, false);
       assert(0);
   }
+}
+
+void free_table_expr(const Table_Expr *table)
+{
+  for (size_t i = 0; i < TABLE_MAX; i++) {
+    if (table->indexes[i]) {
+      Bucket *head = table->indexes[i];
+      Bucket *tmp;
+      while (head != NULL) {
+        tmp = head;
+        head = head->next;
+        free(tmp->key);
+        free(tmp);
+      }
+    }
+  }
+
+  for (size_t i = 0; i < table->count; i++) {
+    free_expression(&table->items[i]);
+  }
+}
+
+static Bucket *clone_bucket(Bucket *src, const Expr *src_items, Expr *dst_items,
+                            size_t *dst_count)
+{
+  if (!src) {
+    return NULL;
+  }
+
+  Bucket *clone = malloc(sizeof(Bucket));
+  clone->key = own_string(src->key);
+
+  dst_items[*dst_count] = clone_expr(&src_items[src->value]);
+  clone->value = (*dst_count)++;
+
+  clone->next = clone_bucket(src->next, src_items, dst_items, dst_count);
+  return clone;
+}
+
+Table_Expr clone_table_expr(const Table_Expr *src)
+{
+  Table_Expr clone = {0};
+
+  for (size_t i = 0; i < TABLE_MAX; i++) {
+    if (src->indexes[i]) {
+      clone.indexes[i] =
+          clone_bucket(src->indexes[i], src->items, clone.items, &clone.count);
+    }
+  }
+
+  /* FIXME */
+  for (size_t i = 0; i < src->count; i++) {
+    clone.items[i] = clone_expr(&src->items[i]);
+  }
+
+  return clone;
+}
+
+ExprLiteral clone_literal(const ExprLiteral *literal)
+{
+  ExprLiteral clone;
+
+  clone.kind = literal->kind;
+
+  switch (literal->kind) {
+    case LIT_NUMBER: {
+      clone.as._double = literal->as._double;
+      break;
+    }
+    case LIT_BOOLEAN: {
+      clone.as._bool = literal->as._bool;
+      break;
+    }
+    case LIT_STRING: {
+      clone.as.str = own_string(literal->as.str);
+      break;
+    }
+    default:
+      break;
+  }
+
+  return clone;
+}
+
+Expr clone_expr(const Expr *expr)
+{
+  Expr clone;
+
+  clone.kind = expr->kind;
+
+  switch (expr->kind) {
+    case EXPR_BINARY: {
+      Expr lhs = clone_expr(expr->as.expr_binary.lhs);
+      Expr rhs = clone_expr(expr->as.expr_binary.rhs);
+      clone.as.expr_binary.lhs = ALLOC(lhs);
+      clone.as.expr_binary.rhs = ALLOC(rhs);
+      clone.as.expr_binary.op = own_string(expr->as.expr_binary.op);
+      break;
+    }
+    case EXPR_ASSIGN: {
+      Expr lhs = clone_expr(expr->as.expr_assign.lhs);
+      Expr rhs = clone_expr(expr->as.expr_assign.rhs);
+      clone.as.expr_assign.lhs = ALLOC(lhs);
+      clone.as.expr_assign.rhs = ALLOC(rhs);
+      clone.as.expr_assign.op = own_string(expr->as.expr_assign.op);
+      break;
+    }
+    case EXPR_UNARY: {
+      Expr exp = clone_expr(expr->as.expr_unary.expr);
+      clone.as.expr_unary.expr = ALLOC(exp);
+      break;
+    }
+    case EXPR_CALL: {
+      DynArray_Expr args = {0};
+      for (size_t i = 0; i < expr->as.expr_call.arguments.count; i++) {
+        Expr cloned = clone_expr(&expr->as.expr_call.arguments.data[i]);
+        dynarray_insert(&args, cloned);
+      }
+      clone.as.expr_call.arguments = args;
+      Expr callee_expr = clone_expr(expr->as.expr_call.callee);
+      clone.as.expr_call.callee = ALLOC(callee_expr);
+      break;
+    }
+    case EXPR_LITERAL: {
+      ExprLiteral cloned = clone_literal(&expr->as.expr_literal);
+      clone.as.expr_literal = cloned;
+      break;
+    }
+    case EXPR_VARIABLE: {
+      clone.as.expr_variable.name = own_string(expr->as.expr_variable.name);
+      break;
+    }
+    default:
+      assert(0);
+  }
+
+  return clone;
+}
+
+Stmt clone_stmt(const Stmt *stmt)
+{
+  Stmt clone;
+
+  clone.kind = stmt->kind;
+
+  switch (stmt->kind) {
+    case STMT_LET: {
+      clone.as.stmt_let.initializer = clone_expr(&stmt->as.stmt_let.initializer);
+      clone.as.stmt_let.name = own_string(stmt->as.stmt_let.name);
+      break;
+    }
+    case STMT_FN: {
+      clone.as.stmt_fn.name = own_string(stmt->as.stmt_fn.name);
+      Stmt body = clone_stmt(stmt->as.stmt_fn.body);
+      clone.as.stmt_fn.body = ALLOC(body);
+      ;
+      break;
+    }
+    case STMT_BLOCK: {
+      clone.as.stmt_block.depth = stmt->as.stmt_block.depth;
+      clone.as.stmt_block.stmts = clone_ast(&stmt->as.stmt_block.stmts);
+      break;
+    }
+    case STMT_PRINT: {
+      clone.as.stmt_print.expr = clone_expr(&stmt->as.stmt_print.expr);
+      break;
+    }
+    case STMT_WHILE: {
+      clone.as.stmt_while.label = own_string(stmt->as.stmt_while.label);
+      clone.as.stmt_while.condition = clone_expr(&stmt->as.stmt_while.condition);
+      Stmt body = clone_stmt(stmt->as.stmt_while.body);
+      clone.as.stmt_while.body = ALLOC(body);
+      break;
+    }
+    case STMT_FOR: {
+      clone.as.stmt_for.initializer = clone_expr(&stmt->as.stmt_for.initializer);
+      clone.as.stmt_for.condition = clone_expr(&stmt->as.stmt_for.condition);
+      clone.as.stmt_for.advancement = clone_expr(&stmt->as.stmt_for.advancement);
+      Stmt body = clone_stmt(stmt->as.stmt_for.body);
+      clone.as.stmt_for.body = ALLOC(body);
+      clone.as.stmt_for.label = own_string(stmt->as.stmt_for.label);
+      break;
+    }
+    case STMT_EXPR: {
+      clone.as.stmt_expr.expr = clone_expr(&stmt->as.stmt_expr.expr);
+      break;
+    }
+    case STMT_BREAK: {
+      clone.as.stmt_break.label = own_string(stmt->as.stmt_break.label);
+      break;
+    }
+    case STMT_CONTINUE: {
+      clone.as.stmt_continue.label = own_string(stmt->as.stmt_continue.label);
+      break;
+    }
+    case STMT_ASSERT: {
+      clone.as.stmt_assert.expr = clone_expr(&stmt->as.stmt_assert.expr);
+      break;
+    }
+    case STMT_DECORATOR: {
+      Stmt body = clone_stmt(stmt->as.stmt_decorator.fn);
+      clone.as.stmt_decorator.fn = ALLOC(body);
+      clone.as.stmt_decorator.name = own_string(stmt->as.stmt_decorator.name);
+      break;
+    }
+    case STMT_IF: {
+      clone.as.stmt_if.condition = clone_expr(&stmt->as.stmt_if.condition);
+      Stmt then_branch = clone_stmt(stmt->as.stmt_if.then_branch);
+      Stmt *else_branch = NULL;
+      if (stmt->as.stmt_if.else_branch) {
+        Stmt s = clone_stmt(stmt->as.stmt_if.else_branch);
+        *else_branch = s;
+      }
+      clone.as.stmt_if.then_branch = ALLOC(then_branch);
+      clone.as.stmt_if.else_branch = else_branch;
+      break;
+    }
+    case STMT_IMPL: {
+      clone.as.stmt_impl.name = own_string(stmt->as.stmt_impl.name);
+      DynArray_Stmt methods = {0};
+      for (size_t i = 0; i < stmt->as.stmt_impl.methods.count; i++) {
+        Stmt s = clone_stmt(&stmt->as.stmt_impl.methods.data[i]);
+        dynarray_insert(&methods, s);
+      }
+      clone.as.stmt_impl.methods = methods;
+      break;
+    }
+    case STMT_RETURN: {
+      clone.as.stmt_return.expr = clone_expr(&stmt->as.stmt_return.expr);
+      break;
+    }
+    case STMT_YIELD: {
+      clone.as.stmt_yield.expr = clone_expr(&stmt->as.stmt_yield.expr);
+      break;
+    }
+    case STMT_USE: {
+      clone.as.stmt_use.path = own_string(stmt->as.stmt_use.path);
+      break;
+    }
+    case STMT_STRUCT: {
+      clone.as.stmt_struct.name = own_string(stmt->as.stmt_struct.name);
+      DynArray_char_ptr properties = {0};
+      for (size_t i = 0; i < stmt->as.stmt_struct.properties.count; i++) {
+        char *s = own_string(stmt->as.stmt_struct.properties.data[i]);
+        dynarray_insert(&properties, s);
+      }
+      break;
+    }
+    default:
+      assert(0);
+  }
+
+  return clone;
+}
+
+DynArray_Stmt clone_ast(const DynArray_Stmt *ast)
+{
+  DynArray_Stmt clone = {0};
+
+  for (size_t i = 0; i < ast->count; i++) {
+    Stmt s = clone_stmt(&ast->data[i]);
+    dynarray_insert(&clone, s);
+  }
+
+  return clone;
 }
 
 static void print_literal(const ExprLiteral *literal)
@@ -615,215 +824,6 @@ void print_stmt(const Stmt *stmt, int indent, bool continuation)
   printf("\n");
   INDENT(indent);
   printf(")");
-}
-
-ExprLiteral clone_literal(const ExprLiteral *literal)
-{
-  ExprLiteral clone;
-
-  clone.kind = literal->kind;
-
-  switch (literal->kind) {
-    case LIT_NUMBER: {
-      clone.as._double = literal->as._double;
-      break;
-    }
-    case LIT_BOOLEAN: {
-      clone.as._bool = literal->as._bool;
-      break;
-    }
-    case LIT_STRING: {
-      clone.as.str = own_string(literal->as.str);
-      break;
-    }
-    default:
-      break;
-  }
-
-  return clone;
-}
-
-Expr clone_expr(const Expr *expr)
-{
-  Expr clone;
-
-  clone.kind = expr->kind;
-
-  switch (expr->kind) {
-    case EXPR_BINARY: {
-      Expr lhs = clone_expr(expr->as.expr_binary.lhs);
-      Expr rhs = clone_expr(expr->as.expr_binary.rhs);
-      clone.as.expr_binary.lhs = ALLOC(lhs);
-      clone.as.expr_binary.rhs = ALLOC(rhs);
-      clone.as.expr_binary.op = own_string(expr->as.expr_binary.op);
-      break;
-    }
-    case EXPR_ASSIGN: {
-      Expr lhs = clone_expr(expr->as.expr_assign.lhs);
-      Expr rhs = clone_expr(expr->as.expr_assign.rhs);
-      clone.as.expr_assign.lhs = ALLOC(lhs);
-      clone.as.expr_assign.rhs = ALLOC(rhs);
-      clone.as.expr_assign.op = own_string(expr->as.expr_assign.op);
-      break;
-    }
-    case EXPR_UNARY: {
-      Expr exp = clone_expr(expr->as.expr_unary.expr);
-      clone.as.expr_unary.expr = ALLOC(exp);
-      break;
-    }
-    case EXPR_CALL: {
-      DynArray_Expr args = {0};
-      for (size_t i = 0; i < expr->as.expr_call.arguments.count; i++) {
-        Expr cloned = clone_expr(&expr->as.expr_call.arguments.data[i]);
-        dynarray_insert(&args, cloned);
-      }
-      clone.as.expr_call.arguments = args;
-      Expr callee_expr = clone_expr(expr->as.expr_call.callee);
-      clone.as.expr_call.callee = ALLOC(callee_expr);
-      break;
-    }
-    case EXPR_LITERAL: {
-      ExprLiteral cloned = clone_literal(&expr->as.expr_literal);
-      clone.as.expr_literal = cloned;
-      break;
-    }
-    case EXPR_VARIABLE: {
-      clone.as.expr_variable.name = own_string(expr->as.expr_variable.name);
-      break;
-    }
-    default:
-      assert(0);
-  }
-
-  return clone;
-}
-
-Stmt clone_stmt(const Stmt *stmt)
-{
-  Stmt copy;
-
-  copy.kind = stmt->kind;
-
-  switch (stmt->kind) {
-    case STMT_LET: {
-      copy.as.stmt_let.initializer = clone_expr(&stmt->as.stmt_let.initializer);
-      copy.as.stmt_let.name = own_string(stmt->as.stmt_let.name);
-      break;
-    }
-    case STMT_FN: {
-      copy.as.stmt_fn.name = own_string(stmt->as.stmt_fn.name);
-      Stmt body = clone_stmt(stmt->as.stmt_fn.body);
-      copy.as.stmt_fn.body = ALLOC(body);
-      ;
-      break;
-    }
-    case STMT_BLOCK: {
-      copy.as.stmt_block.depth = stmt->as.stmt_block.depth;
-      copy.as.stmt_block.stmts = clone_ast(&stmt->as.stmt_block.stmts);
-      break;
-    }
-    case STMT_PRINT: {
-      copy.as.stmt_print.expr = clone_expr(&stmt->as.stmt_print.expr);
-      break;
-    }
-    case STMT_WHILE: {
-      copy.as.stmt_while.label = own_string(stmt->as.stmt_while.label);
-      copy.as.stmt_while.condition = clone_expr(&stmt->as.stmt_while.condition);
-      Stmt body = clone_stmt(stmt->as.stmt_while.body);
-      copy.as.stmt_while.body = ALLOC(body);
-      break;
-    }
-    case STMT_FOR: {
-      copy.as.stmt_for.initializer = clone_expr(&stmt->as.stmt_for.initializer);
-      copy.as.stmt_for.condition = clone_expr(&stmt->as.stmt_for.condition);
-      copy.as.stmt_for.advancement = clone_expr(&stmt->as.stmt_for.advancement);
-      Stmt body = clone_stmt(stmt->as.stmt_for.body);
-      copy.as.stmt_for.body = ALLOC(body);
-      copy.as.stmt_for.label = own_string(stmt->as.stmt_for.label);
-      break;
-    }
-    case STMT_EXPR: {
-      copy.as.stmt_expr.expr = clone_expr(&stmt->as.stmt_expr.expr);
-      break;
-    }
-    case STMT_BREAK: {
-      copy.as.stmt_break.label = own_string(stmt->as.stmt_break.label);
-      break;
-    }
-    case STMT_CONTINUE: {
-      copy.as.stmt_continue.label = own_string(stmt->as.stmt_continue.label);
-      break;
-    }
-    case STMT_ASSERT: {
-      copy.as.stmt_assert.expr = clone_expr(&stmt->as.stmt_assert.expr);
-      break;
-    }
-    case STMT_DECORATOR: {
-      Stmt body = clone_stmt(stmt->as.stmt_decorator.fn);
-      copy.as.stmt_decorator.fn = ALLOC(body);
-      copy.as.stmt_decorator.name = own_string(stmt->as.stmt_decorator.name);
-      break;
-    }
-    case STMT_IF: {
-      copy.as.stmt_if.condition = clone_expr(&stmt->as.stmt_if.condition);
-      Stmt then_branch = clone_stmt(stmt->as.stmt_if.then_branch);
-      Stmt *else_branch = NULL;
-      if (stmt->as.stmt_if.else_branch) {
-        Stmt s = clone_stmt(stmt->as.stmt_if.else_branch);
-        *else_branch = s;
-      }
-      copy.as.stmt_if.then_branch = ALLOC(then_branch);
-      copy.as.stmt_if.else_branch = else_branch;
-      break;
-    }
-    case STMT_IMPL: {
-      copy.as.stmt_impl.name = own_string(stmt->as.stmt_impl.name);
-      DynArray_Stmt methods = {0};
-      for (size_t i = 0; i < stmt->as.stmt_impl.methods.count; i++) {
-        Stmt s = clone_stmt(&stmt->as.stmt_impl.methods.data[i]);
-        dynarray_insert(&methods, s);
-      }
-      copy.as.stmt_impl.methods = methods;
-      break;
-    }
-    case STMT_RETURN: {
-      copy.as.stmt_return.expr = clone_expr(&stmt->as.stmt_return.expr);
-      break;
-    }
-    case STMT_YIELD: {
-      copy.as.stmt_yield.expr = clone_expr(&stmt->as.stmt_yield.expr);
-      break;
-    }
-    case STMT_USE: {
-      copy.as.stmt_use.path = own_string(stmt->as.stmt_use.path);
-      break;
-    }
-    case STMT_STRUCT: {
-      copy.as.stmt_struct.name = own_string(stmt->as.stmt_struct.name);
-      DynArray_char_ptr properties = {0};
-      for (size_t i = 0; i < stmt->as.stmt_struct.properties.count; i++) {
-        char *s = own_string(stmt->as.stmt_struct.properties.data[i]);
-        dynarray_insert(&properties, s);
-      }
-      break;
-    }
-    default:
-      assert(0);
-  }
-
-  return copy;
-}
-
-DynArray_Stmt clone_ast(const DynArray_Stmt *ast)
-{
-  DynArray_Stmt copy = {0};
-
-  for (size_t i = 0; i < ast->count; i++) {
-    Stmt s = clone_stmt(&ast->data[i]);
-    dynarray_insert(&copy, s);
-  }
-
-  return copy;
 }
 
 void pretty_print(const DynArray_Stmt *ast)
