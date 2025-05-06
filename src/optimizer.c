@@ -136,7 +136,7 @@ static Expr constant_fold_expr(const Expr *target, bool *is_modified)
     Expr cloned_target = clone_expr(target);
     return cloned_target;
   } else {
-    print_expression(target, 0);
+    print_expr(target, 0);
     assert(0);
   }
 #undef HANDLE_OPER

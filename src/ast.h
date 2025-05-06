@@ -290,9 +290,9 @@ typedef struct Stmt {
 #define AS_STMT_ASSERT(stmt) \
   ((Stmt) {.kind = STMT_ASSERT, .as.stmt_assert = (stmt)})
 
-void print_expression(const Expr *expr, int indent);
+void print_expr(const Expr *expr, int indent);
 void print_stmt(const Stmt *stmt, int indent, bool continuation);
-void pretty_print(const DynArray_Stmt *ast);
+void print_ast(const DynArray_Stmt *ast);
 void free_stmt(const Stmt *stmt);
 void free_expr(const Expr *expr);
 ExprLiteral clone_literal(const ExprLiteral *literal);

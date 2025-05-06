@@ -73,7 +73,7 @@ static int run(Arguments *args)
   DynArray_Stmt cooked_ast = loop_label_result.ast;
 
   if (args->parse) {
-    pretty_print(&cooked_ast);
+    print_ast(&cooked_ast);
     goto cleanup_after_parse;
   }
 

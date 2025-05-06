@@ -389,7 +389,7 @@ Expr clone_expr(const Expr *expr)
       break;
     }
     default:
-      print_expression(expr, 0);
+      print_expr(expr, 0);
       assert(0);
   }
 
@@ -559,7 +559,7 @@ static void print_literal(const ExprLiteral *literal)
       putchar(' ');               \
   } while (0)
 
-void print_expression(const Expr *expr, int indent)
+void print_expr(const Expr *expr, int indent)
 {
   switch (expr->kind) {
     case EXPR_LITERAL: {
@@ -573,7 +573,7 @@ void print_expression(const Expr *expr, int indent)
       INDENT(indent + 4);
       printf("members: [");
       for (size_t i = 0; i < expr->as.expr_array.elements.count; i++) {
-        print_expression(&expr->as.expr_array.elements.data[i], indent + 4);
+        print_expr(&expr->as.expr_array.elements.data[i], indent + 4);
         if (i < expr->as.expr_array.elements.count - 1) {
           printf(", ");
         }
@@ -589,8 +589,7 @@ void print_expression(const Expr *expr, int indent)
       printf("initializers: [\n");
       for (size_t i = 0; i < expr->as.expr_struct.initializers.count; i++) {
         INDENT(indent + 8);
-        print_expression(&expr->as.expr_struct.initializers.data[i],
-                         indent + 8);
+        print_expr(&expr->as.expr_struct.initializers.data[i], indent + 8);
         if (i < expr->as.expr_struct.initializers.count - 1) {
           printf(",\n");
         }
@@ -601,19 +600,19 @@ void print_expression(const Expr *expr, int indent)
       printf("StructInit(\n");
       INDENT(indent + 4);
       printf("property: ");
-      print_expression(expr->as.expr_struct_initializer.property, indent + 4);
+      print_expr(expr->as.expr_struct_initializer.property, indent + 4);
       printf(",\n");
       INDENT(indent + 4);
       printf("value: ");
-      print_expression(expr->as.expr_struct_initializer.value, indent + 4);
+      print_expr(expr->as.expr_struct_initializer.value, indent + 4);
       break;
     }
     case EXPR_BINARY: {
       printf("Binary(\n");
       INDENT(indent + 4);
-      print_expression(expr->as.expr_binary.lhs, indent + 4);
+      print_expr(expr->as.expr_binary.lhs, indent + 4);
       printf(" %s ", expr->as.expr_binary.op);
-      print_expression(expr->as.expr_binary.rhs, indent + 4);
+      print_expr(expr->as.expr_binary.rhs, indent + 4);
       break;
     }
     case EXPR_GET: {
@@ -624,25 +623,25 @@ void print_expression(const Expr *expr, int indent)
       printf("op: `%s`\n", expr->as.expr_get.op);
       INDENT(indent + 4);
       printf("exp: ");
-      print_expression(expr->as.expr_get.expr, indent + 4);
+      print_expr(expr->as.expr_get.expr, indent + 4);
       break;
     }
     case EXPR_SUBSCRIPT: {
       printf("Subscript(\n");
       INDENT(indent + 4);
       printf("subscriptee: ");
-      print_expression(expr->as.expr_subscript.expr, indent + 4);
+      print_expr(expr->as.expr_subscript.expr, indent + 4);
       printf(",\n");
       INDENT(indent + 4);
       printf("index: ");
-      print_expression(expr->as.expr_subscript.index, indent + 4);
+      print_expr(expr->as.expr_subscript.index, indent + 4);
       break;
     }
     case EXPR_UNARY: {
       printf("Unary(\n");
       INDENT(indent + 4);
       printf("exp: ");
-      print_expression(expr->as.expr_unary.expr, indent + 4);
+      print_expr(expr->as.expr_unary.expr, indent + 4);
       printf(",\n");
       INDENT(indent + 4);
       printf("op: %s", expr->as.expr_unary.op);
@@ -657,21 +656,21 @@ void print_expression(const Expr *expr, int indent)
     case EXPR_ASSIGN: {
       printf("Assign(\n");
       INDENT(indent + 4);
-      print_expression(expr->as.expr_assign.lhs, indent + 4);
+      print_expr(expr->as.expr_assign.lhs, indent + 4);
       printf(" %s ", expr->as.expr_assign.op);
-      print_expression(expr->as.expr_assign.rhs, indent + 4);
+      print_expr(expr->as.expr_assign.rhs, indent + 4);
       break;
     }
     case EXPR_CALL: {
       printf("Call(\n");
       INDENT(indent + 4);
       printf("callee: ");
-      print_expression(expr->as.expr_call.callee, indent + 4);
+      print_expr(expr->as.expr_call.callee, indent + 4);
       printf(", \n");
       INDENT(indent + 4);
       printf("arguments: [");
       for (size_t i = 0; i < expr->as.expr_call.arguments.count; i++) {
-        print_expression(&expr->as.expr_call.arguments.data[i], indent + 4);
+        print_expr(&expr->as.expr_call.arguments.data[i], indent + 4);
         if (i < expr->as.expr_call.arguments.count - 1) {
           printf(", ");
         }
@@ -700,13 +699,13 @@ void print_stmt(const Stmt *stmt, int indent, bool continuation)
       printf("name: %s,\n", stmt->as.stmt_let.name);
       INDENT(indent + 4);
       printf("initializer: ");
-      print_expression(&stmt->as.stmt_let.initializer, indent + 4);
+      print_expr(&stmt->as.stmt_let.initializer, indent + 4);
       break;
     }
     case STMT_PRINT: {
       printf("Print(\n");
       INDENT(indent + 4);
-      print_expression(&stmt->as.stmt_print.expr, indent + 4);
+      print_expr(&stmt->as.stmt_print.expr, indent + 4);
       break;
     }
     case STMT_FN: {
@@ -729,7 +728,7 @@ void print_stmt(const Stmt *stmt, int indent, bool continuation)
       printf("While(\n");
       INDENT(indent + 4);
       printf("condition: ");
-      print_expression(&stmt->as.stmt_while.condition, indent + 4);
+      print_expr(&stmt->as.stmt_while.condition, indent + 4);
       printf(",\n");
       INDENT(indent + 4);
       printf("body: ");
@@ -740,15 +739,15 @@ void print_stmt(const Stmt *stmt, int indent, bool continuation)
       printf("For(\n");
       INDENT(indent + 4);
       printf("init: ");
-      print_expression(&stmt->as.stmt_for.initializer, indent + 4);
+      print_expr(&stmt->as.stmt_for.initializer, indent + 4);
       putchar('\n');
       INDENT(indent + 4);
       printf("condition: ");
-      print_expression(&stmt->as.stmt_for.condition, indent + 4);
+      print_expr(&stmt->as.stmt_for.condition, indent + 4);
       putchar('\n');
       INDENT(indent + 4);
       printf("advancement: ");
-      print_expression(&stmt->as.stmt_for.advancement, indent + 4);
+      print_expr(&stmt->as.stmt_for.advancement, indent + 4);
       putchar('\n');
       INDENT(indent + 4);
       printf("label: \"%s\",\n", stmt->as.stmt_for.label);
@@ -761,7 +760,7 @@ void print_stmt(const Stmt *stmt, int indent, bool continuation)
       printf("If(\n");
       INDENT(indent + 4);
       printf("condition: ");
-      print_expression(&stmt->as.stmt_if.condition, indent + 4);
+      print_expr(&stmt->as.stmt_if.condition, indent + 4);
       printf(",\n");
       INDENT(indent + 4);
       printf("then: ");
@@ -779,13 +778,13 @@ void print_stmt(const Stmt *stmt, int indent, bool continuation)
     case STMT_EXPR: {
       printf("Expr(\n");
       INDENT(indent + 4);
-      print_expression(&stmt->as.stmt_expr.expr, indent + 4);
+      print_expr(&stmt->as.stmt_expr.expr, indent + 4);
       break;
     }
     case STMT_RETURN: {
       printf("Return(\n");
       INDENT(indent + 4);
-      print_expression(&stmt->as.stmt_return.expr, indent + 4);
+      print_expr(&stmt->as.stmt_return.expr, indent + 4);
       break;
     }
     case STMT_BREAK: {
@@ -799,7 +798,7 @@ void print_stmt(const Stmt *stmt, int indent, bool continuation)
     case STMT_ASSERT: {
       printf("Assert(\n");
       INDENT(indent + 4);
-      print_expression(&stmt->as.stmt_assert.expr, indent + 4);
+      print_expr(&stmt->as.stmt_assert.expr, indent + 4);
       break;
     }
     case STMT_USE: {
@@ -809,7 +808,7 @@ void print_stmt(const Stmt *stmt, int indent, bool continuation)
     case STMT_YIELD: {
       printf("Yield(\n");
       INDENT(indent + 4);
-      print_expression(&stmt->as.stmt_yield.expr, indent + 4);
+      print_expr(&stmt->as.stmt_yield.expr, indent + 4);
       break;
     }
     case STMT_DECORATOR: {
@@ -859,7 +858,7 @@ void print_stmt(const Stmt *stmt, int indent, bool continuation)
   printf(")");
 }
 
-void pretty_print(const DynArray_Stmt *ast)
+void print_ast(const DynArray_Stmt *ast)
 {
   int indent = 0;
 
