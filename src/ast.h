@@ -294,7 +294,7 @@ void print_expression(const Expr *expr, int indent);
 void print_stmt(const Stmt *stmt, int indent, bool continuation);
 void pretty_print(const DynArray_Stmt *ast);
 void free_stmt(const Stmt *stmt);
-void free_expression(const Expr *expr);
+void free_expr(const Expr *expr);
 ExprLiteral clone_literal(const ExprLiteral *literal);
 Expr clone_expr(const Expr *expr);
 Stmt clone_stmt(const Stmt *stmt);

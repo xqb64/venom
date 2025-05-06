@@ -9,7 +9,7 @@
 #include "dynarray.h"
 #include "util.h"
 
-void free_expression(const Expr *expr)
+void free_expr(const Expr *expr)
 {
   switch (expr->kind) {
     case EXPR_LITERAL: {
@@ -26,15 +26,15 @@ void free_expression(const Expr *expr)
     }
     case EXPR_UNARY: {
       ExprUnary expr_unary = expr->as.expr_unary;
-      free_expression(expr_unary.expr);
+      free_expr(expr_unary.expr);
       free(expr_unary.expr);
       free(expr_unary.op);
       break;
     }
     case EXPR_BINARY: {
       ExprBinary expr_bin = expr->as.expr_binary;
-      free_expression(expr_bin.lhs);
-      free_expression(expr_bin.rhs);
+      free_expr(expr_bin.lhs);
+      free_expr(expr_bin.rhs);
       free(expr_bin.lhs);
       free(expr_bin.rhs);
       free(expr_bin.op);
@@ -42,8 +42,8 @@ void free_expression(const Expr *expr)
     }
     case EXPR_ASSIGN: {
       ExprAssign expr_assign = expr->as.expr_assign;
-      free_expression(expr_assign.lhs);
-      free_expression(expr_assign.rhs);
+      free_expr(expr_assign.lhs);
+      free_expr(expr_assign.rhs);
       free(expr_assign.lhs);
       free(expr_assign.rhs);
       free(expr_assign.op);
@@ -51,10 +51,10 @@ void free_expression(const Expr *expr)
     }
     case EXPR_CALL: {
       ExprCall expr_call = expr->as.expr_call;
-      free_expression(expr_call.callee);
+      free_expr(expr_call.callee);
       free(expr_call.callee);
       for (size_t i = 0; i < expr_call.arguments.count; i++) {
-        free_expression(&expr_call.arguments.data[i]);
+        free_expr(&expr_call.arguments.data[i]);
       }
       dynarray_free(&expr_call.arguments);
       break;
@@ -63,7 +63,7 @@ void free_expression(const Expr *expr)
       ExprStruct expr_struct = expr->as.expr_struct;
       free(expr_struct.name);
       for (size_t i = 0; i < expr_struct.initializers.count; i++) {
-        free_expression(&expr_struct.initializers.data[i]);
+        free_expr(&expr_struct.initializers.data[i]);
       }
       dynarray_free(&expr_struct.initializers);
       break;
@@ -71,15 +71,15 @@ void free_expression(const Expr *expr)
     case EXPR_STRUCT_INITIALIZER: {
       ExprStructInitializer expr_struct_initializer =
           expr->as.expr_struct_initializer;
-      free_expression(expr_struct_initializer.property);
-      free_expression(expr_struct_initializer.value);
+      free_expr(expr_struct_initializer.property);
+      free_expr(expr_struct_initializer.value);
       free(expr_struct_initializer.value);
       free(expr_struct_initializer.property);
       break;
     }
     case EXPR_GET: {
       ExprGet expr_get = expr->as.expr_get;
-      free_expression(expr_get.expr);
+      free_expr(expr_get.expr);
       free(expr_get.property_name);
       free(expr_get.expr);
       free(expr_get.op);
@@ -88,15 +88,15 @@ void free_expression(const Expr *expr)
     case EXPR_ARRAY: {
       ExprArray expr_array = expr->as.expr_array;
       for (size_t i = 0; i < expr_array.elements.count; i++) {
-        free_expression(&expr_array.elements.data[i]);
+        free_expr(&expr_array.elements.data[i]);
       }
       dynarray_free(&expr_array.elements);
       break;
     }
     case EXPR_SUBSCRIPT: {
       ExprSubscript expr_subscript = expr->as.expr_subscript;
-      free_expression(expr_subscript.expr);
-      free_expression(expr_subscript.index);
+      free_expr(expr_subscript.expr);
+      free_expr(expr_subscript.index);
       free(expr_subscript.expr);
       free(expr_subscript.index);
       break;
@@ -110,7 +110,7 @@ void free_stmt(const Stmt *stmt)
 {
   switch (stmt->kind) {
     case STMT_PRINT: {
-      free_expression(&stmt->as.stmt_print.expr);
+      free_expr(&stmt->as.stmt_print.expr);
       break;
     }
     case STMT_IMPL: {
@@ -122,7 +122,7 @@ void free_stmt(const Stmt *stmt)
       break;
     }
     case STMT_LET: {
-      free_expression(&stmt->as.stmt_let.initializer);
+      free_expr(&stmt->as.stmt_let.initializer);
       free(stmt->as.stmt_let.name);
       break;
     }
@@ -134,7 +134,7 @@ void free_stmt(const Stmt *stmt)
       break;
     }
     case STMT_IF: {
-      free_expression(&stmt->as.stmt_if.condition);
+      free_expr(&stmt->as.stmt_if.condition);
 
       free_stmt(stmt->as.stmt_if.then_branch);
       free(stmt->as.stmt_if.then_branch);
@@ -148,7 +148,7 @@ void free_stmt(const Stmt *stmt)
     }
     case STMT_WHILE: {
       free(stmt->as.stmt_while.label);
-      free_expression(&stmt->as.stmt_while.condition);
+      free_expr(&stmt->as.stmt_while.condition);
       for (size_t i = 0;
            i < stmt->as.stmt_while.body->as.stmt_block.stmts.count; i++) {
         free_stmt(&stmt->as.stmt_while.body->as.stmt_block.stmts.data[i]);
@@ -159,9 +159,9 @@ void free_stmt(const Stmt *stmt)
     }
     case STMT_FOR: {
       free(stmt->as.stmt_for.label);
-      free_expression(&stmt->as.stmt_for.initializer);
-      free_expression(&stmt->as.stmt_for.condition);
-      free_expression(&stmt->as.stmt_for.advancement);
+      free_expr(&stmt->as.stmt_for.initializer);
+      free_expr(&stmt->as.stmt_for.condition);
+      free_expr(&stmt->as.stmt_for.advancement);
       for (size_t i = 0; i < stmt->as.stmt_for.body->as.stmt_block.stmts.count;
            i++) {
         free_stmt(&stmt->as.stmt_for.body->as.stmt_block.stmts.data[i]);
@@ -171,11 +171,11 @@ void free_stmt(const Stmt *stmt)
       break;
     }
     case STMT_RETURN: {
-      free_expression(&stmt->as.stmt_return.expr);
+      free_expr(&stmt->as.stmt_return.expr);
       break;
     }
     case STMT_EXPR: {
-      free_expression(&stmt->as.stmt_expr.expr);
+      free_expr(&stmt->as.stmt_expr.expr);
       break;
     }
     case STMT_FN: {
@@ -211,11 +211,11 @@ void free_stmt(const Stmt *stmt)
       break;
     }
     case STMT_YIELD: {
-      free_expression(&stmt->as.stmt_yield.expr);
+      free_expr(&stmt->as.stmt_yield.expr);
       break;
     }
     case STMT_ASSERT: {
-      free_expression(&stmt->as.stmt_assert.expr);
+      free_expr(&stmt->as.stmt_assert.expr);
       break;
     }
     case STMT_BREAK: {
@@ -248,7 +248,7 @@ void free_table_expr(const Table_Expr *table)
   }
 
   for (size_t i = 0; i < table->count; i++) {
-    free_expression(&table->items[i]);
+    free_expr(&table->items[i]);
   }
 }
 
@@ -404,7 +404,8 @@ Stmt clone_stmt(const Stmt *stmt)
 
   switch (stmt->kind) {
     case STMT_LET: {
-      clone.as.stmt_let.initializer = clone_expr(&stmt->as.stmt_let.initializer);
+      clone.as.stmt_let.initializer =
+          clone_expr(&stmt->as.stmt_let.initializer);
       clone.as.stmt_let.name = own_string(stmt->as.stmt_let.name);
       break;
     }
@@ -426,15 +427,18 @@ Stmt clone_stmt(const Stmt *stmt)
     }
     case STMT_WHILE: {
       clone.as.stmt_while.label = own_string(stmt->as.stmt_while.label);
-      clone.as.stmt_while.condition = clone_expr(&stmt->as.stmt_while.condition);
+      clone.as.stmt_while.condition =
+          clone_expr(&stmt->as.stmt_while.condition);
       Stmt body = clone_stmt(stmt->as.stmt_while.body);
       clone.as.stmt_while.body = ALLOC(body);
       break;
     }
     case STMT_FOR: {
-      clone.as.stmt_for.initializer = clone_expr(&stmt->as.stmt_for.initializer);
+      clone.as.stmt_for.initializer =
+          clone_expr(&stmt->as.stmt_for.initializer);
       clone.as.stmt_for.condition = clone_expr(&stmt->as.stmt_for.condition);
-      clone.as.stmt_for.advancement = clone_expr(&stmt->as.stmt_for.advancement);
+      clone.as.stmt_for.advancement =
+          clone_expr(&stmt->as.stmt_for.advancement);
       Stmt body = clone_stmt(stmt->as.stmt_for.body);
       clone.as.stmt_for.body = ALLOC(body);
       clone.as.stmt_for.label = own_string(stmt->as.stmt_for.label);

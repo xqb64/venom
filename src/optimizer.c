@@ -21,8 +21,8 @@ static Expr constant_fold_expr(const Expr *target, bool *is_modified)
                                                                            \
       *is_modified = true;                                                 \
                                                                            \
-      free_expression((expr)->lhs);                                        \
-      free_expression((expr)->rhs);                                        \
+      free_expr((expr)->lhs);                                              \
+      free_expr((expr)->rhs);                                              \
                                                                            \
       free((expr)->lhs);                                                   \
       free((expr)->rhs);                                                   \
