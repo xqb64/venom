@@ -505,14 +505,18 @@ static Stmt propagate_copies_stmt(const Stmt *stmt, Table_Expr *copies,
       Expr propagated_advancement = propagate_copies_expr(
           &stmt->as.stmt_for.advancement, copies, is_modified);
 
+      Table_Expr cloned_copies = clone_table_expr(copies);
+      
       Stmt propagated_body =
-          propagate_copies_stmt(stmt->as.stmt_for.body, copies, is_modified);
+          propagate_copies_stmt(stmt->as.stmt_for.body, &cloned_copies, is_modified);
 
       StmtFor for_stmt = {.initializer = propagated_init,
                           .condition = propagated_condition,
                           .advancement = propagated_advancement,
                           .body = ALLOC(propagated_body),
                           .label = own_string(stmt->as.stmt_for.label)};
+
+      free_table_expr(&cloned_copies);
 
       return AS_STMT_FOR(for_stmt);
     }
@@ -682,6 +686,25 @@ Stmt eliminate_unreachable_stmt(Stmt *stmt, bool *is_modified)
           .condition = clone_expr(&stmt->as.stmt_while.condition),
           .body = ALLOC(body)};
       return AS_STMT_WHILE(stmt_while);
+    }
+    case STMT_FOR: {
+      Expr *condition = &stmt->as.stmt_for.condition;
+      if (condition->kind == EXPR_LITERAL &&
+          condition->as.expr_literal.kind == LIT_BOOLEAN &&
+          !condition->as.expr_literal.as._bool) {
+        DynArray_Stmt stmts = {0};
+        StmtBlock empty = {.stmts = stmts, .depth = 0};
+        return AS_STMT_BLOCK(empty);
+      }
+      Stmt body = eliminate_unreachable_stmt(stmt->as.stmt_for.body, is_modified);
+      StmtFor stmt_for = {
+        .label = own_string(stmt->as.stmt_for.label),
+        .initializer = clone_expr(&stmt->as.stmt_for.initializer),
+        .condition = clone_expr(&stmt->as.stmt_for.condition),
+        .advancement = clone_expr(&stmt->as.stmt_for.advancement),
+        .body = ALLOC(body),
+      };
+      return AS_STMT_FOR(stmt_for);
     }
     default:
       return clone_stmt(stmt);
