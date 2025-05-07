@@ -92,7 +92,7 @@ typedef DynArray(Token) DynArray_Token;
 typedef struct {
   DynArray_Token tokens;
   bool is_ok;
-  const char *msg;
+  char *msg;
 } TokenizeResult;
 
 void init_tokenizer(Tokenizer *tokenizer, char *source);

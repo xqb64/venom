@@ -5,6 +5,8 @@
 #include <stdlib.h>
 #include <string.h>
 
+#include "util.h"
+
 void init_tokenizer(Tokenizer *tokenizer, char *source)
 {
   tokenizer->current = source;
@@ -420,7 +422,7 @@ TokenizeResult tokenize(Tokenizer *tokenizer)
   Token t;
   while ((t = get_token(tokenizer)).type != TOKEN_EOF) {
     if (t.type == TOKEN_ERROR) {
-      result.msg = "Error at line X";
+      alloc_err_str(&result.msg, "Error at line %d", tokenizer->line);
       result.is_ok = false;
       return result;
     }
