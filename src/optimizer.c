@@ -711,6 +711,354 @@ Stmt eliminate_unreachable_stmt(Stmt *stmt, bool *is_modified)
   }
 }
 
+static bool is_equal_expr(const Expr *a, const Expr *b);
+
+static bool is_equal_expr_list(const DynArray_Expr *a, const DynArray_Expr *b) {
+  if (a->count != b->count) return false;
+  for (size_t i = 0; i < a->count; ++i) {
+    if (!is_equal_expr(&a->data[i], &b->data[i])) return false;
+  }
+  return true;
+}
+
+static bool is_equal_expr(const Expr *a, const Expr *b) {
+  if (a == b) return true;
+  if (!a || !b) return false;
+  if (a->kind != b->kind) return false;
+
+  switch (a->kind) {
+
+    case EXPR_LITERAL:
+      if (a->as.expr_literal.kind != b->as.expr_literal.kind) return false;
+      switch (a->as.expr_literal.kind) {
+        case LIT_BOOLEAN:
+          return a->as.expr_literal.as._bool == b->as.expr_literal.as._bool;
+        case LIT_NUMBER:
+          return a->as.expr_literal.as._double == b->as.expr_literal.as._double;
+        case LIT_STRING:
+          return strcmp(a->as.expr_literal.as.str, b->as.expr_literal.as.str) == 0;
+        case LIT_NULL:
+          return true;
+        default:
+          assert(0);
+      }
+      break;
+
+    case EXPR_VARIABLE:
+      return strcmp(a->as.expr_variable.name, b->as.expr_variable.name) == 0;
+
+    case EXPR_UNARY:
+      return strcmp(a->as.expr_unary.op, b->as.expr_unary.op) == 0 &&
+             is_equal_expr(a->as.expr_unary.expr, b->as.expr_unary.expr);
+
+    case EXPR_BINARY:
+      return strcmp(a->as.expr_binary.op, b->as.expr_binary.op) == 0 &&
+             is_equal_expr(a->as.expr_binary.lhs, b->as.expr_binary.lhs) &&
+             is_equal_expr(a->as.expr_binary.rhs, b->as.expr_binary.rhs);
+
+    case EXPR_CALL:
+      return is_equal_expr(a->as.expr_call.callee, b->as.expr_call.callee) &&
+             is_equal_expr_list(&a->as.expr_call.arguments, &b->as.expr_call.arguments);
+
+    case EXPR_GET:
+      return strcmp(a->as.expr_get.property_name, b->as.expr_get.property_name) == 0 &&
+             strcmp(a->as.expr_get.op, b->as.expr_get.op) == 0 &&
+             is_equal_expr(a->as.expr_get.expr, b->as.expr_get.expr);
+
+    case EXPR_ASSIGN:
+      return strcmp(a->as.expr_assign.op, b->as.expr_assign.op) == 0 &&
+             is_equal_expr(a->as.expr_assign.lhs, b->as.expr_assign.lhs) &&
+             is_equal_expr(a->as.expr_assign.rhs, b->as.expr_assign.rhs);
+
+    case EXPR_STRUCT:
+      return strcmp(a->as.expr_struct.name, b->as.expr_struct.name) == 0 &&
+             is_equal_expr_list(&a->as.expr_struct.initializers, &b->as.expr_struct.initializers);
+
+    case EXPR_STRUCT_INITIALIZER:
+      return is_equal_expr(a->as.expr_struct_initializer.property, b->as.expr_struct_initializer.property) &&
+             is_equal_expr(a->as.expr_struct_initializer.value, b->as.expr_struct_initializer.value);
+
+    case EXPR_ARRAY:
+      return is_equal_expr_list(&a->as.expr_array.elements, &b->as.expr_array.elements);
+
+    case EXPR_SUBSCRIPT:
+      return is_equal_expr(a->as.expr_subscript.expr, b->as.expr_subscript.expr) &&
+             is_equal_expr(a->as.expr_subscript.index, b->as.expr_subscript.index);
+
+    default:
+      assert(0);
+  }
+
+  return false; // fallback
+}
+static bool liveset_contains(DynArray_Expr *live, Expr *item) {
+  for (size_t i = 0; i < live->count; i++) {
+    printf("Comparing...\n");
+    print_expr(&live->data[i], 0);
+    printf("\n...and...\n");
+    print_expr(item, 0);
+    printf("\n");
+    if (is_equal_expr(&live->data[i], item)) {
+      return true;
+    }
+  }
+  return false;
+}
+
+static void collect_live_expr(DynArray_Expr *live, Expr *expr)
+{
+  switch (expr->kind) {
+    case EXPR_VARIABLE: {
+      dynarray_insert(live, clone_expr(expr));
+      break;
+    }
+    case EXPR_BINARY: {
+      collect_live_expr(live, expr->as.expr_binary.lhs);
+      collect_live_expr(live, expr->as.expr_binary.rhs);
+      break;
+    }
+    case EXPR_UNARY: {
+      collect_live_expr(live, expr->as.expr_unary.expr);
+      break;
+    }
+    case EXPR_ARRAY: {
+      for (size_t i = 0; i < expr->as.expr_array.elements.count; i++) {
+        collect_live_expr(live, &expr->as.expr_array.elements.data[i]);
+      }
+      break;
+    }
+    case EXPR_ASSIGN: {
+      collect_live_expr(live, expr->as.expr_assign.rhs);
+      break;
+    }
+    case EXPR_GET: {
+      collect_live_expr(live, expr->as.expr_get.expr);
+      break;
+    }
+    case EXPR_STRUCT: {
+      for (size_t i = 0; i < expr->as.expr_struct.initializers.count; i++) {
+        collect_live_expr(live, &expr->as.expr_struct.initializers.data[i]);
+      }
+      break;
+    }
+    case EXPR_STRUCT_INITIALIZER: {
+      collect_live_expr(live, expr->as.expr_struct_initializer.property);
+      collect_live_expr(live, expr->as.expr_struct_initializer.value);
+      break;
+    }
+    case EXPR_SUBSCRIPT: {
+      collect_live_expr(live, expr->as.expr_subscript.expr);
+      collect_live_expr(live, expr->as.expr_subscript.index);
+      break;
+    }
+    case EXPR_CALL: {
+      for (size_t i = 0; i < expr->as.expr_call.arguments.count; i++) {
+        collect_live_expr(live, &expr->as.expr_call.arguments.data[i]);
+      }
+      collect_live_expr(live, expr->as.expr_call.callee);
+      break;
+    }
+    default:
+      break;
+  }
+}
+
+static void collect_live_stmt(DynArray_Expr *live, Stmt *stmt)
+{
+  switch (stmt->kind) {
+    case STMT_FN: {
+      collect_live_stmt(live, stmt->as.stmt_fn.body);
+      break;
+    }
+    case STMT_BLOCK: {
+      for (size_t i = 0; i < stmt->as.stmt_block.stmts.count; i++) {
+        collect_live_stmt(live, &stmt->as.stmt_block.stmts.data[i]);
+      }
+      break;
+    }
+    case STMT_LET: {
+      collect_live_expr(live, &stmt->as.stmt_let.initializer);
+      break;
+    }
+    case STMT_PRINT: {
+      collect_live_expr(live, &stmt->as.stmt_print.expr);
+      break;
+    }
+    case STMT_ASSERT: {
+      collect_live_expr(live, &stmt->as.stmt_assert.expr);
+      break;
+    }
+    case STMT_EXPR: {
+      collect_live_expr(live, &stmt->as.stmt_expr.expr);
+      break;
+    }
+    case STMT_RETURN: {
+      collect_live_expr(live, &stmt->as.stmt_return.expr);
+      break;
+    }
+    case STMT_IMPL: {
+      for (size_t i = 0; i < stmt->as.stmt_impl.methods.count; i++) {
+        collect_live_stmt(live, &stmt->as.stmt_impl.methods.data[i]);
+      }
+      break;
+    }
+    case STMT_DECORATOR: {
+      collect_live_stmt(live, stmt->as.stmt_decorator.fn);
+      break;
+    }
+    case STMT_WHILE: {
+      collect_live_expr(live, &stmt->as.stmt_while.condition);
+      collect_live_stmt(live, stmt->as.stmt_while.body);
+      break;
+    }
+    case STMT_FOR: {
+      collect_live_expr(live, &stmt->as.stmt_for.initializer);
+      collect_live_expr(live, &stmt->as.stmt_for.condition);
+      collect_live_expr(live, &stmt->as.stmt_for.advancement);
+      collect_live_stmt(live, stmt->as.stmt_for.body);
+      break;
+    }
+    case STMT_IF: {
+      collect_live_expr(live, &stmt->as.stmt_if.condition);
+      collect_live_stmt(live, stmt->as.stmt_if.then_branch);
+      if (stmt->as.stmt_if.else_branch) {
+        collect_live_stmt(live, stmt->as.stmt_if.else_branch);
+      }
+      break;
+    }
+    case STMT_YIELD: {
+      collect_live_expr(live, &stmt->as.stmt_yield.expr);
+      break;
+    }
+    default:
+      break;
+  }
+}
+
+void liveset_remove(DynArray_Expr *live, Expr *expr) {
+  for (size_t i = 0; i < live->count; ++i) {
+    if (is_equal_expr(&live->data[i], expr)) {
+      free_expr(&live->data[i]);
+      live->data[i] = live->data[--live->count];
+      break;
+    }
+  }
+}
+
+DynArray_Stmt eliminate_dead_store_block(DynArray_Stmt *stmts) {
+  DynArray_Stmt result = {0};
+  DynArray_Expr live = {0};
+  for (int i = (int)stmts->count - 1; i >= 0; i--) {
+    Stmt *stmt = &stmts->data[i];
+    bool keep = true;
+    switch (stmt->kind) {
+      case STMT_EXPR: {
+        Expr *expr = &stmt->as.stmt_expr.expr;
+        if (expr->kind == EXPR_ASSIGN) {
+          Expr *lhs = expr->as.expr_assign.lhs;
+          Expr *rhs = expr->as.expr_assign.rhs;
+          if (!liveset_contains(&live, lhs)) {
+            keep = false;
+          } else {
+            collect_live_expr(&live, rhs);
+            liveset_remove(&live, lhs);
+          }
+        } else {
+          collect_live_expr(&live, expr);
+        }
+        break;
+      }
+      case STMT_BLOCK: {
+        DynArray_Stmt cleaned_block = eliminate_dead_store_block(&stmt->as.stmt_block.stmts);
+        if (cleaned_block.count == 0) {
+          keep = false;
+        } else {
+          stmt->as.stmt_block.stmts = cleaned_block;
+        }
+        break;
+      }
+      default: {
+        collect_live_stmt(&live, stmt);
+        break;
+      }
+    }
+    if (keep) {
+      dynarray_insert(&result, clone_stmt(stmt));
+    }
+  }
+  for (size_t i = 0, j = result.count - 1; i < j; i++, j--) {
+    Stmt temp = result.data[i];
+    result.data[i] = result.data[j];
+    result.data[j] = temp;
+  }
+  dynarray_free(&live);
+  return result;
+}
+
+Stmt eliminate_dead_store_stmt(Stmt *stmt, bool *is_modified)
+{
+  switch (stmt->kind) {
+    case STMT_BLOCK: {
+      DynArray_Stmt eliminated = eliminate_dead_store_block(&stmt->as.stmt_block.stmts);
+      StmtBlock stmt_block = {.stmts = eliminated, .depth = stmt->as.stmt_block.depth};
+      return AS_STMT_BLOCK(stmt_block);
+    }
+    case STMT_FN: {
+      DynArray_char_ptr parameters = {0};
+      for (size_t i = 0; i < stmt->as.stmt_fn.parameters.count; i++) {
+        dynarray_insert(&parameters, stmt->as.stmt_fn.parameters.data[i]);
+      }
+      Stmt body = eliminate_dead_store_stmt(stmt->as.stmt_fn.body, is_modified);
+      StmtFn stmt_fn = {.body = ALLOC(body), .name = own_string(stmt->as.stmt_fn.name), .parameters = parameters};
+      return AS_STMT_FN(stmt_fn);
+    }
+    case STMT_WHILE: {
+      Stmt body = eliminate_dead_store_stmt(stmt->as.stmt_while.body, is_modified);
+      Expr condition = clone_expr(&stmt->as.stmt_while.condition);
+      char *label = own_string(stmt->as.stmt_while.label);
+      StmtWhile stmt_while = {.label = label, .condition = condition, .body = ALLOC(body)};
+      return AS_STMT_WHILE(stmt_while);
+    }
+    case STMT_FOR: {
+      Expr initializer = clone_expr(&stmt->as.stmt_for.initializer);
+      Expr condition = clone_expr(&stmt->as.stmt_for.condition);
+      Expr advancement = clone_expr(&stmt->as.stmt_for.advancement);
+      char *label = own_string(stmt->as.stmt_for.label);
+      Stmt body = eliminate_dead_store_stmt(stmt->as.stmt_for.body, is_modified);
+      StmtFor stmt_for = {.initializer = initializer, .condition = condition, .advancement = advancement, .label = label, .body = ALLOC(body)};
+      return AS_STMT_FOR(stmt_for);
+    }
+    case STMT_DECORATOR: {
+      Stmt fn = eliminate_dead_store_stmt(stmt->as.stmt_decorator.fn, is_modified);
+      char *name = own_string(stmt->as.stmt_decorator.name);
+      StmtDecorator stmt_decorator = {.name = name, .fn = ALLOC(fn)};
+      return AS_STMT_DECORATOR(stmt_decorator);
+    }
+    case STMT_IMPL: {
+      DynArray_Stmt methods = {0};
+      for (size_t i = 0; i < stmt->as.stmt_impl.methods.count; i++) {
+        Stmt eliminated = eliminate_dead_store_stmt(&stmt->as.stmt_impl.methods.data[i], is_modified);
+      }
+      char *name = own_string(stmt->as.stmt_impl.name);
+      StmtImpl stmt_impl = {.name = name, .methods = methods};
+      return AS_STMT_IMPL(stmt_impl);
+    }
+    case STMT_IF: {
+      Expr condition = clone_expr(&stmt->as.stmt_if.condition);
+      Stmt then_branch = eliminate_dead_store_stmt(stmt->as.stmt_if.then_branch, is_modified);
+      Stmt *else_branch = NULL;
+      if (stmt->as.stmt_if.else_branch) {
+        Stmt eliminated_else = eliminate_dead_store_stmt(stmt->as.stmt_if.else_branch, is_modified);
+        else_branch = ALLOC(eliminated_else);
+      }
+      StmtIf stmt_if = {.condition = condition, .then_branch = ALLOC(then_branch), .else_branch = else_branch};
+      return AS_STMT_IF(stmt_if);
+    }
+    default:
+      return clone_stmt(stmt);
+  }
+}
+
 DynArray_Stmt optimize(const DynArray_Stmt *ast)
 {
   bool is_modified;
@@ -724,10 +1072,12 @@ DynArray_Stmt optimize(const DynArray_Stmt *ast)
     for (size_t i = 0; i < original.count; i++) {
       Stmt folded = constant_fold_stmt(&original.data[i], &is_modified);
       Stmt propagated = propagate_copies_stmt(&folded, &copies, &is_modified);
-      Stmt eliminated = eliminate_unreachable_stmt(&propagated, &is_modified);
-      dynarray_insert(&optimized_ast, eliminated);
+      Stmt unreachable_eliminated = eliminate_unreachable_stmt(&propagated, &is_modified);
+      Stmt dead_store_eliminated = eliminate_dead_store_stmt(&unreachable_eliminated, &is_modified);
+      dynarray_insert(&optimized_ast, dead_store_eliminated);
       free_stmt(&folded);
       free_stmt(&propagated);
+      free_stmt(&unreachable_eliminated);
     }
 
     free_table_expr(&copies);
