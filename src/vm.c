@@ -690,7 +690,8 @@ static inline ExecResult handle_op_getattr_ptr(VM *vm, Bytecode *code,
     RUNTIME_ERROR("struct '%s' does not have property '%s'",
                   AS_STRUCT(object)->name, code->sp.data[property_name_idx]);
   }
-  Object *property = table_get(AS_STRUCT(object)->properties, code->sp.data[property_name_idx]);
+  Object *property = table_get(AS_STRUCT(object)->properties,
+                               code->sp.data[property_name_idx]);
   push(vm, PTR_VAL(property));
   objdecref(&object);
   return r;

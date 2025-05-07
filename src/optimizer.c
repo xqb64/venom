@@ -594,13 +594,16 @@ bool stmt_may_continue(Stmt *stmt)
     }
     case STMT_IF: {
       bool then_condition = stmt_may_continue(stmt->as.stmt_if.then_branch);
-      bool else_condition = stmt->as.stmt_if.else_branch ? stmt_may_continue(stmt->as.stmt_if.else_branch) : true;
+      bool else_condition =
+          stmt->as.stmt_if.else_branch
+              ? stmt_may_continue(stmt->as.stmt_if.else_branch)
+              : true;
       return then_condition || else_condition;
     }
     case STMT_BLOCK: {
       for (size_t i = 0; i < stmt->as.stmt_block.stmts.count; i++) {
         if (!stmt_may_continue(&stmt->as.stmt_block.stmts.data[i])) {
-            return false;
+          return false;
         }
       }
       return true;
@@ -614,13 +617,16 @@ Stmt eliminate_unreachable_stmt(Stmt *stmt, bool *is_modified)
 {
   switch (stmt->kind) {
     case STMT_FN: {
-      Stmt body = eliminate_unreachable_stmt(stmt->as.stmt_fn.body, is_modified);
+      Stmt body =
+          eliminate_unreachable_stmt(stmt->as.stmt_fn.body, is_modified);
       char *name = own_string(stmt->as.stmt_fn.name);
       DynArray_char_ptr params = {0};
       for (size_t i = 0; i < stmt->as.stmt_fn.parameters.count; i++) {
-        dynarray_insert(&params, own_string(stmt->as.stmt_fn.parameters.data[i]));
+        dynarray_insert(&params,
+                        own_string(stmt->as.stmt_fn.parameters.data[i]));
       }
-      StmtFn stmt_fn = {.name = name, .parameters = params, .body = ALLOC(body)};
+      StmtFn stmt_fn = {
+          .name = name, .parameters = params, .body = ALLOC(body)};
       return AS_STMT_FN(stmt_fn);
     }
     case STMT_BLOCK: {
@@ -631,8 +637,10 @@ Stmt eliminate_unreachable_stmt(Stmt *stmt, bool *is_modified)
           *is_modified = true;
           continue;
         }
-        Stmt optimized = eliminate_unreachable_stmt(&stmt->as.stmt_block.stmts.data[i], is_modified);
-        if (optimized.kind == STMT_BLOCK && optimized.as.stmt_block.stmts.count == 0) {
+        Stmt optimized = eliminate_unreachable_stmt(
+            &stmt->as.stmt_block.stmts.data[i], is_modified);
+        if (optimized.kind == STMT_BLOCK &&
+            optimized.as.stmt_block.stmts.count == 0) {
           continue;
         }
         if (!stmt_may_continue(&optimized)) {
@@ -640,28 +648,39 @@ Stmt eliminate_unreachable_stmt(Stmt *stmt, bool *is_modified)
         }
         dynarray_insert(&stmts, optimized);
       }
-      StmtBlock stmt_block = {.stmts = stmts, .depth = stmt->as.stmt_block.depth};
+      StmtBlock stmt_block = {.stmts = stmts,
+                              .depth = stmt->as.stmt_block.depth};
       return AS_STMT_BLOCK(stmt_block);
     }
     case STMT_IF: {
-      Stmt then_branch = eliminate_unreachable_stmt(stmt->as.stmt_if.then_branch, is_modified);
+      Stmt then_branch =
+          eliminate_unreachable_stmt(stmt->as.stmt_if.then_branch, is_modified);
       Stmt *else_branch = NULL;
       if (stmt->as.stmt_if.else_branch) {
-        Stmt eliminated = eliminate_unreachable_stmt(stmt->as.stmt_if.else_branch, is_modified);
+        Stmt eliminated = eliminate_unreachable_stmt(
+            stmt->as.stmt_if.else_branch, is_modified);
         else_branch = ALLOC(eliminated);
       }
-      StmtIf stmt_if = {.condition = clone_expr(&stmt->as.stmt_if.condition), .then_branch = ALLOC(then_branch), .else_branch = else_branch};
+      StmtIf stmt_if = {.condition = clone_expr(&stmt->as.stmt_if.condition),
+                        .then_branch = ALLOC(then_branch),
+                        .else_branch = else_branch};
       return AS_STMT_IF(stmt_if);
     }
     case STMT_WHILE: {
       Expr *condition = &stmt->as.stmt_while.condition;
-      if (condition->kind == EXPR_LITERAL && condition->as.expr_literal.kind == LIT_BOOLEAN && !condition->as.expr_literal.as._bool) {
+      if (condition->kind == EXPR_LITERAL &&
+          condition->as.expr_literal.kind == LIT_BOOLEAN &&
+          !condition->as.expr_literal.as._bool) {
         DynArray_Stmt stmts = {0};
         StmtBlock empty = {.stmts = stmts, .depth = 0};
         return AS_STMT_BLOCK(empty);
       }
-      Stmt body = eliminate_unreachable_stmt(stmt->as.stmt_while.body, is_modified);
-      StmtWhile stmt_while = {.label = own_string(stmt->as.stmt_while.label), .condition = clone_expr(&stmt->as.stmt_while.condition), .body = ALLOC(body)};
+      Stmt body =
+          eliminate_unreachable_stmt(stmt->as.stmt_while.body, is_modified);
+      StmtWhile stmt_while = {
+          .label = own_string(stmt->as.stmt_while.label),
+          .condition = clone_expr(&stmt->as.stmt_while.condition),
+          .body = ALLOC(body)};
       return AS_STMT_WHILE(stmt_while);
     }
     default:
@@ -686,7 +705,7 @@ DynArray_Stmt optimize(const DynArray_Stmt *ast)
       dynarray_insert(&optimized_ast, eliminated);
       free_stmt(&folded);
       free_stmt(&propagated);
-     }
+    }
 
     free_table_expr(&copies);
     free_ast(&original);

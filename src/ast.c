@@ -408,7 +408,8 @@ Expr clone_expr(const Expr *expr)
       Expr gettee = clone_expr(expr->as.expr_get.expr);
       clone.as.expr_get.expr = ALLOC(gettee);
       clone.as.expr_get.op = own_string(expr->as.expr_get.op);
-      clone.as.expr_get.property_name = own_string(expr->as.expr_get.property_name);
+      clone.as.expr_get.property_name =
+          own_string(expr->as.expr_get.property_name);
       break;
     }
     default:
