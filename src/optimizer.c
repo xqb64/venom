@@ -797,16 +797,11 @@ static bool is_equal_expr(const Expr *a, const Expr *b) {
       assert(0);
   }
 
-  return false; // fallback
+  return false;
 }
 static bool liveset_contains(DynArray_Expr *live, Expr *item) {
   for (size_t i = 0; i < live->count; i++) {
-    printf("Comparing...\n");
-    print_expr(&live->data[i], 0);
-    printf("\n...and...\n");
-    print_expr(item, 0);
-    printf("\n");
-    if (is_equal_expr(&live->data[i], item)) {
+   if (is_equal_expr(&live->data[i], item)) {
       return true;
     }
   }
@@ -953,7 +948,7 @@ void liveset_remove(DynArray_Expr *live, Expr *expr) {
   }
 }
 
-DynArray_Stmt eliminate_dead_store_block(DynArray_Stmt *stmts) {
+DynArray_Stmt eliminate_dead_store_block(DynArray_Stmt *stmts, bool *is_modified) {
   DynArray_Stmt result = {0};
   DynArray_Expr live = {0};
   for (int i = (int)stmts->count - 1; i >= 0; i--) {
@@ -967,6 +962,7 @@ DynArray_Stmt eliminate_dead_store_block(DynArray_Stmt *stmts) {
           Expr *rhs = expr->as.expr_assign.rhs;
           if (!liveset_contains(&live, lhs)) {
             keep = false;
+            *is_modified = true;
           } else {
             collect_live_expr(&live, rhs);
             liveset_remove(&live, lhs);
@@ -977,7 +973,7 @@ DynArray_Stmt eliminate_dead_store_block(DynArray_Stmt *stmts) {
         break;
       }
       case STMT_BLOCK: {
-        DynArray_Stmt cleaned_block = eliminate_dead_store_block(&stmt->as.stmt_block.stmts);
+        DynArray_Stmt cleaned_block = eliminate_dead_store_block(&stmt->as.stmt_block.stmts, is_modified);
         if (cleaned_block.count == 0) {
           keep = false;
         } else {
@@ -1007,7 +1003,7 @@ Stmt eliminate_dead_store_stmt(Stmt *stmt, bool *is_modified)
 {
   switch (stmt->kind) {
     case STMT_BLOCK: {
-      DynArray_Stmt eliminated = eliminate_dead_store_block(&stmt->as.stmt_block.stmts);
+      DynArray_Stmt eliminated = eliminate_dead_store_block(&stmt->as.stmt_block.stmts, is_modified);
       StmtBlock stmt_block = {.stmts = eliminated, .depth = stmt->as.stmt_block.depth};
       return AS_STMT_BLOCK(stmt_block);
     }
