@@ -657,6 +657,14 @@ Stmt eliminate_unreachable_stmt(Stmt *stmt, bool *is_modified)
       return AS_STMT_BLOCK(stmt_block);
     }
     case STMT_IF: {
+      Expr *condition = &stmt->as.stmt_if.condition;
+      if (condition->kind == EXPR_LITERAL &&
+          condition->as.expr_literal.kind == LIT_BOOLEAN &&
+          !condition->as.expr_literal.as._bool) {
+        DynArray_Stmt stmts = {0};
+        StmtBlock empty = {.stmts = stmts, .depth = 0};
+        return AS_STMT_BLOCK(empty);
+      }
       Stmt then_branch =
           eliminate_unreachable_stmt(stmt->as.stmt_if.then_branch, is_modified);
       Stmt *else_branch = NULL;
