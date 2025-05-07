@@ -390,11 +390,25 @@ Expr clone_expr(const Expr *expr)
     case EXPR_STRUCT: {
       DynArray_Expr initializers = {0};
       for (size_t i = 0; i < expr->as.expr_struct.initializers.count; i++) {
-        Expr cloned = expr->as.expr_struct.initializers.data[i];
+        Expr cloned = clone_expr(&expr->as.expr_struct.initializers.data[i]);
         dynarray_insert(&initializers, cloned);
       }
       clone.as.expr_struct.initializers = initializers;
       clone.as.expr_struct.name = own_string(expr->as.expr_struct.name);
+      break;
+    }
+    case EXPR_STRUCT_INITIALIZER: {
+      Expr value = clone_expr(expr->as.expr_struct_initializer.value);
+      Expr property = clone_expr(expr->as.expr_struct_initializer.property);
+      clone.as.expr_struct_initializer.value = ALLOC(value);
+      clone.as.expr_struct_initializer.property = ALLOC(property);
+      break;
+    }
+    case EXPR_GET: {
+      Expr gettee = clone_expr(expr->as.expr_get.expr);
+      clone.as.expr_get.expr = ALLOC(gettee);
+      clone.as.expr_get.op = own_string(expr->as.expr_get.op);
+      clone.as.expr_get.property_name = own_string(expr->as.expr_get.property_name);
       break;
     }
     default:
@@ -486,7 +500,7 @@ Stmt clone_stmt(const Stmt *stmt)
       Stmt *else_branch = NULL;
       if (stmt->as.stmt_if.else_branch) {
         Stmt s = clone_stmt(stmt->as.stmt_if.else_branch);
-        *else_branch = s;
+        else_branch = ALLOC(s);
       }
       clone.as.stmt_if.then_branch = ALLOC(then_branch);
       clone.as.stmt_if.else_branch = else_branch;
@@ -521,6 +535,7 @@ Stmt clone_stmt(const Stmt *stmt)
         char *s = own_string(stmt->as.stmt_struct.properties.data[i]);
         dynarray_insert(&properties, s);
       }
+      clone.as.stmt_struct.properties = properties;
       break;
     }
     default:

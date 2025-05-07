@@ -81,6 +81,7 @@ static int run(Arguments *args)
     DynArray_Stmt optimized_ast = optimize(&cooked_ast);
     free_ast(&cooked_ast);
     cooked_ast = optimized_ast;
+    print_ast(&optimized_ast);
   }
 
   Compiler *compiler = current_compiler = new_compiler();
