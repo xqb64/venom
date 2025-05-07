@@ -497,6 +497,7 @@ static inline ExecResult handle_op_jz(VM *vm, Bytecode *code, uint8_t **ip)
   ExecResult r = {.is_ok = true, .msg = NULL};
   
   int16_t offset = READ_INT16();
+
   Object obj = pop(vm);
   if (!AS_BOOL(obj)) {
     *ip += offset;
