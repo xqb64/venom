@@ -50,7 +50,7 @@ static inline Object peek(VM *vm, int n)
 static void dealloc_stack(VM *vm)
 {
   for (int i = (int) vm->tos - 1; i >= 0; i--) {
-    dealloc(&vm->stack[i]);
+    objdecref(&vm->stack[i]);
   }
 }
 
@@ -1144,10 +1144,16 @@ static inline ExecResult handle_op_strcat(VM *vm, Bytecode *code, uint8_t **ip)
     objdecref(&b);
     objdecref(&a);
   } else {
+    objdecref(&b);
+    objdecref(&a);
+
+    printf("refcount of a: %d\n", *a.as.refcount);
+  
     RUNTIME_ERROR(
         "'++' operator used on objects of unsupported types: %s and %s",
         get_object_type(&a), get_object_type(&b));
   }
+
   return r;
 }
 
