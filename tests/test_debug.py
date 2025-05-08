@@ -141,7 +141,7 @@ RESULTS = {
             "dbg print :: 3",
         ],
         "ends_with": "vm: cannot get len() of type 'struct'.",
-        "return_code": 1,
+        "return_code": 255,
     },
     "logical.vnm": {
         "debug_prints": [

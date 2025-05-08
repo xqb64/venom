@@ -6,6 +6,7 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
+#include <strings.h>
 
 #include "compiler.h"
 
@@ -70,6 +71,9 @@ static inline uint64_t clamp(double d)
     Object b = pop(vm);                                            \
     Object a = pop(vm);                                            \
                                                                    \
+    objdecref(&b);                                                 \
+    objdecref(&a);                                                 \
+                                                                   \
     if (type(&a) != type(&b)) {                                    \
       RUNTIME_ERROR("cannot '" #op                                 \
                     "' objects of different types: '%s' and '%s'", \
@@ -85,6 +89,9 @@ static inline uint64_t clamp(double d)
   do {                                                             \
     Object b = pop(vm);                                            \
     Object a = pop(vm);                                            \
+                                                                   \
+    objdecref(&b);                                                 \
+    objdecref(&a);                                                 \
                                                                    \
     if (type(&a) != type(&b)) {                                    \
       RUNTIME_ERROR("cannot '" #op                                 \
@@ -417,6 +424,9 @@ static inline ExecResult handle_op_not(VM *vm, Bytecode *code, uint8_t **ip)
   ExecResult r = {.is_ok = true, .msg = NULL};
   
   Object obj = pop(vm);
+
+  objdecref(&obj);
+
   if (!IS_BOOL(obj)) {
     RUNTIME_ERROR("cannot '!' object of type %s", get_object_type(&obj));
   }
@@ -434,6 +444,9 @@ static inline ExecResult handle_op_neg(VM *vm, Bytecode *code, uint8_t **ip)
   ExecResult r = {.is_ok = true, .msg = NULL};
   
   Object original = pop(vm);
+  
+  objdecref(&original);
+
   if (!IS_NUM(original)) {
     RUNTIME_ERROR("cannot '-' object of type %s", get_object_type(&original));
   }
@@ -739,18 +752,23 @@ static inline ExecResult handle_op_getattr(VM *vm, Bytecode *code, uint8_t **ip)
   uint32_t property_name_idx = READ_UINT32();
   
   Object obj = pop(vm);
-  
+
   Object *property =
       table_get(AS_STRUCT(obj)->properties, code->sp.data[property_name_idx]);
   if (!property) {
-    RUNTIME_ERROR("Property '%s' is not defined on struct '%s'.",
-                  code->sp.data[property_name_idx], AS_STRUCT(obj)->name);
+    char *name = own_string(AS_STRUCT(obj)->name);
+    objdecref(&obj);
+    dealloc_stack(vm);
+    alloc_err_str(&r.msg, "Property '%s' is not defined on struct '%s'.", code->sp.data[property_name_idx], name); 
+    r.is_ok = false;                    
+    free(name);
+    return r;
   }
   push(vm, *property);
   
   objincref(property);
   objdecref(&obj);
-  
+
   return r;
 }
 
@@ -777,8 +795,13 @@ static inline ExecResult handle_op_getattr_ptr(VM *vm, Bytecode *code,
 
   int *idx = table_get(sb->property_indexes, code->sp.data[property_name_idx]);
   if (!idx) {
-    RUNTIME_ERROR("struct '%s' does not have property '%s'",
-                  AS_STRUCT(object)->name, code->sp.data[property_name_idx]);
+    char *name = own_string(AS_STRUCT(object)->name);
+    objdecref(&object);
+    dealloc_stack(vm);
+    alloc_err_str(&r.msg, "Property '%s' is not defined on struct '%s'.", code->sp.data[property_name_idx], name); 
+    r.is_ok = false;                    
+    free(name);
+    return r;
   }
 
   Object *property = table_get(AS_STRUCT(object)->properties,
@@ -1047,7 +1070,11 @@ static inline ExecResult handle_op_call_method(VM *vm, Bytecode *code,
   uint32_t argcount = READ_UINT32();
   
   Object object = peek(vm, argcount);
-  
+ 
+  if (!IS_STRUCT(object)) {
+    RUNTIME_ERROR("tried to call object of type %s", get_object_type(&object));
+  }
+
   /* Look up the method with that name on the blueprint. */
   Object *methodobj =
       table_get(AS_STRUCT(object)->properties, code->sp.data[method_name_idx]);
@@ -1133,9 +1160,6 @@ static inline ExecResult handle_op_strcat(VM *vm, Bytecode *code, uint8_t **ip)
   Object b = pop(vm);
   Object a = pop(vm);
 
-  objdecref(&b);
-  objdecref(&a);
-
   if (IS_STRING(a) && IS_STRING(b)) {
     char *result =
         concatenate_strings(AS_STRING(a)->value, AS_STRING(b)->value);
@@ -1143,8 +1167,13 @@ static inline ExecResult handle_op_strcat(VM *vm, Bytecode *code, uint8_t **ip)
     String s = {.refcount = 1, .value = result};
     
     push(vm, STRING_VAL(ALLOC(s)));
-    
+
+    objdecref(&b);
+    objdecref(&a);
  } else {
+    objdecref(&b);
+    objdecref(&a);
+
     RUNTIME_ERROR(
         "'++' operator used on objects of unsupported types: %s and %s",
         get_object_type(&a), get_object_type(&b));
@@ -1189,6 +1218,22 @@ static inline ExecResult handle_op_arrayset(VM *vm, Bytecode *code,
   Object value = pop(vm);
   Object index = pop(vm);
   Object subscriptee = pop(vm);
+
+  if (!IS_ARRAY(subscriptee)) {
+    objdecref(&value);
+    objdecref(&index);
+    objdecref(&subscriptee);
+
+    RUNTIME_ERROR("tried to subscript object of type %s", get_object_type(&subscriptee));
+  }
+
+  if (!IS_NUM(index)) {
+     objdecref(&value);
+     objdecref(&index);
+     objdecref(&subscriptee);
+
+     RUNTIME_ERROR("index must be a number");
+  }
   
   Array *array = AS_ARRAY(subscriptee);
   array->elements.data[(int) AS_NUM(index)] = value;
@@ -1212,7 +1257,19 @@ static inline ExecResult handle_op_subscript(VM *vm, Bytecode *code,
   
   Object index = pop(vm);
   Object object = pop(vm);
-  
+
+  if (!IS_ARRAY(object)) {
+    objdecref(&index);
+    objdecref(&object);
+    RUNTIME_ERROR("tried to subscript object of type: %s", get_object_type(&object));
+  }
+
+  if (!IS_NUM(index)) {
+    objdecref(&index);
+    objdecref(&object);
+    RUNTIME_ERROR("index must be a number");
+  }
+
   Object value = AS_ARRAY(object)->elements.data[(int) AS_NUM(index)];
   push(vm, value);
   
@@ -1406,16 +1463,18 @@ static inline ExecResult handle_op_len(VM *vm, Bytecode *code, uint8_t **ip)
   ExecResult r = {.is_ok = true, .msg = NULL};
   
   Object obj = pop(vm);
-  objdecref(&obj);
   
   if (IS_STRING(obj)) {
     push(vm, NUM_VAL(strlen(AS_STRING(obj)->value)));
   } else if (IS_ARRAY(obj)) {
     push(vm, NUM_VAL(AS_ARRAY(obj)->elements.count));
   } else {
+    objdecref(&obj);
     RUNTIME_ERROR("cannot get len() of type '%s'.", get_object_type(&obj));
   }
-  
+ 
+  objdecref(&obj);
+
   return r;
 }
 
@@ -1425,16 +1484,19 @@ static inline ExecResult handle_op_hasattr(VM *vm, Bytecode *code, uint8_t **ip)
   
   Object attr = pop(vm);
   Object obj = pop(vm);
-
-  objdecref(&obj);
-  objdecref(&attr);
-   
+  
   if (!IS_STRUCT(obj)) {
-   RUNTIME_ERROR("can only hasattr() structs");
+    objdecref(&obj);
+    objdecref(&attr);
+ 
+    RUNTIME_ERROR("can only hasattr() structs");
   }
   
   Object *found = table_get(AS_STRUCT(obj)->properties, AS_STRING(attr)->value);
   push(vm, !found ? BOOL_VAL(false) : BOOL_VAL(true));
+
+  objdecref(&obj);
+  objdecref(&attr);
  
   return r;
 }
@@ -1445,6 +1507,7 @@ static inline ExecResult handle_op_assert(VM *vm, Bytecode *code, uint8_t **ip)
   
   Object assertion = pop(vm);
   if (!AS_BOOL(assertion)) {
+    objdecref(&assertion);
     RUNTIME_ERROR("assertion failed");
   }
   
