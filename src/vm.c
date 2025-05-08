@@ -1145,8 +1145,6 @@ static inline ExecResult handle_op_strcat(VM *vm, Bytecode *code, uint8_t **ip)
     push(vm, STRING_VAL(ALLOC(s)));
     
  } else {
-    printf("refcount of a: %d\n", *a.as.refcount);
-  
     RUNTIME_ERROR(
         "'++' operator used on objects of unsupported types: %s and %s",
         get_object_type(&a), get_object_type(&b));
