@@ -93,11 +93,11 @@ static inline uint64_t clamp(double d)
     objdecref(&b);                                                 \
     objdecref(&a);                                                 \
                                                                    \
-    if (type(&a) != type(&b)) {                                    \
+    if (!IS_NUM(a) && !IS_NUM(b)) {                                    \
       RUNTIME_ERROR("cannot '" #op                                 \
-                    "' objects of different types: '%s' and '%s'", \
+                    "' objects of types: '%s' and '%s'",           \
                     get_object_type(&a), get_object_type(&b));     \
-    }                                                              \
+   }                                                              \
                                                                    \
     uint64_t clamped_a = clamp(AS_NUM(a));                         \
     uint64_t clamped_b = clamp(AS_NUM(b));                         \

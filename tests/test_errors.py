@@ -27,6 +27,15 @@ def test_binary_op_leak(tmp_path, lhs, rhs):
         "*",
         "/",
         "%",
+        ">",
+        "<",
+        ">=",
+        "<=",
+        "&",
+        "^",
+        "|",
+        ">>",
+        "<<",
     ):
         venom_lhs = Object(lhs)
         venom_rhs = Object(rhs)
@@ -66,6 +75,12 @@ def test_binary_op_leak(tmp_path, lhs, rhs):
 
         t1 = typestr(lhs)
         t2 = typestr(rhs)
+
+        # This little dance is because of the RISC-ness of the Venom vm.
+        if op == ">=":
+            op = "<"
+        elif op == "<=":
+            op = ">"
 
         error_msg = f"vm: cannot '{op}' objects of types: '{t1}' and '{t2}'"
 
