@@ -121,6 +121,9 @@ static int run(Arguments *args)
 
 cleanup_after_exec:
   free_vm(&vm);
+  if (exec_result.msg) {
+    free(exec_result.msg);
+  }
 
 cleanup_after_compile:
   free_compiler(compiler);

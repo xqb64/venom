@@ -47,6 +47,13 @@ static inline Object peek(VM *vm, int n)
   return vm->stack[vm->tos - 1 - n];
 }
 
+static void dealloc_stack(VM *vm)
+{
+  for (int i = (int) vm->tos - 1; i >= 0; i--) {
+    dealloc(&vm->stack[i]);
+  }
+}
+
 static inline uint64_t clamp(double d)
 {
   if (d < 0.0) {
@@ -149,6 +156,7 @@ static inline uint64_t clamp(double d)
 
 #define RUNTIME_ERROR(...)              \
   do {                                  \
+    dealloc_stack(vm);                  \
     alloc_err_str(&r.msg, __VA_ARGS__); \
     r.is_ok = false;                    \
     return r;                           \
@@ -1417,6 +1425,8 @@ static inline ExecResult handle_op_hasattr(VM *vm, Bytecode *code, uint8_t **ip)
   Object obj = pop(vm);
   
   if (!IS_STRUCT(obj)) {
+    objdecref(&obj);
+    objdecref(&attr);
     RUNTIME_ERROR("can only hasattr() structs");
   }
   
