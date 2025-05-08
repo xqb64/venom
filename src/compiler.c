@@ -93,6 +93,7 @@ static void free_table_function_ptr(Table_FunctionPtr *table)
       list_free(bucket);
     }
   }
+
   for (size_t i = 0; i < table->count; i++) {
     free(table->items[i]);
   }
@@ -106,6 +107,7 @@ void free_table_struct_blueprints(Table_StructBlueprint *table)
       list_free(bucket);
     }
   }
+  
   for (size_t i = 0; i < table->count; i++) {
     free_table_int(table->items[i].property_indexes);
     free(table->items[i].property_indexes);
@@ -133,6 +135,7 @@ static void free_table_compiled_modules(Table_module_ptr *table)
       list_free(bucket);
     }
   }
+  
   for (size_t i = 0; i < table->count; i++) {
     free(table->items[i]->path);
     dynarray_free(&table->items[i]->imports);
@@ -174,6 +177,7 @@ void init_chunk(Bytecode *code)
 void free_chunk(Bytecode *code)
 {
   dynarray_free(&code->code);
+  
   for (size_t i = 0; i < code->sp.count; i++) {
     free(code->sp.data[i]);
   }
@@ -189,7 +193,9 @@ static uint32_t add_string(Bytecode *code, const char *string)
       return idx;
     }
   }
+  
   dynarray_insert(&code->sp, own_string(string));
+  
   return code->sp.count - 1;
 }
 
@@ -201,11 +207,14 @@ static void emit_byte(Bytecode *code, uint8_t byte)
 static void emit_bytes(Bytecode *code, int n, ...)
 {
   va_list ap;
+  
   va_start(ap, n);
+  
   for (int i = 0; i < n; i++) {
     uint8_t byte = va_arg(ap, int);
     emit_byte(code, byte);
   }
+  
   va_end(ap);
 }
 
@@ -221,7 +230,9 @@ static void emit_double(Bytecode *code, double x)
     double d;
     uint64_t raw;
   } num;
+  
   num.d = x;
+  
   emit_bytes(
       code, 8, (uint8_t) ((num.raw >> 56) & 0xFF),
       (uint8_t) ((num.raw >> 48) & 0xFF), (uint8_t) ((num.raw >> 40) & 0xFF),
@@ -397,7 +408,9 @@ static void begin_scope()
 static void end_scope(Bytecode *code)
 {
   Compiler *c = current_compiler;
+  
   c->depth--;
+  
   while (c->locals_count > 0 &&
          c->locals[c->locals_count - 1].depth > c->depth) {
     emit_byte(code, OP_POP);
@@ -430,6 +443,7 @@ static void patch_jumps(Bytecode *code)
 static Function *resolve_builtin(const char *name)
 {
   Compiler *current = current_compiler;
+  
   while (current) {
     Function **f = table_get(current->builtins, name);
     if (f) {
@@ -437,6 +451,7 @@ static Function *resolve_builtin(const char *name)
     }
     current = current->next;
   }
+  
   return NULL;
 }
 
@@ -445,6 +460,7 @@ static Function *resolve_builtin(const char *name)
 static int resolve_global(Bytecode *code, const char *name)
 {
   Compiler *current = current_compiler;
+  
   while (current) {
     for (size_t idx = 0; idx < current->globals_count; idx++) {
       if (strcmp(current->globals[idx].name, name) == 0) {
@@ -453,6 +469,7 @@ static int resolve_global(Bytecode *code, const char *name)
     }
     current = current->next;
   }
+  
   return -1;
 }
 
@@ -471,6 +488,7 @@ static int resolve_local(const char *name)
 static int resolve_upvalue(const char *name)
 {
   Compiler *current = current_compiler->next;
+  
   while (current) {
     for (size_t idx = 0; idx < current->locals_count; idx++) {
       if (strcmp(current->locals[idx].name, name) == 0) {
@@ -480,12 +498,14 @@ static int resolve_upvalue(const char *name)
     }
     current = current->next;
   }
+  
   return -1;
 }
 
 static StructBlueprint *resolve_blueprint(const char *name)
 {
   Compiler *current = current_compiler;
+  
   while (current) {
     StructBlueprint *bp = table_get(current->struct_blueprints, name);
     if (bp) {
@@ -493,12 +513,14 @@ static StructBlueprint *resolve_blueprint(const char *name)
     }
     current = current->next;
   }
+  
   return NULL;
 }
 
 static Module **resolve_module(const char *name)
 {
   Compiler *current = current_compiler;
+  
   while (current) {
     Module **mp = table_get(current->compiled_modules, name);
     if (mp) {
@@ -506,12 +528,14 @@ static Module **resolve_module(const char *name)
     }
     current = current->next;
   }
+  
   return NULL;
 }
 
 static Function *resolve_func(const char *name)
 {
   Compiler *current = current_compiler;
+  
   while (current) {
     Function *f = table_get(current->functions, name);
     if (f) {
@@ -519,6 +543,7 @@ static Function *resolve_func(const char *name)
     }
     current = current->next;
   }
+  
   return NULL;
 }
 
@@ -539,6 +564,7 @@ static CompileResult compile_expr_lit(Bytecode *code, const Expr *expr)
   CompileResult result = {.is_ok = true, .chunk = NULL, .msg = NULL};
 
   ExprLiteral expr_lit = expr->as.expr_literal;
+  
   switch (expr_lit.kind) {
     case LIT_BOOLEAN: {
       emit_byte(code, OP_TRUE);
@@ -572,6 +598,7 @@ static CompileResult compile_expr_lit(Bytecode *code, const Expr *expr)
 static CompileResult compile_expr_var(Bytecode *code, const Expr *expr)
 {
   CompileResult result = {.is_ok = true, .chunk = NULL, .msg = NULL};
+  
   ExprVariable expr_var = expr->as.expr_variable;
 
   /* Try to resolve the variable as local. */
@@ -608,6 +635,7 @@ static CompileResult compile_expr_una(Bytecode *code, const Expr *expr)
   CompileResult result = {.is_ok = true, .chunk = NULL, .msg = NULL};
 
   ExprUnary expr_unary = expr->as.expr_unary;
+  
   if (strcmp(expr_unary.op, "-") == 0) {
     COMPILE_EXPR(code, expr_unary.expr);
     emit_byte(code, OP_NEG);
@@ -1596,7 +1624,9 @@ static CompileResult compile_stmt_for(Bytecode *code, const Stmt *stmt)
 Compiler *new_compiler(void)
 {
   Compiler compiler = {0};
+  
   memset(&compiler, 0, sizeof(Compiler));
+  
   compiler.functions = calloc(1, sizeof(Table_Function));
   compiler.struct_blueprints = calloc(1, sizeof(Table_StructBlueprint));
   compiler.compiled_modules = calloc(1, sizeof(Table_module_ptr));
@@ -1817,6 +1847,7 @@ static CompileResult compile_stmt_break(Bytecode *code, const Stmt *stmt)
 
   char *exit_label = malloc(len);
   snprintf(exit_label, len, "%s_exit", stmt->as.stmt_break.label);
+  
   emit_loop_cleanup(code);
   emit_named_jump(code, exit_label);
   free(exit_label);
@@ -1830,6 +1861,7 @@ static CompileResult compile_stmt_continue(Bytecode *code, const Stmt *stmt)
 
   Label *loop_start =
       table_get(current_compiler->labels, stmt->as.stmt_continue.label);
+  
   emit_loop_cleanup(code);
   emit_loop(code, loop_start->location);
 
@@ -1879,12 +1911,14 @@ static CompileResult compile_stmt_impl(Bytecode *code, const Stmt *stmt)
 static bool is_cyclic(Compiler *compiler, Module *mod)
 {
   Module *current = mod;
+  
   while (current->parent) {
     if (strcmp(current->parent->path, mod->path) == 0) {
       return true;
     }
     current = current->parent;
   }
+  
   return false;
 }
 
