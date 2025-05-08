@@ -99,15 +99,15 @@ RESULTS = {
         ],
         "ends_with": "current instruction: OP_HLT",
         "return_code": 0,
-     },
-     "getattr.vnm": {
+    },
+    "getattr.vnm": {
         "debug_prints": [
             "dbg print :: 26",
         ],
         "ends_with": "current instruction: OP_HLT",
         "return_code": 0,
-      },
-     "global_loop.vnm": {
+    },
+    "global_loop.vnm": {
         "debug_prints": [
             "dbg print :: 7",
             "dbg print :: Hello world!",

@@ -1,7 +1,7 @@
 import subprocess
 
 from tests.util import VALGRIND_CMD, CASES_PATH
-from tests.util import assert_output, assert_error
+from tests.util import assert_output
 
 
 def test_first_class_citizen():

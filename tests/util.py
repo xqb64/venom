@@ -1,5 +1,6 @@
 import textwrap
 from pathlib import Path
+from types import NoneType
 
 VALGRIND_CMD = [
     "valgrind",
@@ -15,22 +16,27 @@ CASES_PATH = Path(".") / "tests" / "cases"
 
 class Object:
     def __init__(self, obj):
-        self.obj = obj
+        if isinstance(obj, list):
+            self.obj = [Object(x) for x in obj]
+        else:
+            self.obj = obj
 
     def __str__(self):
         match self.obj:
             case v if isinstance(v, bool):
                 return "true" if v else "false"
             case v if isinstance(v, int) or isinstance(v, float):
-                return format(v, ".16g")
+                return str(v)
             case v if v is None:
                 return "null"
             case v if isinstance(v, str):
-                return v
+                return f'"{v}"'
             case v if isinstance(v, Struct):
                 return str(v)
+            case v if isinstance(v, list):
+                return "[%s]" % (", ".join(f"{str(x)}" for x in v),)
             case _:
-                pass
+                return "unknown"
 
 
 class Struct:
@@ -67,3 +73,16 @@ def assert_error(error, debug_prints):
     for debug_print in debug_prints:
         assert debug_print in error
         error = error[error.index(debug_print) + len(debug_print) :]
+
+
+def typestr(obj) -> str:
+    if isinstance(obj, list):
+        return "array"
+    elif isinstance(obj, float):
+        return "number"
+    elif isinstance(obj, Struct):
+        return "struct"
+    elif isinstance(obj, NoneType):
+        return "null"
+    else:
+        return "unknown"
