@@ -1132,7 +1132,10 @@ static inline ExecResult handle_op_strcat(VM *vm, Bytecode *code, uint8_t **ip)
   
   Object b = pop(vm);
   Object a = pop(vm);
-  
+
+  objdecref(&b);
+  objdecref(&a);
+
   if (IS_STRING(a) && IS_STRING(b)) {
     char *result =
         concatenate_strings(AS_STRING(a)->value, AS_STRING(b)->value);
@@ -1141,12 +1144,7 @@ static inline ExecResult handle_op_strcat(VM *vm, Bytecode *code, uint8_t **ip)
     
     push(vm, STRING_VAL(ALLOC(s)));
     
-    objdecref(&b);
-    objdecref(&a);
-  } else {
-    objdecref(&b);
-    objdecref(&a);
-
+ } else {
     printf("refcount of a: %d\n", *a.as.refcount);
   
     RUNTIME_ERROR(
@@ -1429,19 +1427,17 @@ static inline ExecResult handle_op_hasattr(VM *vm, Bytecode *code, uint8_t **ip)
   
   Object attr = pop(vm);
   Object obj = pop(vm);
-  
+
+  objdecref(&obj);
+  objdecref(&attr);
+   
   if (!IS_STRUCT(obj)) {
-    objdecref(&obj);
-    objdecref(&attr);
-    RUNTIME_ERROR("can only hasattr() structs");
+   RUNTIME_ERROR("can only hasattr() structs");
   }
   
   Object *found = table_get(AS_STRUCT(obj)->properties, AS_STRING(attr)->value);
   push(vm, !found ? BOOL_VAL(false) : BOOL_VAL(true));
-  
-  objdecref(&obj);
-  objdecref(&attr);
-  
+ 
   return r;
 }
 
