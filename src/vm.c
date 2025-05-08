@@ -74,9 +74,9 @@ static inline uint64_t clamp(double d)
     objdecref(&b);                                                 \
     objdecref(&a);                                                 \
                                                                    \
-    if (type(&a) != type(&b)) {                                    \
+    if (!IS_NUM(a) && !IS_NUM(b)) {                                \
       RUNTIME_ERROR("cannot '" #op                                 \
-                    "' objects of different types: '%s' and '%s'", \
+                    "' objects of types: '%s' and '%s'",           \
                     get_object_type(&a), get_object_type(&b));     \
     }                                                              \
                                                                    \
@@ -299,6 +299,14 @@ static inline ExecResult handle_op_mod(VM *vm, Bytecode *code, uint8_t **ip)
   
   Object b = pop(vm);
   Object a = pop(vm);
+
+  objdecref(&b);
+  objdecref(&a);
+
+  if (!IS_NUM(a) && !IS_NUM(b)) {
+       RUNTIME_ERROR("cannot '%%' objects of types: '%s' and '%s'",
+                    get_object_type(&a), get_object_type(&b));
+  }
   
   Object obj = NUM_VAL(fmod(AS_NUM(a), AS_NUM(b)));
   

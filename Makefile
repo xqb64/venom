@@ -94,5 +94,5 @@ format:
 	clang-format src/*.c src/*.h -style=file:.clang-format -i
 
 ruff:
-	ruff tests/
+	ruff check tests/
 	ruff format tests/

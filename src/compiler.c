@@ -787,7 +787,7 @@ static CompileResult compile_expr_bin(Bytecode *code, const Expr *expr)
     emit_byte(code, OP_MUL);
   } else if (strcmp(expr_bin.op, "/") == 0) {
     emit_byte(code, OP_DIV);
-  } else if (strcmp(expr_bin.op, "%%") == 0) {
+  } else if (strcmp(expr_bin.op, "%") == 0) {
     emit_byte(code, OP_MOD);
   } else if (strcmp(expr_bin.op, "&") == 0) {
     emit_byte(code, OP_BITAND);
