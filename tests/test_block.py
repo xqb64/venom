@@ -43,7 +43,7 @@ def test_block_undefined_var():
     error = process.stderr.decode("utf-8")
 
     assert_error(error, ["compiler: Variable 'z' is not defined.\n"])
-    assert process.returncode == 1
+    assert process.returncode == 255
 
 
 def test_block_retval_remains_on_stack():

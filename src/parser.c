@@ -808,17 +808,6 @@ static ParseFnResult impl_statement(Parser *parser)
       .as.stmt = AS_STMT_IMPL(stmt), .is_ok = true, .msg = NULL};
 }
 
-static ParseFnResult use_statement(Parser *parser)
-{
-  Token path = CONSUME(parser, TOKEN_STRING, "Module path should be a string");
-  CONSUME(parser, TOKEN_SEMICOLON,
-          "expected semicolon at the end of use statement");
-  
-  StmtUse stmt = {.path = own_string_n(path.start, path.length - 1)};
-  return (ParseFnResult) {
-      .as.stmt = AS_STMT_USE(stmt), .is_ok = true, .msg = NULL};
-}
-
 static ParseFnResult yield_statement(Parser *parser)
 {
   Expr expr = HANDLE_EXPR(expression, parser);
@@ -863,8 +852,6 @@ static ParseFnResult statement(Parser *parser)
     return return_statement(parser);
   } else if (match(parser, 1, TOKEN_STRUCT)) {
     return struct_statement(parser);
-  } else if (match(parser, 1, TOKEN_USE)) {
-    return use_statement(parser);
   } else if (match(parser, 1, TOKEN_AT)) {
     return decorator_statement(parser);
   } else if (match(parser, 1, TOKEN_IMPL)) {

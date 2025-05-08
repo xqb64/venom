@@ -95,9 +95,7 @@ static TokenType check_keyword(const Tokenizer *tokenizer, int start_pos,
     return TOKEN_CONTINUE;
   } else if (strncmp(lexeme, "struct", 6) == 0 && length == 6) {
     return TOKEN_STRUCT;
-  } else if (strncmp(lexeme, "use", 3) == 0 && length == 3) {
-    return TOKEN_USE;
-  } else if (strncmp(lexeme, "impl", 4) == 0 && length == 4) {
+ } else if (strncmp(lexeme, "impl", 4) == 0 && length == 4) {
     return TOKEN_IMPL;
   } else if (strncmp(lexeme, "true", 4) == 0 && length == 4) {
     return TOKEN_TRUE;

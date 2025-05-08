@@ -7,12 +7,12 @@ RESULTS = {
     "assignment.vnm": {
         "debug_prints": [],
         "ends_with": "compiler: Invalid assignment.",
-        "return_code": 1,
+        "return_code": 255,
     },
     "big.vnm": {
         "debug_prints": [],
         "ends_with": "compiler: Maximum 256 locals.",
-        "return_code": 1,
+        "return_code": 255,
     },
     "break.vnm": {
         "debug_prints": [],
@@ -49,7 +49,7 @@ RESULTS = {
     "cursed_struct.vnm": {
         "debug_prints": [],
         "ends_with": "compiler: struct 'spam' has no property 'z'",
-        "return_code": 1,
+        "return_code": 255,
     },
     "doubleloop.vnm": {
         "debug_prints": [
@@ -204,12 +204,12 @@ RESULTS = {
     "try_this.vnm": {
         "debug_prints": [],
         "ends_with": "compiler: Variable 'x' is not defined.",
-        "return_code": 1,
+        "return_code": 255,
     },
     "undefined.vnm": {
         "debug_prints": [],
         "ends_with": "compiler: Variable 'z' is not defined.",
-        "return_code": 1,
+        "return_code": 255,
     },
     "while.vnm": {
         "debug_prints": [

@@ -9,56 +9,18 @@
 
 #include "ast.h"
 #include "dynarray.h"
-#include "parser.h"
-#include "semantics.h"
 #include "table.h"
-#include "tokenizer.h"
 #include "util.h"
-
-#ifdef venom_debug_compiler
-static bool is_last(Module *parent, Module *child)
-{
-  return strcmp(parent->imports.data[parent->imports.count - 1]->path,
-                child->path) == 0;
-}
-
-static void print_prefix(int depth, bool is_grandparent_last)
-{
-  for (int i = 0; i < depth; i++) {
-    if (i == 0) {
-      continue;
-    }
-    if (is_grandparent_last) {
-      printf("  ");
-    } else {
-      printf("┃ ");
-    }
-  }
-}
-
-static void print_module_tree(Compiler *compiler, Module *parent, Module *mod,
-                              int depth, bool is_parent_last)
-{
-  bool last = is_last(parent, mod);
-
-  if (depth == 0) {
-    printf("%s\n", mod->path);
-  } else {
-    bool is_grandparent_last =
-        parent->parent && is_last(parent->parent, parent);
-    print_prefix(depth, is_grandparent_last);
-    char *prefix = last ? "┗━" : "┣━";
-    printf("%s %s\n", prefix, mod->path);
-  }
-
-  for (size_t i = 0; i < mod->imports.count; i++) {
-    print_module_tree(compiler, mod, mod->imports.data[i], depth + 1, last);
-  }
-}
-#endif
 
 #define COMPILER_ERROR(...)                  \
   do {                                       \
+    Compiler *c;                             \
+    while (current_compiler) {               \
+      c = current_compiler;                  \
+      current_compiler = c->next;            \
+      free_compiler(c);                      \
+      free(c);                               \
+    }                                        \
     alloc_err_str(&result.msg, __VA_ARGS__); \
     result.is_ok = false;                    \
     return result;                           \
@@ -127,22 +89,6 @@ static void free_table_functions(Table_Function *table)
   }
 }
 
-static void free_table_compiled_modules(Table_module_ptr *table)
-{
-  for (size_t i = 0; i < TABLE_MAX; i++) {
-    if (table->indexes[i] != NULL) {
-      Bucket *bucket = table->indexes[i];
-      list_free(bucket);
-    }
-  }
-  
-  for (size_t i = 0; i < table->count; i++) {
-    free(table->items[i]->path);
-    dynarray_free(&table->items[i]->imports);
-    free(table->items[i]);
-  }
-}
-
 static void free_table_labels(Table_Label *table)
 {
   for (size_t i = 0; i < TABLE_MAX; i++) {
@@ -161,8 +107,6 @@ void free_compiler(Compiler *compiler)
   free(compiler->struct_blueprints);
   free_table_functions(compiler->functions);
   free(compiler->functions);
-  free_table_compiled_modules(compiler->compiled_modules);
-  free(compiler->compiled_modules);
   free_table_function_ptr(compiler->builtins);
   free(compiler->builtins);
   free_table_labels(compiler->labels);
@@ -510,21 +454,6 @@ static StructBlueprint *resolve_blueprint(const char *name)
     StructBlueprint *bp = table_get(current->struct_blueprints, name);
     if (bp) {
       return bp;
-    }
-    current = current->next;
-  }
-  
-  return NULL;
-}
-
-static Module **resolve_module(const char *name)
-{
-  Compiler *current = current_compiler;
-  
-  while (current) {
-    Module **mp = table_get(current->compiled_modules, name);
-    if (mp) {
-      return mp;
     }
     current = current->next;
   }
@@ -888,8 +817,18 @@ static CompileResult compile_expr_call(Bytecode *code, const Expr *expr)
 
     Function *f = resolve_func(var.name);
     if (f && f->paramcount != expr_call.arguments.count) {
-      COMPILER_ERROR("Function '%s' requires %ld arguments.", f->name,
-                     f->paramcount);
+      char *name = own_string(f->name);
+      size_t paramcount = f->paramcount;
+      
+      free_compiler(current_compiler);
+      free(current_compiler);
+      
+      current_compiler = NULL;
+    
+      alloc_err_str(&result.msg, "Function '%s' requires %ld arguments.", name, paramcount);
+      result.is_ok = false;
+      free(name);
+      return result;
     }
 
     /* Then compile the arguments */
@@ -1208,12 +1147,29 @@ static CompileResult compile_expr_struct(Bytecode *code, const Expr *expr)
     ExprStructInitializer siexp =
         expr_struct.initializers.data[i].as.expr_struct_initializer;
     char *propname = siexp.property->as.expr_variable.name;
+  
+    char *blueprint_name = own_string(blueprint->name);
+    char *property_name = own_string(propname);
+    
     int *propidx = table_get(blueprint->property_indexes, propname);
     if (!propidx) {
-      COMPILER_ERROR("struct '%s' has no property '%s'", blueprint->name,
-                     propname);
+      Compiler *c;                             
+      while (current_compiler) {               
+        c = current_compiler;                  
+        current_compiler = c->next;            
+        free_compiler(c);                      
+        free(c);                               
+      }                                        
+      alloc_err_str(&result.msg, "struct '%s' has no property '%s'", blueprint_name, property_name); 
+      result.is_ok = false;
+      free(blueprint_name);
+      free(property_name);
+      return result;                           
     }
-  }
+    
+    free(blueprint_name);
+    free(property_name);
+ }
 
   /* Everything is OK, we emit OP_STRUCT followed by
    * struct's name index in the string pool. */
@@ -1225,7 +1181,7 @@ static CompileResult compile_expr_struct(Bytecode *code, const Expr *expr)
     COMPILE_EXPR(code, &expr_struct.initializers.data[i]);
   }
 
-  return result;
+   return result;
 }
 
 static CompileResult compile_expr_struct_initializer(Bytecode *code,
@@ -1629,7 +1585,6 @@ Compiler *new_compiler(void)
   
   compiler.functions = calloc(1, sizeof(Table_Function));
   compiler.struct_blueprints = calloc(1, sizeof(Table_StructBlueprint));
-  compiler.compiled_modules = calloc(1, sizeof(Table_module_ptr));
   compiler.builtins = calloc(1, sizeof(Table_FunctionPtr));
   compiler.labels = calloc(1, sizeof(Table_Label));
 
@@ -1908,108 +1863,6 @@ static CompileResult compile_stmt_impl(Bytecode *code, const Stmt *stmt)
   return result;
 }
 
-static bool is_cyclic(Compiler *compiler, Module *mod)
-{
-  Module *current = mod;
-  
-  while (current->parent) {
-    if (strcmp(current->parent->path, mod->path) == 0) {
-      return true;
-    }
-    current = current->parent;
-  }
-  
-  return false;
-}
-
-static CompileResult compile_stmt_use(Bytecode *code, const Stmt *stmt)
-{
-  CompileResult result = {.is_ok = true, .chunk = NULL, .msg = NULL};
-  StmtUse stmt_use = stmt->as.stmt_use;
-
-  Module **cached_module = resolve_module(stmt_use.path);
-
-  if (!cached_module) {
-    char *source = read_file(stmt_use.path);
-
-    Module *importee = calloc(1, sizeof(Module));
-
-    Tokenizer tokenizer;
-    init_tokenizer(&tokenizer, source);
-
-    TokenizeResult tokenize_result = tokenize(&tokenizer);
-
-    if (!tokenize_result.is_ok) {
-      fprintf(stderr, "tokenizer: %s\n", tokenize_result.msg);
-      exit(1);
-    }
-
-    DynArray_Token tokens = tokenize_result.tokens;
-
-    Parser parser;
-    init_parser(&parser, &tokens);
-
-    ParseResult parse_result = parse(&parser);
-
-    if (!parse_result.is_ok) {
-      fprintf(stderr, "parser: %s\n", parse_result.msg);
-      exit(1);
-    }
-
-    DynArray_Stmt ast = parse_result.ast;
-    loop_label_program(&ast, NULL);
-
-    Module *old_module = current_compiler->current_mod;
-
-    importee->path = own_string(stmt_use.path);
-    importee->parent = old_module;
-
-    current_compiler->current_mod = importee;
-
-    dynarray_insert(&importee->parent->imports, importee);
-
-    table_insert(current_compiler->compiled_modules, stmt_use.path, importee);
-
-    if (is_cyclic(current_compiler, importee)) {
-      COMPILER_ERROR("Cycle.");
-    }
-
-    for (size_t i = 0; i < ast.count; i++) {
-      COMPILE_STMT(code, &ast.data[i]);
-    }
-
-    current_compiler->current_mod = old_module;
-
-    for (size_t i = 0; i < ast.count; i++) {
-      free_stmt(&ast.data[i]);
-    }
-    dynarray_free(&ast);
-
-    dynarray_free(&tokens);
-
-    free(source);
-  } else {
-    dynarray_insert(&current_compiler->current_mod->imports, *cached_module);
-    current_compiler->current_mod->imports
-        .data[current_compiler->current_mod->imports.count - 1]
-        ->parent = current_compiler->current_mod;
-
-    if (is_cyclic(current_compiler, *cached_module)) {
-      COMPILER_ERROR("Cycle.");
-    }
-
-#ifdef venom_debug_compiler
-    printf("using cached import for: %s\n", (*cached_module)->path);
-  }
-
-  Module **root_mod = resolve_module(current_compiler->root_mod);
-  print_module_tree(current_compiler, *root_mod, *root_mod, 0, false);
-#else
-  }
-#endif
-  return result;
-}
-
 static CompileResult compile_stmt_yield(Bytecode *code, const Stmt *stmt)
 {
   CompileResult result = {.is_ok = true, .chunk = NULL, .msg = NULL};
@@ -2060,7 +1913,6 @@ static CompileHandler stmt_handler[] = {
     [STMT_RETURN] = {.fn = compile_stmt_return, .name = "STMT_RETURN"},
     [STMT_BREAK] = {.fn = compile_stmt_break, .name = "STMT_BREAK"},
     [STMT_CONTINUE] = {.fn = compile_stmt_continue, .name = "STMT_CONTINUE"},
-    [STMT_USE] = {.fn = compile_stmt_use, .name = "STMT_USE"},
     [STMT_YIELD] = {.fn = compile_stmt_yield, .name = "STMT_YIELD"},
     [STMT_ASSERT] = {.fn = compile_stmt_assert, .name = "STMT_ASSERT"},
 };

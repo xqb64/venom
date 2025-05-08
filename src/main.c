@@ -86,14 +86,6 @@ static int run(Arguments *args)
 
   Compiler *compiler = current_compiler = new_compiler();
 
-  Module current_mod = {
-      .path = own_string(args->file), .imports = {0}, .parent = NULL};
-
-  compiler->current_mod = ALLOC(current_mod);
-  compiler->root_mod = compiler->current_mod->path;
-
-  table_insert(compiler->compiled_modules, args->file, compiler->current_mod);
-
   CompileResult compile_result = compile(&cooked_ast);
 
   if (!compile_result.is_ok) {
@@ -126,8 +118,10 @@ cleanup_after_exec:
   }
 
 cleanup_after_compile:
-  free_compiler(compiler);
-  free(compiler);
+  if (compile_result.is_ok) {
+    free_compiler(compiler);
+    free(compiler);
+  }
   free_compile_result(&compile_result);
 
 cleanup_after_parse:

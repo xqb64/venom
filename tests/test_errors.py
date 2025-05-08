@@ -5,7 +5,7 @@ import pytest
 from tests.util import VALGRIND_CMD
 from tests.util import typestr
 from tests.util import Object
-
+from tests.util import Struct
 
 @pytest.mark.parametrize(
     "lhs, rhs",
@@ -13,6 +13,10 @@ from tests.util import Object
         [
             [1, 2, 3, "Hello, world!"],
             [True, False, None, "Hello, world!"],
+        ],
+        [
+            Struct(name="spam", x=1, y="Hello, world!"),
+            Struct(name="eggs", a=True, b=None), 
         ]
     ],
 )
@@ -39,8 +43,21 @@ def test_binary_op_leak(tmp_path, lhs, rhs):
             """
         )
 
+        print(source)
+
+        current_source = source
+
+        if isinstance(lhs, Struct):
+            current_source = lhs.definition() + current_source
+
+        if isinstance(rhs, Struct):
+            current_source = rhs.definition() + current_source
+
+
+        print(current_source)
+
         input_file = tmp_path / "input.vnm"
-        input_file.write_text(source)
+        input_file.write_text(current_source)
 
         process = subprocess.run(
             VALGRIND_CMD + [input_file],

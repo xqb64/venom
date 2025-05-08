@@ -47,7 +47,7 @@ class Struct:
     def __str__(self):
         return "%s { %s }" % (
             self.name,
-            ", ".join(f"{k}: {str(v)}" for k, v in self.properties.items()),
+            ", ".join(f"{k}: {Object(v)}" for k, v in self.properties.items()),
         )
 
     def definition(self):
@@ -62,14 +62,14 @@ class Struct:
 
 
 def assert_output(output, debug_prints):
-    debug_prints = [f"dbg print :: {Object(x)}" for x in debug_prints]
+    debug_prints = [f"dbg print :: {Object(x) if not isinstance(x, str) else x}" for x in debug_prints]
     for debug_print in debug_prints:
         assert debug_print in output
         output = output[output.index(debug_print) + len(debug_print) :]
 
 
 def assert_error(error, debug_prints):
-    debug_prints = [str(Object(x)) for x in debug_prints]
+    debug_prints = [str(Object(x)) if not isinstance(x, str) else x for x in debug_prints]
     for debug_print in debug_prints:
         assert debug_print in error
         error = error[error.index(debug_print) + len(debug_print) :]

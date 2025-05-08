@@ -85,19 +85,6 @@ typedef struct {
 typedef Table(StructBlueprint) Table_StructBlueprint;
 void free_table_struct_blueprints(Table_StructBlueprint *table);
 
-typedef struct Module Module;
-
-typedef DynArray(Module *) DynArray_Module_ptr;
-
-typedef struct Module {
-  char *path;
-  DynArray_Module_ptr imports;
-  struct Module *parent;
-  Bytecode code;
-} Module;
-
-typedef Table(Module *) Table_module_ptr;
-
 typedef struct {
   char *name;
   int depth;
@@ -120,10 +107,7 @@ typedef struct Compiler {
   Table_Label *labels;
   DynArray_int loop_depths;
   Table_StructBlueprint *struct_blueprints;
-  Table_module_ptr *compiled_modules;
   int depth;
-  Module *current_mod;
-  char *root_mod;
   Function *current_fn;
   struct Compiler *next;
   DynArray_int upvalues;
