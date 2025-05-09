@@ -899,7 +899,12 @@ static ParseFnResult impl_statement(Parser *parser)
 static ParseFnResult yield_statement(Parser *parser)
 {
   Expr expr = HANDLE_EXPR(expression, parser);
-  CONSUME(parser, TOKEN_SEMICOLON, "Expected ';' after yield statement.");
+  
+  TokenResult semicolon_result = consume(parser, TOKEN_SEMICOLON);
+  if (!semicolon_result.is_ok) {
+    free_expr(&expr);
+    return (ParseFnResult){.is_ok = false, .as.stmt = {0}, .msg = "Expected ';' after yield statement."};
+  }
 
   StmtYield stmt = {.expr = expr};
   return (ParseFnResult) {
@@ -909,7 +914,12 @@ static ParseFnResult yield_statement(Parser *parser)
 static ParseFnResult assert_statement(Parser *parser)
 {
   Expr expr = HANDLE_EXPR(expression, parser);
-  CONSUME(parser, TOKEN_SEMICOLON, "Expected ';' after assert statement.");
+  
+  TokenResult semicolon_result = consume(parser, TOKEN_SEMICOLON);
+  if (!semicolon_result.is_ok) {
+    free_expr(&expr);
+    return (ParseFnResult){.is_ok = false, .as.stmt = {0}, .msg = "Expected ';' after assert statement."};
+  }
 
   StmtAssert stmt = {.expr = expr};
   return (ParseFnResult) {
