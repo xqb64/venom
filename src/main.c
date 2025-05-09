@@ -130,6 +130,7 @@ cleanup_after_parse:
 cleanup_after_lex:
   dynarray_free(&tokenize_result.tokens);
   free(source);
+  free_tokenizer_result(&tokenize_result);
 
   return result;
 }

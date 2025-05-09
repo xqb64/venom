@@ -697,5 +697,32 @@ def test_arrayset_leak2(tmp_path, obj):
     assert process.returncode == 255
 
 
+def test_clean_exit_upon_tokenizer_failure(tmp_path):
+    source = textwrap.dedent(
+         f"""\
+         fn main() {{
+             let x = 1;
+             let x = 2;
+             print x $ y;
+             return 0;
+         }}
+         main();
+         """
+    )
 
-
+    print(source)
+ 
+    input_file = tmp_path / "input.vnm"
+    input_file.write_text(source)
+ 
+    process = subprocess.run(
+        VALGRIND_CMD + [input_file],
+        capture_output=True,
+    )
+ 
+    error_msg = f"tokenizer: error on line: 4"
+        
+    decoded = process.stderr.decode("utf-8")
+ 
+    assert error_msg in decoded
+    assert process.returncode == 255

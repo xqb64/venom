@@ -13,6 +13,13 @@ void init_tokenizer(Tokenizer *tokenizer, char *source)
   tokenizer->line = 1;
 }
 
+void free_tokenizer_result(const TokenizeResult *result)
+{
+  if (!result->is_ok) {
+    free(result->msg);
+  }
+}
+
 static char peek(const Tokenizer *tokenizer, int distance)
 {
   return tokenizer->current[distance];
@@ -433,7 +440,7 @@ TokenizeResult tokenize(Tokenizer *tokenizer)
   Token t;
   while ((t = get_token(tokenizer)).type != TOKEN_EOF) {
     if (t.type == TOKEN_ERROR) {
-      alloc_err_str(&result.msg, "Error at line %d", tokenizer->line);
+      alloc_err_str(&result.msg, "error on line: %d", tokenizer->line);
       result.is_ok = false;
       return result;
     }
