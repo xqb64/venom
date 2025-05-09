@@ -84,5 +84,9 @@ def typestr(obj) -> str:
         return "struct"
     elif isinstance(obj, NoneType):
         return "null"
+    elif isinstance(obj, bool):
+        return "boolean"
+    elif isinstance(obj, float) or isinstance(obj, int):
+        return "number"
     else:
         return "unknown"

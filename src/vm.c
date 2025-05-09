@@ -1483,7 +1483,7 @@ static inline ExecResult handle_op_len(VM *vm, Bytecode *code, uint8_t **ip)
     push(vm, NUM_VAL(AS_ARRAY(obj)->elements.count));
   } else {
     objdecref(&obj);
-    RUNTIME_ERROR("cannot get len() of type '%s'.", get_object_type(&obj));
+    RUNTIME_ERROR("cannot 'len()' objects of type: '%s'", get_object_type(&obj));
   }
  
   objdecref(&obj);

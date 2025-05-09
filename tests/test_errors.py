@@ -128,11 +128,55 @@ def test_unary_leak(tmp_path, x):
 
         error_msg = f"vm: cannot '{op}' objects of type: '{t}'"
 
-        print(error_msg)
-            
         decoded = process.stderr.decode("utf-8")
 
         assert error_msg in decoded
         assert process.returncode == 255
 
+@pytest.mark.parametrize(
+    "x",
+    [
+        None,
+        True,
+        12345,
+        Struct(name="spam", x=1, y="Hello, world!"),
+    ],
+)
+def test_len_leak(tmp_path, x):
+    venom_x = Object(x)
+ 
+    source = textwrap.dedent(
+         f"""\
+         fn main() {{
+             let x = {venom_x};
+             print len(x);
+             return 0;
+         }}
+         main();
+         """
+     )
+ 
+    current_source = source
+ 
+    if isinstance(x, Struct):
+        current_source = x.definition() + current_source
+ 
+    print(current_source)
+
+    input_file = tmp_path / "input.vnm"
+    input_file.write_text(current_source)
+ 
+    process = subprocess.run(
+       VALGRIND_CMD + [input_file],
+       capture_output=True,
+    )
+ 
+    t = typestr(x)
+ 
+    error_msg = f"vm: cannot 'len()' objects of type: '{t}'"
+        
+    decoded = process.stderr.decode("utf-8")
+ 
+    assert error_msg in decoded
+    assert process.returncode == 255
 
