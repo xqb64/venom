@@ -36,6 +36,7 @@ def test_binary_op_leak(tmp_path, lhs, rhs):
         "|",
         ">>",
         "<<",
+        "++",
     ):
         venom_lhs = Object(lhs)
         venom_rhs = Object(rhs)

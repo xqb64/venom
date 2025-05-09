@@ -1199,7 +1199,7 @@ static inline ExecResult handle_op_strcat(VM *vm, Bytecode *code, uint8_t **ip)
     objdecref(&a);
 
     RUNTIME_ERROR(
-        "'++' operator used on objects of unsupported types: %s and %s",
+        "cannot '++' objects of types: '%s' and '%s'",
         get_object_type(&a), get_object_type(&b));
   }
 
