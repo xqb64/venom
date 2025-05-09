@@ -611,7 +611,11 @@ static ParseFnResult let_statement(Parser *parser)
       CONSUME(parser, TOKEN_IDENTIFIER, "Expected identifier after 'let'.");
   char *name = own_string_n(identifier.start, identifier.length);
 
-  CONSUME(parser, TOKEN_EQUAL, "Expected '=' after variable name.");
+  TokenResult equal_result = consume(parser, TOKEN_EQUAL);
+  if (!equal_result.is_ok) {
+    free(name);
+    return (ParseFnResult){.is_ok = false, .as.stmt = {0}, .msg = "Expected '=' after variable name."};
+  }
 
   Expr initializer = HANDLE_EXPR(expression, parser);
   
