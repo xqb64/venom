@@ -730,6 +730,12 @@ static inline ExecResult handle_op_setattr(VM *vm, Bytecode *code, uint8_t **ip)
   
   Object value = pop(vm);
   Object obj = pop(vm);
+
+  if (!IS_STRUCT(obj)) {
+    objdecref(&value);
+    objdecref(&obj);
+    RUNTIME_ERROR("cannot 'setattr()' objects of type: '%s'", get_object_type(&obj));
+  }
   
   Object *target =
       table_get(AS_STRUCT(obj)->properties, code->sp.data[property_name_idx]);

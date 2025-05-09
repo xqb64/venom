@@ -277,6 +277,59 @@ def test_getattr_leak(tmp_path, obj, attr):
 
 
 @pytest.mark.parametrize(
+    "obj, attr, val",
+    [
+        [None, "spam", "Hello world!"],
+        [True, "spam", Struct(name="spam", a=1, b="Goodbye")],
+        [12345, "spam", None],
+    ],
+)
+def test_setattr_leak(tmp_path, obj, attr, val):
+    venom_obj = Object(obj)
+ 
+    source = textwrap.dedent(
+         f"""\
+         fn main() {{
+             let x = {venom_obj};
+             setattr(x, {Object(attr)}, {Object(val)});
+             print x.{attr};
+             return 0;
+         }}
+         main();
+         """
+     )
+ 
+    current_source = source
+
+    if isinstance(obj, Struct):
+        current_source = obj.definition() + current_source
+    
+    if isinstance(val, Struct):
+        current_source = val.definition() + current_source
+
+    print(current_source)
+ 
+    input_file = tmp_path / "input.vnm"
+    input_file.write_text(current_source)
+ 
+    process = subprocess.run(
+       VALGRIND_CMD + [input_file],
+       capture_output=True,
+    )
+ 
+    t = typestr(obj)
+
+    print(t)
+
+    error_msg = f"vm: cannot 'setattr()' objects of type: '{t}'"
+        
+    decoded = process.stderr.decode("utf-8")
+ 
+    assert error_msg in decoded
+    assert process.returncode == 255
+
+
+@pytest.mark.parametrize(
     "obj",
     [
         None,
