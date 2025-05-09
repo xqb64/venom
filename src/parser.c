@@ -614,9 +614,14 @@ static ParseFnResult let_statement(Parser *parser)
   CONSUME(parser, TOKEN_EQUAL, "Expected '=' after variable name.");
 
   Expr initializer = HANDLE_EXPR(expression, parser);
-  CONSUME(parser, TOKEN_SEMICOLON,
-          "Expected semicolon at the end of the statement.");
   
+  TokenResult semicolon_result = consume(parser, TOKEN_SEMICOLON);
+  if (!semicolon_result.is_ok) {
+    free(name);
+    free_expr(&initializer);
+    return (ParseFnResult){.is_ok = false, .as.stmt = {0}, .msg = "Expected semicolon at the end of the statement."};
+  }
+
   StmtLet stmt = {.name = name, .initializer = initializer};
   return (ParseFnResult) {
       .as.stmt = AS_STMT_LET(stmt), .is_ok = true, .msg = NULL};
