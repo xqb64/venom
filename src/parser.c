@@ -1,5 +1,6 @@
 #include "parser.h"
 
+#include <asm-generic/errno.h>
 #include <assert.h>
 #include <stdarg.h>
 #include <stdbool.h>
@@ -23,8 +24,9 @@
 #define HANDLE_EXPR(kind, ...)           \
   ({                                     \
     ParseFnResult r = kind(__VA_ARGS__); \
-    if (!r.is_ok)                        \
+    if (!r.is_ok) {                      \
       return r;                          \
+    }                                    \
     r.as.expr;                           \
   })
 
@@ -40,6 +42,13 @@ void init_parser(Parser *parser, const DynArray_Token *tokens)
 {
   memset(parser, 0, sizeof(Parser));
   parser->tokens = tokens;
+}
+
+void free_parse_result(const ParseResult *result)
+{
+  if (!result->is_ok) {
+    free(result->msg);
+  }
 }
 
 static Token pop_front(Parser *parser)
@@ -492,10 +501,14 @@ static ParseFnResult block(Parser *parser)
 {
   parser->depth++;
   
-  DynArray_Stmt stmts = {0};
+  DynArray_Stmt stmts = {0}; 
   while (!check(parser, TOKEN_RIGHT_BRACE) && !check(parser, TOKEN_EOF)) {
-    dynarray_insert(&stmts, HANDLE_STMT(statement, parser));
-  
+    ParseFnResult r = statement(parser);
+    if (!r.is_ok) {
+      free_ast(&stmts);
+      return r;
+    }
+    dynarray_insert(&stmts, r.as.stmt); 
   }
   
   CONSUME(parser, TOKEN_RIGHT_BRACE, "Expected '}' at the end of the block.");
@@ -579,11 +592,15 @@ static ParseFnResult primary(Parser *parser)
 
 static ParseFnResult print_statement(Parser *parser)
 {
-  Expr exp = HANDLE_EXPR(expression, parser);
-  CONSUME(parser, TOKEN_SEMICOLON,
-          "Expected semicolon at the end of the expression.");
-  
-  StmtPrint stmt = {.expr = exp};
+  Expr expr = HANDLE_EXPR(expression, parser);
+
+  TokenResult consume_result = consume(parser, TOKEN_SEMICOLON);
+  if (!consume_result.is_ok) {
+    free_expr(&expr);
+    return (ParseFnResult){.is_ok = false, .as.stmt = {0}, .msg = "Expected semicolon at the end of the expression."};
+  }
+ 
+  StmtPrint stmt = {.expr = expr};
   return (ParseFnResult) {
       .as.stmt = AS_STMT_PRINT(stmt), .is_ok = true, .msg = NULL};
 }
@@ -625,11 +642,25 @@ static ParseFnResult if_statement(Parser *parser)
   Stmt *then_branch = malloc(sizeof(Stmt));
   Stmt *else_branch = NULL;
 
-  *then_branch = HANDLE_STMT(statement, parser);
+  ParseFnResult then_result = statement(parser);
+  if (!then_result.is_ok) {
+    free_expr(&condition);
+    free(then_branch);
+    return then_result;
+  }
+
+  *then_branch = then_result.as.stmt;
 
   if (match(parser, 1, TOKEN_ELSE)) {
+    ParseFnResult else_result = statement(parser);
+    if (!else_result.is_ok) {
+      free_expr(&condition);
+      free_stmt(then_branch);
+      free(then_branch);
+      return else_result;
+    }
     else_branch = malloc(sizeof(Stmt));
-    *else_branch = HANDLE_STMT(statement, parser);
+    *else_branch = else_result.as.stmt;
   }
 
   StmtIf stmt = {

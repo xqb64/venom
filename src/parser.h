@@ -6,6 +6,9 @@
 #include "ast.h"
 #include "tokenizer.h"
 
+typedef void * Resource;
+typedef DynArray(Resource) DynArray_Resource;
+
 typedef struct {
   Token current;
   Token previous;
@@ -36,5 +39,6 @@ typedef struct {
 
 void init_parser(Parser *parser, const DynArray_Token *tokens);
 ParseResult parse(Parser *parser);
+void free_parse_result(const ParseResult *result);
 
 #endif

@@ -55,22 +55,22 @@ static int run(Arguments *args)
 
   ParseResult parse_result = parse(&parser);
 
+  DynArray_Stmt raw_ast = parse_result.ast;
+  
   if (!parse_result.is_ok) {
     fprintf(stderr, "parser: %s\n", parse_result.msg);
     result = -1;
     goto cleanup_after_parse;
   }
 
-  DynArray_Stmt raw_ast = parse_result.ast;
-
   LoopLabelResult loop_label_result = loop_label_program(&raw_ast, NULL);
+  DynArray_Stmt cooked_ast = loop_label_result.ast;
+  
   if (!loop_label_result.is_ok) {
     fprintf(stderr, "loop labeler: %s\n", loop_label_result.msg);
     result = -1;
     goto cleanup_after_parse;
   }
-
-  DynArray_Stmt cooked_ast = loop_label_result.ast;
 
   if (args->parse) {
     print_ast(&cooked_ast);
@@ -125,7 +125,9 @@ cleanup_after_compile:
   free_compile_result(&compile_result);
 
 cleanup_after_parse:
-  free_ast(&cooked_ast);
+  if (parse_result.is_ok) {
+    free_ast(&cooked_ast);
+  }
 
 cleanup_after_lex:
   dynarray_free(&tokenize_result.tokens);

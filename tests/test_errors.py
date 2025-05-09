@@ -702,7 +702,7 @@ def test_clean_exit_upon_tokenizer_failure(tmp_path):
          f"""\
          fn main() {{
              let x = 1;
-             let x = 2;
+             let y = 2;
              print x $ y;
              return 0;
          }}
