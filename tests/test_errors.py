@@ -421,3 +421,93 @@ def test_assert_leak_failed_assertion(tmp_path):
     assert error_msg in decoded
     assert process.returncode == 255
 
+@pytest.mark.parametrize(
+    "obj",
+    [
+        None,
+        12345,
+        "Hello, world!",
+    ],
+)
+def test_callmethod_leak(tmp_path, obj):
+    venom_obj = Object(obj)
+ 
+    source = textwrap.dedent(
+         f"""\
+         fn main() {{
+             let x = {venom_obj};
+             print x.say_hi();
+             return 0;
+         }}
+         main();
+         """
+     )
+ 
+    current_source = source
+
+    if isinstance(obj, Struct):
+        current_source = obj.definition() + current_source
+    
+    print(current_source)
+ 
+    input_file = tmp_path / "input.vnm"
+    input_file.write_text(current_source)
+ 
+    process = subprocess.run(
+       VALGRIND_CMD + [input_file],
+       capture_output=True,
+    )
+ 
+    t = typestr(obj)
+
+    print(t)
+
+    error_msg = f"vm: cannot call objects of type: '{t}'"
+        
+    decoded = process.stderr.decode("utf-8")
+ 
+    assert error_msg in decoded
+    assert process.returncode == 255
+
+
+def test_callmethod_leak2(tmp_path):
+    obj = Struct(name="spam", a=1, b="Hello, world!")
+    venom_obj = Object(obj)
+ 
+    source = textwrap.dedent(
+         f"""\
+         fn main() {{
+             let x = {venom_obj};
+             print x.say_hi();
+             return 0;
+         }}
+         main();
+         """
+     )
+ 
+    current_source = source
+
+    if isinstance(obj, Struct):
+        current_source = obj.definition() + current_source
+    
+    print(current_source)
+ 
+    input_file = tmp_path / "input.vnm"
+    input_file.write_text(current_source)
+ 
+    process = subprocess.run(
+       VALGRIND_CMD + [input_file],
+       capture_output=True,
+    )
+ 
+    t = obj.name
+    print(t)
+
+    error_msg = f"vm: method 'say_hi' is not defined on struct: '{t}'"
+        
+    decoded = process.stderr.decode("utf-8")
+ 
+    assert error_msg in decoded
+    assert process.returncode == 255
+
+

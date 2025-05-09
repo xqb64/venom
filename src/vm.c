@@ -1096,7 +1096,7 @@ static inline ExecResult handle_op_call_method(VM *vm, Bytecode *code,
   Object object = peek(vm, argcount);
  
   if (!IS_STRUCT(object)) {
-    RUNTIME_ERROR("tried to call object of type %s", get_object_type(&object));
+    RUNTIME_ERROR("cannot call objects of type: '%s'", get_object_type(&object));
   }
 
   /* Look up the method with that name on the blueprint. */
@@ -1104,8 +1104,13 @@ static inline ExecResult handle_op_call_method(VM *vm, Bytecode *code,
       table_get(AS_STRUCT(object)->properties, code->sp.data[method_name_idx]);
   
   if (!methodobj) {
-    RUNTIME_ERROR("method '%s' is not defined on struct '%s'.",
-                  code->sp.data[method_name_idx], AS_STRUCT(object)->name);
+    char *type = own_string(AS_STRUCT(object)->name);
+    dealloc_stack(vm);
+    alloc_err_str(&r.msg, "method '%s' is not defined on struct: '%s'",
+                  code->sp.data[method_name_idx], type);
+    r.is_ok = false;
+    free(type);
+    return r;
   }
   
   Closure *c = AS_CLOSURE(*methodobj);
