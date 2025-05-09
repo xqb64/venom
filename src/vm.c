@@ -1253,7 +1253,7 @@ static inline ExecResult handle_op_arrayset(VM *vm, Bytecode *code,
     objdecref(&index);
     objdecref(&subscriptee);
 
-    RUNTIME_ERROR("tried to subscript object of type %s", get_object_type(&subscriptee));
+    RUNTIME_ERROR("cannot '[]' objects of type: '%s'", get_object_type(&subscriptee));
   }
 
   if (!IS_NUM(index)) {
@@ -1261,7 +1261,7 @@ static inline ExecResult handle_op_arrayset(VM *vm, Bytecode *code,
      objdecref(&index);
      objdecref(&subscriptee);
 
-     RUNTIME_ERROR("index must be a number");
+     RUNTIME_ERROR("array index must be a number, got: '%s'", get_object_type(&index));
   }
   
   Array *array = AS_ARRAY(subscriptee);
@@ -1290,13 +1290,13 @@ static inline ExecResult handle_op_subscript(VM *vm, Bytecode *code,
   if (!IS_ARRAY(object)) {
     objdecref(&index);
     objdecref(&object);
-    RUNTIME_ERROR("tried to subscript object of type: %s", get_object_type(&object));
+    RUNTIME_ERROR("cannot '[]' objects of type: '%s'", get_object_type(&object));
   }
 
   if (!IS_NUM(index)) {
     objdecref(&index);
     objdecref(&object);
-    RUNTIME_ERROR("index must be a number");
+    RUNTIME_ERROR("array index must be a number, got: '%s'", get_object_type(&index));
   }
 
   Object value = AS_ARRAY(object)->elements.data[(int) AS_NUM(index)];

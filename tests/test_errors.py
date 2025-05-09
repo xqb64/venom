@@ -7,6 +7,7 @@ from tests.util import typestr
 from tests.util import Object
 from tests.util import Struct
 
+
 @pytest.mark.parametrize(
     "lhs, rhs",
     [
@@ -134,6 +135,7 @@ def test_unary_leak(tmp_path, x):
         assert error_msg in decoded
         assert process.returncode == 255
 
+
 @pytest.mark.parametrize(
     "x",
     [
@@ -227,6 +229,7 @@ def test_hasattr_leak(tmp_path, obj, attr):
  
     assert error_msg in decoded
     assert process.returncode == 255
+
 
 @pytest.mark.parametrize(
     "obj, attr",
@@ -421,6 +424,7 @@ def test_assert_leak_failed_assertion(tmp_path):
     assert error_msg in decoded
     assert process.returncode == 255
 
+
 @pytest.mark.parametrize(
     "obj",
     [
@@ -509,5 +513,189 @@ def test_callmethod_leak2(tmp_path):
  
     assert error_msg in decoded
     assert process.returncode == 255
+
+
+def test_subscript_leak(tmp_path):
+    obj = [1, 2, 3, "Hello, world", Struct(name="spam", x=1, y="Goodbye")]
+    venom_obj = Object(obj)
+ 
+    source = textwrap.dedent(
+         f"""\
+         fn main() {{
+             let x = {venom_obj};
+             print x["spam"];
+             return 0;
+         }}
+         main();
+         """
+     )
+ 
+    current_source = source
+
+    for o in obj:
+        if isinstance(o, Struct):
+            current_source = o.definition() + current_source
+    
+    print(current_source)
+ 
+    input_file = tmp_path / "input.vnm"
+    input_file.write_text(current_source)
+ 
+    process = subprocess.run(
+       VALGRIND_CMD + [input_file],
+       capture_output=True,
+    )
+ 
+    t = typestr(obj)
+    print(t)
+
+    error_msg = f"vm: array index must be a number, got: 'string'"
+        
+    decoded = process.stderr.decode("utf-8")
+ 
+    assert error_msg in decoded
+    assert process.returncode == 255
+
+
+def test_arrayset_leak(tmp_path):
+    obj = [1, 2, 3, "Hello, world", Struct(name="spam", x=1, y="Goodbye")]
+    venom_obj = Object(obj)
+ 
+    source = textwrap.dedent(
+         f"""\
+         fn main() {{
+             let x = {venom_obj};
+             x[null] = 12345;
+             return 0;
+         }}
+         main();
+         """
+     )
+ 
+    current_source = source
+
+    for o in obj:
+        if isinstance(o, Struct):
+            current_source = o.definition() + current_source
+    
+    print(current_source)
+ 
+    input_file = tmp_path / "input.vnm"
+    input_file.write_text(current_source)
+ 
+    process = subprocess.run(
+            VALGRIND_CMD + [input_file],
+       capture_output=True,
+    )
+ 
+    t = typestr(obj)
+    print(t)
+
+    error_msg = f"vm: array index must be a number, got: 'null'"
+        
+    decoded = process.stderr.decode("utf-8")
+ 
+    assert error_msg in decoded
+    assert process.returncode == 255
+
+
+@pytest.mark.parametrize(
+    "obj",
+    [
+        Struct(name="spam", x=1, b="Hello, world!"),
+        None,
+        True,
+        12345,
+    ]
+)
+def test_subscript_leak2(tmp_path, obj):
+    venom_obj = Object(obj)
+ 
+    source = textwrap.dedent(
+         f"""\
+         fn main() {{
+             let x = {venom_obj};
+             print x[0];
+             return 0;
+         }}
+         main();
+         """
+     )
+ 
+    current_source = source
+
+    if isinstance(obj, Struct):
+        current_source = obj.definition() + current_source
+    
+    print(current_source)
+ 
+    input_file = tmp_path / "input.vnm"
+    input_file.write_text(current_source)
+ 
+    process = subprocess.run(
+            VALGRIND_CMD + [input_file],
+       capture_output=True,
+    )
+ 
+    t = typestr(obj)
+    print(t)
+
+    error_msg = f"vm: cannot '[]' objects of type: '{t}'"
+        
+    decoded = process.stderr.decode("utf-8")
+ 
+    assert error_msg in decoded
+    assert process.returncode == 255
+
+
+@pytest.mark.parametrize(
+    "obj",
+    [
+        Struct(name="spam", x=1, b="Hello, world!"),
+        None,
+        True,
+        12345,
+    ]
+)
+def test_arrayset_leak2(tmp_path, obj):
+    venom_obj = Object(obj)
+ 
+    source = textwrap.dedent(
+         f"""\
+         fn main() {{
+             let x = {venom_obj};
+             x[0] = 12345;
+             return 0;
+         }}
+         main();
+         """
+     )
+ 
+    current_source = source
+
+    if isinstance(obj, Struct):
+        current_source = obj.definition() + current_source
+    
+    print(current_source)
+ 
+    input_file = tmp_path / "input.vnm"
+    input_file.write_text(current_source)
+ 
+    process = subprocess.run(
+            VALGRIND_CMD + [input_file],
+       capture_output=True,
+    )
+ 
+    t = typestr(obj)
+    print(t)
+
+    error_msg = f"vm: cannot '[]' objects of type: '{t}'"
+        
+    decoded = process.stderr.decode("utf-8")
+ 
+    assert error_msg in decoded
+    assert process.returncode == 255
+
+
 
 
