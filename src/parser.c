@@ -192,11 +192,28 @@ static ParseFnResult finish_call(Parser *parser, Expr callee)
   DynArray_Expr arguments = {0};
   if (!check(parser, TOKEN_RIGHT_PAREN)) {
     do {
-      dynarray_insert(&arguments, HANDLE_EXPR(expression, parser));
+      ParseFnResult r = expression(parser);
+      if (!r.is_ok) {
+        for (size_t i = 0; i < arguments.count; i++) {
+          free_expr(&arguments.data[i]);
+        }
+        dynarray_free(&arguments);
+        return r;
+      }
+      dynarray_insert(&arguments, r.as.expr);
     } while (match(parser, 1, TOKEN_COMMA));
   }
 
-  CONSUME(parser, TOKEN_RIGHT_PAREN, "Expected ')' after expression.");
+  TokenResult rparen_result = consume(parser, TOKEN_RIGHT_PAREN);
+  if (!rparen_result.is_ok) {
+    for (size_t i = 0; i < arguments.count; i++) {
+      free_expr(&arguments.data[i]);
+    }
+    dynarray_free(&arguments);
+    return (ParseFnResult) {.is_ok = false,
+                            .as.expr = {0},
+                            .msg = "Expected ')' after expression."};
+  }
 
   ExprCall e = {
       .callee = ALLOC(callee),
@@ -208,15 +225,30 @@ static ParseFnResult finish_call(Parser *parser, Expr callee)
 
 static ParseFnResult call(Parser *parser)
 {
-  Expr expr = HANDLE_EXPR(primary, parser);
+  ParseFnResult expr_result = primary(parser);
+
+  if (!expr_result.is_ok) {
+    return expr_result;
+  }
+
+  Expr expr = expr_result.as.expr;
+
   for (;;) {
     if (match(parser, 1, TOKEN_LEFT_PAREN)) {
       expr = HANDLE_EXPR(finish_call, parser, expr);
     } else if (match(parser, 2, TOKEN_DOT, TOKEN_ARROW)) {
       char *op = own_string_n(parser->previous.start, parser->previous.length);
 
-      Token property_name =
-          CONSUME(parser, TOKEN_IDENTIFIER, "Expected property name after '.'");
+      TokenResult identifier_result = consume(parser, TOKEN_IDENTIFIER);
+      if (!identifier_result.is_ok) {
+        free(op);
+        free_expr(&expr);
+        return (ParseFnResult) {.is_ok = false,
+                                .as.expr = {0},
+                                .msg = "Expected property name after '.'"};
+      }
+
+      Token property_name = identifier_result.token;
 
       ExprGet get_expr = {
           .expr = ALLOC(expr),
@@ -226,9 +258,20 @@ static ParseFnResult call(Parser *parser)
       };
       expr = AS_EXPR_GET(get_expr);
     } else if (match(parser, 1, TOKEN_LEFT_BRACKET)) {
-      Expr index = HANDLE_EXPR(expression, parser);
+      ParseFnResult index_result = expression(parser);
+      if (!index_result.is_ok) {
+        free_expr(&expr);
+        return index_result;
+      }
+      Expr index = index_result.as.expr;
 
-      CONSUME(parser, TOKEN_RIGHT_BRACKET, "Expected ']' after index.");
+      TokenResult rbracket_result = consume(parser, TOKEN_RIGHT_BRACKET);
+      if (!rbracket_result.is_ok) {
+        free_expr(&expr);
+        free_expr(&index);
+        return (ParseFnResult) {
+            .is_ok = false, .as.expr = {0}, .msg = "Expected ']' after index."};
+      }
 
       ExprSubscript subscript_expr = {
           .expr = ALLOC(expr),
@@ -249,7 +292,12 @@ static ParseFnResult unary(Parser *parser)
             TOKEN_TILDE)) {
     char *op = own_string_n(parser->previous.start, parser->previous.length);
 
-    Expr right = HANDLE_EXPR(unary, parser);
+    ParseFnResult right_result = unary(parser);
+    if (!right_result.is_ok) {
+      free(op);
+      return right_result;
+    }
+    Expr right = right_result.as.expr;
 
     ExprUnary e = {.expr = ALLOC(right), .op = op};
     return (ParseFnResult) {
@@ -261,12 +309,24 @@ static ParseFnResult unary(Parser *parser)
 
 static ParseFnResult factor(Parser *parser)
 {
-  Expr expr = HANDLE_EXPR(unary, parser);
+  ParseFnResult expr_result = unary(parser);
+  if (!expr_result.is_ok) {
+    return expr_result;
+  }
+
+  Expr expr = expr_result.as.expr;
 
   while (match(parser, 3, TOKEN_STAR, TOKEN_SLASH, TOKEN_MOD)) {
     char *op = own_string_n(parser->previous.start, parser->previous.length);
 
-    Expr right = HANDLE_EXPR(unary, parser);
+    ParseFnResult right_result = unary(parser);
+    if (!right_result.is_ok) {
+      free(op);
+      free_expr(&expr);
+      return right_result;
+    }
+
+    Expr right = right_result.as.expr;
 
     ExprBinary binexp = {
         .lhs = ALLOC(expr),
@@ -281,12 +341,24 @@ static ParseFnResult factor(Parser *parser)
 
 static ParseFnResult term(Parser *parser)
 {
-  Expr expr = HANDLE_EXPR(factor, parser);
+  ParseFnResult expr_result = factor(parser);
+  if (!expr_result.is_ok) {
+    return expr_result;
+  }
+
+  Expr expr = expr_result.as.expr;
 
   while (match(parser, 3, TOKEN_PLUS, TOKEN_MINUS, TOKEN_PLUSPLUS)) {
     char *op = own_string_n(parser->previous.start, parser->previous.length);
 
-    Expr right = HANDLE_EXPR(factor, parser);
+    ParseFnResult right_result = factor(parser);
+    if (!right_result.is_ok) {
+      free(op);
+      free_expr(&expr);
+      return right_result;
+    }
+
+    Expr right = right_result.as.expr;
 
     ExprBinary binexp = {
         .lhs = ALLOC(expr),
@@ -301,12 +373,24 @@ static ParseFnResult term(Parser *parser)
 
 static ParseFnResult bitwise_shift(Parser *parser)
 {
-  Expr expr = HANDLE_EXPR(term, parser);
+  ParseFnResult expr_result = term(parser);
+  if (!expr_result.is_ok) {
+    return expr_result;
+  }
+
+  Expr expr = expr_result.as.expr;
 
   while (match(parser, 2, TOKEN_GREATER_GREATER, TOKEN_LESS_LESS)) {
     char *op = own_string_n(parser->previous.start, parser->previous.length);
 
-    Expr right = HANDLE_EXPR(term, parser);
+    ParseFnResult right_result = term(parser);
+    if (!right_result.is_ok) {
+      free(op);
+      free_expr(&expr);
+      return right_result;
+    }
+
+    Expr right = right_result.as.expr;
 
     ExprBinary binexp = {
         .lhs = ALLOC(expr),
@@ -321,13 +405,25 @@ static ParseFnResult bitwise_shift(Parser *parser)
 
 static ParseFnResult comparison(Parser *parser)
 {
-  Expr expr = HANDLE_EXPR(bitwise_shift, parser);
+  ParseFnResult expr_result = bitwise_shift(parser);
+  if (!expr_result.is_ok) {
+    return expr_result;
+  }
+
+  Expr expr = expr_result.as.expr;
 
   while (match(parser, 4, TOKEN_GREATER, TOKEN_LESS, TOKEN_GREATER_EQUAL,
                TOKEN_LESS_EQUAL)) {
     char *op = own_string_n(parser->previous.start, parser->previous.length);
 
-    Expr right = HANDLE_EXPR(bitwise_shift, parser);
+    ParseFnResult right_result = bitwise_shift(parser);
+    if (!right_result.is_ok) {
+      free(op);
+      free_expr(&expr);
+      return right_result;
+    }
+
+    Expr right = right_result.as.expr;
 
     ExprBinary binexp = {
         .lhs = ALLOC(expr),
@@ -342,12 +438,24 @@ static ParseFnResult comparison(Parser *parser)
 
 static ParseFnResult equality(Parser *parser)
 {
-  Expr expr = HANDLE_EXPR(comparison, parser);
+  ParseFnResult expr_result = comparison(parser);
+  if (!expr_result.is_ok) {
+    return expr_result;
+  }
+
+  Expr expr = expr_result.as.expr;
 
   while (match(parser, 2, TOKEN_DOUBLE_EQUAL, TOKEN_BANG_EQUAL)) {
     char *op = own_string_n(parser->previous.start, parser->previous.length);
 
-    Expr right = HANDLE_EXPR(comparison, parser);
+    ParseFnResult right_result = comparison(parser);
+    if (!right_result.is_ok) {
+      free(op);
+      free_expr(&expr);
+      return right_result;
+    }
+
+    Expr right = right_result.as.expr;
 
     ExprBinary binexp = {
         .lhs = ALLOC(expr),
@@ -362,12 +470,23 @@ static ParseFnResult equality(Parser *parser)
 
 static ParseFnResult bitwise_and(Parser *parser)
 {
-  Expr expr = HANDLE_EXPR(equality, parser);
+  ParseFnResult expr_result = equality(parser);
+  if (!expr_result.is_ok) {
+    return expr_result;
+  }
 
+  Expr expr = expr_result.as.expr;
   while (match(parser, 1, TOKEN_AMPERSAND)) {
     char *op = own_string_n(parser->previous.start, parser->previous.length);
 
-    Expr right = HANDLE_EXPR(equality, parser);
+    ParseFnResult right_result = equality(parser);
+    if (!right_result.is_ok) {
+      free(op);
+      free_expr(&expr);
+      return right_result;
+    }
+
+    Expr right = right_result.as.expr;
 
     ExprBinary binexp = {
         .lhs = ALLOC(expr),
@@ -382,12 +501,24 @@ static ParseFnResult bitwise_and(Parser *parser)
 
 static ParseFnResult bitwise_xor(Parser *parser)
 {
-  Expr expr = HANDLE_EXPR(bitwise_and, parser);
+  ParseFnResult expr_result = bitwise_and(parser);
+  if (!expr_result.is_ok) {
+    return expr_result;
+  }
+
+  Expr expr = expr_result.as.expr;
 
   while (match(parser, 1, TOKEN_CARET)) {
     char *op = own_string_n(parser->previous.start, parser->previous.length);
 
-    Expr right = HANDLE_EXPR(bitwise_and, parser);
+    ParseFnResult right_result = bitwise_and(parser);
+    if (!right_result.is_ok) {
+      free(op);
+      free_expr(&expr);
+      return right_result;
+    }
+
+    Expr right = right_result.as.expr;
 
     ExprBinary binexp = {
         .lhs = ALLOC(expr),
@@ -402,12 +533,24 @@ static ParseFnResult bitwise_xor(Parser *parser)
 
 static ParseFnResult bitwise_or(Parser *parser)
 {
-  Expr expr = HANDLE_EXPR(bitwise_xor, parser);
+  ParseFnResult expr_result = bitwise_xor(parser);
+  if (!expr_result.is_ok) {
+    return expr_result;
+  }
+
+  Expr expr = expr_result.as.expr;
 
   while (match(parser, 1, TOKEN_PIPE)) {
     char *op = own_string_n(parser->previous.start, parser->previous.length);
 
-    Expr right = HANDLE_EXPR(bitwise_xor, parser);
+    ParseFnResult right_result = bitwise_xor(parser);
+    if (!right_result.is_ok) {
+      free(op);
+      free_expr(&expr);
+      return right_result;
+    }
+
+    Expr right = right_result.as.expr;
 
     ExprBinary binexp = {
         .lhs = ALLOC(expr),
@@ -422,12 +565,24 @@ static ParseFnResult bitwise_or(Parser *parser)
 
 static ParseFnResult and_(Parser *parser)
 {
-  Expr expr = HANDLE_EXPR(bitwise_or, parser);
+  ParseFnResult expr_result = bitwise_or(parser);
+  if (!expr_result.is_ok) {
+    return expr_result;
+  }
+
+  Expr expr = expr_result.as.expr;
 
   while (match(parser, 1, TOKEN_DOUBLE_AMPERSAND)) {
     char *op = own_string_n(parser->previous.start, parser->previous.length);
 
-    Expr right = HANDLE_EXPR(bitwise_or, parser);
+    ParseFnResult right_result = bitwise_or(parser);
+    if (!right_result.is_ok) {
+      free(op);
+      free_expr(&expr);
+      return right_result;
+    }
+
+    Expr right = right_result.as.expr;
 
     ExprBinary binexp = {
         .lhs = ALLOC(expr),
@@ -442,12 +597,24 @@ static ParseFnResult and_(Parser *parser)
 
 static ParseFnResult or_(Parser *parser)
 {
-  Expr expr = HANDLE_EXPR(and_, parser);
+  ParseFnResult expr_result = and_(parser);
+  if (!expr_result.is_ok) {
+    return expr_result;
+  }
+
+  Expr expr = expr_result.as.expr;
 
   while (match(parser, 1, TOKEN_DOUBLE_PIPE)) {
     char *op = own_string_n(parser->previous.start, parser->previous.length);
 
-    Expr right = HANDLE_EXPR(and_, parser);
+    ParseFnResult right_result = and_(parser);
+    if (!right_result.is_ok) {
+      free(op);
+      free_expr(&expr);
+      return right_result;
+    }
+
+    Expr right = right_result.as.expr;
 
     ExprBinary binexp = {
         .lhs = ALLOC(expr),
@@ -462,7 +629,12 @@ static ParseFnResult or_(Parser *parser)
 
 static ParseFnResult assignment(Parser *parser)
 {
-  Expr expr = HANDLE_EXPR(or_, parser);
+  ParseFnResult expr_result = or_(parser);
+  if (!expr_result.is_ok) {
+    return expr_result;
+  }
+
+  Expr expr = expr_result.as.expr;
 
   if (match(parser, 11, TOKEN_EQUAL, TOKEN_PLUS_EQUAL, TOKEN_MINUS_EQUAL,
             TOKEN_STAR_EQUAL, TOKEN_SLASH_EQUAL, TOKEN_MOD_EQUAL,
@@ -470,7 +642,14 @@ static ParseFnResult assignment(Parser *parser)
             TOKEN_GREATER_GREATER_EQUAL, TOKEN_LESS_LESS_EQUAL)) {
     char *op = own_string_n(parser->previous.start, parser->previous.length);
 
-    Expr right = HANDLE_EXPR(or_, parser);
+    ParseFnResult right_result = or_(parser);
+    if (!right_result.is_ok) {
+      free(op);
+      free_expr(&expr);
+      return right_result;
+    }
+
+    Expr right = right_result.as.expr;
 
     ExprAssign assignexp = {
         .lhs = ALLOC(expr),
@@ -485,16 +664,26 @@ static ParseFnResult assignment(Parser *parser)
 
 static ParseFnResult expression(Parser *parser)
 {
-  return assignment(parser);
+  ParseFnResult r = assignment(parser);
+  if (!r.is_ok) {
+    free_expr(&r.as.expr);
+  }
+  return r;
 }
 
 static ParseFnResult grouping(Parser *parser)
 {
-  Expr exp = HANDLE_EXPR(expression, parser);
+  Expr expr = HANDLE_EXPR(expression, parser);
 
-  CONSUME(parser, TOKEN_RIGHT_PAREN, "Unmatched closing parentheses.");
+  TokenResult rparen_result = consume(parser, TOKEN_RIGHT_PAREN);
+  if (!rparen_result.is_ok) {
+    free_expr(&expr);
+    return (ParseFnResult) {.is_ok = false,
+                            .as.expr = {0},
+                            .msg = "Unmatched closing parentheses."};
+  }
 
-  return (ParseFnResult) {.as.expr = exp, .is_ok = true, .msg = NULL};
+  return (ParseFnResult) {.as.expr = expr, .is_ok = true, .msg = NULL};
 }
 
 static ParseFnResult block(Parser *parser)
@@ -646,7 +835,8 @@ static ParseFnResult expression_statement(Parser *parser)
   TokenResult semicolon_result = consume(parser, TOKEN_SEMICOLON);
   if (!semicolon_result.is_ok) {
     free_expr(&expr);
-    return (ParseFnResult){.is_ok = false, .as.stmt = {0}, .msg = "Expected ';' after expression"};
+    return (ParseFnResult) {
+        .is_ok = false, .as.stmt = {0}, .msg = "Expected ';' after expression"};
   }
 
   StmtExpr stmt = {.expr = expr};
@@ -663,7 +853,9 @@ static ParseFnResult if_statement(Parser *parser)
   TokenResult rparen_result = consume(parser, TOKEN_RIGHT_PAREN);
   if (!rparen_result.is_ok) {
     free_expr(&condition);
-    return (ParseFnResult) {.is_ok = false, .as.stmt = {0}, .msg = "Expected ')' after the condition."};
+    return (ParseFnResult) {.is_ok = false,
+                            .as.stmt = {0},
+                            .msg = "Expected ')' after the condition."};
   }
 
   Stmt *then_branch = malloc(sizeof(Stmt));
@@ -708,13 +900,16 @@ static ParseFnResult while_statement(Parser *parser)
   TokenResult rparen_result = consume(parser, TOKEN_RIGHT_PAREN);
   if (!rparen_result.is_ok) {
     free_expr(&condition);
-    return (ParseFnResult){.is_ok = false, .as.stmt = {0}, .msg = "Expected ')' after condition."};
+    return (ParseFnResult) {
+        .is_ok = false, .as.stmt = {0}, .msg = "Expected ')' after condition."};
   }
 
   TokenResult lbrace_result = consume(parser, TOKEN_LEFT_BRACE);
   if (!lbrace_result.is_ok) {
     free_expr(&condition);
-    return (ParseFnResult){.is_ok = false, .as.stmt = {0}, .msg = "Expected '{' after the while condition."};
+    return (ParseFnResult) {.is_ok = false,
+                            .as.stmt = {0},
+                            .msg = "Expected '{' after the while condition."};
   }
 
   Stmt body = HANDLE_STMT(block, parser);
@@ -737,7 +932,9 @@ static ParseFnResult for_statement(Parser *parser)
   TokenResult semicolon_result1 = consume(parser, TOKEN_SEMICOLON);
   if (!semicolon_result1.is_ok) {
     free_expr(&initializer);
-    return (ParseFnResult){.is_ok = false, .as.stmt = {0}, .msg = "Expected ';' after initializer."};
+    return (ParseFnResult) {.is_ok = false,
+                            .as.stmt = {0},
+                            .msg = "Expected ';' after initializer."};
   }
 
   Expr condition = HANDLE_EXPR(expression, parser);
@@ -745,7 +942,9 @@ static ParseFnResult for_statement(Parser *parser)
   if (!semicolon_result2.is_ok) {
     free_expr(&initializer);
     free_expr(&condition);
-    return (ParseFnResult){.is_ok = false, .as.stmt = {0}, .msg = "Expected ';' after conditition."};
+    return (ParseFnResult) {.is_ok = false,
+                            .as.stmt = {0},
+                            .msg = "Expected ';' after conditition."};
   }
 
   Expr advancement = HANDLE_EXPR(expression, parser);
@@ -754,7 +953,9 @@ static ParseFnResult for_statement(Parser *parser)
     free_expr(&initializer);
     free_expr(&condition);
     free_expr(&advancement);
-    return (ParseFnResult){.is_ok = false, .as.stmt = {0}, .msg = "Expected ')' after advancement."};
+    return (ParseFnResult) {.is_ok = false,
+                            .as.stmt = {0},
+                            .msg = "Expected ')' after advancement."};
   }
 
   TokenResult lbrace_result = consume(parser, TOKEN_LEFT_BRACE);
@@ -762,7 +963,8 @@ static ParseFnResult for_statement(Parser *parser)
     free_expr(&initializer);
     free_expr(&condition);
     free_expr(&advancement);
-    return (ParseFnResult){.is_ok = false, .as.stmt = {0}, .msg = "Expected '{' after ')'."};
+    return (ParseFnResult) {
+        .is_ok = false, .as.stmt = {0}, .msg = "Expected '{' after ')'."};
   }
 
   Stmt body = HANDLE_STMT(block, parser);
@@ -841,7 +1043,8 @@ static ParseFnResult return_statement(Parser *parser)
   TokenResult semicolon_result = consume(parser, TOKEN_SEMICOLON);
   if (!semicolon_result.is_ok) {
     free_expr(&expr);
-    return (ParseFnResult){.is_ok = false, .as.stmt = {0}, .msg = "Expected ';' after return."};
+    return (ParseFnResult) {
+        .is_ok = false, .as.stmt = {0}, .msg = "Expected ';' after return."};
   }
 
   StmtReturn stmt = {
@@ -918,11 +1121,13 @@ static ParseFnResult impl_statement(Parser *parser)
 static ParseFnResult yield_statement(Parser *parser)
 {
   Expr expr = HANDLE_EXPR(expression, parser);
-  
+
   TokenResult semicolon_result = consume(parser, TOKEN_SEMICOLON);
   if (!semicolon_result.is_ok) {
     free_expr(&expr);
-    return (ParseFnResult){.is_ok = false, .as.stmt = {0}, .msg = "Expected ';' after yield statement."};
+    return (ParseFnResult) {.is_ok = false,
+                            .as.stmt = {0},
+                            .msg = "Expected ';' after yield statement."};
   }
 
   StmtYield stmt = {.expr = expr};
@@ -933,11 +1138,13 @@ static ParseFnResult yield_statement(Parser *parser)
 static ParseFnResult assert_statement(Parser *parser)
 {
   Expr expr = HANDLE_EXPR(expression, parser);
-  
+
   TokenResult semicolon_result = consume(parser, TOKEN_SEMICOLON);
   if (!semicolon_result.is_ok) {
     free_expr(&expr);
-    return (ParseFnResult){.is_ok = false, .as.stmt = {0}, .msg = "Expected ';' after assert statement."};
+    return (ParseFnResult) {.is_ok = false,
+                            .as.stmt = {0},
+                            .msg = "Expected ';' after assert statement."};
   }
 
   StmtAssert stmt = {.expr = expr};
