@@ -161,8 +161,6 @@ def test_len_leak(tmp_path, x):
     if isinstance(x, Struct):
         current_source = x.definition() + current_source
  
-    print(current_source)
-
     input_file = tmp_path / "input.vnm"
     input_file.write_text(current_source)
  
@@ -174,6 +172,195 @@ def test_len_leak(tmp_path, x):
     t = typestr(x)
  
     error_msg = f"vm: cannot 'len()' objects of type: '{t}'"
+        
+    decoded = process.stderr.decode("utf-8")
+ 
+    assert error_msg in decoded
+    assert process.returncode == 255
+
+
+@pytest.mark.parametrize(
+    "obj, attr",
+    [
+        [None, "spam"],
+        [True, "spam"],
+        [12345, "spam"],
+    ],
+)
+def test_hasattr_leak(tmp_path, obj, attr):
+    venom_obj = Object(obj)
+ 
+    source = textwrap.dedent(
+         f"""\
+         fn main() {{
+             let x = {venom_obj};
+             print hasattr(x, {Object(attr)});
+             return 0;
+         }}
+         main();
+         """
+     )
+ 
+    current_source = source
+
+    if isinstance(obj, Struct):
+        current_source = obj.definition() + current_source
+    
+    print(current_source)
+ 
+    input_file = tmp_path / "input.vnm"
+    input_file.write_text(current_source)
+ 
+    process = subprocess.run(
+       VALGRIND_CMD + [input_file],
+       capture_output=True,
+    )
+ 
+    t = typestr(obj)
+
+    print(t)
+
+    error_msg = f"vm: cannot 'hasattr()' objects of type: '{t}'"
+        
+    decoded = process.stderr.decode("utf-8")
+ 
+    assert error_msg in decoded
+    assert process.returncode == 255
+
+@pytest.mark.parametrize(
+    "obj, attr",
+    [
+        [None, "spam"],
+        [True, "spam"],
+        [12345, "spam"],
+    ],
+)
+def test_getattr_leak(tmp_path, obj, attr):
+    venom_obj = Object(obj)
+ 
+    source = textwrap.dedent(
+         f"""\
+         fn main() {{
+             let x = {venom_obj};
+             print getattr(x, {Object(attr)});
+             return 0;
+         }}
+         main();
+         """
+     )
+ 
+    current_source = source
+
+    if isinstance(obj, Struct):
+        current_source = obj.definition() + current_source
+    
+    print(current_source)
+ 
+    input_file = tmp_path / "input.vnm"
+    input_file.write_text(current_source)
+ 
+    process = subprocess.run(
+       VALGRIND_CMD + [input_file],
+       capture_output=True,
+    )
+ 
+    t = typestr(obj)
+
+    print(t)
+
+    error_msg = f"vm: cannot 'getattr()' objects of type: '{t}'"
+        
+    decoded = process.stderr.decode("utf-8")
+ 
+    assert error_msg in decoded
+    assert process.returncode == 255
+
+
+@pytest.mark.parametrize(
+    "obj",
+    [
+        None,
+        12345,
+        "Hello, world!",
+        Struct(name="spam", a=None, b="foobar"),
+    ],
+)
+def test_assert_leak(tmp_path, obj):
+    venom_obj = Object(obj)
+ 
+    source = textwrap.dedent(
+         f"""\
+         fn main() {{
+             let x = {venom_obj};
+             assert(x);
+             return 0;
+         }}
+         main();
+         """
+     )
+ 
+    current_source = source
+
+    if isinstance(obj, Struct):
+        current_source = obj.definition() + current_source
+    
+    print(current_source)
+ 
+    input_file = tmp_path / "input.vnm"
+    input_file.write_text(current_source)
+ 
+    process = subprocess.run(
+       VALGRIND_CMD + [input_file],
+       capture_output=True,
+    )
+ 
+    t = typestr(obj)
+
+    print(t)
+
+    error_msg = f"vm: cannot 'assert()' objects of type: '{t}'"
+        
+    decoded = process.stderr.decode("utf-8")
+ 
+    assert error_msg in decoded
+    assert process.returncode == 255
+
+
+def test_assert_leak_failed_assertion(tmp_path):
+    obj = Struct(name="spam", a=1, b="Hello world!")
+    venom_obj = Object(obj)
+ 
+    source = textwrap.dedent(
+         f"""\
+         fn main() {{
+             let x = {venom_obj};
+             assert(false);
+             return 0;
+         }}
+         main();
+         """
+     )
+ 
+    current_source = source
+
+    if isinstance(obj, Struct):
+        current_source = obj.definition() + current_source
+    
+    print(current_source)
+ 
+    input_file = tmp_path / "input.vnm"
+    input_file.write_text(current_source)
+ 
+    process = subprocess.run(
+       VALGRIND_CMD + [input_file],
+       capture_output=True,
+    )
+ 
+    t = typestr(obj)
+
+    print(t)
+
+    error_msg = f"vm: assertion failed"
         
     decoded = process.stderr.decode("utf-8")
  

@@ -766,6 +766,11 @@ static inline ExecResult handle_op_getattr(VM *vm, Bytecode *code, uint8_t **ip)
   
   Object obj = pop(vm);
 
+  if (!IS_STRUCT(obj)) {
+    objdecref(&obj);
+    RUNTIME_ERROR("cannot 'getattr()' objects of type: '%s'", get_object_type(&obj));
+  }
+
   Object *property =
       table_get(AS_STRUCT(obj)->properties, code->sp.data[property_name_idx]);
   if (!property) {
@@ -1502,7 +1507,7 @@ static inline ExecResult handle_op_hasattr(VM *vm, Bytecode *code, uint8_t **ip)
     objdecref(&obj);
     objdecref(&attr);
  
-    RUNTIME_ERROR("can only hasattr() structs");
+    RUNTIME_ERROR("cannot 'hasattr()' objects of type: '%s'", get_object_type(&obj));
   }
   
   Object *found = table_get(AS_STRUCT(obj)->properties, AS_STRING(attr)->value);
@@ -1519,6 +1524,12 @@ static inline ExecResult handle_op_assert(VM *vm, Bytecode *code, uint8_t **ip)
   ExecResult r = {.is_ok = true, .msg = NULL};
   
   Object assertion = pop(vm);
+
+  if (!IS_BOOL(assertion)) {
+    objdecref(&assertion);
+    RUNTIME_ERROR("cannot 'assert()' objects of type: '%s'", get_object_type(&assertion));
+  }
+
   if (!AS_BOOL(assertion)) {
     objdecref(&assertion);
     RUNTIME_ERROR("assertion failed");

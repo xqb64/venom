@@ -88,5 +88,8 @@ def typestr(obj) -> str:
         return "boolean"
     elif isinstance(obj, float) or isinstance(obj, int):
         return "number"
+    elif isinstance(obj, str):
+        return "string"
     else:
         return "unknown"
+
