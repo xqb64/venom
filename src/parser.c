@@ -797,7 +797,16 @@ static ParseFnResult function_statement(Parser *parser)
   CONSUME(parser, TOKEN_RIGHT_PAREN, "Expected ')' after the parameter list.");
   CONSUME(parser, TOKEN_LEFT_BRACE, "Expected '{' after the ')'.");
 
-  Stmt body = HANDLE_STMT(block, parser);
+  ParseFnResult body_result = block(parser);
+  if (!body_result.is_ok) {
+    for (size_t i = 0; i < parameters.count; i++) {
+      free(parameters.data[i]);
+    }
+    dynarray_free(&parameters);
+    return body_result;
+  }
+
+  Stmt body = body_result.as.stmt;
 
   StmtFn stmt = {
       .name = own_string_n(name.start, name.length),
@@ -828,7 +837,12 @@ static ParseFnResult decorator_statement(Parser *parser)
 static ParseFnResult return_statement(Parser *parser)
 {
   Expr expr = HANDLE_EXPR(expression, parser);
-  CONSUME(parser, TOKEN_SEMICOLON, "Expected ';' after return.");
+
+  TokenResult semicolon_result = consume(parser, TOKEN_SEMICOLON);
+  if (!semicolon_result.is_ok) {
+    free_expr(&expr);
+    return (ParseFnResult){.is_ok = false, .as.stmt = {0}, .msg = "Expected ';' after return."};
+  }
 
   StmtReturn stmt = {
       .expr = expr,
@@ -885,7 +899,12 @@ static ParseFnResult impl_statement(Parser *parser)
 
   DynArray_Stmt methods = {0};
   while (!match(parser, 1, TOKEN_RIGHT_BRACE)) {
-    dynarray_insert(&methods, HANDLE_STMT(statement, parser));
+    ParseFnResult stmt_result = statement(parser);
+    if (!stmt_result.is_ok) {
+      free_ast(&methods);
+      return stmt_result;
+    }
+    dynarray_insert(&methods, stmt_result.as.stmt);
   }
 
   StmtImpl stmt = {
