@@ -642,7 +642,12 @@ static ParseFnResult let_statement(Parser *parser)
 static ParseFnResult expression_statement(Parser *parser)
 {
   Expr expr = HANDLE_EXPR(expression, parser);
-  CONSUME(parser, TOKEN_SEMICOLON, "Expected ';' after expression");
+
+  TokenResult semicolon_result = consume(parser, TOKEN_SEMICOLON);
+  if (!semicolon_result.is_ok) {
+    free_expr(&expr);
+    return (ParseFnResult){.is_ok = false, .as.stmt = {0}, .msg = "Expected ';' after expression"};
+  }
 
   StmtExpr stmt = {.expr = expr};
   return (ParseFnResult) {
@@ -920,6 +925,7 @@ ParseResult parse(Parser *parser)
   while (parser->current.type != TOKEN_EOF) {
     ParseFnResult r = statement(parser);
     if (!r.is_ok) {
+      free_ast(&result.ast);
       result.msg = r.msg;
       result.is_ok = false;
       return result;
