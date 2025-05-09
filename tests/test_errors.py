@@ -52,8 +52,6 @@ def test_binary_op_leak(tmp_path, lhs, rhs):
             """
         )
 
-        print(source)
-
         current_source = source
 
         if isinstance(lhs, Struct):
@@ -61,9 +59,6 @@ def test_binary_op_leak(tmp_path, lhs, rhs):
 
         if isinstance(rhs, Struct):
             current_source = rhs.definition() + current_source
-
-
-        print(current_source)
 
         input_file = tmp_path / "input.vnm"
         input_file.write_text(current_source)
@@ -88,3 +83,56 @@ def test_binary_op_leak(tmp_path, lhs, rhs):
 
         assert error_msg in decoded
         assert process.returncode == 255
+
+
+@pytest.mark.parametrize(
+    "x",
+    [
+        [1, 2, 3, "Hello, world!"],
+        Struct(name="spam", x=1, y="Hello, world!"),
+    ],
+)
+def test_unary_leak(tmp_path, x):
+    for op in (
+        "-",
+        "~",
+        "!",
+   ):
+        venom_x = Object(x)
+
+        source = textwrap.dedent(
+            f"""\
+            fn main() {{
+                let x = {venom_x};
+                print {op}x;
+                return 0;
+            }}
+            main();
+            """
+        )
+
+        current_source = source
+
+        if isinstance(x, Struct):
+            current_source = x.definition() + current_source
+
+        input_file = tmp_path / "input.vnm"
+        input_file.write_text(current_source)
+
+        process = subprocess.run(
+            VALGRIND_CMD + [input_file],
+            capture_output=True,
+        )
+
+        t = typestr(x)
+
+        error_msg = f"vm: cannot '{op}' objects of type: '{t}'"
+
+        print(error_msg)
+            
+        decoded = process.stderr.decode("utf-8")
+
+        assert error_msg in decoded
+        assert process.returncode == 255
+
+

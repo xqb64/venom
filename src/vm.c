@@ -353,6 +353,11 @@ static inline ExecResult handle_op_bitnot(VM *vm, Bytecode *code, uint8_t **ip)
   ExecResult r = {.is_ok = true, .msg = NULL};
   
   Object obj = pop(vm);
+  objdecref(&obj);
+
+  if (!IS_NUM(obj)) {
+    RUNTIME_ERROR("cannot '~' objects of type: '%s'", get_object_type(&obj));
+  }
   
   uint64_t clamped = clamp(AS_NUM(obj));
   uint64_t inverted = ~clamped;
@@ -436,7 +441,7 @@ static inline ExecResult handle_op_not(VM *vm, Bytecode *code, uint8_t **ip)
   objdecref(&obj);
 
   if (!IS_BOOL(obj)) {
-    RUNTIME_ERROR("cannot '!' object of type %s", get_object_type(&obj));
+    RUNTIME_ERROR("cannot '!' objects of type: '%s'", get_object_type(&obj));
   }
   
   push(vm, BOOL_VAL(AS_BOOL(obj) ^ 1));
@@ -456,7 +461,7 @@ static inline ExecResult handle_op_neg(VM *vm, Bytecode *code, uint8_t **ip)
   objdecref(&original);
 
   if (!IS_NUM(original)) {
-    RUNTIME_ERROR("cannot '-' object of type %s", get_object_type(&original));
+    RUNTIME_ERROR("cannot '-' objects of type: '%s'", get_object_type(&original));
   }
 
   Object negated = NUM_VAL(-AS_NUM(original));
