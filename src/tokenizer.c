@@ -102,7 +102,7 @@ static TokenType check_keyword(const Tokenizer *tokenizer, int start_pos,
     return TOKEN_CONTINUE;
   } else if (strncmp(lexeme, "struct", 6) == 0 && length == 6) {
     return TOKEN_STRUCT;
- } else if (strncmp(lexeme, "impl", 4) == 0 && length == 4) {
+  } else if (strncmp(lexeme, "impl", 4) == 0 && length == 4) {
     return TOKEN_IMPL;
   } else if (strncmp(lexeme, "true", 4) == 0 && length == 4) {
     return TOKEN_TRUE;
@@ -128,7 +128,7 @@ typedef enum {
 static Token get_token(Tokenizer *tokenizer)
 {
   int length = 0;
-  
+
   TokenizerState state = STATE_START;
   while (state != STATE_DONE) {
     switch (state) {
@@ -227,9 +227,9 @@ static Token get_token(Tokenizer *tokenizer)
               state = STATE_DONE;
               return make_token(tokenizer, TOKEN_DOUBLE_EQUAL, 2);
             }
-            
+
             state = STATE_DONE;
-            
+
             return make_token(tokenizer, TOKEN_EQUAL, 1);
           }
           case '<': {
@@ -237,19 +237,18 @@ static Token get_token(Tokenizer *tokenizer)
               state = STATE_DONE;
               return make_token(tokenizer, TOKEN_LESS_EQUAL, 2);
             } else if (match(tokenizer, '<')) {
-
               if (match(tokenizer, '=')) {
                 state = STATE_DONE;
                 return make_token(tokenizer, TOKEN_LESS_LESS_EQUAL, 3);
               }
-              
+
               state = STATE_DONE;
-              
+
               return make_token(tokenizer, TOKEN_LESS_LESS, 2);
             }
-            
+
             state = STATE_DONE;
-          
+
             return make_token(tokenizer, TOKEN_LESS, 1);
           }
           case '>': {
@@ -257,14 +256,13 @@ static Token get_token(Tokenizer *tokenizer)
               state = STATE_DONE;
               return make_token(tokenizer, TOKEN_GREATER_EQUAL, 2);
             } else if (match(tokenizer, '>')) {
-            
               if (match(tokenizer, '=')) {
                 state = STATE_DONE;
                 return make_token(tokenizer, TOKEN_GREATER_GREATER_EQUAL, 3);
               }
-              
+
               state = STATE_DONE;
-              
+
               return make_token(tokenizer, TOKEN_GREATER_GREATER, 2);
             }
 
@@ -370,7 +368,7 @@ static Token get_token(Tokenizer *tokenizer)
           length++;
         } else {
           state = STATE_DONE;
-          
+
           TokenType type = check_keyword(tokenizer, 0, length);
           return make_token(tokenizer, type, length);
         }
@@ -383,14 +381,14 @@ static Token get_token(Tokenizer *tokenizer)
         } else if (peek(tokenizer, 0) == '.' && is_digit(peek(tokenizer, 1))) {
           advance(tokenizer);
           length++;
-          
+
           while (is_digit(peek(tokenizer, 0))) {
             advance(tokenizer);
             length++;
           }
-          
+
           state = STATE_DONE;
-          
+
           return make_token(tokenizer, TOKEN_NUMBER, length);
         } else {
           state = STATE_DONE;
@@ -429,7 +427,7 @@ void print_tokens(const DynArray_Token *tokens)
       printf(", ");
     }
   }
-  
+
   printf("]\n");
 }
 

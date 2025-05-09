@@ -6,7 +6,7 @@
 #include "ast.h"
 #include "tokenizer.h"
 
-typedef void * Resource;
+typedef void *Resource;
 typedef DynArray(Resource) DynArray_Resource;
 
 typedef struct {

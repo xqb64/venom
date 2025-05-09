@@ -56,7 +56,7 @@ static int run(Arguments *args)
   ParseResult parse_result = parse(&parser);
 
   DynArray_Stmt raw_ast = parse_result.ast;
-  
+
   if (!parse_result.is_ok) {
     fprintf(stderr, "parser: %s\n", parse_result.msg);
     result = -1;
@@ -65,7 +65,7 @@ static int run(Arguments *args)
 
   LoopLabelResult loop_label_result = loop_label_program(&raw_ast, NULL);
   DynArray_Stmt cooked_ast = loop_label_result.ast;
-  
+
   if (!loop_label_result.is_ok) {
     fprintf(stderr, "loop labeler: %s\n", loop_label_result.msg);
     result = -1;
