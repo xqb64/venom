@@ -734,15 +734,36 @@ static ParseFnResult for_statement(Parser *parser)
   CONSUME(parser, TOKEN_LET, "Expected 'let' in initializer");
 
   Expr initializer = HANDLE_EXPR(expression, parser);
-  CONSUME(parser, TOKEN_SEMICOLON, "Expected ';' after initializer.");
+  TokenResult semicolon_result1 = consume(parser, TOKEN_SEMICOLON);
+  if (!semicolon_result1.is_ok) {
+    free_expr(&initializer);
+    return (ParseFnResult){.is_ok = false, .as.stmt = {0}, .msg = "Expected ';' after initializer."};
+  }
 
   Expr condition = HANDLE_EXPR(expression, parser);
-  CONSUME(parser, TOKEN_SEMICOLON, "Expected ';' after condition.");
+  TokenResult semicolon_result2 = consume(parser, TOKEN_SEMICOLON);
+  if (!semicolon_result2.is_ok) {
+    free_expr(&initializer);
+    free_expr(&condition);
+    return (ParseFnResult){.is_ok = false, .as.stmt = {0}, .msg = "Expected ';' after conditition."};
+  }
 
   Expr advancement = HANDLE_EXPR(expression, parser);
-  CONSUME(parser, TOKEN_RIGHT_PAREN, "Expected ')' after advancement.");
+  TokenResult rparen_result = consume(parser, TOKEN_RIGHT_PAREN);
+  if (!rparen_result.is_ok) {
+    free_expr(&initializer);
+    free_expr(&condition);
+    free_expr(&advancement);
+    return (ParseFnResult){.is_ok = false, .as.stmt = {0}, .msg = "Expected ')' after advancement."};
+  }
 
-  CONSUME(parser, TOKEN_LEFT_BRACE, "Expected '{' after ')'.");
+  TokenResult lbrace_result = consume(parser, TOKEN_LEFT_BRACE);
+  if (!lbrace_result.is_ok) {
+    free_expr(&initializer);
+    free_expr(&condition);
+    free_expr(&advancement);
+    return (ParseFnResult){.is_ok = false, .as.stmt = {0}, .msg = "Expected '{' after ')'."};
+  }
 
   Stmt body = HANDLE_STMT(block, parser);
 
