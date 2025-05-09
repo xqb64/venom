@@ -659,7 +659,12 @@ static ParseFnResult if_statement(Parser *parser)
   CONSUME(parser, TOKEN_LEFT_PAREN, "Expected '(' after if.");
 
   Expr condition = HANDLE_EXPR(expression, parser);
-  CONSUME(parser, TOKEN_RIGHT_PAREN, "Expected ')' after the condition.");
+
+  TokenResult rparen_result = consume(parser, TOKEN_RIGHT_PAREN);
+  if (!rparen_result.is_ok) {
+    free_expr(&condition);
+    return (ParseFnResult) {.is_ok = false, .as.stmt = {0}, .msg = "Expected ')' after the condition."};
+  }
 
   Stmt *then_branch = malloc(sizeof(Stmt));
   Stmt *else_branch = NULL;
@@ -699,9 +704,18 @@ static ParseFnResult while_statement(Parser *parser)
   CONSUME(parser, TOKEN_LEFT_PAREN, "Expected '(' after while.");
 
   Expr condition = HANDLE_EXPR(expression, parser);
-  CONSUME(parser, TOKEN_RIGHT_PAREN, "Expected ')' after condition.");
 
-  CONSUME(parser, TOKEN_LEFT_BRACE, "Expected '{' after the while condition.");
+  TokenResult rparen_result = consume(parser, TOKEN_RIGHT_PAREN);
+  if (!rparen_result.is_ok) {
+    free_expr(&condition);
+    return (ParseFnResult){.is_ok = false, .as.stmt = {0}, .msg = "Expected ')' after condition."};
+  }
+
+  TokenResult lbrace_result = consume(parser, TOKEN_LEFT_BRACE);
+  if (!lbrace_result.is_ok) {
+    free_expr(&condition);
+    return (ParseFnResult){.is_ok = false, .as.stmt = {0}, .msg = "Expected '{' after the while condition."};
+  }
 
   Stmt body = HANDLE_STMT(block, parser);
 
