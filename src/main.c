@@ -81,7 +81,6 @@ static int run(Arguments *args)
 
   if (args->optimize) {
     optimized_ast = optimize(&labeled_ast);
-    free_ast(&labeled_ast);
   }
 
   Compiler *compiler = current_compiler = new_compiler();
@@ -145,6 +144,7 @@ cleanup_after_parse:
   }
 
   if (args->optimize) {
+    free_ast(&labeled_ast);
     free_ast(&optimized_ast);
   }
 
