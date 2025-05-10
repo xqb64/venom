@@ -1,6 +1,5 @@
 #include "parser.h"
 
-#include <asm-generic/errno.h>
 #include <assert.h>
 #include <stdarg.h>
 #include <stdbool.h>
