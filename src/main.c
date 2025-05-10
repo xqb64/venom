@@ -90,7 +90,6 @@ static int run(Arguments *args)
   if (args->optimize) {
     compile_result = compile(&optimized_ast);
   } else {
-    print_ast(&labeled_ast);
     compile_result = compile(&labeled_ast);
   }
 
