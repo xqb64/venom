@@ -699,7 +699,11 @@ static ParseFnResult block(Parser *parser)
     dynarray_insert(&stmts, r.as.stmt);
   }
 
-  CONSUME(parser, TOKEN_RIGHT_BRACE, "Expected '}' at the end of the block.");
+  TokenResult rbrace_result = consume(parser, TOKEN_RIGHT_BRACE);
+  if (!rbrace_result.is_ok) {
+    free_ast(&stmts);
+    return (ParseFnResult){.is_ok = false, .as.stmt = {0}, .msg = "Expected '}' at the end of the block."};
+  }
 
   StmtBlock body = {
       .depth = parser->depth--,
@@ -714,15 +718,48 @@ static ParseFnResult struct_initializer(Parser *parser)
 {
   char *name = own_string_n(parser->previous.start, parser->previous.length);
 
-  CONSUME(parser, TOKEN_LEFT_BRACE, "Expected '{' after struct name.");
+  TokenResult lbrace_result = consume(parser, TOKEN_LEFT_BRACE);
+  if (!lbrace_result.is_ok) {
+    free(name);
+    return (ParseFnResult){.is_ok = false, .as.expr = {0}, .msg = "Expected '{' after struct name."};
+  }
 
   DynArray_Expr initializers = {0};
   do {
-    Expr property = HANDLE_EXPR(expression, parser);
+    ParseFnResult property_result = expression(parser);
+    if (!property_result.is_ok) {
+      for (size_t i = 0; i < initializers.count; i++) {
+        free_expr(&initializers.data[i]);
+      }
+      dynarray_free(&initializers);
+      return property_result;
+    }
 
-    CONSUME(parser, TOKEN_COLON, "Expected ':' after property name.");
-    Expr value = HANDLE_EXPR(expression, parser);
+    Expr property = property_result.as.expr;
 
+    TokenResult colon_result = consume(parser, TOKEN_COLON);
+    if (!colon_result.is_ok) {
+      free(name);
+      for (size_t i = 0; i < initializers.count; i++) {
+        free_expr(&initializers.data[i]);
+      }
+      dynarray_free(&initializers);
+      free_expr(&property);
+      return (ParseFnResult){.is_ok = false, .as.expr = {0}, .msg = "Expected ':' after property name."};
+    }
+
+    ParseFnResult value_result = expression(parser);
+    if (!value_result.is_ok) {
+      for (size_t i = 0; i < initializers.count; i++) {
+        free_expr(&initializers.data[i]);
+      }
+      dynarray_free(&initializers);
+      free_expr(&property);
+      return value_result;
+    }
+
+    Expr value = value_result.as.expr;
+ 
     ExprStructInitializer structinitexp = {
         .property = ALLOC(property),
         .value = ALLOC(value),
@@ -730,8 +767,17 @@ static ParseFnResult struct_initializer(Parser *parser)
     dynarray_insert(&initializers, AS_EXPR_STRUCT_INITIALIZER(structinitexp));
   } while (match(parser, 1, TOKEN_COMMA));
 
-  CONSUME(parser, TOKEN_RIGHT_BRACE,
-          "Expected '}' after struct initialization.");
+  TokenResult rbrace_result = consume(parser, TOKEN_RIGHT_BRACE);
+  if (!rbrace_result.is_ok) {
+    free(name);
+
+    for (size_t i = 0; i < initializers.count; i++) {
+      free_expr(&initializers.data[i]);
+    }
+    dynarray_free(&initializers);
+
+    return (ParseFnResult) {.is_ok = false, .as.expr = {0}, .msg = "Expected '}' after struct initialization."};
+  }
 
   ExprStruct structexp = {
       .initializers = initializers,
@@ -745,11 +791,26 @@ static ParseFnResult array_initializer(Parser *parser)
 {
   DynArray_Expr initializers = {0};
   do {
-    dynarray_insert(&initializers, HANDLE_EXPR(expression, parser));
+    ParseFnResult expr_result = expression(parser);
+    if (!expr_result.is_ok) {
+      for (size_t i = 0; i < initializers.count; i++) {
+        free_expr(&initializers.data[i]);
+      }
+      dynarray_free(&initializers);
+      return expr_result;
+    }
+    dynarray_insert(&initializers, expr_result.as.expr);
   } while (match(parser, 1, TOKEN_COMMA));
 
-  CONSUME(parser, TOKEN_RIGHT_BRACKET,
-          "Expected ']' after array initialization.");
+  TokenResult rbracket_result = consume(parser, TOKEN_RIGHT_BRACKET);
+  if (!rbracket_result.is_ok) {
+    for (size_t i = 0; i < initializers.count; i++) {
+      free_expr(&initializers.data[i]);
+    }
+    dynarray_free(&initializers);
+
+    return (ParseFnResult){.is_ok = false, .as.expr = {0}, .msg = "Expected ']' after array members."};
+  }
 
   ExprArray arrayexp = {
       .elements = initializers,
@@ -810,7 +871,13 @@ static ParseFnResult let_statement(Parser *parser)
                             .msg = "Expected '=' after variable name in 'let' statement."};
   }
 
-  Expr initializer = HANDLE_EXPR(expression, parser);
+  ParseFnResult initializer_result = expression(parser);
+  if (!initializer_result.is_ok) {
+    free(name);
+    return initializer_result;
+  }
+
+  Expr initializer = initializer_result.as.expr;
 
   TokenResult semicolon_result = consume(parser, TOKEN_SEMICOLON);
   if (!semicolon_result.is_ok) {
@@ -934,7 +1001,13 @@ static ParseFnResult for_statement(Parser *parser)
 
   CONSUME(parser, TOKEN_LET, "Expected 'let' after '(' in 'for' initializer.");
 
-  Expr initializer = HANDLE_EXPR(expression, parser);
+  ParseFnResult initializer_result = expression(parser);
+  if (!initializer_result.is_ok) {
+    return initializer_result;
+  }
+
+  Expr initializer = initializer_result.as.expr;
+
   TokenResult semicolon_result1 = consume(parser, TOKEN_SEMICOLON);
   if (!semicolon_result1.is_ok) {
     free_expr(&initializer);
@@ -943,7 +1016,14 @@ static ParseFnResult for_statement(Parser *parser)
                             .msg = "Expected ';' after 'for' initializer."};
   }
 
-  Expr condition = HANDLE_EXPR(expression, parser);
+  ParseFnResult condition_result = expression(parser);
+  if (!condition_result.is_ok) {
+    free_expr(&initializer);
+    return condition_result;
+  }
+
+  Expr condition = condition_result.as.expr;
+
   TokenResult semicolon_result2 = consume(parser, TOKEN_SEMICOLON);
   if (!semicolon_result2.is_ok) {
     free_expr(&initializer);
@@ -953,7 +1033,14 @@ static ParseFnResult for_statement(Parser *parser)
                             .msg = "Expected ';' after 'for' condition."};
   }
 
-  Expr advancement = HANDLE_EXPR(expression, parser);
+  ParseFnResult advancement_result = expression(parser);
+  if (!advancement_result.is_ok) {
+    free_expr(&initializer);
+    free_expr(&condition);
+    return advancement_result;
+  }
+
+  Expr advancement = advancement_result.as.expr;
   TokenResult rparen_result = consume(parser, TOKEN_RIGHT_PAREN);
   if (!rparen_result.is_ok) {
     free_expr(&initializer);

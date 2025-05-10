@@ -28,6 +28,7 @@ import pytest
         ["stmt_for4.vnm", "Expected ';' after 'for' condition."],
         ["stmt_for5.vnm", "Expected ')' after 'for' advancement."],
         ["stmt_for6.vnm", "Expected '{' after 'for' ')'."],
+        ["stmt_for7.vnm", "Expected ':' after property name."],
         ["stmt_if1.vnm", "Expected '(' after 'if'."],
         ["stmt_if2.vnm", "Expected ')' after 'if' condition."],
         ["stmt_impl1.vnm", "Expected identifier after 'impl'."],
@@ -41,6 +42,9 @@ import pytest
         ["stmt_decorator1.vnm", "Expected 'fn' after '@deco'."],
         ["stmt_decorator2.vnm", "Expected ';' after 'return' statement."],
         ["grouping.vnm", "Unmatched closing parentheses."],
+        ["array_init.vnm", "Expected ']' after array members."],
+        ["struct_init2.vnm", "Expected ':' after property name."],
+        ["struct_init3.vnm", "Expected '}' after struct initialization."]
     ],
 )
 def test_parser_error_stmt(path, errmsg):
