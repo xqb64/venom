@@ -917,6 +917,7 @@ static ParseFnResult while_statement(Parser *parser)
   StmtWhile stmt = {
       .condition = condition,
       .body = ALLOC(body),
+      .label = NULL,
   };
   return (ParseFnResult) {
       .as.stmt = AS_STMT_WHILE(stmt), .is_ok = true, .msg = NULL};
@@ -974,6 +975,7 @@ static ParseFnResult for_statement(Parser *parser)
       .condition = condition,
       .advancement = advancement,
       .body = ALLOC(body),
+      .label = NULL,
   };
   return (ParseFnResult) {
       .as.stmt = AS_STMT_FOR(stmt), .is_ok = true, .msg = NULL};
