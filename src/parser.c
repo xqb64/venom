@@ -1208,9 +1208,30 @@ static ParseFnResult struct_statement(Parser *parser)
 
   DynArray_char_ptr properties = {0};
   do {
-    Token property =
-        CONSUME(parser, TOKEN_IDENTIFIER, "Expected property name.");
-    CONSUME(parser, TOKEN_SEMICOLON, "Expected semicolon after property.");
+    TokenResult identifier_result = consume(parser, TOKEN_IDENTIFIER);
+    if (!identifier_result.is_ok) {
+      printf("identifier_result not ok\n");
+      for (size_t i = 0; i < properties.count; i++) {
+        free(properties.data[i]);
+      }
+      dynarray_free(&properties);
+
+      return (ParseFnResult) {.is_ok = false, .as.stmt = {0}, .msg = "Expected property name."};
+    }
+
+    Token property = identifier_result.token;
+
+    TokenResult semicolon_result = consume(parser, TOKEN_SEMICOLON);
+    if (!semicolon_result.is_ok) {
+      printf("semicolon result not ok\n");
+      for (size_t i = 0; i < properties.count; i++) {
+        free(properties.data[i]);
+      }
+      dynarray_free(&properties);
+
+      return (ParseFnResult) {.is_ok = false, .as.stmt = {0}, .msg = "Expected semicolon after property name."};
+    }
+
     dynarray_insert(&properties, own_string_n(property.start, property.length));
   } while (!match(parser, 1, TOKEN_RIGHT_BRACE));
 
