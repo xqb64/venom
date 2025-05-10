@@ -1,0 +1,11 @@
+fn main() {
+  let x = 0;
+  let y = 1;
+  while (x < 1 {
+    print x;
+    x = x+1;
+  }
+  return 0;
+}
+
+main();

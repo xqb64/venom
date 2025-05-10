@@ -1,0 +1,11 @@
+fn main() {
+  let x = 0;
+  let y = "Hello, world!";
+  if (x != y) {
+    let 1 = 2;
+    print 1;
+  }
+  return 0;
+}
+
+main();

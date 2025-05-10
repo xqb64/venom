@@ -1,0 +1,11 @@
+fn main() {
+  let x = "Hello, world!";
+  let y = 12345;
+  let z = 67890;
+  if (y < z) {
+    print "SPAM";
+  }
+  return "HAAAAAAAAAAAAAAA"
+}
+
+main();

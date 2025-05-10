@@ -1,0 +1,10 @@
+fn () {
+  let x = 0;
+  let y = 1;
+  if (x < y) {
+    print "Hello, world!";
+  }
+  return 0;
+}
+
+main();

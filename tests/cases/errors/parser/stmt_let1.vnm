@@ -1,0 +1,10 @@
+fn main() {
+    let x = 1;
+    let y = 2;
+    if (x < y) {
+      print x;
+      let z = 3
+    }
+    return 0;
+}
+main();

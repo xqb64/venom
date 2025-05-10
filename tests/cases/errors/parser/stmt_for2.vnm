@@ -1,0 +1,9 @@
+fn main() {
+  let x = 10;
+  for (y = 0; y < x; y += 1) {
+    print x;
+  }
+  return 0;
+}
+
+main();
