@@ -788,7 +788,7 @@ static ParseFnResult print_statement(Parser *parser)
     return (ParseFnResult) {
         .is_ok = false,
         .as.stmt = {0},
-        .msg = "Expected semicolon at the end of the expression."};
+        .msg = "Expected ';' after 'print' statement."};
   }
 
   StmtPrint stmt = {.expr = expr};
@@ -807,7 +807,7 @@ static ParseFnResult let_statement(Parser *parser)
     free(name);
     return (ParseFnResult) {.is_ok = false,
                             .as.stmt = {0},
-                            .msg = "Expected '=' after variable name."};
+                            .msg = "Expected '=' after variable name in 'let' statement."};
   }
 
   Expr initializer = HANDLE_EXPR(expression, parser);
@@ -819,7 +819,7 @@ static ParseFnResult let_statement(Parser *parser)
     return (ParseFnResult) {
         .is_ok = false,
         .as.stmt = {0},
-        .msg = "Expected semicolon at the end of the statement."};
+        .msg = "Expected ';' after 'let' statement."};
   }
 
   StmtLet stmt = {.name = name, .initializer = initializer};
@@ -835,7 +835,7 @@ static ParseFnResult expression_statement(Parser *parser)
   if (!semicolon_result.is_ok) {
     free_expr(&expr);
     return (ParseFnResult) {
-        .is_ok = false, .as.stmt = {0}, .msg = "Expected ';' after expression"};
+        .is_ok = false, .as.stmt = {0}, .msg = "Expected ';' after expression statement."};
   }
 
   StmtExpr stmt = {.expr = expr};
@@ -845,7 +845,7 @@ static ParseFnResult expression_statement(Parser *parser)
 
 static ParseFnResult if_statement(Parser *parser)
 {
-  CONSUME(parser, TOKEN_LEFT_PAREN, "Expected '(' after if.");
+  CONSUME(parser, TOKEN_LEFT_PAREN, "Expected '(' after 'if'.");
 
   Expr condition = HANDLE_EXPR(expression, parser);
 
@@ -854,7 +854,7 @@ static ParseFnResult if_statement(Parser *parser)
     free_expr(&condition);
     return (ParseFnResult) {.is_ok = false,
                             .as.stmt = {0},
-                            .msg = "Expected ')' after the condition."};
+                            .msg = "Expected ')' after 'if' condition."};
   }
 
   Stmt *then_branch = malloc(sizeof(Stmt));
@@ -892,7 +892,7 @@ static ParseFnResult if_statement(Parser *parser)
 
 static ParseFnResult while_statement(Parser *parser)
 {
-  CONSUME(parser, TOKEN_LEFT_PAREN, "Expected '(' after while.");
+  CONSUME(parser, TOKEN_LEFT_PAREN, "Expected '(' after 'while'.");
 
   Expr condition = HANDLE_EXPR(expression, parser);
 
@@ -900,7 +900,7 @@ static ParseFnResult while_statement(Parser *parser)
   if (!rparen_result.is_ok) {
     free_expr(&condition);
     return (ParseFnResult) {
-        .is_ok = false, .as.stmt = {0}, .msg = "Expected ')' after condition."};
+        .is_ok = false, .as.stmt = {0}, .msg = "Expected ')' after 'while' condition."};
   }
 
   TokenResult lbrace_result = consume(parser, TOKEN_LEFT_BRACE);
@@ -908,10 +908,16 @@ static ParseFnResult while_statement(Parser *parser)
     free_expr(&condition);
     return (ParseFnResult) {.is_ok = false,
                             .as.stmt = {0},
-                            .msg = "Expected '{' after the while condition."};
+                            .msg = "Expected '{' after 'while' condition."};
   }
 
-  Stmt body = HANDLE_STMT(block, parser);
+  ParseFnResult body_result = block(parser);
+  if (!body_result.is_ok) {
+    free_expr(&condition);
+    return body_result;
+  }
+
+  Stmt body = body_result.as.stmt;
 
   StmtWhile stmt = {
       .condition = condition,
@@ -924,9 +930,9 @@ static ParseFnResult while_statement(Parser *parser)
 
 static ParseFnResult for_statement(Parser *parser)
 {
-  CONSUME(parser, TOKEN_LEFT_PAREN, "Expected '(' after for.");
+  CONSUME(parser, TOKEN_LEFT_PAREN, "Expected '(' after 'for'.");
 
-  CONSUME(parser, TOKEN_LET, "Expected 'let' in initializer");
+  CONSUME(parser, TOKEN_LET, "Expected 'let' after '(' in 'for' initializer.");
 
   Expr initializer = HANDLE_EXPR(expression, parser);
   TokenResult semicolon_result1 = consume(parser, TOKEN_SEMICOLON);
@@ -934,7 +940,7 @@ static ParseFnResult for_statement(Parser *parser)
     free_expr(&initializer);
     return (ParseFnResult) {.is_ok = false,
                             .as.stmt = {0},
-                            .msg = "Expected ';' after initializer."};
+                            .msg = "Expected ';' after 'for' initializer."};
   }
 
   Expr condition = HANDLE_EXPR(expression, parser);
@@ -944,7 +950,7 @@ static ParseFnResult for_statement(Parser *parser)
     free_expr(&condition);
     return (ParseFnResult) {.is_ok = false,
                             .as.stmt = {0},
-                            .msg = "Expected ';' after conditition."};
+                            .msg = "Expected ';' after 'for' condition."};
   }
 
   Expr advancement = HANDLE_EXPR(expression, parser);
@@ -955,7 +961,7 @@ static ParseFnResult for_statement(Parser *parser)
     free_expr(&advancement);
     return (ParseFnResult) {.is_ok = false,
                             .as.stmt = {0},
-                            .msg = "Expected ')' after advancement."};
+                            .msg = "Expected ')' after 'for' advancement."};
   }
 
   TokenResult lbrace_result = consume(parser, TOKEN_LEFT_BRACE);
@@ -964,10 +970,18 @@ static ParseFnResult for_statement(Parser *parser)
     free_expr(&condition);
     free_expr(&advancement);
     return (ParseFnResult) {
-        .is_ok = false, .as.stmt = {0}, .msg = "Expected '{' after ')'."};
+        .is_ok = false, .as.stmt = {0}, .msg = "Expected '{' after 'for' ')'."};
   }
 
-  Stmt body = HANDLE_STMT(block, parser);
+  ParseFnResult body_result = block(parser);
+  if (!body_result.is_ok) {
+    free_expr(&initializer);
+    free_expr(&condition);
+    free_expr(&advancement);
+    return body_result;
+  }
+
+  Stmt body = body_result.as.stmt;
 
   StmtFor stmt = {
       .initializer = initializer,
@@ -985,20 +999,46 @@ static ParseFnResult function_statement(Parser *parser)
   Token name =
       CONSUME(parser, TOKEN_IDENTIFIER, "Expected identifier after 'fn'.");
 
-  CONSUME(parser, TOKEN_LEFT_PAREN, "Expected '(' after identifier.");
+  CONSUME(parser, TOKEN_LEFT_PAREN, "Expected '(' after identifier in 'fn' statement.");
 
   DynArray_char_ptr parameters = {0};
   if (!check(parser, TOKEN_RIGHT_PAREN)) {
     do {
-      Token parameter =
-          CONSUME(parser, TOKEN_IDENTIFIER, "Expected parameter name.");
+      TokenResult identifier_result = consume(parser, TOKEN_IDENTIFIER);
+      if (!identifier_result.is_ok) {
+        for (size_t i = 0; i < parameters.count; i++) {
+          free(parameters.data[i]);
+        }
+        dynarray_free(&parameters);
+        return (ParseFnResult){.is_ok = false, .as.stmt = {0}, .msg = "Expected parameter name after '(' in 'fn' statement."};
+      }
+  
+      Token parameter = identifier_result.token;
+
       dynarray_insert(&parameters,
                       own_string_n(parameter.start, parameter.length));
     } while (match(parser, 1, TOKEN_COMMA));
   }
 
-  CONSUME(parser, TOKEN_RIGHT_PAREN, "Expected ')' after the parameter list.");
-  CONSUME(parser, TOKEN_LEFT_BRACE, "Expected '{' after the ')'.");
+  TokenResult rparen_result = consume(parser, TOKEN_RIGHT_PAREN);
+  if (!rparen_result.is_ok) {
+    for (size_t i = 0; i < parameters.count; i++) {
+      free(parameters.data[i]);
+    }
+    dynarray_free(&parameters);
+
+    return (ParseFnResult){.is_ok = false, .as.stmt = {0}, .msg = "Expected ')' after the parameter list in 'fn' statement."};
+  }
+
+  TokenResult lbrace_result = consume(parser, TOKEN_LEFT_BRACE);
+  if (!lbrace_result.is_ok) {
+    for (size_t i = 0; i < parameters.count; i++) {
+      free(parameters.data[i]);
+    }
+    dynarray_free(&parameters);
+
+    return (ParseFnResult){.is_ok = false, .as.stmt = {0}, .msg = "Expected '{' after ')' in 'fn' statement."};
+  }
 
   ParseFnResult body_result = block(parser);
   if (!body_result.is_ok) {
@@ -1045,7 +1085,7 @@ static ParseFnResult return_statement(Parser *parser)
   if (!semicolon_result.is_ok) {
     free_expr(&expr);
     return (ParseFnResult) {
-        .is_ok = false, .as.stmt = {0}, .msg = "Expected ';' after return."};
+        .is_ok = false, .as.stmt = {0}, .msg = "Expected ';' after 'return' statement."};
   }
 
   StmtReturn stmt = {
@@ -1057,7 +1097,7 @@ static ParseFnResult return_statement(Parser *parser)
 
 static ParseFnResult break_statement(Parser *parser)
 {
-  CONSUME(parser, TOKEN_SEMICOLON, "Expected ';' after break.");
+  CONSUME(parser, TOKEN_SEMICOLON, "Expected ';' after 'break' statement.");
 
   StmtBreak stmt = {0};
   return (ParseFnResult) {
@@ -1066,7 +1106,7 @@ static ParseFnResult break_statement(Parser *parser)
 
 static ParseFnResult continue_statement(Parser *parser)
 {
-  CONSUME(parser, TOKEN_SEMICOLON, "Expected ';' after continue.");
+  CONSUME(parser, TOKEN_SEMICOLON, "Expected ';' after 'continue' statement.");
 
   StmtContinue stmt = {0};
   return (ParseFnResult) {
@@ -1099,7 +1139,7 @@ static ParseFnResult impl_statement(Parser *parser)
 {
   Token name =
       CONSUME(parser, TOKEN_IDENTIFIER, "Expected identifier after 'impl'.");
-  CONSUME(parser, TOKEN_LEFT_BRACE, "Expected '{' after identifier.");
+  CONSUME(parser, TOKEN_LEFT_BRACE, "Expected '{' after identifier in 'impl' statement.");
 
   DynArray_Stmt methods = {0};
   while (!match(parser, 1, TOKEN_RIGHT_BRACE)) {
@@ -1128,7 +1168,7 @@ static ParseFnResult yield_statement(Parser *parser)
     free_expr(&expr);
     return (ParseFnResult) {.is_ok = false,
                             .as.stmt = {0},
-                            .msg = "Expected ';' after yield statement."};
+                            .msg = "Expected ';' after 'yield' statement."};
   }
 
   StmtYield stmt = {.expr = expr};
@@ -1145,7 +1185,7 @@ static ParseFnResult assert_statement(Parser *parser)
     free_expr(&expr);
     return (ParseFnResult) {.is_ok = false,
                             .as.stmt = {0},
-                            .msg = "Expected ';' after assert statement."};
+                            .msg = "Expected ';' after 'assert' statement."};
   }
 
   StmtAssert stmt = {.expr = expr};
