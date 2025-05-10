@@ -24,6 +24,7 @@ typedef struct {
 typedef struct {
   Arguments args;
   bool is_ok;
+  int errcode;
   char *msg;
 } ArgParseResult;
 
@@ -205,14 +206,16 @@ static ArgParseResult parse_args(int argc, char *argv[])
         return (ArgParseResult) {
             .args = {0},
             .msg = "usage: %s [--lex] [--parse] [--ir] [--optimize]",
-            .is_ok = false};
+            .is_ok = false,
+            .errcode = -1};
     }
   }
 
   if (do_lex + do_parse + do_ir > 1) {
     return (ArgParseResult) {.args = {0},
                              .msg = "Please specify exactly one option.",
-                             .is_ok = false};
+                             .is_ok = false,
+                             .errcode = -1};
   }
 
   Arguments args;
@@ -223,22 +226,23 @@ static ArgParseResult parse_args(int argc, char *argv[])
   args.optimize = do_optimize;
   args.file = argv[optind];
 
-  return (ArgParseResult) {.args = args, .is_ok = true, .msg = NULL};
+  return (ArgParseResult) {.args = args, .is_ok = true, .msg = NULL, .errcode = 0};
 }
 
 int main(int argc, char *argv[])
 {
-  ArgParseResult arg_parse_result;
   Arguments args;
+  ArgParseResult arg_parse_result;
+  RunResult result;
 
   arg_parse_result = parse_args(argc, argv);
   if (!arg_parse_result.is_ok) {
     fprintf(stderr, "venom: %s\n", arg_parse_result.msg);
-    return -1;
+    return arg_parse_result.errcode;
   }
 
   args = arg_parse_result.args;
-  RunResult result = run(&args);
+  result = run(&args);
   if (!result.is_ok) {
     fprintf(stderr, "%s", result.msg);
     free(result.msg);
