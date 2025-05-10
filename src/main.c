@@ -37,7 +37,6 @@ typedef struct {
 static RunResult run(Arguments *args)
 {
   RunResult result = {.is_ok = true, .errcode = 0, .msg = NULL};
-  int errcode = 0;
 
   char *source = read_file(args->file);
 
