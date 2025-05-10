@@ -349,6 +349,7 @@ Expr clone_expr(const Expr *expr)
     case EXPR_UNARY: {
       Expr exp = clone_expr(expr->as.expr_unary.expr);
       clone.as.expr_unary.expr = ALLOC(exp);
+      clone.as.expr_unary.op = own_string(expr->as.expr_unary.op);
       break;
     }
     case EXPR_CALL: {

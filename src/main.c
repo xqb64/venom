@@ -64,29 +64,35 @@ static int run(Arguments *args)
   }
 
   LoopLabelResult loop_label_result = loop_label_program(&raw_ast, NULL);
-  DynArray_Stmt cooked_ast = loop_label_result.ast;
+  DynArray_Stmt labeled_ast = loop_label_result.as.ast;
 
   if (!loop_label_result.is_ok) {
-    fprintf(stderr, "loop labeler: %s\n", loop_label_result.msg);
+    fprintf(stderr, "loop_labeler: %s\n", loop_label_result.msg);
     result = -1;
-    goto cleanup_after_parse;
+    goto cleanup_after_loop_label;
   }
 
   if (args->parse) {
-    print_ast(&cooked_ast);
+    print_ast(&labeled_ast);
     goto cleanup_after_parse;
   }
 
+  DynArray_Stmt optimized_ast = {0};
+
   if (args->optimize) {
-    DynArray_Stmt optimized_ast = optimize(&cooked_ast);
-    free_ast(&cooked_ast);
-    cooked_ast = optimized_ast;
-    print_ast(&optimized_ast);
+    optimized_ast = optimize(&labeled_ast);
+    free_ast(&labeled_ast);
   }
 
   Compiler *compiler = current_compiler = new_compiler();
 
-  CompileResult compile_result = compile(&cooked_ast);
+  CompileResult compile_result;
+  if (args->optimize) {
+    compile_result = compile(&optimized_ast);
+  } else {
+    print_ast(&labeled_ast);
+    compile_result = compile(&labeled_ast);
+  }
 
   if (!compile_result.is_ok) {
     fprintf(stderr, "compiler: %s\n", compile_result.msg);
@@ -124,9 +130,20 @@ cleanup_after_compile:
   }
   free_compile_result(&compile_result);
 
+cleanup_after_loop_label:
+  if (loop_label_result.is_ok) {
+    free_ast(&labeled_ast);
+  } else {
+    free(loop_label_result.msg);
+  }
+
 cleanup_after_parse:
   if (parse_result.is_ok) {
-    free_ast(&cooked_ast);
+    free_ast(&raw_ast);
+  }
+
+  if (args->optimize) {
+    free_ast(&optimized_ast);
   }
 
 cleanup_after_lex:

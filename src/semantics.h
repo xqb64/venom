@@ -4,7 +4,10 @@
 #include "ast.h"
 
 typedef struct {
-  DynArray_Stmt ast;
+  union { 
+    DynArray_Stmt ast;
+    Stmt stmt;
+  } as;
   bool is_ok;
   char *msg;
 } LoopLabelResult;
