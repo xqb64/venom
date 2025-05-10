@@ -118,7 +118,7 @@ static int run(Arguments *args)
 
 cleanup_after_exec:
   free_vm(&vm);
-  if (exec_result.msg) {
+  if (!exec_result.is_ok) {
     free(exec_result.msg);
   }
 
