@@ -1924,17 +1924,6 @@ static CompileResult compile_stmt(Bytecode *code, const Stmt *stmt)
   return stmt_handler[stmt->kind].fn(code, stmt);
 }
 
-void free_compile_result(CompileResult *result)
-{
-  if (result->chunk) {
-    free_chunk(result->chunk);
-    free(result->chunk);
-  }
-  if (result->msg) {
-    free(result->msg);
-  }
-}
-
 CompileResult compile(const DynArray_Stmt *ast)
 {
   CompileResult result = {0};

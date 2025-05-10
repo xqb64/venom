@@ -128,8 +128,6 @@ void free_compiler(Compiler *compiler);
 
 CompileResult compile(const DynArray_Stmt *ast);
 
-void free_compile_result(CompileResult *result);
-
 extern Compiler *current_compiler;
 
 #endif

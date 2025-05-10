@@ -126,8 +126,11 @@ cleanup_after_compile:
   if (compile_result.is_ok) {
     free_compiler(compiler);
     free(compiler);
+    free_chunk(chunk);
+    free(chunk);
+  } else {
+    free(compile_result.msg);
   }
-  free_compile_result(&compile_result);
 
 cleanup_after_loop_label:
   if (loop_label_result.is_ok) {
