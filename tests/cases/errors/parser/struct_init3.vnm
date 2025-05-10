@@ -1,0 +1,11 @@
+struct person {
+  name;
+  age;
+}
+
+fn main() {
+  let p = person {age: 26, name: "Hello world!"];
+  return 0;
+}
+
+main();

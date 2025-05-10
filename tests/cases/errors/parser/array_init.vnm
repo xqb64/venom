@@ -1,0 +1,8 @@
+fn main() {
+  let x = "Hello, world!";
+  let y = [1, 2, 3, "spam";
+  print y[0];
+  return 0;
+}
+
+main();

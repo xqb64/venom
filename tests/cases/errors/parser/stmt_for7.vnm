@@ -1,0 +1,14 @@
+struct Person {
+  name;
+  age;
+}
+
+fn main() {
+  let x = 0;
+  for (let i = 0; i < person { name: "Hello, world", age; 26 }; i++) {
+    print x;
+  }
+  return 0;
+}
+
+main();

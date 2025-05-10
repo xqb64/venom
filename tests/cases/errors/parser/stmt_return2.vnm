@@ -1,0 +1,14 @@
+struct Person {
+  name;
+  age;
+}
+
+fn main() {
+  let x = 0;
+  if (x < 5) {
+    return person { name: "Hello world!", age; 26};
+  }
+  return 0;
+}
+
+main();
