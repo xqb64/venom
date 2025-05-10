@@ -4,7 +4,7 @@
 #include "ast.h"
 
 typedef struct {
-  union { 
+  union {
     DynArray_Stmt ast;
     Stmt stmt;
   } as;

@@ -702,7 +702,9 @@ static ParseFnResult block(Parser *parser)
   TokenResult rbrace_result = consume(parser, TOKEN_RIGHT_BRACE);
   if (!rbrace_result.is_ok) {
     free_ast(&stmts);
-    return (ParseFnResult){.is_ok = false, .as.stmt = {0}, .msg = "Expected '}' at the end of the block."};
+    return (ParseFnResult) {.is_ok = false,
+                            .as.stmt = {0},
+                            .msg = "Expected '}' at the end of the block."};
   }
 
   StmtBlock body = {
@@ -721,7 +723,9 @@ static ParseFnResult struct_initializer(Parser *parser)
   TokenResult lbrace_result = consume(parser, TOKEN_LEFT_BRACE);
   if (!lbrace_result.is_ok) {
     free(name);
-    return (ParseFnResult){.is_ok = false, .as.expr = {0}, .msg = "Expected '{' after struct name."};
+    return (ParseFnResult) {.is_ok = false,
+                            .as.expr = {0},
+                            .msg = "Expected '{' after struct name."};
   }
 
   DynArray_Expr initializers = {0};
@@ -745,7 +749,9 @@ static ParseFnResult struct_initializer(Parser *parser)
       }
       dynarray_free(&initializers);
       free_expr(&property);
-      return (ParseFnResult){.is_ok = false, .as.expr = {0}, .msg = "Expected ':' after property name."};
+      return (ParseFnResult) {.is_ok = false,
+                              .as.expr = {0},
+                              .msg = "Expected ':' after property name."};
     }
 
     ParseFnResult value_result = expression(parser);
@@ -759,7 +765,7 @@ static ParseFnResult struct_initializer(Parser *parser)
     }
 
     Expr value = value_result.as.expr;
- 
+
     ExprStructInitializer structinitexp = {
         .property = ALLOC(property),
         .value = ALLOC(value),
@@ -776,7 +782,9 @@ static ParseFnResult struct_initializer(Parser *parser)
     }
     dynarray_free(&initializers);
 
-    return (ParseFnResult) {.is_ok = false, .as.expr = {0}, .msg = "Expected '}' after struct initialization."};
+    return (ParseFnResult) {.is_ok = false,
+                            .as.expr = {0},
+                            .msg = "Expected '}' after struct initialization."};
   }
 
   ExprStruct structexp = {
@@ -809,7 +817,9 @@ static ParseFnResult array_initializer(Parser *parser)
     }
     dynarray_free(&initializers);
 
-    return (ParseFnResult){.is_ok = false, .as.expr = {0}, .msg = "Expected ']' after array members."};
+    return (ParseFnResult) {.is_ok = false,
+                            .as.expr = {0},
+                            .msg = "Expected ']' after array members."};
   }
 
   ExprArray arrayexp = {
@@ -846,10 +856,9 @@ static ParseFnResult print_statement(Parser *parser)
   TokenResult consume_result = consume(parser, TOKEN_SEMICOLON);
   if (!consume_result.is_ok) {
     free_expr(&expr);
-    return (ParseFnResult) {
-        .is_ok = false,
-        .as.stmt = {0},
-        .msg = "Expected ';' after 'print' statement."};
+    return (ParseFnResult) {.is_ok = false,
+                            .as.stmt = {0},
+                            .msg = "Expected ';' after 'print' statement."};
   }
 
   StmtPrint stmt = {.expr = expr};
@@ -866,9 +875,10 @@ static ParseFnResult let_statement(Parser *parser)
   TokenResult equal_result = consume(parser, TOKEN_EQUAL);
   if (!equal_result.is_ok) {
     free(name);
-    return (ParseFnResult) {.is_ok = false,
-                            .as.stmt = {0},
-                            .msg = "Expected '=' after variable name in 'let' statement."};
+    return (ParseFnResult) {
+        .is_ok = false,
+        .as.stmt = {0},
+        .msg = "Expected '=' after variable name in 'let' statement."};
   }
 
   ParseFnResult initializer_result = expression(parser);
@@ -883,10 +893,9 @@ static ParseFnResult let_statement(Parser *parser)
   if (!semicolon_result.is_ok) {
     free(name);
     free_expr(&initializer);
-    return (ParseFnResult) {
-        .is_ok = false,
-        .as.stmt = {0},
-        .msg = "Expected ';' after 'let' statement."};
+    return (ParseFnResult) {.is_ok = false,
+                            .as.stmt = {0},
+                            .msg = "Expected ';' after 'let' statement."};
   }
 
   StmtLet stmt = {.name = name, .initializer = initializer};
@@ -901,8 +910,9 @@ static ParseFnResult expression_statement(Parser *parser)
   TokenResult semicolon_result = consume(parser, TOKEN_SEMICOLON);
   if (!semicolon_result.is_ok) {
     free_expr(&expr);
-    return (ParseFnResult) {
-        .is_ok = false, .as.stmt = {0}, .msg = "Expected ';' after expression statement."};
+    return (ParseFnResult) {.is_ok = false,
+                            .as.stmt = {0},
+                            .msg = "Expected ';' after expression statement."};
   }
 
   StmtExpr stmt = {.expr = expr};
@@ -966,8 +976,9 @@ static ParseFnResult while_statement(Parser *parser)
   TokenResult rparen_result = consume(parser, TOKEN_RIGHT_PAREN);
   if (!rparen_result.is_ok) {
     free_expr(&condition);
-    return (ParseFnResult) {
-        .is_ok = false, .as.stmt = {0}, .msg = "Expected ')' after 'while' condition."};
+    return (ParseFnResult) {.is_ok = false,
+                            .as.stmt = {0},
+                            .msg = "Expected ')' after 'while' condition."};
   }
 
   TokenResult lbrace_result = consume(parser, TOKEN_LEFT_BRACE);
@@ -1086,7 +1097,8 @@ static ParseFnResult function_statement(Parser *parser)
   Token name =
       CONSUME(parser, TOKEN_IDENTIFIER, "Expected identifier after 'fn'.");
 
-  CONSUME(parser, TOKEN_LEFT_PAREN, "Expected '(' after identifier in 'fn' statement.");
+  CONSUME(parser, TOKEN_LEFT_PAREN,
+          "Expected '(' after identifier in 'fn' statement.");
 
   DynArray_char_ptr parameters = {0};
   if (!check(parser, TOKEN_RIGHT_PAREN)) {
@@ -1097,9 +1109,12 @@ static ParseFnResult function_statement(Parser *parser)
           free(parameters.data[i]);
         }
         dynarray_free(&parameters);
-        return (ParseFnResult){.is_ok = false, .as.stmt = {0}, .msg = "Expected parameter name after '(' in 'fn' statement."};
+        return (ParseFnResult) {
+            .is_ok = false,
+            .as.stmt = {0},
+            .msg = "Expected parameter name after '(' in 'fn' statement."};
       }
-  
+
       Token parameter = identifier_result.token;
 
       dynarray_insert(&parameters,
@@ -1114,7 +1129,10 @@ static ParseFnResult function_statement(Parser *parser)
     }
     dynarray_free(&parameters);
 
-    return (ParseFnResult){.is_ok = false, .as.stmt = {0}, .msg = "Expected ')' after the parameter list in 'fn' statement."};
+    return (ParseFnResult) {
+        .is_ok = false,
+        .as.stmt = {0},
+        .msg = "Expected ')' after the parameter list in 'fn' statement."};
   }
 
   TokenResult lbrace_result = consume(parser, TOKEN_LEFT_BRACE);
@@ -1124,7 +1142,9 @@ static ParseFnResult function_statement(Parser *parser)
     }
     dynarray_free(&parameters);
 
-    return (ParseFnResult){.is_ok = false, .as.stmt = {0}, .msg = "Expected '{' after ')' in 'fn' statement."};
+    return (ParseFnResult) {.is_ok = false,
+                            .as.stmt = {0},
+                            .msg = "Expected '{' after ')' in 'fn' statement."};
   }
 
   ParseFnResult body_result = block(parser);
@@ -1171,8 +1191,9 @@ static ParseFnResult return_statement(Parser *parser)
   TokenResult semicolon_result = consume(parser, TOKEN_SEMICOLON);
   if (!semicolon_result.is_ok) {
     free_expr(&expr);
-    return (ParseFnResult) {
-        .is_ok = false, .as.stmt = {0}, .msg = "Expected ';' after 'return' statement."};
+    return (ParseFnResult) {.is_ok = false,
+                            .as.stmt = {0},
+                            .msg = "Expected ';' after 'return' statement."};
   }
 
   StmtReturn stmt = {
@@ -1216,7 +1237,8 @@ static ParseFnResult struct_statement(Parser *parser)
       }
       dynarray_free(&properties);
 
-      return (ParseFnResult) {.is_ok = false, .as.stmt = {0}, .msg = "Expected property name."};
+      return (ParseFnResult) {
+          .is_ok = false, .as.stmt = {0}, .msg = "Expected property name."};
     }
 
     Token property = identifier_result.token;
@@ -1229,7 +1251,9 @@ static ParseFnResult struct_statement(Parser *parser)
       }
       dynarray_free(&properties);
 
-      return (ParseFnResult) {.is_ok = false, .as.stmt = {0}, .msg = "Expected semicolon after property name."};
+      return (ParseFnResult) {.is_ok = false,
+                              .as.stmt = {0},
+                              .msg = "Expected semicolon after property name."};
     }
 
     dynarray_insert(&properties, own_string_n(property.start, property.length));
@@ -1247,7 +1271,8 @@ static ParseFnResult impl_statement(Parser *parser)
 {
   Token name =
       CONSUME(parser, TOKEN_IDENTIFIER, "Expected identifier after 'impl'.");
-  CONSUME(parser, TOKEN_LEFT_BRACE, "Expected '{' after identifier in 'impl' statement.");
+  CONSUME(parser, TOKEN_LEFT_BRACE,
+          "Expected '{' after identifier in 'impl' statement.");
 
   DynArray_Stmt methods = {0};
   while (!match(parser, 1, TOKEN_RIGHT_BRACE)) {

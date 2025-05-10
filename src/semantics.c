@@ -52,18 +52,19 @@ LoopLabelResult loop_label_stmt(Stmt *stmt, const char *current)
 {
   LoopLabelResult result;
   Stmt labeled_stmt;
-  
+
   labeled_stmt.kind = stmt->kind;
 
   switch (stmt->kind) {
     case STMT_WHILE: {
       size_t tmp = mktmp();
       size_t label_len = lblen("while_", tmp);
-      
+
       char *loop_label = malloc(label_len);
       snprintf(loop_label, label_len, "while_%zu", tmp);
-      
-      LoopLabelResult body_result = loop_label_stmt(stmt->as.stmt_while.body, loop_label);
+
+      LoopLabelResult body_result =
+          loop_label_stmt(stmt->as.stmt_while.body, loop_label);
 
       if (!body_result.is_ok) {
         free(loop_label);
@@ -72,7 +73,8 @@ LoopLabelResult loop_label_stmt(Stmt *stmt, const char *current)
 
       labeled_stmt.as.stmt_while.body = ALLOC(body_result.as.stmt);
       labeled_stmt.as.stmt_while.label = loop_label;
-      labeled_stmt.as.stmt_while.condition = clone_expr(&stmt->as.stmt_while.condition);
+      labeled_stmt.as.stmt_while.condition =
+          clone_expr(&stmt->as.stmt_while.condition);
 
       break;
     }
@@ -82,8 +84,9 @@ LoopLabelResult loop_label_stmt(Stmt *stmt, const char *current)
 
       char *loop_label = malloc(label_len);
       snprintf(loop_label, label_len, "for_%zu", tmp);
-      
-      LoopLabelResult body_result = loop_label_stmt(stmt->as.stmt_for.body, loop_label);
+
+      LoopLabelResult body_result =
+          loop_label_stmt(stmt->as.stmt_for.body, loop_label);
 
       if (!body_result.is_ok) {
         free(loop_label);
@@ -92,9 +95,12 @@ LoopLabelResult loop_label_stmt(Stmt *stmt, const char *current)
 
       labeled_stmt.as.stmt_for.body = ALLOC(body_result.as.stmt);
       labeled_stmt.as.stmt_for.label = loop_label;
-      labeled_stmt.as.stmt_for.initializer = clone_expr(&stmt->as.stmt_for.initializer);
-      labeled_stmt.as.stmt_for.condition = clone_expr(&stmt->as.stmt_for.condition);
-      labeled_stmt.as.stmt_for.advancement = clone_expr(&stmt->as.stmt_for.advancement);
+      labeled_stmt.as.stmt_for.initializer =
+          clone_expr(&stmt->as.stmt_for.initializer);
+      labeled_stmt.as.stmt_for.condition =
+          clone_expr(&stmt->as.stmt_for.condition);
+      labeled_stmt.as.stmt_for.advancement =
+          clone_expr(&stmt->as.stmt_for.advancement);
 
       break;
     }
@@ -115,13 +121,15 @@ LoopLabelResult loop_label_stmt(Stmt *stmt, const char *current)
     case STMT_FN: {
       DynArray_char_ptr parameters = {0};
       for (size_t i = 0; i < stmt->as.stmt_fn.parameters.count; i++) {
-        dynarray_insert(&parameters, own_string(stmt->as.stmt_fn.parameters.data[i]));
+        dynarray_insert(&parameters,
+                        own_string(stmt->as.stmt_fn.parameters.data[i]));
       }
 
       labeled_stmt.as.stmt_fn.parameters = parameters;
       labeled_stmt.as.stmt_fn.name = own_string(stmt->as.stmt_fn.name);
-      
-      LoopLabelResult body_result = loop_label_stmt(stmt->as.stmt_fn.body, current);
+
+      LoopLabelResult body_result =
+          loop_label_stmt(stmt->as.stmt_fn.body, current);
 
       if (!body_result.is_ok) {
         free(labeled_stmt.as.stmt_fn.name);
@@ -135,11 +143,12 @@ LoopLabelResult loop_label_stmt(Stmt *stmt, const char *current)
       }
 
       labeled_stmt.as.stmt_fn.body = ALLOC(body_result.as.stmt);
-     
+
       break;
     }
     case STMT_BLOCK: {
-      LoopLabelResult block_result = loop_label_program(&stmt->as.stmt_block.stmts, current);
+      LoopLabelResult block_result =
+          loop_label_program(&stmt->as.stmt_block.stmts, current);
 
       if (!block_result.is_ok) {
         return block_result;
@@ -151,16 +160,18 @@ LoopLabelResult loop_label_stmt(Stmt *stmt, const char *current)
       break;
     }
     case STMT_IF: {
-      LoopLabelResult then_result = loop_label_stmt(stmt->as.stmt_if.then_branch, current);
+      LoopLabelResult then_result =
+          loop_label_stmt(stmt->as.stmt_if.then_branch, current);
 
       if (!then_result.is_ok) {
         return then_result;
       }
 
       labeled_stmt.as.stmt_if.then_branch = ALLOC(then_result.as.stmt);
-      
+
       if (stmt->as.stmt_if.else_branch) {
-        LoopLabelResult else_result = loop_label_stmt(stmt->as.stmt_if.else_branch,current);
+        LoopLabelResult else_result =
+            loop_label_stmt(stmt->as.stmt_if.else_branch, current);
 
         if (!else_result.is_ok) {
           return else_result;
@@ -171,8 +182,9 @@ LoopLabelResult loop_label_stmt(Stmt *stmt, const char *current)
         labeled_stmt.as.stmt_if.else_branch = NULL;
       }
 
-      labeled_stmt.as.stmt_if.condition = clone_expr(&stmt->as.stmt_if.condition);
-      
+      labeled_stmt.as.stmt_if.condition =
+          clone_expr(&stmt->as.stmt_if.condition);
+
       break;
     }
     default: {
