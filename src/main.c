@@ -27,9 +27,16 @@ typedef struct {
   char *msg;
 } ArgParseResult;
 
-static int run(Arguments *args)
+typedef struct {
+  bool is_ok;
+  int errcode;
+  char *msg;
+} RunResult;
+
+static RunResult run(Arguments *args)
 {
-  int result = 0;
+  RunResult result = {.is_ok = true, .errcode = 0, .msg = NULL};
+  int errcode = 0;
 
   char *source = read_file(args->file);
 
@@ -39,8 +46,9 @@ static int run(Arguments *args)
   TokenizeResult tokenize_result = tokenize(&tokenizer);
 
   if (!tokenize_result.is_ok) {
-    fprintf(stderr, "tokenizer: %s\n", tokenize_result.msg);
-    result = -1;
+    alloc_err_str(&result.msg, "tokenizer: %s\n", tokenize_result.msg);
+    result.errcode = -1;
+    result.is_ok = false;
     goto cleanup_after_lex;
   }
 
@@ -56,8 +64,9 @@ static int run(Arguments *args)
 
   ParseResult parse_result = parse(&parser);
   if (!parse_result.is_ok) {
-    fprintf(stderr, "parser: %s\n", parse_result.msg);
-    result = -1;
+    alloc_err_str(&result.msg, "parser: %s\n", parse_result.msg);
+    result.errcode = -1;
+    result.is_ok = false;
     goto cleanup_after_parse;
   }
 
@@ -65,8 +74,9 @@ static int run(Arguments *args)
 
   LoopLabelResult loop_label_result = loop_label_program(&raw_ast, NULL);
   if (!loop_label_result.is_ok) {
-    fprintf(stderr, "loop_labeler: %s\n", loop_label_result.msg);
-    result = -1;
+    alloc_err_str(&result.msg, "loop_labeler: %s\n", loop_label_result.msg);
+    result.errcode = -1;
+    result.is_ok = false;
     goto cleanup_after_loop_label;
   }
 
@@ -93,8 +103,9 @@ static int run(Arguments *args)
   }
 
   if (!compile_result.is_ok) {
-    fprintf(stderr, "compiler: %s\n", compile_result.msg);
-    result = -1;
+    alloc_err_str(&result.msg, "compiler: %s\n", compile_result.msg);
+    result.errcode = -1;
+    result.is_ok = false;
     goto cleanup_after_compile;
   }
 
@@ -110,8 +121,9 @@ static int run(Arguments *args)
 
   ExecResult exec_result = exec(&vm, chunk);
   if (!exec_result.is_ok) {
-    fprintf(stderr, "vm: %s\n", exec_result.msg);
-    result = -1;
+    alloc_err_str(&result.msg, "vm: %s\n", exec_result.msg);
+    result.errcode = -1;
+    result.is_ok = false;
     goto cleanup_after_exec; /* just for the symmetry */
   }
 
@@ -226,7 +238,11 @@ int main(int argc, char *argv[])
   }
 
   args = arg_parse_result.args;
-  int result = run(&args);
+  RunResult result = run(&args);
+  if (!result.is_ok) {
+    fprintf(stderr, "%s", result.msg);
+    free(result.msg);
+  }
 
-  return result;
+  return result.errcode;
 }
