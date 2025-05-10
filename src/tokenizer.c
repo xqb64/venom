@@ -13,13 +13,6 @@ void init_tokenizer(Tokenizer *tokenizer, char *source)
   tokenizer->line = 1;
 }
 
-void free_tokenizer_result(const TokenizeResult *result)
-{
-  if (!result->is_ok) {
-    free(result->msg);
-  }
-}
-
 static char peek(const Tokenizer *tokenizer, int distance)
 {
   return tokenizer->current[distance];

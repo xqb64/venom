@@ -1,5 +1,6 @@
 #include <getopt.h>
 #include <stdio.h>
+#include <stdlib.h>
 
 #include "ast.h"
 #include "compiler.h"
@@ -151,7 +152,10 @@ cleanup_after_parse:
 cleanup_after_lex:
   dynarray_free(&tokenize_result.tokens);
   free(source);
-  free_tokenizer_result(&tokenize_result);
+
+  if (!tokenize_result.is_ok) {
+    free(tokenize_result.msg);
+  }
 
   return result;
 }

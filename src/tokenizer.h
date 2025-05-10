@@ -97,6 +97,5 @@ typedef struct {
 void init_tokenizer(Tokenizer *tokenizer, char *source);
 TokenizeResult tokenize(Tokenizer *tokenizer);
 void print_tokens(const DynArray_Token *tokens);
-void free_tokenizer_result(const TokenizeResult *result);
 
 #endif
