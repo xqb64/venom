@@ -226,7 +226,8 @@ static ArgParseResult parse_args(int argc, char *argv[])
   args.optimize = do_optimize;
   args.file = argv[optind];
 
-  return (ArgParseResult) {.args = args, .is_ok = true, .msg = NULL, .errcode = 0};
+  return (ArgParseResult) {
+      .args = args, .is_ok = true, .msg = NULL, .errcode = 0};
 }
 
 int main(int argc, char *argv[])
