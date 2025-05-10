@@ -55,23 +55,22 @@ static int run(Arguments *args)
   init_parser(&parser, &tokens);
 
   ParseResult parse_result = parse(&parser);
-
-  DynArray_Stmt raw_ast = parse_result.ast;
-
   if (!parse_result.is_ok) {
     fprintf(stderr, "parser: %s\n", parse_result.msg);
     result = -1;
     goto cleanup_after_parse;
   }
 
-  LoopLabelResult loop_label_result = loop_label_program(&raw_ast, NULL);
-  DynArray_Stmt labeled_ast = loop_label_result.as.ast;
+  DynArray_Stmt raw_ast = parse_result.ast;
 
+  LoopLabelResult loop_label_result = loop_label_program(&raw_ast, NULL);
   if (!loop_label_result.is_ok) {
     fprintf(stderr, "loop_labeler: %s\n", loop_label_result.msg);
     result = -1;
     goto cleanup_after_loop_label;
   }
+
+  DynArray_Stmt labeled_ast = loop_label_result.as.ast;
 
   if (args->parse) {
     print_ast(&labeled_ast);
