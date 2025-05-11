@@ -52,7 +52,6 @@ static RunResult run(Arguments *args)
   init_tokenizer(&tokenizer, source);
 
   TokenizeResult tokenize_result = tokenize(&tokenizer);
-
   if (!tokenize_result.is_ok) {
     alloc_err_str(&result.msg, "tokenizer: %s\n", tokenize_result.msg);
     result.is_ok = false;
