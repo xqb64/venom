@@ -287,5 +287,5 @@ int main(int argc, char *argv[])
     return result.errcode;
   }
 
-  return 0;
+  return result.errcode;
 }
