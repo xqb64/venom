@@ -30,14 +30,23 @@ typedef struct {
 
 typedef struct {
   bool is_ok;
+  int errcode;
   char *msg;
 } RunResult;
 
 static RunResult run(Arguments *args)
 {
-  RunResult result = {.is_ok = true, .msg = NULL};
+  RunResult result = {.is_ok = true, .errcode = 0, .msg = NULL};
 
-  char *source = read_file(args->file);
+  ReadFileResult read_file_result = read_file(args->file);
+  if (!read_file_result.is_ok) {
+    alloc_err_str(&result.msg, read_file_result.msg);
+    result.is_ok = false;
+    result.errcode = read_file_result.errcode;
+    goto cleanup_after_read_file;
+  }
+
+  char *source = read_file_result.payload;
 
   Tokenizer tokenizer;
   init_tokenizer(&tokenizer, source);
@@ -47,6 +56,7 @@ static RunResult run(Arguments *args)
   if (!tokenize_result.is_ok) {
     alloc_err_str(&result.msg, "tokenizer: %s\n", tokenize_result.msg);
     result.is_ok = false;
+    result.errcode = -1;
     goto cleanup_after_lex;
   }
 
@@ -64,6 +74,7 @@ static RunResult run(Arguments *args)
   if (!parse_result.is_ok) {
     alloc_err_str(&result.msg, "parser: %s\n", parse_result.msg);
     result.is_ok = false;
+    result.errcode = -1;
     goto cleanup_after_parse;
   }
 
@@ -73,6 +84,7 @@ static RunResult run(Arguments *args)
   if (!loop_label_result.is_ok) {
     alloc_err_str(&result.msg, "loop_labeler: %s\n", loop_label_result.msg);
     result.is_ok = false;
+    result.errcode = -1;
     goto cleanup_after_loop_label;
   }
 
@@ -105,6 +117,7 @@ static RunResult run(Arguments *args)
   if (!compile_result.is_ok) {
     alloc_err_str(&result.msg, "compiler: %s\n", compile_result.msg);
     result.is_ok = false;
+    result.errcode = -1;
     goto cleanup_after_compile;
   }
 
@@ -116,6 +129,7 @@ static RunResult run(Arguments *args)
     if (!disassemble_result.is_ok) {
       alloc_err_str(&result.msg, "disassembler: %s\n", disassemble_result.msg);
       result.is_ok = false;
+      result.errcode = -1;
     }
     goto cleanup_after_disassemble;
   }
@@ -127,6 +141,7 @@ static RunResult run(Arguments *args)
   if (!exec_result.is_ok) {
     alloc_err_str(&result.msg, "vm: %s\n", exec_result.msg);
     result.is_ok = false;
+    result.errcode = -1;
     goto cleanup_after_exec; /* just for the symmetry */
   }
 
@@ -173,6 +188,11 @@ cleanup_after_lex:
 
   if (!tokenize_result.is_ok) {
     free(tokenize_result.msg);
+  }
+
+cleanup_after_read_file:
+  if (!read_file_result.is_ok) {
+    free(read_file_result.msg);
   }
 
   return result;
@@ -251,7 +271,7 @@ int main(int argc, char *argv[])
   if (!result.is_ok) {
     fprintf(stderr, "%s", result.msg);
     free(result.msg);
-    return -1;
+    return result.errcode;
   }
 
   return 0;

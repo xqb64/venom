@@ -19,12 +19,17 @@ char *own_string_n(const char *string, int n)
   return s;
 }
 
-char *read_file(const char *path)
+ReadFileResult read_file(const char *path)
 {
+  ReadFileResult result = {.is_ok = true, .errcode = 0, .msg = NULL, .payload = NULL};
+
   FILE *file = fopen(path, "rb");
   if (file == NULL) {
-    fprintf(stderr, "Could not open file \"%s\".\n", path);
-    exit(74);
+    alloc_err_str(&result.msg, "Could not open file \"%s\".\n", path);
+    result.is_ok = false;
+    result.errcode = 74;
+
+    return result;
   }
 
   fseek(file, 0L, SEEK_END);
@@ -33,20 +38,29 @@ char *read_file(const char *path)
 
   char *buffer = malloc(size + 1);
   if (buffer == NULL) {
-    fprintf(stderr, "Not enough memory to read \"%s\".\n", path);
-    exit(74);
+    alloc_err_str(&result.msg, "Not enough memory to read \"%s\".\n", path);
+    result.is_ok = false;
+    result.errcode = 74;
+
+    return result;
   }
 
   size_t bytes_read = fread(buffer, 1, size, file);
   if (bytes_read < size) {
-    fprintf(stderr, "Could not read file \"%s\".\n", path);
-    exit(74);
+    alloc_err_str(&result.msg, "Could not read file \"%s\".\n", path);
+    result.is_ok = false;
+    result.errcode = 74;
+
+    return result;
   }
 
   buffer[bytes_read] = '\0';
 
   fclose(file);
-  return buffer;
+
+  result.payload = buffer;
+
+  return result;
 }
 
 size_t numlen(size_t n)

@@ -1,11 +1,19 @@
 #ifndef venom_util_h
 #define venom_util_h
 
+#include <stdbool.h>
 #include <stddef.h>
+
+typedef struct {
+  char *payload;
+  bool is_ok;
+  int errcode;
+  char *msg;
+} ReadFileResult;
 
 char *own_string(const char *string);
 char *own_string_n(const char *string, int n);
-char *read_file(const char *path);
+ReadFileResult read_file(const char *path);
 size_t numlen(size_t n);
 size_t lblen(const char *lb, size_t n);
 int alloc_err_str(char **dst, const char *fmt, ...);
