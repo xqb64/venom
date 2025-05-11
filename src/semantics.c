@@ -19,6 +19,7 @@
 #define LOOP_LABEL_ERROR(...)              \
   alloc_err_str(&result.msg, __VA_ARGS__); \
   result.is_ok = false;                    \
+  result.errcode = -1;                     \
   return result;
 
 static size_t mktmp(void)
@@ -29,7 +30,8 @@ static size_t mktmp(void)
 
 LoopLabelResult loop_label_program(DynArray_Stmt *ast, const char *current)
 {
-  LoopLabelResult result = {.is_ok = true, .as.ast = {0}, .msg = NULL};
+  LoopLabelResult result = {
+      .is_ok = true, .errcode = 0, .as.ast = {0}, .msg = NULL};
 
   DynArray_Stmt labeled_ast = {0};
   for (size_t i = 0; i < ast->count; i++) {
@@ -41,8 +43,6 @@ LoopLabelResult loop_label_program(DynArray_Stmt *ast, const char *current)
     dynarray_insert(&labeled_ast, stmt_result.as.stmt);
   }
 
-  result.is_ok = true;
-  result.msg = NULL;
   result.as.ast = labeled_ast;
 
   return result;
@@ -50,7 +50,8 @@ LoopLabelResult loop_label_program(DynArray_Stmt *ast, const char *current)
 
 LoopLabelResult loop_label_stmt(Stmt *stmt, const char *current)
 {
-  LoopLabelResult result = {.is_ok = true, .as.stmt = {0}, .msg = NULL};
+  LoopLabelResult result = {
+      .is_ok = true, .errcode = 0, .as.stmt = {0}, .msg = NULL};
   Stmt labeled_stmt;
 
   labeled_stmt.kind = stmt->kind;
@@ -194,8 +195,6 @@ LoopLabelResult loop_label_stmt(Stmt *stmt, const char *current)
   }
 
   result.as.stmt = labeled_stmt;
-  result.is_ok = true;
-  result.msg = NULL;
 
   return result;
 }

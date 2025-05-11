@@ -8,6 +8,7 @@ typedef struct {
     DynArray_Stmt ast;
     Stmt stmt;
   } as;
+  int errcode;
   bool is_ok;
   char *msg;
 } LoopLabelResult;

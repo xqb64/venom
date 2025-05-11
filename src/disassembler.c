@@ -159,6 +159,7 @@ DisassembleResult disassemble(Bytecode *code)
       }
       default:
         return (DisassembleResult) {.is_ok = false,
+                                    .errcode = -1,
                                     .msg = ALLOC("Disassembling failed.")};
         break;
     }
@@ -166,7 +167,7 @@ DisassembleResult disassemble(Bytecode *code)
     printf("\n");
   }
 
-  return (DisassembleResult) {.is_ok = true, .msg = NULL};
+  return (DisassembleResult) {.is_ok = true, .errcode = 0, .msg = NULL};
 
 #undef READ_UINT8
 #undef READ_INT16

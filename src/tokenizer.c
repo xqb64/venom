@@ -426,7 +426,8 @@ void print_tokens(const DynArray_Token *tokens)
 
 TokenizeResult tokenize(Tokenizer *tokenizer)
 {
-  TokenizeResult result = {.is_ok = true, .errcode = 0, .msg = NULL, .tokens = {0}};
+  TokenizeResult result = {
+      .is_ok = true, .errcode = 0, .msg = NULL, .tokens = {0}};
 
   Token t;
   while ((t = get_token(tokenizer)).type != TOKEN_EOF) {

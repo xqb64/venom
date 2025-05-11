@@ -8,6 +8,7 @@ typedef struct {
 } DisassembleHandler;
 
 typedef struct {
+  int errcode;
   bool is_ok;
   char *msg;
 } DisassembleResult;

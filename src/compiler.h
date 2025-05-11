@@ -116,6 +116,7 @@ typedef struct Compiler {
 
 typedef struct {
   Bytecode *chunk;
+  int errcode;
   bool is_ok;
   char *msg;
 } CompileResult;

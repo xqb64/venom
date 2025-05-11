@@ -164,6 +164,7 @@ static inline uint64_t clamp(double d)
     dealloc_stack(vm);                  \
     alloc_err_str(&r.msg, __VA_ARGS__); \
     r.is_ok = false;                    \
+    r.errcode = -1;                     \
     return r;                           \
   } while (0)
 
@@ -1113,6 +1114,7 @@ static inline ExecResult handle_op_call_method(VM *vm, Bytecode *code,
     alloc_err_str(&r.msg, "method '%s' is not defined on struct: '%s'",
                   code->sp.data[method_name_idx], type);
     r.is_ok = false;
+    r.errcode = -1;
     free(type);
     return r;
   }
@@ -1651,7 +1653,7 @@ ExecResult exec(VM *vm, Bytecode *code)
 
   goto *dispatch_table[*ip];
 
-  ExecResult r;
+  ExecResult r = {.is_ok = true, .errcode = 0, .msg = NULL};
 
   while (1) {
     HANDLE(print)

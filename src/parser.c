@@ -1365,7 +1365,7 @@ static ParseFnResult statement(Parser *parser)
 
 ParseResult parse(Parser *parser)
 {
-  ParseResult result = {0};
+  ParseResult result = {.is_ok = true, .errcode = 0, .msg = NULL, .ast = {0}};
   advance(parser);
   while (parser->current.type != TOKEN_EOF) {
     ParseFnResult r = statement(parser);
@@ -1373,6 +1373,7 @@ ParseResult parse(Parser *parser)
       free_ast(&result.ast);
       result.msg = r.msg;
       result.is_ok = false;
+      result.errcode = -1;
       return result;
     }
     dynarray_insert(&result.ast, r.as.stmt);

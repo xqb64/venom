@@ -33,6 +33,7 @@ typedef struct {
 
 typedef struct {
   DynArray_Stmt ast;
+  int errcode;
   bool is_ok;
   char *msg;
 } ParseResult;

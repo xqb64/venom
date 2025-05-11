@@ -73,7 +73,7 @@ static RunResult run(Arguments *args)
   if (!parse_result.is_ok) {
     alloc_err_str(&result.msg, "parser: %s\n", parse_result.msg);
     result.is_ok = false;
-    result.errcode = -1;
+    result.errcode = parse_result.errcode;
     goto cleanup_after_parse;
   }
 
@@ -83,7 +83,7 @@ static RunResult run(Arguments *args)
   if (!loop_label_result.is_ok) {
     alloc_err_str(&result.msg, "loop_labeler: %s\n", loop_label_result.msg);
     result.is_ok = false;
-    result.errcode = -1;
+    result.errcode = loop_label_result.errcode;
     goto cleanup_after_loop_label;
   }
 
@@ -116,7 +116,7 @@ static RunResult run(Arguments *args)
   if (!compile_result.is_ok) {
     alloc_err_str(&result.msg, "compiler: %s\n", compile_result.msg);
     result.is_ok = false;
-    result.errcode = -1;
+    result.errcode = compile_result.errcode;
     goto cleanup_after_compile;
   }
 
@@ -128,7 +128,7 @@ static RunResult run(Arguments *args)
     if (!disassemble_result.is_ok) {
       alloc_err_str(&result.msg, "disassembler: %s\n", disassemble_result.msg);
       result.is_ok = false;
-      result.errcode = -1;
+      result.errcode = disassemble_result.errcode;
     }
     goto cleanup_after_disassemble;
   }
@@ -140,7 +140,7 @@ static RunResult run(Arguments *args)
   if (!exec_result.is_ok) {
     alloc_err_str(&result.msg, "vm: %s\n", exec_result.msg);
     result.is_ok = false;
-    result.errcode = -1;
+    result.errcode = exec_result.errcode;
     goto cleanup_after_exec; /* just for the symmetry */
   }
 
@@ -191,7 +191,7 @@ cleanup_after_lex:
 cleanup_after_read_file:
   if (read_file_result.is_ok) {
     free(source);
-  } else { 
+  } else {
     free(read_file_result.msg);
   }
 

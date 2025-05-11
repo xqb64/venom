@@ -23,6 +23,7 @@
       free(c);                               \
     }                                        \
     result.is_ok = false;                    \
+    result.errcode = -1;                     \
     return result;                           \
   } while (0)
 
@@ -1895,7 +1896,8 @@ static CompileResult compile_stmt(Bytecode *code, const Stmt *stmt)
 
 CompileResult compile(const DynArray_Stmt *ast)
 {
-  CompileResult result = {0};
+  CompileResult result = {
+      .is_ok = true, .errcode = 0, .msg = NULL, .chunk = NULL};
 
   Bytecode *chunk = malloc(sizeof(Bytecode));
   init_chunk(chunk);
@@ -1911,7 +1913,6 @@ CompileResult compile(const DynArray_Stmt *ast)
 
   dynarray_insert(&chunk->code, OP_HLT);
 
-  result.is_ok = true;
   result.chunk = chunk;
 
   return result;

@@ -31,6 +31,7 @@ typedef struct {
 } VM;
 
 typedef struct {
+  int errcode;
   bool is_ok;
   char *msg;
 } ExecResult;
