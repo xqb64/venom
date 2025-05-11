@@ -73,11 +73,6 @@ static RunResult run(Arguments *args)
 
   DynArray_Stmt raw_ast = parse_result.ast;
 
-  if (args->parse) {
-    print_ast(&raw_ast);
-    goto cleanup_after_parse;
-  }
-
   LoopLabelResult loop_label_result = loop_label_program(&raw_ast, NULL);
   if (!loop_label_result.is_ok) {
     alloc_err_str(&result.msg, "loop_labeler: %s\n", loop_label_result.msg);
@@ -88,15 +83,19 @@ static RunResult run(Arguments *args)
 
   DynArray_Stmt labeled_ast = loop_label_result.as.ast;
 
-  if (args->loop_label) {
-    print_ast(&labeled_ast);
-    goto cleanup_after_loop_label;
-  }
-
   DynArray_Stmt optimized_ast = {0};
 
   if (args->optimize) {
     optimized_ast = optimize(&labeled_ast);
+  }
+
+  if (args->parse) {
+    if (args->optimize) {
+      print_ast(&optimized_ast);
+    } else {
+      print_ast(&labeled_ast);
+    }
+    goto cleanup_after_loop_label;
   }
 
   Compiler *compiler = current_compiler = new_compiler();
@@ -162,7 +161,6 @@ cleanup_after_parse:
   }
 
   if (args->optimize) {
-    free_ast(&labeled_ast);
     free_ast(&optimized_ast);
   }
 
@@ -182,7 +180,6 @@ static ArgParseResult parse_args(int argc, char *argv[])
   static const struct option long_opts[] = {
       {"lex", no_argument, 0, 'l'},
       {"parse", no_argument, 0, 'p'},
-      {"loop-label", no_argument, 0, 'L'},
       {"ir", no_argument, 0, 'i'},
       {"optimize", no_argument, 0, 'o'},
       {0, 0, 0, 0},
@@ -190,21 +187,17 @@ static ArgParseResult parse_args(int argc, char *argv[])
 
   int do_lex = 0;
   int do_parse = 0;
-  int do_loop_label = 0;
   int do_ir = 0;
   int do_optimize = 0;
 
   int opt, opt_idx = 0;
-  while ((opt = getopt_long(argc, argv, "lpLio", long_opts, &opt_idx)) != -1) {
+  while ((opt = getopt_long(argc, argv, "lpio", long_opts, &opt_idx)) != -1) {
     switch (opt) {
       case 'l':
         do_lex = 1;
         break;
       case 'p':
         do_parse = 1;
-        break;
-      case 'L':
-        do_loop_label = 1;
         break;
       case 'i':
         do_ir = 1;
@@ -221,7 +214,7 @@ static ArgParseResult parse_args(int argc, char *argv[])
     }
   }
 
-  if (do_lex + do_parse + do_ir + do_loop_label > 1) {
+  if (do_lex + do_parse + do_ir > 1) {
     return (ArgParseResult) {.args = {0},
                              .msg = "Please specify exactly one option.",
                              .is_ok = false,
@@ -232,7 +225,6 @@ static ArgParseResult parse_args(int argc, char *argv[])
 
   args.lex = do_lex;
   args.parse = do_parse;
-  args.loop_label = do_loop_label;
   args.ir = do_ir;
   args.optimize = do_optimize;
   args.file = argv[optind];

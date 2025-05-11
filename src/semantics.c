@@ -29,7 +29,7 @@ static size_t mktmp(void)
 
 LoopLabelResult loop_label_program(DynArray_Stmt *ast, const char *current)
 {
-  LoopLabelResult result;
+  LoopLabelResult result = {.is_ok = true, .as.ast = {0}, .msg = NULL};
 
   DynArray_Stmt labeled_ast = {0};
   for (size_t i = 0; i < ast->count; i++) {
@@ -50,7 +50,7 @@ LoopLabelResult loop_label_program(DynArray_Stmt *ast, const char *current)
 
 LoopLabelResult loop_label_stmt(Stmt *stmt, const char *current)
 {
-  LoopLabelResult result;
+  LoopLabelResult result = {.is_ok = true, .as.stmt = {0}, .msg = NULL};
   Stmt labeled_stmt;
 
   labeled_stmt.kind = stmt->kind;
