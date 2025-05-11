@@ -814,7 +814,8 @@ static CompileResult compile_expr_call(Bytecode *code, const Expr *expr)
 
     Function *f = resolve_func(var.name);
     if (f && f->paramcount != expr_call.arguments.count) {
-      COMPILER_ERROR("Function '%s' requires %ld arguments.", f->name, f->paramcount);
+      COMPILER_ERROR("Function '%s' requires %ld arguments.", f->name,
+                     f->paramcount);
     }
 
     /* Then compile the arguments */
@@ -1136,7 +1137,8 @@ static CompileResult compile_expr_struct(Bytecode *code, const Expr *expr)
 
     int *propidx = table_get(blueprint->property_indexes, propname);
     if (!propidx) {
-      COMPILER_ERROR("struct '%s' has no property '%s'", blueprint->name, propname);
+      COMPILER_ERROR("struct '%s' has no property '%s'", blueprint->name,
+                     propname);
     }
   }
 

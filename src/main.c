@@ -238,17 +238,20 @@ static ArgParseResult parse_args(int argc, char *argv[])
   }
 
   if (do_lex + do_optimize > 1) {
-    return (ArgParseResult) {.args = {0},
-                             .is_ok = false,
-                             .errcode = -1,
-                             .msg = ALLOC("--optimize available only from the parsing stage onwards")};
+    return (ArgParseResult) {
+        .args = {0},
+        .is_ok = false,
+        .errcode = -1,
+        .msg =
+            ALLOC("--optimize available only from the parsing stage onwards")};
   }
 
   if (do_lex + do_parse + do_ir > 1) {
-    return (ArgParseResult) {.args = {0},
-                             .is_ok = false,
-                             .errcode = -1,
-                             .msg = ALLOC("Please specify exactly one option.")};
+    return (ArgParseResult) {
+        .args = {0},
+        .is_ok = false,
+        .errcode = -1,
+        .msg = ALLOC("Please specify exactly one option.")};
   }
 
   Arguments args;

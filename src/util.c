@@ -21,7 +21,8 @@ char *own_string_n(const char *string, int n)
 
 ReadFileResult read_file(const char *path)
 {
-  ReadFileResult result = {.is_ok = true, .errcode = 0, .msg = NULL, .payload = NULL};
+  ReadFileResult result = {
+      .is_ok = true, .errcode = 0, .msg = NULL, .payload = NULL};
 
   FILE *file = fopen(path, "rb");
   if (file == NULL) {
