@@ -25,19 +25,17 @@ typedef struct {
 typedef struct {
   Arguments args;
   bool is_ok;
-  int errcode;
   char *msg;
 } ArgParseResult;
 
 typedef struct {
   bool is_ok;
-  int errcode;
   char *msg;
 } RunResult;
 
 static RunResult run(Arguments *args)
 {
-  RunResult result = {.is_ok = true, .errcode = 0, .msg = NULL};
+  RunResult result = {.is_ok = true, .msg = NULL};
 
   char *source = read_file(args->file);
 
@@ -48,7 +46,6 @@ static RunResult run(Arguments *args)
 
   if (!tokenize_result.is_ok) {
     alloc_err_str(&result.msg, "tokenizer: %s\n", tokenize_result.msg);
-    result.errcode = -1;
     result.is_ok = false;
     goto cleanup_after_lex;
   }
@@ -66,7 +63,6 @@ static RunResult run(Arguments *args)
   ParseResult parse_result = parse(&parser);
   if (!parse_result.is_ok) {
     alloc_err_str(&result.msg, "parser: %s\n", parse_result.msg);
-    result.errcode = -1;
     result.is_ok = false;
     goto cleanup_after_parse;
   }
@@ -76,7 +72,6 @@ static RunResult run(Arguments *args)
   LoopLabelResult loop_label_result = loop_label_program(&raw_ast, NULL);
   if (!loop_label_result.is_ok) {
     alloc_err_str(&result.msg, "loop_labeler: %s\n", loop_label_result.msg);
-    result.errcode = -1;
     result.is_ok = false;
     goto cleanup_after_loop_label;
   }
@@ -109,7 +104,6 @@ static RunResult run(Arguments *args)
 
   if (!compile_result.is_ok) {
     alloc_err_str(&result.msg, "compiler: %s\n", compile_result.msg);
-    result.errcode = -1;
     result.is_ok = false;
     goto cleanup_after_compile;
   }
@@ -127,7 +121,6 @@ static RunResult run(Arguments *args)
   ExecResult exec_result = exec(&vm, chunk);
   if (!exec_result.is_ok) {
     alloc_err_str(&result.msg, "vm: %s\n", exec_result.msg);
-    result.errcode = -1;
     result.is_ok = false;
     goto cleanup_after_exec; /* just for the symmetry */
   }
@@ -209,16 +202,14 @@ static ArgParseResult parse_args(int argc, char *argv[])
         return (ArgParseResult) {
             .args = {0},
             .msg = "usage: %s [--lex] [--parse] [--ir] [--optimize]",
-            .is_ok = false,
-            .errcode = -1};
+            .is_ok = false};
     }
   }
 
   if (do_lex + do_parse + do_ir > 1) {
     return (ArgParseResult) {.args = {0},
                              .msg = "Please specify exactly one option.",
-                             .is_ok = false,
-                             .errcode = -1};
+                             .is_ok = false};
   }
 
   Arguments args;
@@ -230,7 +221,7 @@ static ArgParseResult parse_args(int argc, char *argv[])
   args.file = argv[optind];
 
   return (ArgParseResult) {
-      .args = args, .is_ok = true, .msg = NULL, .errcode = 0};
+      .args = args, .is_ok = true, .msg = NULL};
 }
 
 int main(int argc, char *argv[])
@@ -242,7 +233,7 @@ int main(int argc, char *argv[])
   arg_parse_result = parse_args(argc, argv);
   if (!arg_parse_result.is_ok) {
     fprintf(stderr, "venom: %s\n", arg_parse_result.msg);
-    return arg_parse_result.errcode;
+    return -1;
   }
 
   args = arg_parse_result.args;
@@ -250,7 +241,8 @@ int main(int argc, char *argv[])
   if (!result.is_ok) {
     fprintf(stderr, "%s", result.msg);
     free(result.msg);
+    return -1;
   }
 
-  return result.errcode;
+  return 0;
 }
