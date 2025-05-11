@@ -230,15 +230,21 @@ static ArgParseResult parse_args(int argc, char *argv[])
       default:
         return (ArgParseResult) {
             .args = {0},
-            .msg = "usage: %s [--lex] [--parse] [--ir] [--optimize]",
-            .is_ok = false};
+            .is_ok = false,
+            .msg = ALLOC("usage: %s [--lex] [--parse] [--ir] [--optimize]")};
     }
+  }
+
+  if (do_lex + do_optimize > 1) {
+    return (ArgParseResult) {.args = {0},
+                             .is_ok = false,
+                             .msg = ALLOC("--optimize available only from the parsing stage onwards")};
   }
 
   if (do_lex + do_parse + do_ir > 1) {
     return (ArgParseResult) {.args = {0},
-                             .msg = "Please specify exactly one option.",
-                             .is_ok = false};
+                             .is_ok = false,
+                             .msg = ALLOC("Please specify exactly one option.")};
   }
 
   Arguments args;
@@ -262,6 +268,7 @@ int main(int argc, char *argv[])
   arg_parse_result = parse_args(argc, argv);
   if (!arg_parse_result.is_ok) {
     fprintf(stderr, "venom: %s\n", arg_parse_result.msg);
+    free(arg_parse_result.msg);
     return -1;
   }
 
