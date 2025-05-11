@@ -183,14 +183,15 @@ cleanup_after_parse:
 
 cleanup_after_lex:
   dynarray_free(&tokenize_result.tokens);
-  free(source);
 
   if (!tokenize_result.is_ok) {
     free(tokenize_result.msg);
   }
 
 cleanup_after_read_file:
-  if (!read_file_result.is_ok) {
+  if (read_file_result.is_ok) {
+    free(source);
+  } else { 
     free(read_file_result.msg);
   }
 
