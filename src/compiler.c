@@ -14,6 +14,7 @@
 
 #define COMPILER_ERROR(...)                  \
   do {                                       \
+    alloc_err_str(&result.msg, __VA_ARGS__); \
     Compiler *c;                             \
     while (current_compiler) {               \
       c = current_compiler;                  \
@@ -21,7 +22,6 @@
       free_compiler(c);                      \
       free(c);                               \
     }                                        \
-    alloc_err_str(&result.msg, __VA_ARGS__); \
     result.is_ok = false;                    \
     return result;                           \
   } while (0)
@@ -814,24 +814,7 @@ static CompileResult compile_expr_call(Bytecode *code, const Expr *expr)
 
     Function *f = resolve_func(var.name);
     if (f && f->paramcount != expr_call.arguments.count) {
-      /* It is necessary to clone this because we're freeing the compilers. */
-      char *fname = own_string(f->name);
-      size_t fparamcount = f->paramcount;
-
-      Compiler *c;
-      while (current_compiler) {
-        c = current_compiler;
-        current_compiler = c->next;
-        free_compiler(c);
-        free(c);
-      }
-      alloc_err_str(&result.msg, "Function '%s' requires %ld arguments.",
-                    fname, fparamcount);
-      result.is_ok = false;
-      
-      free(fname);
-
-      return result;
+      COMPILER_ERROR("Function '%s' requires %ld arguments.", f->name, f->paramcount);
     }
 
     /* Then compile the arguments */
@@ -1151,31 +1134,10 @@ static CompileResult compile_expr_struct(Bytecode *code, const Expr *expr)
         expr_struct.initializers.data[i].as.expr_struct_initializer;
     char *propname = siexp.property->as.expr_variable.name;
 
-    /* It is necessary to clone this because we're freeing the compilers. */
-    char *blueprint_name = own_string(blueprint->name);
-    char *property_name = own_string(propname);
-
     int *propidx = table_get(blueprint->property_indexes, propname);
     if (!propidx) {
-      Compiler *c;
-      while (current_compiler) {
-        c = current_compiler;
-        current_compiler = c->next;
-        free_compiler(c);
-        free(c);
-      }
-      alloc_err_str(&result.msg, "struct '%s' has no property '%s'",
-                    blueprint_name, property_name);
-      result.is_ok = false;
-      
-      free(blueprint_name);
-      free(property_name);
-      
-      return result;
+      COMPILER_ERROR("struct '%s' has no property '%s'", blueprint->name, propname);
     }
-
-    free(blueprint_name);
-    free(property_name);
   }
 
   /* Everything is OK, we emit OP_STRUCT followed by
