@@ -55,7 +55,7 @@ static RunResult run(Arguments *args)
   if (!tokenize_result.is_ok) {
     alloc_err_str(&result.msg, "tokenizer: %s\n", tokenize_result.msg);
     result.is_ok = false;
-    result.errcode = -1;
+    result.errcode = tokenize_result.errcode;
     goto cleanup_after_lex;
   }
 

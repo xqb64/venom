@@ -90,6 +90,7 @@ typedef DynArray(Token) DynArray_Token;
 
 typedef struct {
   DynArray_Token tokens;
+  int errcode;
   bool is_ok;
   char *msg;
 } TokenizeResult;

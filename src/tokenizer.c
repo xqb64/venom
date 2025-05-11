@@ -426,13 +426,14 @@ void print_tokens(const DynArray_Token *tokens)
 
 TokenizeResult tokenize(Tokenizer *tokenizer)
 {
-  TokenizeResult result = {0};
+  TokenizeResult result = {.is_ok = true, .errcode = 0, .msg = NULL, .tokens = {0}};
 
   Token t;
   while ((t = get_token(tokenizer)).type != TOKEN_EOF) {
     if (t.type == TOKEN_ERROR) {
       alloc_err_str(&result.msg, "error on line: %d", tokenizer->line);
       result.is_ok = false;
+      result.errcode = -1;
       return result;
     }
     dynarray_insert(&result.tokens, t);
