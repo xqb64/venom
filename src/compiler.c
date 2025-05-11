@@ -814,18 +814,22 @@ static CompileResult compile_expr_call(Bytecode *code, const Expr *expr)
 
     Function *f = resolve_func(var.name);
     if (f && f->paramcount != expr_call.arguments.count) {
-      char *name = own_string(f->name);
-      size_t paramcount = f->paramcount;
+      /* It is necessary to clone this because we're freeing the compilers. */
+      char *fname = own_string(f->name);
+      size_t fparamcount = f->paramcount;
 
-      free_compiler(current_compiler);
-      free(current_compiler);
-
-      current_compiler = NULL;
-
-      alloc_err_str(&result.msg, "Function '%s' requires %ld arguments.", name,
-                    paramcount);
+      Compiler *c;
+      while (current_compiler) {
+        c = current_compiler;
+        current_compiler = c->next;
+        free_compiler(c);
+        free(c);
+      }
+      alloc_err_str(&result.msg, "Function '%s' requires %ld arguments.",
+                    fname, fparamcount);
       result.is_ok = false;
-      free(name);
+      free(fname);
+
       return result;
     }
 
