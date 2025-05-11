@@ -161,8 +161,8 @@ static inline uint64_t clamp(double d)
 
 #define RUNTIME_ERROR(...)              \
   do {                                  \
-    dealloc_stack(vm);                  \
     alloc_err_str(&r.msg, __VA_ARGS__); \
+    dealloc_stack(vm);                  \
     r.is_ok = false;                    \
     r.errcode = -1;                     \
     return r;                           \
@@ -782,14 +782,8 @@ static inline ExecResult handle_op_getattr(VM *vm, Bytecode *code, uint8_t **ip)
   Object *property =
       table_get(AS_STRUCT(obj)->properties, code->sp.data[property_name_idx]);
   if (!property) {
-    char *name = own_string(AS_STRUCT(obj)->name);
-    objdecref(&obj);
-    dealloc_stack(vm);
-    alloc_err_str(&r.msg, "Property '%s' is not defined on struct '%s'.",
-                  code->sp.data[property_name_idx], name);
-    r.is_ok = false;
-    free(name);
-    return r;
+    RUNTIME_ERROR("Property '%s' is not defined on struct '%s'.",
+                  code->sp.data[property_name_idx], AS_STRUCT(obj)->name);
   }
   push(vm, *property);
 
@@ -822,14 +816,8 @@ static inline ExecResult handle_op_getattr_ptr(VM *vm, Bytecode *code,
 
   int *idx = table_get(sb->property_indexes, code->sp.data[property_name_idx]);
   if (!idx) {
-    char *name = own_string(AS_STRUCT(object)->name);
-    objdecref(&object);
-    dealloc_stack(vm);
-    alloc_err_str(&r.msg, "Property '%s' is not defined on struct '%s'.",
-                  code->sp.data[property_name_idx], name);
-    r.is_ok = false;
-    free(name);
-    return r;
+    RUNTIME_ERROR("Property '%s' is not defined on struct '%s'.",
+                  code->sp.data[property_name_idx], AS_STRUCT(object)->name);
   }
 
   Object *property = table_get(AS_STRUCT(object)->properties,
@@ -1109,14 +1097,8 @@ static inline ExecResult handle_op_call_method(VM *vm, Bytecode *code,
       table_get(AS_STRUCT(object)->properties, code->sp.data[method_name_idx]);
 
   if (!methodobj) {
-    char *type = own_string(AS_STRUCT(object)->name);
-    dealloc_stack(vm);
-    alloc_err_str(&r.msg, "method '%s' is not defined on struct: '%s'",
-                  code->sp.data[method_name_idx], type);
-    r.is_ok = false;
-    r.errcode = -1;
-    free(type);
-    return r;
+    RUNTIME_ERROR("method '%s' is not defined on struct: '%s'",
+                  code->sp.data[method_name_idx], AS_STRUCT(object)->name);
   }
 
   Closure *c = AS_CLOSURE(*methodobj);
