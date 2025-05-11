@@ -828,6 +828,7 @@ static CompileResult compile_expr_call(Bytecode *code, const Expr *expr)
       alloc_err_str(&result.msg, "Function '%s' requires %ld arguments.",
                     fname, fparamcount);
       result.is_ok = false;
+      
       free(fname);
 
       return result;
@@ -1166,8 +1167,10 @@ static CompileResult compile_expr_struct(Bytecode *code, const Expr *expr)
       alloc_err_str(&result.msg, "struct '%s' has no property '%s'",
                     blueprint_name, property_name);
       result.is_ok = false;
+      
       free(blueprint_name);
       free(property_name);
+      
       return result;
     }
 
