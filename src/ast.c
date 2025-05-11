@@ -758,6 +758,8 @@ void print_stmt(const Stmt *stmt, int indent, bool continuation)
     case STMT_WHILE: {
       printf("While(\n");
       INDENT(indent + 4);
+      printf("label: \"%s\",\n", stmt->as.stmt_while.label);
+      INDENT(indent + 4);
       printf("condition: ");
       print_expr(&stmt->as.stmt_while.condition, indent + 4);
       printf(",\n");
@@ -768,6 +770,8 @@ void print_stmt(const Stmt *stmt, int indent, bool continuation)
     }
     case STMT_FOR: {
       printf("For(\n");
+      INDENT(indent + 4);
+      printf("label: \"%s\",\n", stmt->as.stmt_for.label);
       INDENT(indent + 4);
       printf("init: ");
       print_expr(&stmt->as.stmt_for.initializer, indent + 4);
@@ -780,8 +784,6 @@ void print_stmt(const Stmt *stmt, int indent, bool continuation)
       printf("advancement: ");
       print_expr(&stmt->as.stmt_for.advancement, indent + 4);
       putchar('\n');
-      INDENT(indent + 4);
-      printf("label: \"%s\",\n", stmt->as.stmt_for.label);
       INDENT(indent + 4);
       printf("body: ");
       print_stmt(stmt->as.stmt_for.body, indent + 4, true);
@@ -819,11 +821,15 @@ void print_stmt(const Stmt *stmt, int indent, bool continuation)
       break;
     }
     case STMT_BREAK: {
-      printf("Break");
+      printf("Break(\n");
+      INDENT(indent + 4);
+      printf("label: \"%s\"", stmt->as.stmt_break.label);
       break;
     }
     case STMT_CONTINUE: {
-      printf("Continue");
+      printf("Continue(\n");
+      INDENT(indent + 4);
+      printf("label: \"%s\"", stmt->as.stmt_continue.label);
       break;
     }
     case STMT_ASSERT: {
