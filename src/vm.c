@@ -240,7 +240,7 @@ static inline char *concatenate_strings(char *a, char *b)
  * unted, the reference count must be decremented. */
 static inline ExecResult handle_op_print(VM *vm, Bytecode *code, uint8_t **ip)
 {
-  ExecResult r = {.is_ok = true, .msg = NULL};
+  ExecResult r = {.is_ok = true, .errcode = 0, .msg = NULL};
 
   Object object = pop(vm);
 #ifdef venom_debug_vm
@@ -258,7 +258,7 @@ static inline ExecResult handle_op_print(VM *vm, Bytecode *code, uint8_t **ip)
  * pushes the result back on the stack. */
 static inline ExecResult handle_op_add(VM *vm, Bytecode *code, uint8_t **ip)
 {
-  ExecResult r = {.is_ok = true, .msg = NULL};
+  ExecResult r = {.is_ok = true, .errcode = 0, .msg = NULL};
   BINARY_OP(+, NUM_VAL);
   return r;
 }
@@ -267,7 +267,7 @@ static inline ExecResult handle_op_add(VM *vm, Bytecode *code, uint8_t **ip)
  * pushes the result back on the stack. */
 static inline ExecResult handle_op_sub(VM *vm, Bytecode *code, uint8_t **ip)
 {
-  ExecResult r = {.is_ok = true, .msg = NULL};
+  ExecResult r = {.is_ok = true, .errcode = 0, .msg = NULL};
   BINARY_OP(-, NUM_VAL);
   return r;
 }
@@ -276,7 +276,7 @@ static inline ExecResult handle_op_sub(VM *vm, Bytecode *code, uint8_t **ip)
  * pushes the result back on the stack. */
 static inline ExecResult handle_op_mul(VM *vm, Bytecode *code, uint8_t **ip)
 {
-  ExecResult r = {.is_ok = true, .msg = NULL};
+  ExecResult r = {.is_ok = true, .errcode = 0, .msg = NULL};
   BINARY_OP(*, NUM_VAL);
   return r;
 }
@@ -285,7 +285,7 @@ static inline ExecResult handle_op_mul(VM *vm, Bytecode *code, uint8_t **ip)
  * pushes the result back on the stack. */
 static inline ExecResult handle_op_div(VM *vm, Bytecode *code, uint8_t **ip)
 {
-  ExecResult r = {.is_ok = true, .msg = NULL};
+  ExecResult r = {.is_ok = true, .errcode = 0, .msg = NULL};
   BINARY_OP(/, NUM_VAL);
   return r;
 }
@@ -294,7 +294,7 @@ static inline ExecResult handle_op_div(VM *vm, Bytecode *code, uint8_t **ip)
  * pushes the result back on the stack. */
 static inline ExecResult handle_op_mod(VM *vm, Bytecode *code, uint8_t **ip)
 {
-  ExecResult r = {.is_ok = true, .msg = NULL};
+  ExecResult r = {.is_ok = true, .errcode = 0, .msg = NULL};
 
   Object b = pop(vm);
   Object a = pop(vm);
@@ -319,7 +319,7 @@ static inline ExecResult handle_op_mod(VM *vm, Bytecode *code, uint8_t **ip)
  * on on them, and pushes the result back on the stack. */
 static inline ExecResult handle_op_bitand(VM *vm, Bytecode *code, uint8_t **ip)
 {
-  ExecResult r = {.is_ok = true, .msg = NULL};
+  ExecResult r = {.is_ok = true, .errcode = 0, .msg = NULL};
   BITWISE_OP(&);
   return r;
 }
@@ -329,7 +329,7 @@ static inline ExecResult handle_op_bitand(VM *vm, Bytecode *code, uint8_t **ip)
  * on on them, and pushes the result back on the stack. */
 static inline ExecResult handle_op_bitor(VM *vm, Bytecode *code, uint8_t **ip)
 {
-  ExecResult r = {.is_ok = true, .msg = NULL};
+  ExecResult r = {.is_ok = true, .errcode = 0, .msg = NULL};
   BITWISE_OP(|);
   return r;
 }
@@ -339,7 +339,7 @@ static inline ExecResult handle_op_bitor(VM *vm, Bytecode *code, uint8_t **ip)
  * on on them, and pushes the result back on the stack. */
 static inline ExecResult handle_op_bitxor(VM *vm, Bytecode *code, uint8_t **ip)
 {
-  ExecResult r = {.is_ok = true, .msg = NULL};
+  ExecResult r = {.is_ok = true, .errcode = 0, .msg = NULL};
   BITWISE_OP(^);
   return r;
 }
@@ -349,7 +349,7 @@ static inline ExecResult handle_op_bitxor(VM *vm, Bytecode *code, uint8_t **ip)
  * ion on it, and pushes the result back on the stack. */
 static inline ExecResult handle_op_bitnot(VM *vm, Bytecode *code, uint8_t **ip)
 {
-  ExecResult r = {.is_ok = true, .msg = NULL};
+  ExecResult r = {.is_ok = true, .errcode = 0, .msg = NULL};
 
   Object obj = pop(vm);
   objdecref(&obj);
@@ -371,7 +371,7 @@ static inline ExecResult handle_op_bitnot(VM *vm, Bytecode *code, uint8_t **ip)
  * on on them, and pushes the result back on the stack. */
 static inline ExecResult handle_op_bitshl(VM *vm, Bytecode *code, uint8_t **ip)
 {
-  ExecResult r = {.is_ok = true, .msg = NULL};
+  ExecResult r = {.is_ok = true, .errcode = 0, .msg = NULL};
   BITWISE_OP(<<);
   return r;
 }
@@ -381,7 +381,7 @@ static inline ExecResult handle_op_bitshl(VM *vm, Bytecode *code, uint8_t **ip)
  * on on them, and pushes the result back on the stack. */
 static inline ExecResult handle_op_bitshr(VM *vm, Bytecode *code, uint8_t **ip)
 {
-  ExecResult r = {.is_ok = true, .msg = NULL};
+  ExecResult r = {.is_ok = true, .errcode = 0, .msg = NULL};
   BITWISE_OP(>>);
   return r;
 }
@@ -395,7 +395,7 @@ static inline ExecResult handle_op_bitshr(VM *vm, Bytecode *code, uint8_t **ip)
  * ed. */
 static inline ExecResult handle_op_eq(VM *vm, Bytecode *code, uint8_t **ip)
 {
-  ExecResult r = {.is_ok = true, .msg = NULL};
+  ExecResult r = {.is_ok = true, .errcode = 0, .msg = NULL};
 
   Object b = pop(vm);
   Object a = pop(vm);
@@ -413,7 +413,7 @@ static inline ExecResult handle_op_eq(VM *vm, Bytecode *code, uint8_t **ip)
  * stack. */
 static inline ExecResult handle_op_gt(VM *vm, Bytecode *code, uint8_t **ip)
 {
-  ExecResult r = {.is_ok = true, .msg = NULL};
+  ExecResult r = {.is_ok = true, .errcode = 0, .msg = NULL};
   BINARY_OP(>, BOOL_VAL);
   return r;
 }
@@ -423,7 +423,7 @@ static inline ExecResult handle_op_gt(VM *vm, Bytecode *code, uint8_t **ip)
  * stack. */
 static inline ExecResult handle_op_lt(VM *vm, Bytecode *code, uint8_t **ip)
 {
-  ExecResult r = {.is_ok = true, .msg = NULL};
+  ExecResult r = {.is_ok = true, .errcode = 0, .msg = NULL};
   BINARY_OP(<, BOOL_VAL);
   return r;
 }
@@ -433,7 +433,7 @@ static inline ExecResult handle_op_lt(VM *vm, Bytecode *code, uint8_t **ip)
  * value, and pushes the result back on the stack. */
 static inline ExecResult handle_op_not(VM *vm, Bytecode *code, uint8_t **ip)
 {
-  ExecResult r = {.is_ok = true, .msg = NULL};
+  ExecResult r = {.is_ok = true, .errcode = 0, .msg = NULL};
 
   Object obj = pop(vm);
 
@@ -453,7 +453,7 @@ static inline ExecResult handle_op_not(VM *vm, Bytecode *code, uint8_t **ip)
  * and pushes the result back on the stack. */
 static inline ExecResult handle_op_neg(VM *vm, Bytecode *code, uint8_t **ip)
 {
-  ExecResult r = {.is_ok = true, .msg = NULL};
+  ExecResult r = {.is_ok = true, .errcode = 0, .msg = NULL};
 
   Object original = pop(vm);
 
@@ -473,7 +473,7 @@ static inline ExecResult handle_op_neg(VM *vm, Bytecode *code, uint8_t **ip)
 /* OP_TRUE pushes a bool object ('true') on the stack. */
 static inline ExecResult handle_op_true(VM *vm, Bytecode *code, uint8_t **ip)
 {
-  ExecResult r = {.is_ok = true, .msg = NULL};
+  ExecResult r = {.is_ok = true, .errcode = 0, .msg = NULL};
   push(vm, BOOL_VAL(true));
   return r;
 }
@@ -481,7 +481,7 @@ static inline ExecResult handle_op_true(VM *vm, Bytecode *code, uint8_t **ip)
 /* OP_NULL pushes a null object on the stack. */
 static inline ExecResult handle_op_null(VM *vm, Bytecode *code, uint8_t **ip)
 {
-  ExecResult r = {.is_ok = true, .msg = NULL};
+  ExecResult r = {.is_ok = true, .errcode = 0, .msg = NULL};
   push(vm, NULL_VAL);
   return r;
 }
@@ -491,7 +491,7 @@ static inline ExecResult handle_op_null(VM *vm, Bytecode *code, uint8_t **ip)
  * pushes it on the stack. */
 static inline ExecResult handle_op_const(VM *vm, Bytecode *code, uint8_t **ip)
 {
-  ExecResult r = {.is_ok = true, .msg = NULL};
+  ExecResult r = {.is_ok = true, .errcode = 0, .msg = NULL};
 
   union {
     double d;
@@ -512,7 +512,7 @@ static inline ExecResult handle_op_const(VM *vm, Bytecode *code, uint8_t **ip)
  * constructed object has a refcount=1. */
 static inline ExecResult handle_op_str(VM *vm, Bytecode *code, uint8_t **ip)
 {
-  ExecResult r = {.is_ok = true, .msg = NULL};
+  ExecResult r = {.is_ok = true, .errcode = 0, .msg = NULL};
 
   uint32_t idx = READ_UINT32();
 
@@ -528,7 +528,7 @@ static inline ExecResult handle_op_str(VM *vm, Bytecode *code, uint8_t **ip)
  * the popped object was 'false'. */
 static inline ExecResult handle_op_jz(VM *vm, Bytecode *code, uint8_t **ip)
 {
-  ExecResult r = {.is_ok = true, .msg = NULL};
+  ExecResult r = {.is_ok = true, .errcode = 0, .msg = NULL};
 
   int16_t offset = READ_INT16();
 
@@ -546,7 +546,7 @@ static inline ExecResult handle_op_jz(VM *vm, Bytecode *code, uint8_t **ip)
  * OP_JMP instruction takes the jump unconditionally. */
 static inline ExecResult handle_op_jmp(VM *vm, Bytecode *code, uint8_t **ip)
 {
-  ExecResult r = {.is_ok = true, .msg = NULL};
+  ExecResult r = {.is_ok = true, .errcode = 0, .msg = NULL};
 
   int16_t offset = READ_INT16();
   *ip += offset;
@@ -568,7 +568,7 @@ static inline ExecResult handle_op_jmp(VM *vm, Bytecode *code, uint8_t **ip)
 static inline ExecResult handle_op_set_global(VM *vm, Bytecode *code,
                                               uint8_t **ip)
 {
-  ExecResult r = {.is_ok = true, .msg = NULL};
+  ExecResult r = {.is_ok = true, .errcode = 0, .msg = NULL};
 
   uint32_t name_idx = READ_UINT32();
 
@@ -593,7 +593,7 @@ static inline ExecResult handle_op_set_global(VM *vm, Bytecode *code,
 static inline ExecResult handle_op_get_global(VM *vm, Bytecode *code,
                                               uint8_t **ip)
 {
-  ExecResult r = {.is_ok = true, .msg = NULL};
+  ExecResult r = {.is_ok = true, .errcode = 0, .msg = NULL};
 
   uint32_t name_idx = READ_UINT32();
 
@@ -612,7 +612,7 @@ static inline ExecResult handle_op_get_global(VM *vm, Bytecode *code,
 static inline ExecResult handle_op_get_global_ptr(VM *vm, Bytecode *code,
                                                   uint8_t **ip)
 {
-  ExecResult r = {.is_ok = true, .msg = NULL};
+  ExecResult r = {.is_ok = true, .errcode = 0, .msg = NULL};
 
   uint32_t name_idx = READ_UINT32();
 
@@ -633,7 +633,7 @@ static inline ExecResult handle_op_get_global_ptr(VM *vm, Bytecode *code,
  * ore putting the popped object into that position. */
 static inline ExecResult handle_op_deepset(VM *vm, Bytecode *code, uint8_t **ip)
 {
-  ExecResult r = {.is_ok = true, .msg = NULL};
+  ExecResult r = {.is_ok = true, .errcode = 0, .msg = NULL};
 
   uint32_t idx = READ_UINT32();
   uint32_t adjusted_idx = adjust_idx(vm, idx);
@@ -659,7 +659,7 @@ static inline ExecResult handle_op_deepset(VM *vm, Bytecode *code, uint8_t **ip)
 static inline ExecResult handle_op_derefset(VM *vm, Bytecode *code,
                                             uint8_t **ip)
 {
-  ExecResult r = {.is_ok = true, .msg = NULL};
+  ExecResult r = {.is_ok = true, .errcode = 0, .msg = NULL};
 
   Object item = pop(vm);
   Object ptr = pop(vm);
@@ -678,7 +678,7 @@ static inline ExecResult handle_op_derefset(VM *vm, Bytecode *code,
  * rement its refcount. */
 static inline ExecResult handle_op_deepget(VM *vm, Bytecode *code, uint8_t **ip)
 {
-  ExecResult r = {.is_ok = true, .msg = NULL};
+  ExecResult r = {.is_ok = true, .errcode = 0, .msg = NULL};
 
   uint32_t idx = READ_UINT32();
   uint32_t adjusted_idx = adjust_idx(vm, idx);
@@ -698,7 +698,7 @@ static inline ExecResult handle_op_deepget(VM *vm, Bytecode *code, uint8_t **ip)
 static inline ExecResult handle_op_deepget_ptr(VM *vm, Bytecode *code,
                                                uint8_t **ip)
 {
-  ExecResult r = {.is_ok = true, .msg = NULL};
+  ExecResult r = {.is_ok = true, .errcode = 0, .msg = NULL};
 
   uint32_t idx = READ_UINT32();
   uint32_t adjusted_idx = adjust_idx(vm, idx);
@@ -724,7 +724,7 @@ static inline ExecResult handle_op_deepget_ptr(VM *vm, Bytecode *code,
  * riting it. */
 static inline ExecResult handle_op_setattr(VM *vm, Bytecode *code, uint8_t **ip)
 {
-  ExecResult r = {.is_ok = true, .msg = NULL};
+  ExecResult r = {.is_ok = true, .errcode = 0, .msg = NULL};
 
   uint32_t property_name_idx = READ_UINT32();
 
@@ -767,7 +767,7 @@ static inline ExecResult handle_op_setattr(VM *vm, Bytecode *code, uint8_t **ip)
  * location, its refcount must be decremented. */
 static inline ExecResult handle_op_getattr(VM *vm, Bytecode *code, uint8_t **ip)
 {
-  ExecResult r = {.is_ok = true, .msg = NULL};
+  ExecResult r = {.is_ok = true, .errcode = 0, .msg = NULL};
 
   uint32_t property_name_idx = READ_UINT32();
 
@@ -805,7 +805,7 @@ static inline ExecResult handle_op_getattr(VM *vm, Bytecode *code, uint8_t **ip)
 static inline ExecResult handle_op_getattr_ptr(VM *vm, Bytecode *code,
                                                uint8_t **ip)
 {
-  ExecResult r = {.is_ok = true, .msg = NULL};
+  ExecResult r = {.is_ok = true, .errcode = 0, .msg = NULL};
 
   uint32_t property_name_idx = READ_UINT32();
 
@@ -839,7 +839,7 @@ static inline ExecResult handle_op_getattr_ptr(VM *vm, Bytecode *code,
  * nstructed object has a refcount=1. */
 static inline ExecResult handle_op_struct(VM *vm, Bytecode *code, uint8_t **ip)
 {
-  ExecResult r = {.is_ok = true, .msg = NULL};
+  ExecResult r = {.is_ok = true, .errcode = 0, .msg = NULL};
 
   uint32_t structname = READ_UINT32();
 
@@ -886,7 +886,7 @@ static inline ExecResult handle_op_struct(VM *vm, Bytecode *code, uint8_t **ip)
 static inline ExecResult handle_op_struct_blueprint(VM *vm, Bytecode *code,
                                                     uint8_t **ip)
 {
-  ExecResult r = {.is_ok = true, .msg = NULL};
+  ExecResult r = {.is_ok = true, .errcode = 0, .msg = NULL};
 
   uint32_t name_idx = READ_UINT32();
   uint32_t propcount = READ_UINT32();
@@ -923,7 +923,7 @@ static inline ExecResult handle_op_struct_blueprint(VM *vm, Bytecode *code,
  * the blueprint's methods Table. */
 static inline ExecResult handle_op_impl(VM *vm, Bytecode *code, uint8_t **ip)
 {
-  ExecResult r = {.is_ok = true, .msg = NULL};
+  ExecResult r = {.is_ok = true, .errcode = 0, .msg = NULL};
 
   uint32_t blueprint_name_idx = READ_UINT32();
   uint32_t method_count = READ_UINT32();
@@ -1003,7 +1003,7 @@ static void close_upvalues(VM *vm, Object *last)
  * all this information and pushes it on the stack. */
 static inline ExecResult handle_op_closure(VM *vm, Bytecode *code, uint8_t **ip)
 {
-  ExecResult r = {.is_ok = true, .msg = NULL};
+  ExecResult r = {.is_ok = true, .errcode = 0, .msg = NULL};
   uint32_t name_idx, paramcount, location, upvalue_count;
 
   Function f;
@@ -1053,7 +1053,7 @@ static inline ExecResult handle_op_closure(VM *vm, Bytecode *code, uint8_t **ip)
  * refcounted, we need to make sure to call objdecref on it. */
 static inline ExecResult handle_op_call(VM *vm, Bytecode *code, uint8_t **ip)
 {
-  ExecResult r = {.is_ok = true, .msg = NULL};
+  ExecResult r = {.is_ok = true, .errcode = 0, .msg = NULL};
   uint8_t argcount = READ_UINT8();
 
   Object obj = pop(vm);
@@ -1081,7 +1081,7 @@ static inline ExecResult handle_op_call(VM *vm, Bytecode *code, uint8_t **ip)
 static inline ExecResult handle_op_call_method(VM *vm, Bytecode *code,
                                                uint8_t **ip)
 {
-  ExecResult r = {.is_ok = true, .msg = NULL};
+  ExecResult r = {.is_ok = true, .errcode = 0, .msg = NULL};
   uint32_t method_name_idx = READ_UINT32();
   uint32_t argcount = READ_UINT32();
 
@@ -1121,7 +1121,7 @@ static inline ExecResult handle_op_call_method(VM *vm, Bytecode *code,
  * ress contained in the BytecodePtr. */
 static inline ExecResult handle_op_ret(VM *vm, Bytecode *code, uint8_t **ip)
 {
-  ExecResult r = {.is_ok = true, .msg = NULL};
+  ExecResult r = {.is_ok = true, .errcode = 0, .msg = NULL};
 
   BytecodePtr ptr = vm->fp_stack[--vm->fp_count];
   *ip = ptr.addr;
@@ -1135,7 +1135,7 @@ static inline ExecResult handle_op_ret(VM *vm, Bytecode *code, uint8_t **ip)
  * its refcount must be decremented. */
 static inline ExecResult handle_op_pop(VM *vm, Bytecode *code, uint8_t **ip)
 {
-  ExecResult r = {.is_ok = true, .msg = NULL};
+  ExecResult r = {.is_ok = true, .errcode = 0, .msg = NULL};
 
   Object obj = pop(vm);
   objdecref(&obj);
@@ -1150,7 +1150,7 @@ static inline ExecResult handle_op_pop(VM *vm, Bytecode *code, uint8_t **ip)
  * more another location, its refcount must be incremented. */
 static inline ExecResult handle_op_deref(VM *vm, Bytecode *code, uint8_t **ip)
 {
-  ExecResult r = {.is_ok = true, .msg = NULL};
+  ExecResult r = {.is_ok = true, .errcode = 0, .msg = NULL};
 
   Object ptrobj = pop(vm);
   push(vm, *AS_PTR(ptrobj));
@@ -1172,7 +1172,7 @@ static inline ExecResult handle_op_deref(VM *vm, Bytecode *code, uint8_t **ip)
  * The resulting string is initalized with the refcount of 1. */
 static inline ExecResult handle_op_strcat(VM *vm, Bytecode *code, uint8_t **ip)
 {
-  ExecResult r = {.is_ok = true, .msg = NULL};
+  ExecResult r = {.is_ok = true, .errcode = 0, .msg = NULL};
 
   Object b = pop(vm);
   Object a = pop(vm);
@@ -1205,7 +1205,7 @@ static inline ExecResult handle_op_strcat(VM *vm, Bytecode *code, uint8_t **ip)
  * REFCOUNTING: Since Arrays are refcounted, the new object has refcount=1. */
 static inline ExecResult handle_op_array(VM *vm, Bytecode *code, uint8_t **ip)
 {
-  ExecResult r = {.is_ok = true, .msg = NULL};
+  ExecResult r = {.is_ok = true, .errcode = 0, .msg = NULL};
 
   uint32_t count = READ_UINT32();
 
@@ -1229,7 +1229,7 @@ static inline ExecResult handle_op_array(VM *vm, Bytecode *code, uint8_t **ip)
 static inline ExecResult handle_op_arrayset(VM *vm, Bytecode *code,
                                             uint8_t **ip)
 {
-  ExecResult r = {.is_ok = true, .msg = NULL};
+  ExecResult r = {.is_ok = true, .errcode = 0, .msg = NULL};
 
   Object value = pop(vm);
   Object index = pop(vm);
@@ -1271,7 +1271,7 @@ static inline ExecResult handle_op_arrayset(VM *vm, Bytecode *code,
 static inline ExecResult handle_op_subscript(VM *vm, Bytecode *code,
                                              uint8_t **ip)
 {
-  ExecResult r = {.is_ok = true, .msg = NULL};
+  ExecResult r = {.is_ok = true, .errcode = 0, .msg = NULL};
 
   Object index = pop(vm);
   Object object = pop(vm);
@@ -1307,7 +1307,7 @@ static inline ExecResult handle_op_subscript(VM *vm, Bytecode *code,
 static inline ExecResult handle_op_get_upvalue(VM *vm, Bytecode *code,
                                                uint8_t **ip)
 {
-  ExecResult r = {.is_ok = true, .msg = NULL};
+  ExecResult r = {.is_ok = true, .errcode = 0, .msg = NULL};
 
   uint32_t idx = READ_UINT32();
 
@@ -1324,7 +1324,7 @@ static inline ExecResult handle_op_get_upvalue(VM *vm, Bytecode *code,
 static inline ExecResult handle_op_get_upvalue_ptr(VM *vm, Bytecode *code,
                                                    uint8_t **ip)
 {
-  ExecResult r = {.is_ok = true, .msg = NULL};
+  ExecResult r = {.is_ok = true, .errcode = 0, .msg = NULL};
 
   uint32_t idx = READ_UINT32();
 
@@ -1342,7 +1342,7 @@ static inline ExecResult handle_op_get_upvalue_ptr(VM *vm, Bytecode *code,
 static inline ExecResult handle_op_set_upvalue(VM *vm, Bytecode *code,
                                                uint8_t **ip)
 {
-  ExecResult r = {.is_ok = true, .msg = NULL};
+  ExecResult r = {.is_ok = true, .errcode = 0, .msg = NULL};
 
   uint32_t idx = READ_UINT32();
 
@@ -1360,7 +1360,7 @@ static inline ExecResult handle_op_set_upvalue(VM *vm, Bytecode *code,
 static inline ExecResult handle_op_close_upvalue(VM *vm, Bytecode *code,
                                                  uint8_t **ip)
 {
-  ExecResult r = {.is_ok = true, .msg = NULL};
+  ExecResult r = {.is_ok = true, .errcode = 0, .msg = NULL};
 
   Object result = pop(vm);
 
@@ -1378,7 +1378,7 @@ static inline ExecResult handle_op_close_upvalue(VM *vm, Bytecode *code,
  * counted, it is necessary to decrement the refcount. */
 static inline ExecResult handle_op_mkgen(VM *vm, Bytecode *code, uint8_t **ip)
 {
-  ExecResult r = {.is_ok = true, .msg = NULL};
+  ExecResult r = {.is_ok = true, .errcode = 0, .msg = NULL};
 
   Object closure = pop(vm);
   objdecref(&closure);
@@ -1402,7 +1402,7 @@ static inline ExecResult handle_op_mkgen(VM *vm, Bytecode *code, uint8_t **ip)
  * was suspended. */
 static inline ExecResult handle_op_yield(VM *vm, Bytecode *code, uint8_t **ip)
 {
-  ExecResult r = {.is_ok = true, .msg = NULL};
+  ExecResult r = {.is_ok = true, .errcode = 0, .msg = NULL};
 
   Generator *gen = vm->gen_stack[--vm->gen_count];
   FrameSnapshot *fs = vm->fs_stack[--vm->fs_count];
@@ -1440,7 +1440,7 @@ static inline ExecResult handle_op_yield(VM *vm, Bytecode *code, uint8_t **ip)
  * generator's context. */
 static inline ExecResult handle_op_resume(VM *vm, Bytecode *code, uint8_t **ip)
 {
-  ExecResult r = {.is_ok = true, .msg = NULL};
+  ExecResult r = {.is_ok = true, .errcode = 0, .msg = NULL};
 
   Object obj = pop(vm);
   objdecref(&obj);
@@ -1480,7 +1480,7 @@ static inline ExecResult handle_op_resume(VM *vm, Bytecode *code, uint8_t **ip)
 
 static inline ExecResult handle_op_len(VM *vm, Bytecode *code, uint8_t **ip)
 {
-  ExecResult r = {.is_ok = true, .msg = NULL};
+  ExecResult r = {.is_ok = true, .errcode = 0, .msg = NULL};
 
   Object obj = pop(vm);
 
@@ -1501,7 +1501,7 @@ static inline ExecResult handle_op_len(VM *vm, Bytecode *code, uint8_t **ip)
 
 static inline ExecResult handle_op_hasattr(VM *vm, Bytecode *code, uint8_t **ip)
 {
-  ExecResult r = {.is_ok = true, .msg = NULL};
+  ExecResult r = {.is_ok = true, .errcode = 0, .msg = NULL};
 
   Object attr = pop(vm);
   Object obj = pop(vm);
@@ -1525,7 +1525,7 @@ static inline ExecResult handle_op_hasattr(VM *vm, Bytecode *code, uint8_t **ip)
 
 static inline ExecResult handle_op_assert(VM *vm, Bytecode *code, uint8_t **ip)
 {
-  ExecResult r = {.is_ok = true, .msg = NULL};
+  ExecResult r = {.is_ok = true, .errcode = 0, .msg = NULL};
 
   Object assertion = pop(vm);
 
