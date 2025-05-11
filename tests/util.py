@@ -51,14 +51,7 @@ class Struct:
         )
 
     def definition(self):
-        return textwrap.dedent(
-            """
-            struct %s {
-                %s
-            }
-            """
-            % (self.name, "".join(f"{k};" for k in self.properties.keys()))
-        )
+        return """struct %s {\n  %s\n}\n""" % (self.name, "\n  ".join(f"{k};" for k in self.properties.keys()))
 
 
 def assert_output(output, debug_prints):
