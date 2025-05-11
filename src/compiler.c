@@ -1150,6 +1150,7 @@ static CompileResult compile_expr_struct(Bytecode *code, const Expr *expr)
         expr_struct.initializers.data[i].as.expr_struct_initializer;
     char *propname = siexp.property->as.expr_variable.name;
 
+    /* It is necessary to clone this because we're freeing the compilers. */
     char *blueprint_name = own_string(blueprint->name);
     char *property_name = own_string(propname);
 
