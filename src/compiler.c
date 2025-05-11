@@ -151,14 +151,11 @@ static void emit_byte(Bytecode *code, uint8_t byte)
 static void emit_bytes(Bytecode *code, int n, ...)
 {
   va_list ap;
-
   va_start(ap, n);
-
   for (int i = 0; i < n; i++) {
     uint8_t byte = va_arg(ap, int);
     emit_byte(code, byte);
   }
-
   va_end(ap);
 }
 
