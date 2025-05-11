@@ -3,11 +3,16 @@
 
 #include "compiler.h"
 
-void disassemble(Bytecode *code);
-
 typedef struct {
   char *opcode;
 } DisassembleHandler;
+
+typedef struct {
+  bool is_ok;
+  char *msg;
+} DisassembleResult;
+
+DisassembleResult disassemble(Bytecode *code);
 
 extern DisassembleHandler disassemble_handler[];
 

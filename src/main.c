@@ -110,9 +110,14 @@ static RunResult run(Arguments *args)
 
   Bytecode *chunk = compile_result.chunk;
 
+  DisassembleResult disassemble_result = {0};
   if (args->ir) {
-    disassemble(chunk);
-    goto cleanup_after_compile;
+    disassemble_result = disassemble(chunk);
+    if (!disassemble_result.is_ok) {
+      alloc_err_str(&result.msg, "disassembler: %s\n", disassemble_result.msg);
+      result.is_ok = false;
+    }
+    goto cleanup_after_disassemble;
   }
 
   VM vm;
@@ -129,6 +134,11 @@ cleanup_after_exec:
   free_vm(&vm);
   if (!exec_result.is_ok) {
     free(exec_result.msg);
+  }
+
+cleanup_after_disassemble:
+  if (!disassemble_result.is_ok) {
+    free(disassemble_result.msg);
   }
 
 cleanup_after_compile:

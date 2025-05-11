@@ -57,7 +57,7 @@ DisassembleHandler disassemble_handler[] = {
     [OP_HLT] = {.opcode = "OP_HLT"},
 };
 
-void disassemble(Bytecode *code)
+DisassembleResult disassemble(Bytecode *code)
 {
 #define READ_UINT8() (*++ip)
 #define READ_INT16() (ip += 2, (int16_t) ((ip[-1] << 8) | ip[0]))
@@ -158,11 +158,15 @@ void disassemble(Bytecode *code)
         break;
       }
       default:
+        return (DisassembleResult) {.is_ok = false, .msg = ALLOC("Disassembling failed.")};
         break;
     }
 
     printf("\n");
   }
+  
+  return (DisassembleResult){.is_ok = true, .msg = NULL};
+
 #undef READ_UINT8
 #undef READ_INT16
 #undef READ_UINT32
