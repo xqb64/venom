@@ -16,7 +16,6 @@
 typedef struct {
   int lex;
   int parse;
-  int loop_label;
   int ir;
   int optimize;
   char *file;
