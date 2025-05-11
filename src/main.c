@@ -198,7 +198,7 @@ cleanup_after_read_file:
   return result;
 }
 
-static ArgParseResult parse_args(int argc, char *argv[])
+static ArgParseResult parse_args(int argc, char **argv)
 {
   static const struct option long_opts[] = {
       {"lex", no_argument, 0, 'l'},
@@ -266,7 +266,7 @@ static ArgParseResult parse_args(int argc, char *argv[])
       .args = args, .is_ok = true, .errcode = 0, .msg = NULL};
 }
 
-int main(int argc, char *argv[])
+int main(int argc, char **argv)
 {
   Arguments args;
   ArgParseResult arg_parse_result;
