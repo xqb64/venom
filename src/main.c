@@ -175,6 +175,8 @@ cleanup_after_loop_label:
 cleanup_after_parse:
   if (parse_result.is_ok) {
     free_ast(&raw_ast);
+  } else {
+    free(parse_result.msg);
   }
 
   if (args->optimize) {
