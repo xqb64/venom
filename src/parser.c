@@ -12,13 +12,13 @@
 #include "tokenizer.h"
 #include "util.h"
 
-#define CONSUME(parser, token_type, err)                      \
-  ({                                                          \
-    TokenResult r = consume((parser), (token_type));          \
-    if (!r.is_ok)                                             \
-      return (ParseFnResult) {                                \
-          .is_ok = false, .msg = ALLOC(err), .as.stmt = {0}}; \
-    r.token;                                                  \
+#define CONSUME(parser, token_type, err)                       \
+  ({                                                           \
+    TokenResult r = consume((parser), (token_type));           \
+    if (!r.is_ok)                                              \
+      return (ParseFnResult) {                                 \
+          .is_ok = false, .msg = strdup(err), .as.stmt = {0}}; \
+    r.token;                                                   \
   })
 
 #define HANDLE_EXPR(kind, ...)           \
