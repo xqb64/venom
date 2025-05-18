@@ -1,12 +1,13 @@
 #ifndef venom_compiler_h
 #define venom_compiler_h
 
+#include <stdbool.h>
 #include <stddef.h>
-#include <stdint.h>
 
+#include "ast.h"
 #include "dynarray.h"
 #include "object.h"
-#include "parser.h"
+#include "table.h"
 
 typedef enum {
   OP_PRINT,

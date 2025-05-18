@@ -2,9 +2,9 @@
 
 #include <stdint.h>
 #include <stdio.h>
+#include <string.h>
 
 #include "compiler.h"
-#include "dynarray.h"
 
 DisassembleHandler disassemble_handler[] = {
     [OP_PRINT] = {.opcode = "OP_PRINT"},
@@ -160,7 +160,7 @@ DisassembleResult disassemble(Bytecode *code)
       default:
         return (DisassembleResult) {.is_ok = false,
                                     .errcode = -1,
-                                    .msg = ALLOC("Disassembling failed.")};
+                                    .msg = strdup("Disassembling failed.")};
         break;
     }
 

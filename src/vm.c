@@ -6,7 +6,6 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
-#include <strings.h>
 
 #include "compiler.h"
 
@@ -59,7 +58,7 @@ static inline uint64_t clamp(double d)
 {
   if (d < 0.0) {
     return 0;
-  } else if (d > UINT64_MAX) {
+  } else if (d > (double) UINT64_MAX) {
     return UINT64_MAX;
   } else {
     return (uint64_t) d;
@@ -1633,74 +1632,72 @@ ExecResult exec(VM *vm, Bytecode *code)
 
   uint8_t *ip = code->code.data;
 
-  goto *dispatch_table[*ip];
-
   ExecResult r = {.is_ok = true, .errcode = 0, .msg = NULL};
 
-  while (1) {
-    HANDLE(print)
-    HANDLE(add)
-    HANDLE(sub)
-    HANDLE(mul)
-    HANDLE(div)
-    HANDLE(mod)
-    HANDLE(eq)
-    HANDLE(gt)
-    HANDLE(lt)
-    HANDLE(not)
-    HANDLE(neg)
-    HANDLE(true)
-    HANDLE(null)
-    HANDLE(const)
-    HANDLE(str)
-    HANDLE(jmp)
-    HANDLE(jz)
-    HANDLE(bitand)
-    HANDLE(bitor)
-    HANDLE(bitxor)
-    HANDLE(bitnot)
-    HANDLE(bitshl)
-    HANDLE(bitshr)
-    HANDLE(set_global)
-    HANDLE(get_global)
-    HANDLE(get_global_ptr)
-    HANDLE(deepset)
-    HANDLE(deepget)
-    HANDLE(deepget_ptr)
-    HANDLE(setattr)
-    HANDLE(getattr)
-    HANDLE(getattr_ptr)
-    HANDLE(struct)
-    HANDLE(struct_blueprint)
-    HANDLE(closure)
-    HANDLE(call)
-    HANDLE(call_method)
-    HANDLE(ret)
-    HANDLE(pop)
-    HANDLE(deref)
-    HANDLE(derefset)
-    HANDLE(strcat)
-    HANDLE(array)
-    HANDLE(arrayset)
-    HANDLE(subscript)
-    HANDLE(get_upvalue)
-    HANDLE(get_upvalue_ptr)
-    HANDLE(set_upvalue)
-    HANDLE(close_upvalue)
-    HANDLE(impl)
-    HANDLE(mkgen)
-    HANDLE(yield)
-    HANDLE(resume)
-    HANDLE(len)
-    HANDLE(hasattr)
-    HANDLE(assert)
+  goto *dispatch_table[*ip];
 
-  op_hlt:
-    assert(vm->tos == 0);
-    return r;
-  bail:
-    return r;
-  }
+  HANDLE(print)
+  HANDLE(add)
+  HANDLE(sub)
+  HANDLE(mul)
+  HANDLE(div)
+  HANDLE(mod)
+  HANDLE(eq)
+  HANDLE(gt)
+  HANDLE(lt)
+  HANDLE(not)
+  HANDLE(neg)
+  HANDLE(true)
+  HANDLE(null)
+  HANDLE(const)
+  HANDLE(str)
+  HANDLE(jmp)
+  HANDLE(jz)
+  HANDLE(bitand)
+  HANDLE(bitor)
+  HANDLE(bitxor)
+  HANDLE(bitnot)
+  HANDLE(bitshl)
+  HANDLE(bitshr)
+  HANDLE(set_global)
+  HANDLE(get_global)
+  HANDLE(get_global_ptr)
+  HANDLE(deepset)
+  HANDLE(deepget)
+  HANDLE(deepget_ptr)
+  HANDLE(setattr)
+  HANDLE(getattr)
+  HANDLE(getattr_ptr)
+  HANDLE(struct)
+  HANDLE(struct_blueprint)
+  HANDLE(closure)
+  HANDLE(call)
+  HANDLE(call_method)
+  HANDLE(ret)
+  HANDLE(pop)
+  HANDLE(deref)
+  HANDLE(derefset)
+  HANDLE(strcat)
+  HANDLE(array)
+  HANDLE(arrayset)
+  HANDLE(subscript)
+  HANDLE(get_upvalue)
+  HANDLE(get_upvalue_ptr)
+  HANDLE(set_upvalue)
+  HANDLE(close_upvalue)
+  HANDLE(impl)
+  HANDLE(mkgen)
+  HANDLE(yield)
+  HANDLE(resume)
+  HANDLE(len)
+  HANDLE(hasattr)
+  HANDLE(assert)
+
+op_hlt:
+  assert(vm->tos == 0);
+  return r;
+bail:
+  return r;
 
 #undef HANDLE
 #undef DISPATCH

@@ -3,7 +3,9 @@
 
 #define STACK_MAX 1024
 
+#include <stdbool.h>
 #include <stddef.h>
+#include <stdint.h>
 
 #include "compiler.h"
 #include "object.h"

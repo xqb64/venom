@@ -2,7 +2,7 @@
 
 #include <stdbool.h>
 #include <stdio.h>
-#include <stdlib.h>
+#include <stdlib.h>  // IWYU pragma: keep
 #include <string.h>
 
 #include "util.h"

@@ -1,5 +1,8 @@
 #include "table.h"
 
+#include <stdlib.h>
+#include <string.h>
+
 void *access_if_idx_not_null(void *array, size_t itemsize, int *i)
 {
   if (i == NULL) {

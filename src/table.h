@@ -3,10 +3,6 @@
 
 #include <stdint.h>
 #include <stdio.h>
-#include <stdlib.h>
-#include <string.h>
-
-#include "util.h"
 
 #define TABLE_MAX 1024
 

@@ -1,6 +1,8 @@
 #ifndef venom_disassembler_h
 #define venom_disassembler_h
 
+#include <stdbool.h>
+
 #include "compiler.h"
 
 typedef struct {

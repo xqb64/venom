@@ -1,6 +1,8 @@
 #ifndef venom_semantics_h
 #define venom_semantics_h
 
+#include <stdbool.h>
+
 #include "ast.h"
 
 typedef struct {
