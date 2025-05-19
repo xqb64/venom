@@ -1,5 +1,6 @@
 #include "util.h"
 
+#include <assert.h>
 #include <stdarg.h>
 #include <stdio.h>
 #include <stdlib.h>
@@ -87,6 +88,8 @@ int alloc_err_str(char **dst, const char *fmt, ...)
 {
   va_list args;
   va_start(args, fmt);
+
+  assert(fmt);
 
   int len = vsnprintf(NULL, 0, fmt, args);
   if (len < 0) {

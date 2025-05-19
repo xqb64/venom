@@ -1,6 +1,7 @@
 SRC := $(wildcard src/*.c)
 
 CFLAGS += -Wshadow -Wall -Wextra -Werror
+CFLAGS += -fsanitize=undefined
 CFLAGS += -Wswitch-default
 CFLAGS += -Wredundant-decls
 CFLAGS += -Wno-unused-parameter -Wno-unused-variable

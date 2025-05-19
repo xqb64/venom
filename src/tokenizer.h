@@ -76,14 +76,23 @@ typedef enum {
 } TokenType;
 
 typedef struct {
+  size_t start;
+  size_t end;
+  size_t line;
+} Span;
+
+typedef struct {
   const char *start;
   TokenType type;
   int length;
+  Span span;
 } Token;
 
 typedef struct {
+  char *src;
   char *current;
-  int line;
+  size_t line;
+  size_t col;
 } Tokenizer;
 
 typedef DynArray(Token) DynArray_Token;
@@ -93,10 +102,12 @@ typedef struct {
   int errcode;
   bool is_ok;
   char *msg;
+  Span span;
 } TokenizeResult;
 
 void init_tokenizer(Tokenizer *tokenizer, char *source);
 TokenizeResult tokenize(Tokenizer *tokenizer);
+void print_token(const Token *token);
 void print_tokens(const DynArray_Token *tokens);
 
 #endif

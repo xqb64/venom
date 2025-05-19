@@ -138,6 +138,9 @@ static ParseFnResult number(Parser *parser)
   ExprLiteral e = {
       .kind = LIT_NUMBER,
       .as._double = strtod(parser->previous.start, NULL),
+      .span = (Span) {.start = parser->previous.span.start,
+                      .end = parser->previous.span.end,
+                      .line = parser->previous.span.line},
   };
 
   return (ParseFnResult) {
@@ -160,10 +163,11 @@ static ParseFnResult variable(Parser *parser)
 {
   ExprVariable e = {
       .name = own_string_n(parser->previous.start, parser->previous.length),
+      .span = (Span) { .start = parser->previous.span.start, .end = parser->previous.span.end },
   };
 
   return (ParseFnResult) {
-      .as.expr = AS_EXPR_VARIABLE(e), .is_ok = true, .msg = NULL};
+      .as.expr = AS_EXPR_VARIABLE(e), .is_ok = true, .msg = NULL, .span = e.span};
 }
 
 static ParseFnResult literal(Parser *parser)
@@ -212,7 +216,7 @@ static ParseFnResult finish_call(Parser *parser, Expr callee)
     dynarray_free(&arguments);
     return (ParseFnResult) {.is_ok = false,
                             .as.expr = {0},
-                            .msg = ALLOC("Expected ')' after expression.")};
+                            .msg = strdup("Expected ')' after expression.")};
   }
 
   ExprCall e = {
@@ -246,7 +250,7 @@ static ParseFnResult call(Parser *parser)
         return (ParseFnResult) {
             .is_ok = false,
             .as.expr = {0},
-            .msg = ALLOC("Expected property name after '..")};
+            .msg = strdup("Expected property name after '..")};
       }
 
       Token property_name = identifier_result.token;
@@ -256,6 +260,9 @@ static ParseFnResult call(Parser *parser)
           .property_name =
               own_string_n(property_name.start, property_name.length),
           .op = op,
+          .span = (Span) {.start = expr.span.start,
+                          .end = property_name.span.end,
+                          .line = expr.span.line},
       };
       expr = AS_EXPR_GET(get_expr);
     } else if (match(parser, 1, TOKEN_LEFT_BRACKET)) {
@@ -270,9 +277,13 @@ static ParseFnResult call(Parser *parser)
       if (!rbracket_result.is_ok) {
         free_expr(&expr);
         free_expr(&index);
-        return (ParseFnResult) {.is_ok = false,
-                                .as.expr = {0},
-                                .msg = ALLOC("Expected ']' after index.")};
+        return (ParseFnResult) {
+            .is_ok = false,
+            .as.expr = {0},
+            .msg = strdup("Expected ']' after index."),
+            .span = (Span) {.start = expr.span.start,
+                            .end = rbracket_result.token.span.end,
+                            .line = expr.span.line}};
       }
 
       ExprSubscript subscript_expr = {
@@ -330,11 +341,12 @@ static ParseFnResult factor(Parser *parser)
 
     Expr right = right_result.as.expr;
 
-    ExprBinary binexp = {
-        .lhs = ALLOC(expr),
-        .rhs = ALLOC(right),
-        .op = op,
-    };
+    ExprBinary binexp = {.lhs = ALLOC(expr),
+                         .rhs = ALLOC(right),
+                         .op = op,
+                         .span = (Span) {.start = expr.span.start,
+                                         .end = right.span.end,
+                                         .line = expr.span.line}};
     expr = AS_EXPR_BINARY(binexp);
   }
 
@@ -362,11 +374,12 @@ static ParseFnResult term(Parser *parser)
 
     Expr right = right_result.as.expr;
 
-    ExprBinary binexp = {
-        .lhs = ALLOC(expr),
-        .rhs = ALLOC(right),
-        .op = op,
-    };
+    ExprBinary binexp = {.lhs = ALLOC(expr),
+                         .rhs = ALLOC(right),
+                         .op = op,
+                         .span = (Span) {.start = expr.span.start,
+                                         .end = right.span.end,
+                                         .line = expr.span.line}};
     expr = AS_EXPR_BINARY(binexp);
   }
 
@@ -394,11 +407,12 @@ static ParseFnResult bitwise_shift(Parser *parser)
 
     Expr right = right_result.as.expr;
 
-    ExprBinary binexp = {
-        .lhs = ALLOC(expr),
-        .rhs = ALLOC(right),
-        .op = op,
-    };
+    ExprBinary binexp = {.lhs = ALLOC(expr),
+                         .rhs = ALLOC(right),
+                         .op = op,
+                         .span = (Span) {.start = expr.span.start,
+                                         .end = right.span.end,
+                                         .line = expr.span.line}};
     expr = AS_EXPR_BINARY(binexp);
   }
 
@@ -427,11 +441,12 @@ static ParseFnResult comparison(Parser *parser)
 
     Expr right = right_result.as.expr;
 
-    ExprBinary binexp = {
-        .lhs = ALLOC(expr),
-        .rhs = ALLOC(right),
-        .op = op,
-    };
+    ExprBinary binexp = {.lhs = ALLOC(expr),
+                         .rhs = ALLOC(right),
+                         .op = op,
+                         .span = (Span) {.start = expr.span.start,
+                                         .end = right.span.end,
+                                         .line = expr.span.line}};
     expr = AS_EXPR_BINARY(binexp);
   }
 
@@ -459,11 +474,12 @@ static ParseFnResult equality(Parser *parser)
 
     Expr right = right_result.as.expr;
 
-    ExprBinary binexp = {
-        .lhs = ALLOC(expr),
-        .rhs = ALLOC(right),
-        .op = op,
-    };
+    ExprBinary binexp = {.lhs = ALLOC(expr),
+                         .rhs = ALLOC(right),
+                         .op = op,
+                         .span = (Span) {.start = expr.span.start,
+                                         .end = right.span.end,
+                                         .line = expr.span.line}};
     expr = AS_EXPR_BINARY(binexp);
   }
 
@@ -490,11 +506,12 @@ static ParseFnResult bitwise_and(Parser *parser)
 
     Expr right = right_result.as.expr;
 
-    ExprBinary binexp = {
-        .lhs = ALLOC(expr),
-        .rhs = ALLOC(right),
-        .op = op,
-    };
+    ExprBinary binexp = {.lhs = ALLOC(expr),
+                         .rhs = ALLOC(right),
+                         .op = op,
+                         .span = (Span) {.start = expr.span.start,
+                                         .end = right.span.end,
+                                         .line = expr.span.line}};
     expr = AS_EXPR_BINARY(binexp);
   }
 
@@ -522,11 +539,12 @@ static ParseFnResult bitwise_xor(Parser *parser)
 
     Expr right = right_result.as.expr;
 
-    ExprBinary binexp = {
-        .lhs = ALLOC(expr),
-        .rhs = ALLOC(right),
-        .op = op,
-    };
+    ExprBinary binexp = {.lhs = ALLOC(expr),
+                         .rhs = ALLOC(right),
+                         .op = op,
+                         .span = (Span) {.start = expr.span.start,
+                                         .end = right.span.end,
+                                         .line = expr.span.line}};
     expr = AS_EXPR_BINARY(binexp);
   }
 
@@ -554,11 +572,12 @@ static ParseFnResult bitwise_or(Parser *parser)
 
     Expr right = right_result.as.expr;
 
-    ExprBinary binexp = {
-        .lhs = ALLOC(expr),
-        .rhs = ALLOC(right),
-        .op = op,
-    };
+    ExprBinary binexp = {.lhs = ALLOC(expr),
+                         .rhs = ALLOC(right),
+                         .op = op,
+                         .span = (Span) {.start = expr.span.start,
+                                         .end = right.span.end,
+                                         .line = expr.span.line}};
     expr = AS_EXPR_BINARY(binexp);
   }
 
@@ -586,11 +605,12 @@ static ParseFnResult and_(Parser *parser)
 
     Expr right = right_result.as.expr;
 
-    ExprBinary binexp = {
-        .lhs = ALLOC(expr),
-        .rhs = ALLOC(right),
-        .op = op,
-    };
+    ExprBinary binexp = {.lhs = ALLOC(expr),
+                         .rhs = ALLOC(right),
+                         .op = op,
+                         .span = (Span) {.start = expr.span.start,
+                                         .end = right.span.end,
+                                         .line = expr.span.line}};
     expr = AS_EXPR_BINARY(binexp);
   }
 
@@ -618,11 +638,12 @@ static ParseFnResult or_(Parser *parser)
 
     Expr right = right_result.as.expr;
 
-    ExprBinary binexp = {
-        .lhs = ALLOC(expr),
-        .rhs = ALLOC(right),
-        .op = op,
-    };
+    ExprBinary binexp = {.lhs = ALLOC(expr),
+                         .rhs = ALLOC(right),
+                         .op = op,
+                         .span = (Span) {.start = expr.span.start,
+                                         .end = right.span.end,
+                                         .line = expr.span.line}};
     expr = AS_EXPR_BINARY(binexp);
   }
 
@@ -653,11 +674,12 @@ static ParseFnResult assignment(Parser *parser)
 
     Expr right = right_result.as.expr;
 
-    ExprAssign assignexp = {
-        .lhs = ALLOC(expr),
-        .rhs = ALLOC(right),
-        .op = op,
-    };
+    ExprAssign assignexp = {.lhs = ALLOC(expr),
+                            .rhs = ALLOC(right),
+                            .op = op,
+                            .span = (Span) {.start = expr.span.start,
+                                            .end = right.span.end,
+                                            .line = expr.span.line}};
     expr = AS_EXPR_ASSIGN(assignexp);
   }
 
@@ -675,6 +697,16 @@ static ParseFnResult expression(Parser *parser)
 
 static ParseFnResult grouping(Parser *parser)
 {
+  TokenResult lparen_result = consume(parser, TOKEN_LEFT_PAREN);
+  if (!lparen_result.is_ok) {
+    return (ParseFnResult) {.is_ok = false,
+                            .as.stmt = {0},
+                            .msg = strdup("Expected '('."),
+                            .span = (Span) {.start = parser->current.span.start,
+                                            .end = parser->current.span.end,
+                                            .line = parser->current.span.line}};
+  }
+
   Expr expr = HANDLE_EXPR(expression, parser);
 
   TokenResult rparen_result = consume(parser, TOKEN_RIGHT_PAREN);
@@ -682,7 +714,10 @@ static ParseFnResult grouping(Parser *parser)
     free_expr(&expr);
     return (ParseFnResult) {.is_ok = false,
                             .as.expr = {0},
-                            .msg = ALLOC("Unmatched closing parentheses.")};
+                            .msg = strdup("Unmatched closing parentheses."),
+                            .span = (Span) {.start = expr.span.end,
+                                            .end = expr.span.end,
+                                            .line = expr.span.line}};
   }
 
   return (ParseFnResult) {.as.expr = expr, .is_ok = true, .msg = NULL};
@@ -708,7 +743,7 @@ static ParseFnResult block(Parser *parser)
     return (ParseFnResult) {
         .is_ok = false,
         .as.stmt = {0},
-        .msg = ALLOC("Expected '}' at the end of the block.")};
+        .msg = strdup("Expected '}' at the end of the block.")};
   }
 
   StmtBlock body = {
@@ -729,9 +764,10 @@ static ParseFnResult struct_initializer(Parser *parser)
     free(name);
     return (ParseFnResult) {.is_ok = false,
                             .as.expr = {0},
-                            .msg = ALLOC("Expected '{' after struct name.")};
+                            .msg = strdup("Expected '{' after struct name.")};
   }
 
+  size_t start_of_last_offending_expr = 0;
   DynArray_Expr initializers = {0};
   do {
     ParseFnResult property_result = expression(parser);
@@ -744,6 +780,8 @@ static ParseFnResult struct_initializer(Parser *parser)
     }
 
     Expr property = property_result.as.expr;
+    
+    start_of_last_offending_expr = property.span.start;
 
     TokenResult colon_result = consume(parser, TOKEN_COLON);
     if (!colon_result.is_ok) {
@@ -756,7 +794,7 @@ static ParseFnResult struct_initializer(Parser *parser)
       return (ParseFnResult) {
           .is_ok = false,
           .as.expr = {0},
-          .msg = ALLOC("Expected ':' after property name.")};
+          .msg = strdup("Expected ':' after property name.")};
     }
 
     ParseFnResult value_result = expression(parser);
@@ -770,13 +808,24 @@ static ParseFnResult struct_initializer(Parser *parser)
     }
 
     Expr value = value_result.as.expr;
-
+    
     ExprStructInitializer structinitexp = {
         .property = ALLOC(property),
         .value = ALLOC(value),
     };
     dynarray_insert(&initializers, AS_EXPR_STRUCT_INITIALIZER(structinitexp));
   } while (match(parser, 1, TOKEN_COMMA));
+
+  if (parser->current.type != TOKEN_COMMA) {
+    free(name);
+
+    for (size_t i = 0; i < initializers.count; i++) {
+      free_expr(&initializers.data[i]);
+    }
+    dynarray_free(&initializers);
+
+    return (ParseFnResult) {.is_ok = false, .as.expr = {0}, .msg = strdup("Expected comma after `key: value` pair"), .span = (Span) { .start = start_of_last_offending_expr, .end = parser->current.span.end, .line = parser->current.span.line}};
+  }
 
   TokenResult rbrace_result = consume(parser, TOKEN_RIGHT_BRACE);
   if (!rbrace_result.is_ok) {
@@ -790,7 +839,9 @@ static ParseFnResult struct_initializer(Parser *parser)
     return (ParseFnResult) {
         .is_ok = false,
         .as.expr = {0},
-        .msg = ALLOC("Expected '}' after struct initialization.")};
+        .msg = strdup("Expected '}' after struct initialization."),
+        .span = (Span) {.start = lbrace_result.token.span.start, .end = parser->current.span.end, .line = lbrace_result.token.span.line}
+    };
   }
 
   ExprStruct structexp = {
@@ -825,7 +876,7 @@ static ParseFnResult array_initializer(Parser *parser)
 
     return (ParseFnResult) {.is_ok = false,
                             .as.expr = {0},
-                            .msg = ALLOC("Expected ']' after array members.")};
+                            .msg = strdup("Expected ']' after array members.")};
   }
 
   ExprArray arrayexp = {
@@ -843,7 +894,7 @@ static ParseFnResult primary(Parser *parser)
     } else {
       return variable(parser);
     }
-  } else if (match(parser, 1, TOKEN_LEFT_PAREN)) {
+  } else if (check(parser, TOKEN_LEFT_PAREN)) {
     return grouping(parser);
   } else if (match(parser, 5, TOKEN_TRUE, TOKEN_FALSE, TOKEN_NULL, TOKEN_NUMBER,
                    TOKEN_STRING)) {
@@ -857,18 +908,39 @@ static ParseFnResult primary(Parser *parser)
 
 static ParseFnResult print_statement(Parser *parser)
 {
-  Expr expr = HANDLE_EXPR(expression, parser);
-
-  TokenResult consume_result = consume(parser, TOKEN_SEMICOLON);
-  if (!consume_result.is_ok) {
-    free_expr(&expr);
-    return (ParseFnResult) {
-        .is_ok = false,
-        .as.stmt = {0},
-        .msg = ALLOC("Expected ';' after 'print' statement.")};
+  TokenResult print_result = consume(parser, TOKEN_PRINT);
+  if (!print_result.is_ok) {
+    return (ParseFnResult) {.is_ok = false,
+                            .as.stmt = {0},
+                            .msg = strdup("Expected 'print' token."),
+                            .span = (Span) {.start = parser->current.span.start,
+                                            .end = parser->current.span.end,
+                                            .line = parser->current.span.line}};
   }
 
-  StmtPrint stmt = {.expr = expr};
+  ParseFnResult expr_result = expression(parser);
+  if (!expr_result.is_ok) {
+    return expr_result;
+  }
+
+  Expr expr = expr_result.as.expr;
+
+  TokenResult semicolon_result = consume(parser, TOKEN_SEMICOLON);
+  if (!semicolon_result.is_ok) {
+    ParseFnResult r = {.is_ok = false,
+                       .as.stmt = {0},
+                       .msg = strdup("Expected ';' after 'print' statement."),
+                       .span = (Span) {.start = expr.span.end + 1,
+                                       .end = expr.span.end + 1,
+                                       .line = expr.span.line}};
+    free_expr(&expr);
+    return r;
+  }
+
+  StmtPrint stmt = {.expr = expr,
+                    .span = (Span) {.start = print_result.token.span.start,
+                                    .end = semicolon_result.token.span.end,
+                                    .line = print_result.token.span.line}};
   return (ParseFnResult) {
       .as.stmt = AS_STMT_PRINT(stmt), .is_ok = true, .msg = NULL};
 }
@@ -885,7 +957,7 @@ static ParseFnResult let_statement(Parser *parser)
     return (ParseFnResult) {
         .is_ok = false,
         .as.stmt = {0},
-        .msg = ALLOC("Expected '=' after variable name in 'let' statement.")};
+        .msg = strdup("Expected '=' after variable name in 'let' statement.")};
   }
 
   ParseFnResult initializer_result = expression(parser);
@@ -903,7 +975,7 @@ static ParseFnResult let_statement(Parser *parser)
     return (ParseFnResult) {
         .is_ok = false,
         .as.stmt = {0},
-        .msg = ALLOC("Expected ';' after 'let' statement.")};
+        .msg = strdup("Expected ';' after 'let' statement.")};
   }
 
   StmtLet stmt = {.name = name, .initializer = initializer};
@@ -921,7 +993,7 @@ static ParseFnResult expression_statement(Parser *parser)
     return (ParseFnResult) {
         .is_ok = false,
         .as.stmt = {0},
-        .msg = ALLOC("Expected ';' after expression statement.")};
+        .msg = strdup("Expected ';' after expression statement.")};
   }
 
   StmtExpr stmt = {.expr = expr};
@@ -938,9 +1010,10 @@ static ParseFnResult if_statement(Parser *parser)
   TokenResult rparen_result = consume(parser, TOKEN_RIGHT_PAREN);
   if (!rparen_result.is_ok) {
     free_expr(&condition);
-    return (ParseFnResult) {.is_ok = false,
-                            .as.stmt = {0},
-                            .msg = ALLOC("Expected ')' after 'if' condition.")};
+    return (ParseFnResult) {
+        .is_ok = false,
+        .as.stmt = {0},
+        .msg = strdup("Expected ')' after 'if' condition.")};
   }
 
   Stmt *then_branch = malloc(sizeof(Stmt));
@@ -988,7 +1061,7 @@ static ParseFnResult while_statement(Parser *parser)
     return (ParseFnResult) {
         .is_ok = false,
         .as.stmt = {0},
-        .msg = ALLOC("Expected ')' after 'while' condition.")};
+        .msg = strdup("Expected ')' after 'while' condition.")};
   }
 
   TokenResult lbrace_result = consume(parser, TOKEN_LEFT_BRACE);
@@ -997,7 +1070,7 @@ static ParseFnResult while_statement(Parser *parser)
     return (ParseFnResult) {
         .is_ok = false,
         .as.stmt = {0},
-        .msg = ALLOC("Expected '{' after 'while' condition.")};
+        .msg = strdup("Expected '{' after 'while' condition.")};
   }
 
   ParseFnResult body_result = block(parser);
@@ -1036,7 +1109,7 @@ static ParseFnResult for_statement(Parser *parser)
     return (ParseFnResult) {
         .is_ok = false,
         .as.stmt = {0},
-        .msg = ALLOC("Expected ';' after 'for' initializer.")};
+        .msg = strdup("Expected ';' after 'for' initializer.")};
   }
 
   ParseFnResult condition_result = expression(parser);
@@ -1054,7 +1127,7 @@ static ParseFnResult for_statement(Parser *parser)
     return (ParseFnResult) {
         .is_ok = false,
         .as.stmt = {0},
-        .msg = ALLOC("Expected ';' after 'for' condition.")};
+        .msg = strdup("Expected ';' after 'for' condition.")};
   }
 
   ParseFnResult advancement_result = expression(parser);
@@ -1073,7 +1146,7 @@ static ParseFnResult for_statement(Parser *parser)
     return (ParseFnResult) {
         .is_ok = false,
         .as.stmt = {0},
-        .msg = ALLOC("Expected ')' after 'for' advancement.")};
+        .msg = strdup("Expected ')' after 'for' advancement.")};
   }
 
   TokenResult lbrace_result = consume(parser, TOKEN_LEFT_BRACE);
@@ -1083,7 +1156,7 @@ static ParseFnResult for_statement(Parser *parser)
     free_expr(&advancement);
     return (ParseFnResult) {.is_ok = false,
                             .as.stmt = {0},
-                            .msg = ALLOC("Expected '{' after 'for' ')'.")};
+                            .msg = strdup("Expected '{' after 'for' ')'.")};
   }
 
   ParseFnResult body_result = block(parser);
@@ -1128,7 +1201,7 @@ static ParseFnResult function_statement(Parser *parser)
             .is_ok = false,
             .as.stmt = {0},
             .msg =
-                ALLOC("Expected parameter name after '(' in 'fn' statement.")};
+                strdup("Expected parameter name after '(' in 'fn' statement.")};
       }
 
       Token parameter = identifier_result.token;
@@ -1149,7 +1222,7 @@ static ParseFnResult function_statement(Parser *parser)
         .is_ok = false,
         .as.stmt = {0},
         .msg =
-            ALLOC("Expected ')' after the parameter list in 'fn' statement.")};
+            strdup("Expected ')' after the parameter list in 'fn' statement.")};
   }
 
   TokenResult lbrace_result = consume(parser, TOKEN_LEFT_BRACE);
@@ -1162,7 +1235,7 @@ static ParseFnResult function_statement(Parser *parser)
     return (ParseFnResult) {
         .is_ok = false,
         .as.stmt = {0},
-        .msg = ALLOC("Expected '{' after ')' in 'fn' statement.")};
+        .msg = strdup("Expected '{' after ')' in 'fn' statement.")};
   }
 
   ParseFnResult body_result = block(parser);
@@ -1212,7 +1285,7 @@ static ParseFnResult return_statement(Parser *parser)
     return (ParseFnResult) {
         .is_ok = false,
         .as.stmt = {0},
-        .msg = ALLOC("Expected ';' after 'return' statement.")};
+        .msg = strdup("Expected ';' after 'return' statement.")};
   }
 
   StmtReturn stmt = {
@@ -1258,7 +1331,7 @@ static ParseFnResult struct_statement(Parser *parser)
 
       return (ParseFnResult) {.is_ok = false,
                               .as.stmt = {0},
-                              .msg = ALLOC("Expected property name.")};
+                              .msg = strdup("Expected property name.")};
     }
 
     Token property = identifier_result.token;
@@ -1274,7 +1347,7 @@ static ParseFnResult struct_statement(Parser *parser)
       return (ParseFnResult) {
           .is_ok = false,
           .as.stmt = {0},
-          .msg = ALLOC("Expected semicolon after property name.")};
+          .msg = strdup("Expected semicolon after property name.")};
     }
 
     dynarray_insert(&properties, own_string_n(property.start, property.length));
@@ -1323,7 +1396,7 @@ static ParseFnResult yield_statement(Parser *parser)
     return (ParseFnResult) {
         .is_ok = false,
         .as.stmt = {0},
-        .msg = ALLOC("Expected ';' after 'yield' statement.")};
+        .msg = strdup("Expected ';' after 'yield' statement.")};
   }
 
   StmtYield stmt = {.expr = expr};
@@ -1341,7 +1414,7 @@ static ParseFnResult assert_statement(Parser *parser)
     return (ParseFnResult) {
         .is_ok = false,
         .as.stmt = {0},
-        .msg = ALLOC("Expected ';' after 'assert' statement.")};
+        .msg = strdup("Expected ';' after 'assert' statement.")};
   }
 
   StmtAssert stmt = {.expr = expr};
@@ -1351,7 +1424,7 @@ static ParseFnResult assert_statement(Parser *parser)
 
 static ParseFnResult statement(Parser *parser)
 {
-  if (match(parser, 1, TOKEN_PRINT)) {
+  if (check(parser, TOKEN_PRINT)) {
     return print_statement(parser);
   } else if (match(parser, 1, TOKEN_LET)) {
     return let_statement(parser);
@@ -1388,7 +1461,8 @@ static ParseFnResult statement(Parser *parser)
 
 ParseResult parse(Parser *parser)
 {
-  ParseResult result = {.is_ok = true, .errcode = 0, .msg = NULL, .ast = {0}};
+  ParseResult result = {
+      .is_ok = true, .errcode = 0, .msg = NULL, .ast = {0}, .span = {0}};
   advance(parser);
   while (parser->current.type != TOKEN_EOF) {
     ParseFnResult r = statement(parser);
@@ -1397,6 +1471,7 @@ ParseResult parse(Parser *parser)
       result.msg = r.msg;
       result.is_ok = false;
       result.errcode = -1;
+      result.span = r.span;
       return result;
     }
     dynarray_insert(&result.ast, r.as.stmt);

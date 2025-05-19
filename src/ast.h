@@ -6,6 +6,7 @@
 
 #include "dynarray.h"
 #include "table.h"
+#include "tokenizer.h"
 
 typedef struct Expr Expr;
 typedef DynArray(Expr) DynArray_Expr;
@@ -41,57 +42,68 @@ typedef struct ExprLiteral {
     double _double;
     char *str;
   } as;
+  Span span;
 } ExprLiteral;
 
 typedef struct ExprVariable {
   char *name;
+  Span span;
 } ExprVariable;
 
 typedef struct ExprUnary {
   Expr *expr;
   char *op;
+  Span span;
 } ExprUnary;
 
 typedef struct ExprBinary {
   Expr *lhs;
   Expr *rhs;
   char *op;
+  Span span;
 } ExprBinary;
 
 typedef struct ExprCall {
   Expr *callee;
   DynArray_Expr arguments;
+  Span span;
 } ExprCall;
 
 typedef struct ExprGet {
   Expr *expr;
   char *property_name;
   char *op;
+  Span span;
 } ExprGet;
 
 typedef struct ExprAssign {
   Expr *lhs;
   Expr *rhs;
   char *op;
+  Span span;
 } ExprAssign;
 
 typedef struct ExprStruct {
   char *name;
   DynArray_Expr initializers;
+  Span span;
 } ExprStruct;
 
 typedef struct ExprStructInitializer {
   Expr *property;
   Expr *value;
+  Span span;
 } ExprStructInitializer;
 
 typedef struct ExprArray {
   DynArray_Expr elements;
+  Span span;
 } ExprArray;
 
 typedef struct ExprSubscript {
   Expr *expr;
   Expr *index;
+  Span span;
 } ExprSubscript;
 
 typedef DynArray(ExprStructInitializer) DynArray_ExprStructInitalizer;
@@ -111,6 +123,7 @@ typedef struct Expr {
     ExprArray expr_array;
     ExprSubscript expr_subscript;
   } as;
+  Span span;
 } Expr;
 
 typedef Table(Expr) Table_Expr;
@@ -118,24 +131,31 @@ Table_Expr clone_table_expr(const Table_Expr *table);
 void free_table_expr(const Table_Expr *table);
 
 #define AS_EXPR_LITERAL(exp) \
-  ((Expr) {.kind = EXPR_LITERAL, .as.expr_literal = (exp)})
+  ((Expr) {.kind = EXPR_LITERAL, .as.expr_literal = (exp), .span = (exp).span})
 #define AS_EXPR_VARIABLE(exp) \
-  ((Expr) {.kind = EXPR_VARIABLE, .as.expr_variable = (exp)})
-#define AS_EXPR_UNARY(exp) ((Expr) {.kind = EXPR_UNARY, .as.expr_unary = (exp)})
+  ((Expr) {                   \
+      .kind = EXPR_VARIABLE, .as.expr_variable = (exp), .span = (exp).span})
+#define AS_EXPR_UNARY(exp) \
+  ((Expr) {.kind = EXPR_UNARY, .as.expr_unary = (exp), .span = (exp).span})
 #define AS_EXPR_BINARY(exp) \
-  ((Expr) {.kind = EXPR_BINARY, .as.expr_binary = (exp)})
-#define AS_EXPR_CALL(exp) ((Expr) {.kind = EXPR_CALL, .as.expr_call = (exp)})
-#define AS_EXPR_GET(exp) ((Expr) {.kind = EXPR_GET, .as.expr_get = (exp)})
+  ((Expr) {.kind = EXPR_BINARY, .as.expr_binary = (exp), .span = (exp).span})
+#define AS_EXPR_CALL(exp) \
+  ((Expr) {.kind = EXPR_CALL, .as.expr_call = (exp), .span = (exp).span})
+#define AS_EXPR_GET(exp) \
+  ((Expr) {.kind = EXPR_GET, .as.expr_get = (exp), .span = (exp).span})
 #define AS_EXPR_ASSIGN(exp) \
-  ((Expr) {.kind = EXPR_ASSIGN, .as.expr_assign = (exp)})
+  ((Expr) {.kind = EXPR_ASSIGN, .as.expr_assign = (exp), .span = (exp).span})
 #define AS_EXPR_STRUCT(exp) \
-  ((Expr) {.kind = EXPR_STRUCT, .as.expr_struct = (exp)})
-#define AS_EXPR_STRUCT_INITIALIZER(exp)     \
-  ((Expr) {.kind = EXPR_STRUCT_INITIALIZER, \
-           .as.expr_struct_initializer = (exp)})
-#define AS_EXPR_ARRAY(exp) ((Expr) {.kind = EXPR_ARRAY, .as.expr_array = (exp)})
+  ((Expr) {.kind = EXPR_STRUCT, .as.expr_struct = (exp), .span = (exp).span})
+#define AS_EXPR_STRUCT_INITIALIZER(exp)         \
+  ((Expr) {.kind = EXPR_STRUCT_INITIALIZER,     \
+           .as.expr_struct_initializer = (exp), \
+           .span = (exp).span})
+#define AS_EXPR_ARRAY(exp) \
+  ((Expr) {.kind = EXPR_ARRAY, .as.expr_array = (exp), .span = (exp).span})
 #define AS_EXPR_SUBSCRIPT(exp) \
-  ((Expr) {.kind = EXPR_SUBSCRIPT, .as.expr_subscript = (exp)})
+  ((Expr) {                    \
+      .kind = EXPR_SUBSCRIPT, .as.expr_subscript = (exp), .span = (exp).span})
 
 typedef enum {
   STMT_LET,
@@ -160,42 +180,50 @@ typedef enum {
 typedef struct {
   char *name;
   Expr initializer;
+  Span span;
 } StmtLet;
 
 typedef struct {
   Expr expr;
+  Span span;
 } StmtPrint;
 
 typedef struct {
   Expr expr;
+  Span span;
 } StmtExpr;
 
 typedef struct {
   DynArray_Stmt stmts;
   size_t depth;
+  Span span;
 } StmtBlock;
 
 typedef struct {
   DynArray_char_ptr parameters;
   char *name;
   Stmt *body;
+  Span span;
 } StmtFn;
 
 typedef struct {
   char *name;
   Stmt *fn;
+  Span span;
 } StmtDecorator;
 
 typedef struct {
   Expr condition;
   Stmt *then_branch;
   Stmt *else_branch;
+  Span span;
 } StmtIf;
 
 typedef struct {
   Expr condition;
   Stmt *body;
   char *label;
+  Span span;
 } StmtWhile;
 
 typedef struct {
@@ -204,40 +232,49 @@ typedef struct {
   Expr advancement;
   Stmt *body;
   char *label;
+  Span span;
 } StmtFor;
 
 typedef struct {
   Expr expr;
+  Span span;
 } StmtReturn;
 
 typedef struct {
   char *name;
   DynArray_char_ptr properties;
+  Span span;
 } StmtStruct;
 
 typedef struct {
   char *name;
   DynArray_Stmt methods;
+  Span span;
 } StmtImpl;
 
 typedef struct {
   char *label;
+  Span span;
 } StmtBreak;
 
 typedef struct {
   char *label;
+  Span span;
 } StmtContinue;
 
 typedef struct {
   char *path;
+  Span span;
 } StmtUse;
 
 typedef struct {
   Expr expr;
+  Span span;
 } StmtYield;
 
 typedef struct {
   Expr expr;
+  Span span;
 } StmtAssert;
 
 typedef struct Stmt {
@@ -261,6 +298,7 @@ typedef struct Stmt {
     StmtYield stmt_yield;
     StmtAssert stmt_assert;
   } as;
+  Span span;
 } Stmt;
 
 #define AS_STMT_PRINT(stmt) \

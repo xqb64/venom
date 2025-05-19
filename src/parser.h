@@ -31,6 +31,7 @@ typedef struct {
   } as;
   bool is_ok;
   char *msg;
+  Span span;
 } ParseFnResult;
 
 typedef struct {
@@ -38,6 +39,7 @@ typedef struct {
   int errcode;
   bool is_ok;
   char *msg;
+  Span span;
 } ParseResult;
 
 void init_parser(Parser *parser, const DynArray_Token *tokens);

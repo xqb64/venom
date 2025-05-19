@@ -303,6 +303,7 @@ ExprLiteral clone_literal(const ExprLiteral *literal)
   ExprLiteral clone;
 
   clone.kind = literal->kind;
+  clone.span = literal->span;
 
   switch (literal->kind) {
     case LIT_NUMBER: {
@@ -329,6 +330,7 @@ Expr clone_expr(const Expr *expr)
   Expr clone;
 
   clone.kind = expr->kind;
+  clone.span = expr->span;
 
   switch (expr->kind) {
     case EXPR_BINARY: {
@@ -645,6 +647,7 @@ void print_expr(const Expr *expr, int indent)
       print_expr(expr->as.expr_binary.lhs, indent + 4);
       printf(" %s ", expr->as.expr_binary.op);
       print_expr(expr->as.expr_binary.rhs, indent + 4);
+      printf(" [%ld, %ld]", expr->span.start, expr->span.end);
       break;
     }
     case EXPR_GET: {

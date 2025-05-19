@@ -9,6 +9,7 @@
 
 void init_tokenizer(Tokenizer *tokenizer, char *source)
 {
+  tokenizer->src = source;
   tokenizer->current = source;
   tokenizer->line = 1;
 }
@@ -52,18 +53,22 @@ static bool is_at_end(const Tokenizer *tokenizer)
   return peek(tokenizer, 0) == '\0';
 }
 
-static Token make_token(const Tokenizer *tokenizer, TokenType type, int length)
+static Token make_token(Tokenizer *tokenizer, TokenType type, int length)
 {
+  tokenizer->col += length;
   return (Token) {
       .type = type,
       .start = tokenizer->current - length,
       .length = length,
-  };
+      .span = (Span) {.start = (tokenizer->current - length) - tokenizer->src,
+                      .end = tokenizer->current - tokenizer->src,
+                      .line = tokenizer->line}};
 }
 
-static void print_token(const Token *token)
+void print_token(const Token *token)
 {
-  printf("%.*s", token->length, token->start);
+  printf("%.*s [%ld, %ld]", token->length, token->start, token->span.start,
+         token->span.end);
 }
 
 static TokenType check_keyword(const Tokenizer *tokenizer, int start_pos,
@@ -349,7 +354,7 @@ static Token get_token(Tokenizer *tokenizer)
           }
           default: {
             state = STATE_DONE;
-            return make_token(tokenizer, TOKEN_ERROR, 0);
+            return make_token(tokenizer, TOKEN_ERROR, 1);
           }
         }
 
@@ -427,7 +432,7 @@ void print_tokens(const DynArray_Token *tokens)
 TokenizeResult tokenize(Tokenizer *tokenizer)
 {
   TokenizeResult result = {
-      .is_ok = true, .errcode = 0, .msg = NULL, .tokens = {0}};
+      .is_ok = true, .errcode = 0, .msg = NULL, .tokens = {0}, .span = {0}};
 
   Token t;
   while ((t = get_token(tokenizer)).type != TOKEN_EOF) {
@@ -435,6 +440,7 @@ TokenizeResult tokenize(Tokenizer *tokenizer)
       alloc_err_str(&result.msg, "error on line: %d", tokenizer->line);
       result.is_ok = false;
       result.errcode = -1;
+      result.span = t.span;
       return result;
     }
     dynarray_insert(&result.tokens, t);

@@ -3,6 +3,7 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>  // IWYU pragma: keep
+#include <time.h>
 #include <unistd.h>
 
 #include "ast.h"
@@ -21,6 +22,7 @@ typedef struct {
   int parse;
   int ir;
   int optimize;
+  int measure_flags;
   char *file;
 } Arguments;
 
@@ -37,9 +39,105 @@ typedef struct {
   char *msg;
 } RunResult;
 
+#include <stdio.h>
+#include <stdlib.h>
+#include <string.h>
+
+void print_line(const char *source, size_t line)
+{
+  const char *c;
+  size_t curr;
+
+  c = source;
+  curr = 1;
+
+  while (curr < line) {
+    if (*c == '\n') {
+      curr++;
+    }
+    c++;
+  }
+
+  while (*c != '\n') {
+    putchar(*c++);
+  }
+
+  putchar('\n');
+}
+
+void print_offending_line(const char *source, size_t line, size_t span_start, size_t span_end)
+{
+  const char *c = source, *target_start = source;
+  
+  size_t current_line = 1;
+  while (*c) {
+    if (*c == '\n') {
+      current_line++;
+    }
+ 
+    if (current_line == line) {
+      target_start = ++c;
+      break;
+    }
+ 
+    c++;
+  }
+
+  while (*c && c < source + span_end + 1) {
+    putchar(*c++);
+  }
+
+  while (*c != '\n') {
+    putchar(*c++);
+  }
+
+  putchar('\n');
+
+  size_t prefix_len = (source + span_start) - target_start;
+  while (prefix_len--) {
+    putchar(' ');
+  }
+
+  size_t caret_len = span_end - span_start == 0 ? 1 : span_end - span_start;
+  while (caret_len--) {
+    putchar('^');
+  }
+}
+
+char *mkerrctx(const char *source, size_t line, size_t span_start,
+               size_t span_end, size_t before, size_t after)
+{
+  for (size_t i = line - before; i < line; i++)
+  {
+    print_line(source, i);
+  }
+
+  print_offending_line(source, line, span_start, span_end);
+
+  putchar('\n');
+
+  for (size_t i = line + 1; i < line + after + 1; i++)
+  {
+    print_line(source, i);
+  }
+
+  return "";
+}
+
 static RunResult run(Arguments *args)
 {
   RunResult result = {.is_ok = true, .errcode = 0, .msg = NULL};
+
+  struct timespec read_file_start, read_file_end, tokenize_start, tokenize_end,
+      parse_start, parse_end, loop_label_start, loop_label_end, optimize_start,
+      optimize_end, compile_start, compile_end, disassemble_start,
+      disassemble_end, exec_start, exec_end;
+
+  double read_file_elapsed = 0.0, tokenize_elapsed = 0.0, parse_elapsed = 0.0,
+         loop_label_elapsed = 0.0, optimize_elapsed = 0.0,
+         compile_elapsed = 0.0, disassemble_elapsed = 0.0, exec_elapsed = 0.0;
+
+  clock_gettime(CLOCK_MONOTONIC, &read_file_start);
 
   ReadFileResult read_file_result = read_file(args->file);
   if (!read_file_result.is_ok) {
@@ -49,18 +147,33 @@ static RunResult run(Arguments *args)
     goto cleanup_after_read_file;
   }
 
+  clock_gettime(CLOCK_MONOTONIC, &read_file_end);
+
+  read_file_elapsed = (read_file_end.tv_sec - read_file_start.tv_sec) +
+                      (read_file_end.tv_nsec - read_file_start.tv_nsec) / 1e9;
+
   char *source = read_file_result.payload;
+
+  clock_gettime(CLOCK_MONOTONIC, &tokenize_start);
 
   Tokenizer tokenizer;
   init_tokenizer(&tokenizer, source);
 
   TokenizeResult tokenize_result = tokenize(&tokenizer);
   if (!tokenize_result.is_ok) {
-    alloc_err_str(&result.msg, "tokenizer: %s\n", tokenize_result.msg);
+    alloc_err_str(
+        &result.msg, "tokenizer: %s\n%s\n", tokenize_result.msg,
+        mkerrctx(source, tokenize_result.span.line, tokenize_result.span.start,
+                 tokenize_result.span.end, 1, 1));
     result.is_ok = false;
     result.errcode = tokenize_result.errcode;
     goto cleanup_after_lex;
   }
+
+  clock_gettime(CLOCK_MONOTONIC, &tokenize_end);
+
+  tokenize_elapsed = (tokenize_end.tv_sec - tokenize_start.tv_sec) +
+                     (tokenize_end.tv_nsec - tokenize_start.tv_nsec) / 1e9;
 
   DynArray_Token tokens = tokenize_result.tokens;
 
@@ -69,18 +182,30 @@ static RunResult run(Arguments *args)
     goto cleanup_after_lex;
   }
 
+  clock_gettime(CLOCK_MONOTONIC, &parse_start);
+
   Parser parser;
   init_parser(&parser, &tokens);
 
   ParseResult parse_result = parse(&parser);
   if (!parse_result.is_ok) {
-    alloc_err_str(&result.msg, "parser: %s\n", parse_result.msg);
+    alloc_err_str(
+        &result.msg, "parser: %s\n%s\n", parse_result.msg,
+        mkerrctx(source, parse_result.span.line, parse_result.span.start,
+                 parse_result.span.end, 1, 1));
     result.is_ok = false;
     result.errcode = parse_result.errcode;
     goto cleanup_after_parse;
   }
 
+  clock_gettime(CLOCK_MONOTONIC, &parse_end);
+
+  parse_elapsed = (parse_end.tv_sec - parse_start.tv_sec) +
+                  (parse_end.tv_nsec - parse_start.tv_nsec) / 1e9;
+
   DynArray_Stmt raw_ast = parse_result.ast;
+
+  clock_gettime(CLOCK_MONOTONIC, &loop_label_start);
 
   LoopLabelResult loop_label_result = loop_label_program(&raw_ast, NULL);
   if (!loop_label_result.is_ok) {
@@ -90,12 +215,22 @@ static RunResult run(Arguments *args)
     goto cleanup_after_loop_label;
   }
 
+  clock_gettime(CLOCK_MONOTONIC, &loop_label_end);
+
+  loop_label_elapsed =
+      (loop_label_end.tv_sec - loop_label_start.tv_sec) +
+      (loop_label_end.tv_nsec - loop_label_start.tv_nsec) / 1e9;
+
   DynArray_Stmt labeled_ast = loop_label_result.as.ast;
 
   DynArray_Stmt optimized_ast = {0};
 
   if (args->optimize) {
+    clock_gettime(CLOCK_MONOTONIC, &optimize_start);
     optimized_ast = optimize(&labeled_ast);
+    clock_gettime(CLOCK_MONOTONIC, &optimize_end);
+    optimize_elapsed = (optimize_end.tv_sec - optimize_start.tv_sec) +
+                       (optimize_end.tv_nsec - optimize_start.tv_nsec) / 1e9;
   }
 
   if (args->parse) {
@@ -106,6 +241,8 @@ static RunResult run(Arguments *args)
     }
     goto cleanup_after_loop_label;
   }
+
+  clock_gettime(CLOCK_MONOTONIC, &compile_start);
 
   Compiler *compiler = current_compiler = new_compiler();
 
@@ -123,18 +260,34 @@ static RunResult run(Arguments *args)
     goto cleanup_after_compile;
   }
 
+  clock_gettime(CLOCK_MONOTONIC, &compile_end);
+
+  compile_elapsed = (compile_end.tv_sec - compile_start.tv_sec) +
+                    (compile_end.tv_nsec - compile_start.tv_nsec) / 1e9;
+
   Bytecode *chunk = compile_result.chunk;
 
   DisassembleResult disassemble_result = {0};
   if (args->ir) {
+    clock_gettime(CLOCK_MONOTONIC, &disassemble_start);
+
     disassemble_result = disassemble(chunk);
     if (!disassemble_result.is_ok) {
       alloc_err_str(&result.msg, "disassembler: %s\n", disassemble_result.msg);
       result.is_ok = false;
       result.errcode = disassemble_result.errcode;
     }
+
+    clock_gettime(CLOCK_MONOTONIC, &disassemble_end);
+
+    disassemble_elapsed =
+        (disassemble_end.tv_sec - disassemble_start.tv_sec) +
+        (disassemble_end.tv_nsec - disassemble_start.tv_nsec) / 1e9;
+
     goto cleanup_after_disassemble;
   }
+
+  clock_gettime(CLOCK_MONOTONIC, &exec_start);
 
   VM vm;
   init_vm(&vm);
@@ -146,6 +299,11 @@ static RunResult run(Arguments *args)
     result.errcode = exec_result.errcode;
     goto cleanup_after_exec; /* just for the symmetry */
   }
+
+  clock_gettime(CLOCK_MONOTONIC, &exec_end);
+
+  exec_elapsed = (exec_end.tv_sec - exec_start.tv_sec) +
+                 (exec_end.tv_nsec - exec_start.tv_nsec) / 1e9;
 
 cleanup_after_exec:
   free_vm(&vm);
@@ -200,9 +358,88 @@ cleanup_after_read_file:
     free(read_file_result.msg);
   }
 
+#define MEASURE_NONE 0
+#define MEASURE_READ_FILE (1 << 0)
+#define MEASURE_LEX (1 << 1)
+#define MEASURE_PARSE (1 << 2)
+#define MEASURE_LOOP_LABEL (1 << 3)
+#define MEASURE_OPTIMIZE (1 << 4)
+#define MEASURE_DISASSEMBLE (1 << 5)
+#define MEASURE_COMPILE (1 << 6)
+#define MEASURE_EXEC (1 << 7)
+#define MEASURE_ALL                                                       \
+  (MEASURE_READ_FILE | MEASURE_LEX | MEASURE_PARSE | MEASURE_LOOP_LABEL | \
+   MEASURE_OPTIMIZE | MEASURE_COMPILE | MEASURE_DISASSEMBLE | MEASURE_EXEC)
+
+  double total_all_stages = read_file_elapsed + tokenize_elapsed +
+                            parse_elapsed + loop_label_elapsed +
+                            optimize_elapsed + compile_elapsed +
+                            disassemble_elapsed + exec_elapsed;
+
+  if (args->measure_flags & MEASURE_READ_FILE) {
+    printf("read_file stage took %.9f sec (%.2f%%)\n", read_file_elapsed,
+           (read_file_elapsed / total_all_stages) * 100);
+  }
+
+  if (args->measure_flags & MEASURE_LEX) {
+    printf("lex stage took %.9f sec (%.2f%%)\n", tokenize_elapsed,
+           (tokenize_elapsed / total_all_stages) * 100);
+  }
+
+  if (args->measure_flags & MEASURE_PARSE) {
+    printf("parse stage took %.9f sec (%.2f%%)\n", parse_elapsed,
+           (parse_elapsed / total_all_stages) * 100);
+  }
+
+  if (args->measure_flags & MEASURE_LOOP_LABEL) {
+    printf("loop_label stage took %.9f sec (%.2f%%)\n", loop_label_elapsed,
+           (loop_label_elapsed / total_all_stages) * 100);
+  }
+
+  if (args->measure_flags & MEASURE_OPTIMIZE) {
+    printf("optimize stage took %.9f sec (%.2f%%)\n", optimize_elapsed,
+           (optimize_elapsed / total_all_stages) * 100);
+  }
+
+  if (args->measure_flags & MEASURE_DISASSEMBLE) {
+    printf("disasm stage took %.9f sec (%.2f%%)\n", disassemble_elapsed,
+           (disassemble_elapsed / total_all_stages) * 100);
+  }
+
+  if (args->measure_flags & MEASURE_COMPILE) {
+    printf("compile stage took %.9f sec (%.2f%%)\n", compile_elapsed,
+           (compile_elapsed / total_all_stages) * 100);
+  }
+
+  if (args->measure_flags & MEASURE_EXEC) {
+    printf("exec stage took %.9f sec (%.2f%%)\n", exec_elapsed,
+           (exec_elapsed / total_all_stages) * 100);
+  }
+
   return result;
 }
 
+static int parse_measure_flag(const char *arg)
+{
+  if (strcmp(arg, "all") == 0) {
+    return MEASURE_ALL;
+  } else if (strcmp(arg, "lex") == 0) {
+    return MEASURE_LEX;
+  } else if (strcmp(arg, "parse") == 0) {
+    return MEASURE_PARSE;
+  } else if (strcmp(arg, "loop-label") == 0) {
+    return MEASURE_LOOP_LABEL;
+  } else if (strcmp(arg, "optimize") == 0) {
+    return MEASURE_OPTIMIZE;
+  } else if (strcmp(arg, "disassemble") == 0) {
+    return MEASURE_DISASSEMBLE;
+  } else if (strcmp(arg, "compile") == 0) {
+    return MEASURE_COMPILE;
+  } else if (strcmp(arg, "exec") == 0) {
+    return MEASURE_EXEC;
+  }
+  return MEASURE_NONE;
+}
 static ArgParseResult parse_args(int argc, char **argv)
 {
   static const struct option long_opts[] = {
@@ -210,6 +447,7 @@ static ArgParseResult parse_args(int argc, char **argv)
       {"parse", no_argument, 0, 'p'},
       {"ir", no_argument, 0, 'i'},
       {"optimize", no_argument, 0, 'o'},
+      {"measure", required_argument, 0, 'm'},
       {0, 0, 0, 0},
   };
 
@@ -217,9 +455,10 @@ static ArgParseResult parse_args(int argc, char **argv)
   int do_parse = 0;
   int do_ir = 0;
   int do_optimize = 0;
+  int measure_flags = 0;
 
   int opt, opt_idx = 0;
-  while ((opt = getopt_long(argc, argv, "lpio", long_opts, &opt_idx)) != -1) {
+  while ((opt = getopt_long(argc, argv, "lpiom", long_opts, &opt_idx)) != -1) {
     switch (opt) {
       case 'l':
         do_lex = 1;
@@ -232,6 +471,9 @@ static ArgParseResult parse_args(int argc, char **argv)
         break;
       case 'o':
         do_optimize = 1;
+        break;
+      case 'm':
+        measure_flags |= parse_measure_flag(optarg);
         break;
       default:
         return (ArgParseResult) {
@@ -265,6 +507,7 @@ static ArgParseResult parse_args(int argc, char **argv)
   args.parse = do_parse;
   args.ir = do_ir;
   args.optimize = do_optimize;
+  args.measure_flags = measure_flags;
   args.file = argv[optind];
 
   return (ArgParseResult) {
