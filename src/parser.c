@@ -1240,12 +1240,13 @@ static ParseFnResult for_statement(Parser *parser)
     free_expr(&initializer);
     free_expr(&condition);
     free_expr(&advancement);
-    return (ParseFnResult) {.is_ok = false,
-                            .as.stmt = {0},
-                            .msg = strdup("Expected '{' after 'for' ')'."),
-                            .span = (Span) {.line = parser->previous.span.line,
-                                            .start = parser->previous.span.start,
-                                            .end = parser->previous.span.end}};
+    return (ParseFnResult) {
+        .is_ok = false,
+        .as.stmt = {0},
+        .msg = strdup("Expected '{' after 'for' ')'."),
+        .span = (Span) {.line = parser->previous.span.line,
+                        .start = parser->previous.span.start,
+                        .end = parser->previous.span.end}};
   }
 
   ParseFnResult body_result = block(parser);
