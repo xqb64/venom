@@ -1,11 +1,10 @@
-#include <getopt.h>
 #include <stdbool.h>
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>  // IWYU pragma: keep
 #include <time.h>
-#include <unistd.h>
 
+#include "args.h"
 #include "ast.h"
 #include "compiler.h"
 #include "disassembler.h"
@@ -18,30 +17,10 @@
 #include "vm.h"
 
 typedef struct {
-  int lex;
-  int parse;
-  int ir;
-  int optimize;
-  int measure_flags;
-  char *file;
-} Arguments;
-
-typedef struct {
-  Arguments args;
-  bool is_ok;
-  int errcode;
-  char *msg;
-} ArgParseResult;
-
-typedef struct {
   bool is_ok;
   int errcode;
   char *msg;
 } RunResult;
-
-#include <stdio.h>
-#include <stdlib.h>
-#include <string.h>
 
 void print_line(const char *source, size_t line)
 {
@@ -358,19 +337,6 @@ cleanup_after_read_file:
     free(read_file_result.msg);
   }
 
-#define MEASURE_NONE 0
-#define MEASURE_READ_FILE (1 << 0)
-#define MEASURE_LEX (1 << 1)
-#define MEASURE_PARSE (1 << 2)
-#define MEASURE_LOOP_LABEL (1 << 3)
-#define MEASURE_OPTIMIZE (1 << 4)
-#define MEASURE_DISASSEMBLE (1 << 5)
-#define MEASURE_COMPILE (1 << 6)
-#define MEASURE_EXEC (1 << 7)
-#define MEASURE_ALL                                                       \
-  (MEASURE_READ_FILE | MEASURE_LEX | MEASURE_PARSE | MEASURE_LOOP_LABEL | \
-   MEASURE_OPTIMIZE | MEASURE_COMPILE | MEASURE_DISASSEMBLE | MEASURE_EXEC)
-
   double total_all_stages = read_file_elapsed + tokenize_elapsed +
                             parse_elapsed + loop_label_elapsed +
                             optimize_elapsed + compile_elapsed +
@@ -417,101 +383,6 @@ cleanup_after_read_file:
   }
 
   return result;
-}
-
-static int parse_measure_flag(const char *arg)
-{
-  if (strcmp(arg, "all") == 0) {
-    return MEASURE_ALL;
-  } else if (strcmp(arg, "lex") == 0) {
-    return MEASURE_LEX;
-  } else if (strcmp(arg, "parse") == 0) {
-    return MEASURE_PARSE;
-  } else if (strcmp(arg, "loop-label") == 0) {
-    return MEASURE_LOOP_LABEL;
-  } else if (strcmp(arg, "optimize") == 0) {
-    return MEASURE_OPTIMIZE;
-  } else if (strcmp(arg, "disassemble") == 0) {
-    return MEASURE_DISASSEMBLE;
-  } else if (strcmp(arg, "compile") == 0) {
-    return MEASURE_COMPILE;
-  } else if (strcmp(arg, "exec") == 0) {
-    return MEASURE_EXEC;
-  }
-  return MEASURE_NONE;
-}
-static ArgParseResult parse_args(int argc, char **argv)
-{
-  static const struct option long_opts[] = {
-      {"lex", no_argument, 0, 'l'},
-      {"parse", no_argument, 0, 'p'},
-      {"ir", no_argument, 0, 'i'},
-      {"optimize", no_argument, 0, 'o'},
-      {"measure", required_argument, 0, 'm'},
-      {0, 0, 0, 0},
-  };
-
-  int do_lex = 0;
-  int do_parse = 0;
-  int do_ir = 0;
-  int do_optimize = 0;
-  int measure_flags = 0;
-
-  int opt, opt_idx = 0;
-  while ((opt = getopt_long(argc, argv, "lpiom", long_opts, &opt_idx)) != -1) {
-    switch (opt) {
-      case 'l':
-        do_lex = 1;
-        break;
-      case 'p':
-        do_parse = 1;
-        break;
-      case 'i':
-        do_ir = 1;
-        break;
-      case 'o':
-        do_optimize = 1;
-        break;
-      case 'm':
-        measure_flags |= parse_measure_flag(optarg);
-        break;
-      default:
-        return (ArgParseResult) {
-            .args = {0},
-            .is_ok = false,
-            .errcode = -1,
-            .msg = ALLOC("usage: %s [--lex] [--parse] [--ir] [--optimize]")};
-    }
-  }
-
-  if (do_lex + do_optimize > 1) {
-    return (ArgParseResult) {
-        .args = {0},
-        .is_ok = false,
-        .errcode = -1,
-        .msg =
-            ALLOC("--optimize available only from the parsing stage onwards")};
-  }
-
-  if (do_lex + do_parse + do_ir > 1) {
-    return (ArgParseResult) {
-        .args = {0},
-        .is_ok = false,
-        .errcode = -1,
-        .msg = ALLOC("Please specify exactly one option.")};
-  }
-
-  Arguments args;
-
-  args.lex = do_lex;
-  args.parse = do_parse;
-  args.ir = do_ir;
-  args.optimize = do_optimize;
-  args.measure_flags = measure_flags;
-  args.file = argv[optind];
-
-  return (ArgParseResult) {
-      .args = args, .is_ok = true, .errcode = 0, .msg = NULL};
 }
 
 int main(int argc, char **argv)
