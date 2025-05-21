@@ -12,18 +12,21 @@ typedef struct {
   size_t cap;
 } StringBuilder;
 
-void sb_init(StringBuilder *sb) {
+void sb_init(StringBuilder *sb)
+{
   sb->cap = INIT_CAP;
   sb->len = 0;
   sb->buf = malloc(sb->cap);
   sb->buf[0] = '\0';
 }
 
-void sb_free(StringBuilder *sb) {
+void sb_free(StringBuilder *sb)
+{
   free(sb->buf);
 }
 
-void sb_append(StringBuilder *sb, const char *s) {
+void sb_append(StringBuilder *sb, const char *s)
+{
   size_t slen = strlen(s);
   if (sb->len + slen + 1 > sb->cap) {
     sb->cap = (sb->len + slen + 1) * 2;
@@ -33,7 +36,8 @@ void sb_append(StringBuilder *sb, const char *s) {
   sb->len += slen;
 }
 
-void sb_append_char(StringBuilder *sb, char c) {
+void sb_append_char(StringBuilder *sb, char c)
+{
   if (sb->len + 2 > sb->cap) {
     sb->cap *= 2;
     sb->buf = realloc(sb->buf, sb->cap);
@@ -42,12 +46,15 @@ void sb_append_char(StringBuilder *sb, char c) {
   sb->buf[sb->len] = '\0';
 }
 
-void print_line_buf(StringBuilder *sb, const char *source, size_t line) {
+void print_line_buf(StringBuilder *sb, const char *source, size_t line)
+{
   const char *c = source;
   size_t curr = 1;
 
   while (curr < line && *c) {
-    if (*c == '\n') curr++;
+    if (*c == '\n') {
+      curr++;
+    }
     c++;
   }
 
@@ -57,12 +64,16 @@ void print_line_buf(StringBuilder *sb, const char *source, size_t line) {
   sb_append_char(sb, '\n');
 }
 
-void print_offending_line_buf(StringBuilder *sb, const char *source, size_t line, size_t span_start, size_t span_end) {
+void print_offending_line_buf(StringBuilder *sb, const char *source,
+                              size_t line, size_t span_start, size_t span_end)
+{
   const char *c = source, *target_start = source;
   size_t current_line = 1;
 
   while (*c) {
-    if (*c == '\n') current_line++;
+    if (*c == '\n') {
+      current_line++;
+    }
     if (current_line == line) {
       target_start = ++c;
       break;
@@ -87,7 +98,9 @@ void print_offending_line_buf(StringBuilder *sb, const char *source, size_t line
   sb_append_char(sb, '\n');
 }
 
-char *mkerrctx(const char *source, size_t line, size_t span_start, size_t span_end, size_t before, size_t after) {
+char *mkerrctx(const char *source, size_t line, size_t span_start,
+               size_t span_end, size_t before, size_t after)
+{
   StringBuilder sb;
   sb_init(&sb);
 
@@ -104,4 +117,3 @@ char *mkerrctx(const char *source, size_t line, size_t span_start, size_t span_e
 
   return sb.buf;
 }
-

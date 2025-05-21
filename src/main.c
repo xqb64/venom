@@ -60,10 +60,12 @@ static RunResult run(Arguments *args)
 
   TokenizeResult tokenize_result = tokenize(&tokenizer);
   if (!tokenize_result.is_ok) {
-    alloc_err_str(
-        &result.msg, "tokenizer: %s\n%s\n", tokenize_result.msg,
+    char *errctx =
         mkerrctx(source, tokenize_result.span.line, tokenize_result.span.start,
-                 tokenize_result.span.end, 1, 1));
+                 tokenize_result.span.end, 1, 1);
+    alloc_err_str(&result.msg, "tokenizer: %s\n%s\n", tokenize_result.msg,
+                  errctx);
+    free(errctx);
     result.is_ok = false;
     result.errcode = tokenize_result.errcode;
     goto cleanup_after_lex;
@@ -88,10 +90,11 @@ static RunResult run(Arguments *args)
 
   ParseResult parse_result = parse(&parser);
   if (!parse_result.is_ok) {
-    alloc_err_str(
-        &result.msg, "parser: %s\n%s\n", parse_result.msg,
+    char *errctx =
         mkerrctx(source, parse_result.span.line, parse_result.span.start,
-                 parse_result.span.end, 1, 1));
+                 parse_result.span.end, 1, 1);
+    alloc_err_str(&result.msg, "parser: %s\n%s\n", parse_result.msg, errctx);
+    free(errctx);
     result.is_ok = false;
     result.errcode = parse_result.errcode;
     goto cleanup_after_parse;

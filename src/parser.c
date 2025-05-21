@@ -163,11 +163,14 @@ static ParseFnResult variable(Parser *parser)
 {
   ExprVariable e = {
       .name = own_string_n(parser->previous.start, parser->previous.length),
-      .span = (Span) { .start = parser->previous.span.start, .end = parser->previous.span.end },
+      .span = (Span) {.start = parser->previous.span.start,
+                      .end = parser->previous.span.end},
   };
 
-  return (ParseFnResult) {
-      .as.expr = AS_EXPR_VARIABLE(e), .is_ok = true, .msg = NULL, .span = e.span};
+  return (ParseFnResult) {.as.expr = AS_EXPR_VARIABLE(e),
+                          .is_ok = true,
+                          .msg = NULL,
+                          .span = e.span};
 }
 
 static ParseFnResult literal(Parser *parser)
@@ -780,7 +783,7 @@ static ParseFnResult struct_initializer(Parser *parser)
     }
 
     Expr property = property_result.as.expr;
-    
+
     start_of_last_offending_expr = property.span.start;
 
     TokenResult colon_result = consume(parser, TOKEN_COLON);
@@ -808,7 +811,7 @@ static ParseFnResult struct_initializer(Parser *parser)
     }
 
     Expr value = value_result.as.expr;
-    
+
     ExprStructInitializer structinitexp = {
         .property = ALLOC(property),
         .value = ALLOC(value),
@@ -824,7 +827,13 @@ static ParseFnResult struct_initializer(Parser *parser)
     }
     dynarray_free(&initializers);
 
-    return (ParseFnResult) {.is_ok = false, .as.expr = {0}, .msg = strdup("Expected comma after `key: value` pair"), .span = (Span) { .start = start_of_last_offending_expr, .end = parser->current.span.end, .line = parser->current.span.line}};
+    return (ParseFnResult) {
+        .is_ok = false,
+        .as.expr = {0},
+        .msg = strdup("Expected comma after `key: value` pair"),
+        .span = (Span) {.start = start_of_last_offending_expr,
+                        .end = parser->current.span.end,
+                        .line = parser->current.span.line}};
   }
 
   TokenResult rbrace_result = consume(parser, TOKEN_RIGHT_BRACE);
@@ -840,8 +849,9 @@ static ParseFnResult struct_initializer(Parser *parser)
         .is_ok = false,
         .as.expr = {0},
         .msg = strdup("Expected '}' after struct initialization."),
-        .span = (Span) {.start = lbrace_result.token.span.start, .end = parser->current.span.end, .line = lbrace_result.token.span.line}
-    };
+        .span = (Span) {.start = lbrace_result.token.span.start,
+                        .end = parser->current.span.end,
+                        .line = lbrace_result.token.span.line}};
   }
 
   ExprStruct structexp = {
