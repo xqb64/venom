@@ -1073,9 +1073,22 @@ static ParseFnResult if_statement(Parser *parser)
 
 static ParseFnResult while_statement(Parser *parser)
 {
-  CONSUME(parser, TOKEN_LEFT_PAREN, "Expected '(' after 'while'.");
+  TokenResult while_result = consume(parser, TOKEN_WHILE);
+  if (!while_result.is_ok) {
+    return (ParseFnResult) {.is_ok = false, .as.stmt = {0}, .msg = strdup("Expected 'while' token."), .span = parser->current.span};
+  }
 
-  Expr condition = HANDLE_EXPR(expression, parser);
+  TokenResult lparen_result = consume(parser, TOKEN_LEFT_PAREN);
+  if (!lparen_result.is_ok) {
+    return (ParseFnResult) {.is_ok = false, .as.stmt = {0}, .msg = strdup("Expected '(' after 'while'."), .span = parser->previous.span};
+  }
+
+  ParseFnResult condition_result = expression(parser);
+  if (!condition_result.is_ok) {
+    return condition_result;
+  }
+
+  Expr condition = condition_result.as.expr;
 
   TokenResult rparen_result = consume(parser, TOKEN_RIGHT_PAREN);
   if (!rparen_result.is_ok) {
@@ -1083,7 +1096,8 @@ static ParseFnResult while_statement(Parser *parser)
     return (ParseFnResult) {
         .is_ok = false,
         .as.stmt = {0},
-        .msg = strdup("Expected ')' after 'while' condition.")};
+        .msg = strdup("Expected ')' after 'while' condition."),
+        .span = (Span) {.line = lparen_result.token.span.line, .start = lparen_result.token.span.start, .end = condition.span.end}};
   }
 
   TokenResult lbrace_result = consume(parser, TOKEN_LEFT_BRACE);
@@ -1092,7 +1106,8 @@ static ParseFnResult while_statement(Parser *parser)
     return (ParseFnResult) {
         .is_ok = false,
         .as.stmt = {0},
-        .msg = strdup("Expected '{' after 'while' condition.")};
+        .msg = strdup("Expected '{' after 'while' condition."),
+        .span = (Span) {.line = parser->current.span.line, .start = parser->current.span.start, .end = parser->current.span.end}};
   }
 
   ParseFnResult body_result = block(parser);
@@ -1107,9 +1122,10 @@ static ParseFnResult while_statement(Parser *parser)
       .condition = condition,
       .body = ALLOC(body),
       .label = NULL,
+      .span = (Span) {.line = while_result.token.span.line, .start = while_result.token.span.start, .end = body.span.end},
   };
   return (ParseFnResult) {
-      .as.stmt = AS_STMT_WHILE(stmt), .is_ok = true, .msg = NULL};
+      .as.stmt = AS_STMT_WHILE(stmt), .is_ok = true, .msg = NULL, .span = stmt.span};
 }
 
 static ParseFnResult for_statement(Parser *parser)
@@ -1474,7 +1490,7 @@ static ParseFnResult statement(Parser *parser)
     return block(parser);
   } else if (match(parser, 1, TOKEN_IF)) {
     return if_statement(parser);
-  } else if (match(parser, 1, TOKEN_WHILE)) {
+  } else if (check(parser, TOKEN_WHILE)) {
     return while_statement(parser);
   } else if (match(parser, 1, TOKEN_FOR)) {
     return for_statement(parser);
