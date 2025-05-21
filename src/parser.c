@@ -1426,7 +1426,17 @@ static ParseFnResult yield_statement(Parser *parser)
 
 static ParseFnResult assert_statement(Parser *parser)
 {
-  Expr expr = HANDLE_EXPR(expression, parser);
+  TokenResult assert_result = consume(parser, TOKEN_ASSERT);
+  if (!assert_result.is_ok) {
+    return (ParseFnResult) {.is_ok = false, .as.stmt = {0}, .msg = strdup("Expected 'assert' token."), .span = parser->current.span};
+  }
+
+  ParseFnResult expr_result = expression(parser);
+  if (!expr_result.is_ok) {
+    return expr_result;
+  }
+
+  Expr expr = expr_result.as.expr;
 
   TokenResult semicolon_result = consume(parser, TOKEN_SEMICOLON);
   if (!semicolon_result.is_ok) {
@@ -1434,12 +1444,13 @@ static ParseFnResult assert_statement(Parser *parser)
     return (ParseFnResult) {
         .is_ok = false,
         .as.stmt = {0},
-        .msg = strdup("Expected ';' after 'assert' statement.")};
+        .msg = strdup("Expected ';' after 'assert' statement."),
+        .span = (Span) {.line = assert_result.token.span.line, .start = assert_result.token.span.start, .end = parser->previous.span.end}};
   }
 
-  StmtAssert stmt = {.expr = expr};
+  StmtAssert stmt = {.expr = expr, .span = (Span) {.line = assert_result.token.span.line, .start = assert_result.token.span.start, .end = semicolon_result.token.span.end}};
   return (ParseFnResult) {
-      .as.stmt = AS_STMT_ASSERT(stmt), .is_ok = true, .msg = NULL};
+      .as.stmt = AS_STMT_ASSERT(stmt), .is_ok = true, .msg = NULL, .span = stmt.span};
 }
 
 static ParseFnResult statement(Parser *parser)
@@ -1472,7 +1483,7 @@ static ParseFnResult statement(Parser *parser)
     return impl_statement(parser);
   } else if (match(parser, 1, TOKEN_YIELD)) {
     return yield_statement(parser);
-  } else if (match(parser, 1, TOKEN_ASSERT)) {
+  } else if (check(parser, TOKEN_ASSERT)) {
     return assert_statement(parser);
   } else {
     return expression_statement(parser);
