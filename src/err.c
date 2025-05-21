@@ -46,10 +46,24 @@ void sb_append_char(StringBuilder *sb, char c)
   sb->buf[sb->len] = '\0';
 }
 
+#include "util.h"
+
 void print_line_buf(StringBuilder *sb, const char *source, size_t line)
 {
   const char *c = source;
+  char *lineno;
   size_t curr = 1;
+  size_t len;
+
+  len = numlen(line);
+  lineno = malloc(len + 1);
+
+  snprintf(lineno, len+1, "%ld", line);
+
+  sb_append(sb, lineno);
+  sb_append_char(sb, ' ');
+
+  free(lineno);
 
   while (curr < line && *c) {
     if (*c == '\n') {
@@ -81,12 +95,18 @@ void print_offending_line_buf(StringBuilder *sb, const char *source,
     c++;
   }
 
+  size_t len = numlen(line);
+  char *lineno = malloc(line + 1);
+  snprintf(lineno, len+1, "%ld", line);
+  sb_append(sb, lineno);
+  sb_append_char(sb, ' ');
+
   while (*c && *c != '\n') {
     sb_append_char(sb, *c++);
   }
   sb_append_char(sb, '\n');
 
-  size_t prefix_len = (source + span_start) - target_start;
+  size_t prefix_len = (source + span_start) - target_start + len + 1;
   for (size_t i = 0; i < prefix_len; i++) {
     sb_append_char(sb, ' ');
   }
@@ -95,7 +115,6 @@ void print_offending_line_buf(StringBuilder *sb, const char *source,
   for (size_t i = 0; i < caret_len; i++) {
     sb_append_char(sb, '^');
   }
-  sb_append_char(sb, '\n');
 }
 
 char *mkerrctx(const char *source, size_t line, size_t span_start,
