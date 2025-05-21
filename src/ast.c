@@ -429,6 +429,7 @@ Stmt clone_stmt(const Stmt *stmt)
   Stmt clone;
 
   clone.kind = stmt->kind;
+  clone.span = stmt->span;
 
   switch (stmt->kind) {
     case STMT_LET: {

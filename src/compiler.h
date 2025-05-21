@@ -120,6 +120,7 @@ typedef struct {
   int errcode;
   bool is_ok;
   char *msg;
+  Span span;
 } CompileResult;
 
 void init_chunk(Bytecode *code);

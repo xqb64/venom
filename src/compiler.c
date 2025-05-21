@@ -525,7 +525,8 @@ static CompileResult compile_expr_lit(Bytecode *code, const Expr *expr)
 
 static CompileResult compile_expr_var(Bytecode *code, const Expr *expr)
 {
-  CompileResult result = {.is_ok = true, .chunk = NULL, .msg = NULL};
+  CompileResult result = {
+      .is_ok = true, .chunk = NULL, .msg = NULL, .span = expr->span};
 
   ExprVariable expr_var = expr->as.expr_variable;
 
@@ -1248,10 +1249,18 @@ static CompileResult compile_stmt(Bytecode *code, const Stmt *stmt);
 
 static CompileResult compile_stmt_print(Bytecode *code, const Stmt *stmt)
 {
-  CompileResult result = {.is_ok = true, .chunk = NULL, .msg = NULL};
+  CompileResult result = {
+      .is_ok = true, .chunk = NULL, .msg = NULL, .span = stmt->span};
 
   StmtPrint s = stmt->as.stmt_print;
-  COMPILE_EXPR(code, &s.expr);
+
+  CompileResult expr_result = compile_expr(code, &s.expr);
+  if (!expr_result.is_ok) {
+    result.msg = expr_result.msg;
+    result.is_ok = false;
+    return result;
+  }
+
   emit_byte(code, OP_PRINT);
 
   return result;
@@ -1898,7 +1907,7 @@ static CompileResult compile_stmt(Bytecode *code, const Stmt *stmt)
 CompileResult compile(const DynArray_Stmt *ast)
 {
   CompileResult result = {
-      .is_ok = true, .errcode = 0, .msg = NULL, .chunk = NULL};
+      .is_ok = true, .errcode = 0, .msg = NULL, .chunk = NULL, .span = {0}};
 
   Bytecode *chunk = malloc(sizeof(Bytecode));
   init_chunk(chunk);

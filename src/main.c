@@ -156,7 +156,12 @@ static RunResult run(Arguments *args)
   }
 
   if (!compile_result.is_ok) {
-    alloc_err_str(&result.msg, "compiler: %s\n", compile_result.msg);
+    char *errctx =
+        mkerrctx(source, compile_result.span.line, compile_result.span.start,
+                 compile_result.span.end, 1, 1);
+    alloc_err_str(&result.msg, "compiler: %s\n%s\n", compile_result.msg,
+                  errctx);
+    free(errctx);
     result.is_ok = false;
     result.errcode = compile_result.errcode;
     goto cleanup_after_compile;

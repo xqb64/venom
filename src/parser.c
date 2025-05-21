@@ -951,8 +951,11 @@ static ParseFnResult print_statement(Parser *parser)
                     .span = (Span) {.start = print_result.token.span.start,
                                     .end = semicolon_result.token.span.end,
                                     .line = print_result.token.span.line}};
-  return (ParseFnResult) {
-      .as.stmt = AS_STMT_PRINT(stmt), .is_ok = true, .msg = NULL};
+
+  return (ParseFnResult) {.as.stmt = AS_STMT_PRINT(stmt),
+                          .is_ok = true,
+                          .msg = NULL,
+                          .span = stmt.span};
 }
 
 static ParseFnResult let_statement(Parser *parser)
@@ -988,9 +991,15 @@ static ParseFnResult let_statement(Parser *parser)
         .msg = strdup("Expected ';' after 'let' statement.")};
   }
 
-  StmtLet stmt = {.name = name, .initializer = initializer};
-  return (ParseFnResult) {
-      .as.stmt = AS_STMT_LET(stmt), .is_ok = true, .msg = NULL};
+  StmtLet stmt = {.name = name,
+                  .initializer = initializer,
+                  .span = (Span) {.start = identifier.span.start,
+                                  .end = semicolon_result.token.span.end,
+                                  .line = identifier.span.line}};
+  return (ParseFnResult) {.as.stmt = AS_STMT_LET(stmt),
+                          .is_ok = true,
+                          .msg = NULL,
+                          .span = stmt.span};
 }
 
 static ParseFnResult expression_statement(Parser *parser)
