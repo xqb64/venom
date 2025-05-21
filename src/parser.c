@@ -721,7 +721,7 @@ static ParseFnResult grouping(Parser *parser)
     return (ParseFnResult) {.is_ok = false,
                             .as.expr = {0},
                             .msg = strdup("Unmatched closing parentheses."),
-                            .span = (Span) {.start = expr.span.end,
+                            .span = (Span) {.start = lparen_result.token.span.start,
                                             .end = expr.span.end,
                                             .line = expr.span.line}};
   }
