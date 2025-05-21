@@ -164,7 +164,8 @@ static ParseFnResult variable(Parser *parser)
   ExprVariable e = {
       .name = own_string_n(parser->previous.start, parser->previous.length),
       .span = (Span) {.start = parser->previous.span.start,
-                      .end = parser->previous.span.end},
+                      .end = parser->previous.span.end,
+                      .line = parser->previous.span.line},
   };
 
   return (ParseFnResult) {.as.expr = AS_EXPR_VARIABLE(e),
@@ -350,10 +351,13 @@ static ParseFnResult factor(Parser *parser)
                          .span = (Span) {.start = expr.span.start,
                                          .end = right.span.end,
                                          .line = expr.span.line}};
+
+    printf("binexp.span: %ld [%ld, %ld]\n", binexp.span.line, binexp.span.start, binexp.span.end);
+
     expr = AS_EXPR_BINARY(binexp);
   }
 
-  return (ParseFnResult) {.as.expr = expr, .is_ok = true, .msg = NULL};
+  return (ParseFnResult) {.as.expr = expr, .is_ok = true, .msg = NULL, .span = expr.span};
 }
 
 static ParseFnResult term(Parser *parser)
@@ -383,10 +387,12 @@ static ParseFnResult term(Parser *parser)
                          .span = (Span) {.start = expr.span.start,
                                          .end = right.span.end,
                                          .line = expr.span.line}};
+    
+    printf("binexp.span: %ld [%ld, %ld]\n", binexp.span.line, binexp.span.start, binexp.span.end);
     expr = AS_EXPR_BINARY(binexp);
   }
 
-  return (ParseFnResult) {.as.expr = expr, .is_ok = true, .msg = NULL};
+  return (ParseFnResult) {.as.expr = expr, .is_ok = true, .msg = NULL, .span = expr.span};
 }
 
 static ParseFnResult bitwise_shift(Parser *parser)
@@ -686,7 +692,7 @@ static ParseFnResult assignment(Parser *parser)
     expr = AS_EXPR_ASSIGN(assignexp);
   }
 
-  return (ParseFnResult) {.as.expr = expr, .is_ok = true, .msg = NULL};
+  return (ParseFnResult) {.as.expr = expr, .is_ok = true, .msg = NULL, .span = expr.span};
 }
 
 static ParseFnResult expression(Parser *parser)
@@ -980,6 +986,8 @@ static ParseFnResult let_statement(Parser *parser)
   }
 
   Expr initializer = initializer_result.as.expr;
+
+  printf("initializer span is: %ld [%ld, %ld]\n", initializer.span.line, initializer.span.start, initializer.span.end);
 
   TokenResult semicolon_result = consume(parser, TOKEN_SEMICOLON);
   if (!semicolon_result.is_ok) {
@@ -1491,6 +1499,7 @@ ParseResult parse(Parser *parser)
       result.is_ok = false;
       result.errcode = -1;
       result.span = r.span;
+      printf("result.span is: %ld [%ld, %ld]\n", result.span.line, result.span.start, result.span.end);
       return result;
     }
     dynarray_insert(&result.ast, r.as.stmt);

@@ -525,6 +525,7 @@ static CompileResult compile_expr_lit(Bytecode *code, const Expr *expr)
 
 static CompileResult compile_expr_var(Bytecode *code, const Expr *expr)
 {
+  printf("expr->span: %ld [%ld, %ld]\n", expr->span.line, expr->span.start, expr->span.end);
   CompileResult result = {
       .is_ok = true, .chunk = NULL, .msg = NULL, .span = expr->span};
 
@@ -555,8 +556,10 @@ static CompileResult compile_expr_var(Bytecode *code, const Expr *expr)
     return result;
   }
 
-  /* The variable is not defined, bail out. */
-  COMPILER_ERROR("Variable '%s' is not defined.", expr_var.name);
+  alloc_err_str(&result.msg, "Variable '%s' is not defined.", expr_var.name);
+  result.is_ok = false;
+  
+  return result;
 }
 
 static CompileResult compile_expr_una(Bytecode *code, const Expr *expr)
@@ -636,7 +639,7 @@ static CompileResult compile_expr_una(Bytecode *code, const Expr *expr)
 
 static CompileResult compile_expr_bin(Bytecode *code, const Expr *expr)
 {
-  CompileResult result = {.is_ok = true, .chunk = NULL, .msg = NULL};
+  CompileResult result = {.is_ok = true, .chunk = NULL, .msg = NULL, .span = expr->span};
 
   ExprBinary expr_bin = expr->as.expr_binary;
 
@@ -1268,7 +1271,7 @@ static CompileResult compile_stmt_print(Bytecode *code, const Stmt *stmt)
 
 static CompileResult compile_stmt_let(Bytecode *code, const Stmt *stmt)
 {
-  CompileResult result = {.is_ok = true, .chunk = NULL, .msg = NULL};
+  CompileResult result = {.is_ok = true, .chunk = NULL, .msg = NULL, .span = stmt->span};
 
   if (current_compiler->locals_count >= 256) {
     COMPILER_ERROR("Maximum 256 locals.");
@@ -1277,7 +1280,11 @@ static CompileResult compile_stmt_let(Bytecode *code, const Stmt *stmt)
   StmtLet s = stmt->as.stmt_let;
 
   /* Compile the initializer. */
-  COMPILE_EXPR(code, &s.initializer);
+  CompileResult expr_result = compile_expr(code, &s.initializer);
+  if (!expr_result.is_ok) {
+    printf("expr_result.span: %ld [%ld, %ld]\n", expr_result.span.line, expr_result.span.start, expr_result.span.end);
+    return expr_result;
+  }
 
   /* Add the variable name to the string pool. */
   uint32_t name_idx = add_string(code, s.name);

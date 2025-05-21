@@ -62,7 +62,7 @@ static RunResult run(Arguments *args)
   if (!tokenize_result.is_ok) {
     char *errctx =
         mkerrctx(source, tokenize_result.span.line, tokenize_result.span.start,
-                 tokenize_result.span.end, 1, 1);
+                 tokenize_result.span.end, 3, 3);
     alloc_err_str(&result.msg, "tokenizer: %s\n%s\n", tokenize_result.msg,
                   errctx);
     free(errctx);
@@ -92,7 +92,7 @@ static RunResult run(Arguments *args)
   if (!parse_result.is_ok) {
     char *errctx =
         mkerrctx(source, parse_result.span.line, parse_result.span.start,
-                 parse_result.span.end, 1, 1);
+                 parse_result.span.end, 3, 3);
     alloc_err_str(&result.msg, "parser: %s\n%s\n", parse_result.msg, errctx);
     free(errctx);
     result.is_ok = false;
@@ -158,7 +158,7 @@ static RunResult run(Arguments *args)
   if (!compile_result.is_ok) {
     char *errctx =
         mkerrctx(source, compile_result.span.line, compile_result.span.start,
-                 compile_result.span.end, 1, 1);
+                 compile_result.span.end, 3, 3);
     alloc_err_str(&result.msg, "compiler: %s\n%s\n", compile_result.msg,
                   errctx);
     free(errctx);
