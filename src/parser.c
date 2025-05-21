@@ -352,8 +352,6 @@ static ParseFnResult factor(Parser *parser)
                                          .end = right.span.end,
                                          .line = expr.span.line}};
 
-    printf("binexp.span: %ld [%ld, %ld]\n", binexp.span.line, binexp.span.start, binexp.span.end);
-
     expr = AS_EXPR_BINARY(binexp);
   }
 
@@ -388,7 +386,6 @@ static ParseFnResult term(Parser *parser)
                                          .end = right.span.end,
                                          .line = expr.span.line}};
     
-    printf("binexp.span: %ld [%ld, %ld]\n", binexp.span.line, binexp.span.start, binexp.span.end);
     expr = AS_EXPR_BINARY(binexp);
   }
 
@@ -987,8 +984,6 @@ static ParseFnResult let_statement(Parser *parser)
 
   Expr initializer = initializer_result.as.expr;
 
-  printf("initializer span is: %ld [%ld, %ld]\n", initializer.span.line, initializer.span.start, initializer.span.end);
-
   TokenResult semicolon_result = consume(parser, TOKEN_SEMICOLON);
   if (!semicolon_result.is_ok) {
     free(name);
@@ -1350,7 +1345,6 @@ static ParseFnResult struct_statement(Parser *parser)
   do {
     TokenResult identifier_result = consume(parser, TOKEN_IDENTIFIER);
     if (!identifier_result.is_ok) {
-      printf("identifier_result not ok\n");
       for (size_t i = 0; i < properties.count; i++) {
         free(properties.data[i]);
       }
@@ -1365,7 +1359,6 @@ static ParseFnResult struct_statement(Parser *parser)
 
     TokenResult semicolon_result = consume(parser, TOKEN_SEMICOLON);
     if (!semicolon_result.is_ok) {
-      printf("semicolon result not ok\n");
       for (size_t i = 0; i < properties.count; i++) {
         free(properties.data[i]);
       }
@@ -1499,7 +1492,6 @@ ParseResult parse(Parser *parser)
       result.is_ok = false;
       result.errcode = -1;
       result.span = r.span;
-      printf("result.span is: %ld [%ld, %ld]\n", result.span.line, result.span.start, result.span.end);
       return result;
     }
     dynarray_insert(&result.ast, r.as.stmt);

@@ -525,7 +525,6 @@ static CompileResult compile_expr_lit(Bytecode *code, const Expr *expr)
 
 static CompileResult compile_expr_var(Bytecode *code, const Expr *expr)
 {
-  printf("expr->span: %ld [%ld, %ld]\n", expr->span.line, expr->span.start, expr->span.end);
   CompileResult result = {
       .is_ok = true, .chunk = NULL, .msg = NULL, .span = expr->span};
 
@@ -1282,7 +1281,6 @@ static CompileResult compile_stmt_let(Bytecode *code, const Stmt *stmt)
   /* Compile the initializer. */
   CompileResult expr_result = compile_expr(code, &s.initializer);
   if (!expr_result.is_ok) {
-    printf("expr_result.span: %ld [%ld, %ld]\n", expr_result.span.line, expr_result.span.start, expr_result.span.end);
     return expr_result;
   }
 
