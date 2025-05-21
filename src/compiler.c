@@ -557,7 +557,7 @@ static CompileResult compile_expr_var(Bytecode *code, const Expr *expr)
 
   alloc_err_str(&result.msg, "Variable '%s' is not defined.", expr_var.name);
   result.is_ok = false;
-  
+
   return result;
 }
 
@@ -638,7 +638,8 @@ static CompileResult compile_expr_una(Bytecode *code, const Expr *expr)
 
 static CompileResult compile_expr_bin(Bytecode *code, const Expr *expr)
 {
-  CompileResult result = {.is_ok = true, .chunk = NULL, .msg = NULL, .span = expr->span};
+  CompileResult result = {
+      .is_ok = true, .chunk = NULL, .msg = NULL, .span = expr->span};
 
   ExprBinary expr_bin = expr->as.expr_binary;
 
@@ -1270,7 +1271,8 @@ static CompileResult compile_stmt_print(Bytecode *code, const Stmt *stmt)
 
 static CompileResult compile_stmt_let(Bytecode *code, const Stmt *stmt)
 {
-  CompileResult result = {.is_ok = true, .chunk = NULL, .msg = NULL, .span = stmt->span};
+  CompileResult result = {
+      .is_ok = true, .chunk = NULL, .msg = NULL, .span = stmt->span};
 
   if (current_compiler->locals_count >= 256) {
     COMPILER_ERROR("Maximum 256 locals.");

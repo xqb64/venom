@@ -58,7 +58,7 @@ void print_line_buf(StringBuilder *sb, const char *source, size_t line)
   len = numlen(line);
   lineno = malloc(len + 1);
 
-  snprintf(lineno, len+1, "%ld", line);
+  snprintf(lineno, len + 1, "%ld", line);
 
   sb_append(sb, lineno);
   sb_append_char(sb, ' ');
@@ -97,7 +97,7 @@ void print_offending_line_buf(StringBuilder *sb, const char *source,
 
   size_t len = numlen(line);
   char *lineno = malloc(line + 1);
-  snprintf(lineno, len+1, "%ld", line);
+  snprintf(lineno, len + 1, "%ld", line);
   sb_append(sb, lineno);
   sb_append_char(sb, ' ');
 
