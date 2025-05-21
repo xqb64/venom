@@ -1408,7 +1408,17 @@ static ParseFnResult impl_statement(Parser *parser)
 
 static ParseFnResult yield_statement(Parser *parser)
 {
-  Expr expr = HANDLE_EXPR(expression, parser);
+  TokenResult yield_result = consume(parser, TOKEN_YIELD);
+  if (!yield_result.is_ok) {
+    return (ParseFnResult) {.is_ok = false, .as.stmt = {0}, .msg = strdup("Expected 'yield' token."), .span = parser->current.span};
+  }
+
+  ParseFnResult expr_result = expression(parser);
+  if (!expr_result.is_ok) {
+    return expr_result;
+  }
+
+  Expr expr = expr_result.as.expr; 
 
   TokenResult semicolon_result = consume(parser, TOKEN_SEMICOLON);
   if (!semicolon_result.is_ok) {
@@ -1416,7 +1426,8 @@ static ParseFnResult yield_statement(Parser *parser)
     return (ParseFnResult) {
         .is_ok = false,
         .as.stmt = {0},
-        .msg = strdup("Expected ';' after 'yield' statement.")};
+        .msg = strdup("Expected ';' after 'yield' statement."),
+        .span = (Span) {.line = yield_result.token.span.line, .start = yield_result.token.span.start, .end = parser->previous.span.end}};
   }
 
   StmtYield stmt = {.expr = expr};
@@ -1481,7 +1492,7 @@ static ParseFnResult statement(Parser *parser)
     return decorator_statement(parser);
   } else if (match(parser, 1, TOKEN_IMPL)) {
     return impl_statement(parser);
-  } else if (match(parser, 1, TOKEN_YIELD)) {
+  } else if (check(parser, TOKEN_YIELD)) {
     return yield_statement(parser);
   } else if (check(parser, TOKEN_ASSERT)) {
     return assert_statement(parser);
