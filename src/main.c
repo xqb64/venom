@@ -9,6 +9,7 @@
 #include "compiler.h"
 #include "disassembler.h"
 #include "dynarray.h"
+#include "err.h"
 #include "optimizer.h"
 #include "parser.h"
 #include "semantics.h"
@@ -21,87 +22,6 @@ typedef struct {
   int errcode;
   char *msg;
 } RunResult;
-
-void print_line(const char *source, size_t line)
-{
-  const char *c;
-  size_t curr;
-
-  c = source;
-  curr = 1;
-
-  while (curr < line) {
-    if (*c == '\n') {
-      curr++;
-    }
-    c++;
-  }
-
-  while (*c != '\n') {
-    putchar(*c++);
-  }
-
-  putchar('\n');
-}
-
-void print_offending_line(const char *source, size_t line, size_t span_start, size_t span_end)
-{
-  const char *c = source, *target_start = source;
-  
-  size_t current_line = 1;
-  while (*c) {
-    if (*c == '\n') {
-      current_line++;
-    }
- 
-    if (current_line == line) {
-      target_start = ++c;
-      break;
-    }
- 
-    c++;
-  }
-
-  while (*c && c < source + span_end + 1) {
-    putchar(*c++);
-  }
-
-  while (*c != '\n') {
-    putchar(*c++);
-  }
-
-  putchar('\n');
-
-  size_t prefix_len = (source + span_start) - target_start;
-  while (prefix_len--) {
-    putchar(' ');
-  }
-
-  size_t caret_len = span_end - span_start == 0 ? 1 : span_end - span_start;
-  while (caret_len--) {
-    putchar('^');
-  }
-}
-
-char *mkerrctx(const char *source, size_t line, size_t span_start,
-               size_t span_end, size_t before, size_t after)
-{
-  for (size_t i = line - before; i < line; i++)
-  {
-    print_line(source, i);
-  }
-
-  print_offending_line(source, line, span_start, span_end);
-
-  putchar('\n');
-
-  for (size_t i = line + 1; i < line + after + 1; i++)
-  {
-    print_line(source, i);
-  }
-
-  return "";
-}
 
 static RunResult run(Arguments *args)
 {
