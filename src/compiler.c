@@ -13,21 +13,6 @@
 #include "table.h"
 #include "util.h"
 
-#define COMPILER_ERROR(...)                  \
-  do {                                       \
-    alloc_err_str(&result.msg, __VA_ARGS__); \
-    Compiler *c;                             \
-    while (current_compiler) {               \
-      c = current_compiler;                  \
-      current_compiler = c->next;            \
-      free_compiler(c);                      \
-      free(c);                               \
-    }                                        \
-    result.is_ok = false;                    \
-    result.errcode = -1;                     \
-    return result;                           \
-  } while (0)
-
 typedef struct {
   char *name;
   size_t argcount;
@@ -547,8 +532,15 @@ static CompileResult compile_expr_variable(Bytecode *code, const Expr *expr)
   }
 
   alloc_err_str(&result.msg, "Variable '%s' is not defined.", expr_var.name);
+  Compiler *c;
+  while (current_compiler) {
+    c = current_compiler;
+    current_compiler = c->next;
+    free_compiler(c);
+    free(c);
+  }
   result.is_ok = false;
-
+  result.errcode = -1;
   return result;
 }
 
@@ -2093,7 +2085,17 @@ static CompileResult compile_stmt_impl(Bytecode *code, const Stmt *stmt)
 
   /* If it is not found, bail out. */
   if (!blueprint) {
-    COMPILER_ERROR("struct '%s' is not defined.\n", stmt_impl.name);
+    alloc_err_str(&result.msg, "struct '%s' is not defined.\n", stmt_impl.name);
+    Compiler *c;
+    while (current_compiler) {
+      c = current_compiler;
+      current_compiler = c->next;
+      free_compiler(c);
+      free(c);
+    }
+    result.is_ok = false;
+    result.errcode = -1;
+    return result;
   }
 
   for (size_t i = 0; i < stmt_impl.methods.count; i++) {
