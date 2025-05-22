@@ -737,6 +737,14 @@ static ParseFnResult block(Parser *parser)
 {
   parser->depth++;
 
+  TokenResult lbrace_result = consume(parser, TOKEN_LEFT_BRACE);
+  if (!lbrace_result.is_ok) {
+    return (ParseFnResult) {.is_ok = false,
+                            .as.stmt = {0},
+                            .msg = strdup("Expected '{' token."),
+                            .span = parser->current.span};
+  }
+
   DynArray_Stmt stmts = {0};
   while (!check(parser, TOKEN_RIGHT_BRACE) && !check(parser, TOKEN_EOF)) {
     ParseFnResult r = statement(parser);
@@ -753,16 +761,22 @@ static ParseFnResult block(Parser *parser)
     return (ParseFnResult) {
         .is_ok = false,
         .as.stmt = {0},
-        .msg = strdup("Expected '}' at the end of the block.")};
+        .msg = strdup("Expected '}' at the end of the block."),
+        .span = (Span) {.line = parser->previous.span.line,
+                        .start = parser->previous.span.end,
+                        .end = parser->previous.span.end}};
   }
 
-  StmtBlock body = {
-      .depth = parser->depth--,
-      .stmts = stmts,
-  };
+  StmtBlock body = {.depth = parser->depth--,
+                    .stmts = stmts,
+                    .span = (Span) {.line = lbrace_result.token.span.line,
+                                    .start = lbrace_result.token.span.start,
+                                    .end = rbrace_result.token.span.end}};
 
-  return (ParseFnResult) {
-      .as.stmt = AS_STMT_BLOCK(body), .is_ok = true, .msg = NULL};
+  return (ParseFnResult) {.as.stmt = AS_STMT_BLOCK(body),
+                          .is_ok = true,
+                          .msg = NULL,
+                          .span = body.span};
 }
 
 static ParseFnResult struct_initializer(Parser *parser)
@@ -1160,17 +1174,17 @@ static ParseFnResult while_statement(Parser *parser)
                         .end = condition.span.end}};
   }
 
-  TokenResult lbrace_result = consume(parser, TOKEN_LEFT_BRACE);
-  if (!lbrace_result.is_ok) {
-    free_expr(&condition);
-    return (ParseFnResult) {
-        .is_ok = false,
-        .as.stmt = {0},
-        .msg = strdup("Expected '{' after 'while' condition."),
-        .span = (Span) {.line = parser->current.span.line,
-                        .start = parser->current.span.start,
-                        .end = parser->current.span.end}};
-  }
+  // TokenResult lbrace_result = consume(parser, TOKEN_LEFT_BRACE);
+  // if (!lbrace_result.is_ok) {
+  //   free_expr(&condition);
+  //   return (ParseFnResult) {
+  //       .is_ok = false,
+  //       .as.stmt = {0},
+  //       .msg = strdup("Expected '{' after 'while' condition."),
+  //       .span = (Span) {.line = parser->current.span.line,
+  //                       .start = parser->current.span.start,
+  //                       .end = parser->current.span.end}};
+  // }
 
   ParseFnResult body_result = block(parser);
   if (!body_result.is_ok) {
@@ -1367,18 +1381,18 @@ static ParseFnResult function_statement(Parser *parser)
             strdup("Expected ')' after the parameter list in 'fn' statement.")};
   }
 
-  TokenResult lbrace_result = consume(parser, TOKEN_LEFT_BRACE);
-  if (!lbrace_result.is_ok) {
-    for (size_t i = 0; i < parameters.count; i++) {
-      free(parameters.data[i]);
-    }
-    dynarray_free(&parameters);
+  // TokenResult lbrace_result = consume(parser, TOKEN_LEFT_BRACE);
+  // if (!lbrace_result.is_ok) {
+  //   for (size_t i = 0; i < parameters.count; i++) {
+  //     free(parameters.data[i]);
+  //   }
+  //   dynarray_free(&parameters);
 
-    return (ParseFnResult) {
-        .is_ok = false,
-        .as.stmt = {0},
-        .msg = strdup("Expected '{' after ')' in 'fn' statement.")};
-  }
+  //   return (ParseFnResult) {
+  //       .is_ok = false,
+  //       .as.stmt = {0},
+  //       .msg = strdup("Expected '{' after ')' in 'fn' statement.")};
+  // }
 
   ParseFnResult body_result = block(parser);
   if (!body_result.is_ok) {
@@ -1439,20 +1453,67 @@ static ParseFnResult return_statement(Parser *parser)
 
 static ParseFnResult break_statement(Parser *parser)
 {
-  CONSUME(parser, TOKEN_SEMICOLON, "Expected ';' after 'break' statement.");
+  TokenResult break_result = consume(parser, TOKEN_BREAK);
+  if (!break_result.is_ok) {
+    return (ParseFnResult) {.is_ok = false,
+                            .as.stmt = {0},
+                            .msg = strdup("Expected 'break' token."),
+                            .span = parser->current.span};
+  }
 
-  StmtBreak stmt = {0};
-  return (ParseFnResult) {
-      .as.stmt = AS_STMT_BREAK(stmt), .is_ok = true, .msg = NULL};
+  TokenResult semicolon_result = consume(parser, TOKEN_SEMICOLON);
+  if (!semicolon_result.is_ok) {
+    return (ParseFnResult) {
+        .is_ok = false,
+        .as.stmt = {0},
+        .msg = strdup("Expected ';' after 'break' statement."),
+        .span = (Span) {.line = parser->previous.span.line,
+                        .start = parser->previous.span.end,
+                        .end = parser->previous.span.end}};
+  }
+
+  StmtBreak stmt = {.label = NULL,
+                    .span = (Span) {.line = break_result.token.span.line,
+                                    .start = break_result.token.span.start,
+                                    .end = semicolon_result.token.span.end}};
+
+  return (ParseFnResult) {.as.stmt = AS_STMT_BREAK(stmt),
+                          .is_ok = true,
+                          .msg = NULL,
+                          .span = stmt.span};
 }
 
 static ParseFnResult continue_statement(Parser *parser)
 {
-  CONSUME(parser, TOKEN_SEMICOLON, "Expected ';' after 'continue' statement.");
+  TokenResult continue_result = consume(parser, TOKEN_CONTINUE);
+  if (!continue_result.is_ok) {
+    return (ParseFnResult) {.is_ok = false,
+                            .as.stmt = {0},
+                            .msg = strdup("Expected 'continue' token."),
+                            .span = parser->current.span};
+  }
 
-  StmtContinue stmt = {0};
-  return (ParseFnResult) {
-      .as.stmt = AS_STMT_CONTINUE(stmt), .is_ok = true, .msg = NULL};
+  TokenResult semicolon_result = consume(parser, TOKEN_SEMICOLON);
+  if (!semicolon_result.is_ok) {
+    return (ParseFnResult) {
+        .is_ok = false,
+        .as.stmt = {0},
+        .msg = strdup("Expected ';' after 'continue' statement."),
+        .span = (Span) {.line = parser->previous.span.line,
+                        .start = parser->previous.span.end,
+                        .end = parser->previous.span.end}};
+  }
+
+  StmtContinue stmt = {
+      .label = NULL,
+      .span = (Span) {.line = continue_result.token.span.line,
+                      .start = continue_result.token.span.start,
+                      .end = semicolon_result.token.span.end}};
+
+  return (ParseFnResult) {.as.stmt = AS_STMT_CONTINUE(stmt),
+                          .is_ok = true,
+                          .msg = NULL,
+                          .span = stmt.span};
 }
 
 static ParseFnResult struct_statement(Parser *parser)
@@ -1605,7 +1666,7 @@ static ParseFnResult statement(Parser *parser)
     return print_statement(parser);
   } else if (check(parser, TOKEN_LET)) {
     return let_statement(parser);
-  } else if (match(parser, 1, TOKEN_LEFT_BRACE)) {
+  } else if (check(parser, TOKEN_LEFT_BRACE)) {
     return block(parser);
   } else if (check(parser, TOKEN_IF)) {
     return if_statement(parser);
@@ -1613,9 +1674,9 @@ static ParseFnResult statement(Parser *parser)
     return while_statement(parser);
   } else if (check(parser, TOKEN_FOR)) {
     return for_statement(parser);
-  } else if (match(parser, 1, TOKEN_BREAK)) {
+  } else if (check(parser, TOKEN_BREAK)) {
     return break_statement(parser);
-  } else if (match(parser, 1, TOKEN_CONTINUE)) {
+  } else if (check(parser, TOKEN_CONTINUE)) {
     return continue_statement(parser);
   } else if (match(parser, 1, TOKEN_FN)) {
     return function_statement(parser);
