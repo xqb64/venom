@@ -1531,9 +1531,34 @@ static ParseFnResult continue_statement(Parser *parser)
 
 static ParseFnResult struct_statement(Parser *parser)
 {
-  Token name =
-      CONSUME(parser, TOKEN_IDENTIFIER, "Expected identifier after 'struct'.");
-  CONSUME(parser, TOKEN_LEFT_BRACE, "Expected '{' after 'struct'.");
+  TokenResult struct_result = consume(parser, TOKEN_STRUCT);
+  if (!struct_result.is_ok) {
+    return (ParseFnResult) {.is_ok = false,
+                            .as.stmt = {0},
+                            .msg = strdup("Expected 'struct' token."),
+                            .span = parser->current.span};
+  }
+
+  TokenResult struct_identifier_result = consume(parser, TOKEN_IDENTIFIER);
+  if (!struct_identifier_result.is_ok) {
+    return (ParseFnResult) {.is_ok = false,
+                            .as.stmt = {0},
+                            .msg = strdup("Expected identifier after 'struct'."),
+                            .span = parser->previous.span};
+  }
+
+  Token name = struct_identifier_result.token;
+
+  TokenResult lbrace_result = consume(parser, TOKEN_LEFT_BRACE);
+  if (!lbrace_result.is_ok) {
+    return (ParseFnResult) {.is_ok = false,
+                            .as.stmt = {0},
+                            .msg = strdup("Expected '{' after identifier in 'struct' stmt."),
+                            .span = (Span) {.line = parser->current.span.line,
+                                            .start = parser->current.span.start,
+                                            .end = parser->current.span.end}};
+  }
+
 
   DynArray_char_ptr properties = {0};
   do {
@@ -1546,7 +1571,8 @@ static ParseFnResult struct_statement(Parser *parser)
 
       return (ParseFnResult) {.is_ok = false,
                               .as.stmt = {0},
-                              .msg = strdup("Expected property name.")};
+                              .msg = strdup("Expected property name."),
+                              .span = parser->current.span};
     }
 
     Token property = identifier_result.token;
@@ -1561,7 +1587,10 @@ static ParseFnResult struct_statement(Parser *parser)
       return (ParseFnResult) {
           .is_ok = false,
           .as.stmt = {0},
-          .msg = strdup("Expected semicolon after property name.")};
+          .msg = strdup("Expected semicolon after property name."),
+          .span = (Span) {.line = parser->previous.span.line,
+                          .start = parser->previous.span.end,
+                          .end = parser->previous.span.end}};
     }
 
     dynarray_insert(&properties, own_string_n(property.start, property.length));
@@ -1570,9 +1599,12 @@ static ParseFnResult struct_statement(Parser *parser)
   StmtStruct stmt = {
       .name = own_string_n(name.start, name.length),
       .properties = properties,
+      .span = (Span) {.line = struct_result.token.span.line,
+                      .start = struct_result.token.span.start,
+                      .end = parser->previous.span.end}
   };
   return (ParseFnResult) {
-      .as.stmt = AS_STMT_STRUCT(stmt), .is_ok = true, .msg = NULL};
+      .as.stmt = AS_STMT_STRUCT(stmt), .is_ok = true, .msg = NULL, .span = stmt.span};
 }
 
 static ParseFnResult impl_statement(Parser *parser)
@@ -1695,11 +1727,11 @@ static ParseFnResult statement(Parser *parser)
     return function_statement(parser);
   } else if (check(parser, TOKEN_RETURN)) {
     return return_statement(parser);
-  } else if (match(parser, 1, TOKEN_STRUCT)) {
+  } else if (check(parser, TOKEN_STRUCT)) {
     return struct_statement(parser);
-  } else if (match(parser, 1, TOKEN_AT)) {
+  } else if (check(parser, TOKEN_AT)) {
     return decorator_statement(parser);
-  } else if (match(parser, 1, TOKEN_IMPL)) {
+  } else if (check(parser, TOKEN_IMPL)) {
     return impl_statement(parser);
   } else if (check(parser, TOKEN_YIELD)) {
     return yield_statement(parser);
