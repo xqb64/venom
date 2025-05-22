@@ -1245,7 +1245,7 @@ static CompileExprHandler expression_handler[] = {
     [EXPR_BINARY] = {.fn = compile_expr_bin, .name = "EXPR_BINARY"},
     [EXPR_CALL] = {.fn = compile_expr_call, .name = "EXPR_CALL"},
     [EXPR_GET] = {.fn = compile_expr_get, .name = "EXPR_GET"},
-    [EXPR_ASSIGN] = {.fn = compile_expr_ass, .name = "EXPR_ASS"},
+    [EXPR_ASSIGN] = {.fn = compile_expr_ass, .name = "EXPR_ASSIGN"},
     [EXPR_STRUCT] = {.fn = compile_expr_struct, .name = "EXPR_STRUCT"},
     [EXPR_STRUCT_INITIALIZER] = {.fn = compile_expr_struct_initializer,
                                  .name = "EXPR_STRUCT_INITIALIZER"},
