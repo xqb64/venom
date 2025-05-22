@@ -1609,10 +1609,33 @@ static ParseFnResult struct_statement(Parser *parser)
 
 static ParseFnResult impl_statement(Parser *parser)
 {
-  Token name =
-      CONSUME(parser, TOKEN_IDENTIFIER, "Expected identifier after 'impl'.");
-  CONSUME(parser, TOKEN_LEFT_BRACE,
-          "Expected '{' after identifier in 'impl' statement.");
+  TokenResult impl_result = consume(parser, TOKEN_IMPL);
+  if (!impl_result.is_ok) {
+    return (ParseFnResult) {.is_ok = false,
+                            .as.stmt = {0},
+                            .msg = strdup("Expected 'impl' token."),
+                            .span = parser->current.span};
+  }
+
+  TokenResult identifier_result = consume(parser, TOKEN_IDENTIFIER);
+  if (!identifier_result.is_ok) {
+    return (ParseFnResult) {.is_ok = false,
+                            .as.stmt = {0},
+                            .msg = strdup("Expected identifier after 'impl'."),
+                            .span = parser->previous.span};
+  }
+
+  Token name = identifier_result.token;
+
+  TokenResult lbrace_result = consume(parser, TOKEN_LEFT_BRACE);
+  if (!lbrace_result.is_ok) {
+    return (ParseFnResult) {.is_ok = false,
+                            .as.stmt = {0},
+                            .msg = strdup("Expected '{' after identifier in 'impl' statement."),
+                            .span = (Span) {.line = parser->current.span.line,
+                                            .start = parser->current.span.start,
+                                            .end = parser->current.span.end}};
+  }
 
   DynArray_Stmt methods = {0};
   while (!match(parser, 1, TOKEN_RIGHT_BRACE)) {
@@ -1627,9 +1650,13 @@ static ParseFnResult impl_statement(Parser *parser)
   StmtImpl stmt = {
       .name = own_string_n(name.start, name.length),
       .methods = methods,
+      .span = (Span) {.line = impl_result.token.span.line,
+                      .start = impl_result.token.span.start,
+                      .end = parser->previous.span.end}
   };
+
   return (ParseFnResult) {
-      .as.stmt = AS_STMT_IMPL(stmt), .is_ok = true, .msg = NULL};
+      .as.stmt = AS_STMT_IMPL(stmt), .is_ok = true, .msg = NULL, .span = stmt.span};
 }
 
 static ParseFnResult yield_statement(Parser *parser)
