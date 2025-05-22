@@ -742,7 +742,9 @@ static ParseFnResult block(Parser *parser)
     return (ParseFnResult) {.is_ok = false,
                             .as.stmt = {0},
                             .msg = strdup("Expected '{' token."),
-                            .span = parser->current.span};
+                            .span = (Span) {.line = parser->previous.span.line,
+                                            .start = parser->previous.span.end,
+                                            .end = parser->previous.span.end}};
   }
 
   DynArray_Stmt stmts = {0};
@@ -1174,18 +1176,6 @@ static ParseFnResult while_statement(Parser *parser)
                         .end = condition.span.end}};
   }
 
-  // TokenResult lbrace_result = consume(parser, TOKEN_LEFT_BRACE);
-  // if (!lbrace_result.is_ok) {
-  //   free_expr(&condition);
-  //   return (ParseFnResult) {
-  //       .is_ok = false,
-  //       .as.stmt = {0},
-  //       .msg = strdup("Expected '{' after 'while' condition."),
-  //       .span = (Span) {.line = parser->current.span.line,
-  //                       .start = parser->current.span.start,
-  //                       .end = parser->current.span.end}};
-  // }
-
   ParseFnResult body_result = block(parser);
   if (!body_result.is_ok) {
     free_expr(&condition);
@@ -1297,20 +1287,6 @@ static ParseFnResult for_statement(Parser *parser)
                         .end = advancement.span.end + 1}};
   }
 
-  TokenResult lbrace_result = consume(parser, TOKEN_LEFT_BRACE);
-  if (!lbrace_result.is_ok) {
-    free_expr(&initializer);
-    free_expr(&condition);
-    free_expr(&advancement);
-    return (ParseFnResult) {
-        .is_ok = false,
-        .as.stmt = {0},
-        .msg = strdup("Expected '{' after 'for' ')'."),
-        .span = (Span) {.line = parser->previous.span.line,
-                        .start = parser->previous.span.start,
-                        .end = parser->previous.span.end}};
-  }
-
   ParseFnResult body_result = block(parser);
   if (!body_result.is_ok) {
     free_expr(&initializer);
@@ -1380,19 +1356,6 @@ static ParseFnResult function_statement(Parser *parser)
         .msg =
             strdup("Expected ')' after the parameter list in 'fn' statement.")};
   }
-
-  // TokenResult lbrace_result = consume(parser, TOKEN_LEFT_BRACE);
-  // if (!lbrace_result.is_ok) {
-  //   for (size_t i = 0; i < parameters.count; i++) {
-  //     free(parameters.data[i]);
-  //   }
-  //   dynarray_free(&parameters);
-
-  //   return (ParseFnResult) {
-  //       .is_ok = false,
-  //       .as.stmt = {0},
-  //       .msg = strdup("Expected '{' after ')' in 'fn' statement.")};
-  // }
 
   ParseFnResult body_result = block(parser);
   if (!body_result.is_ok) {
