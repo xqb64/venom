@@ -842,7 +842,7 @@ static ParseFnResult struct_initializer(Parser *parser)
     dynarray_insert(&initializers, AS_EXPR_STRUCT_INITIALIZER(structinitexp));
   } while (match(parser, 1, TOKEN_COMMA));
 
-  if (parser->current.type != TOKEN_COMMA) {
+  if (parser->current.type != TOKEN_COMMA && parser->current.type != TOKEN_RIGHT_BRACE) {
     free(name);
 
     for (size_t i = 0; i < initializers.count; i++) {
