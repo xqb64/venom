@@ -1409,19 +1409,40 @@ static ParseFnResult function_statement(Parser *parser)
 
 static ParseFnResult decorator_statement(Parser *parser)
 {
-  Token decorator =
-      CONSUME(parser, TOKEN_IDENTIFIER, "Expected identifier after '@'.");
+  TokenResult at_result = consume(parser, TOKEN_AT);
+  if (!at_result.is_ok) {
+    return (ParseFnResult) {.is_ok = false,
+                            .as.stmt = {0},
+                            .msg = strdup("Expected '@' token."),
+                            .span = parser->current.span};
+  }
 
-  CONSUME(parser, TOKEN_FN, "Expected 'fn' after '@deco'.");
+  TokenResult identifier_result = consume(parser, TOKEN_IDENTIFIER);
+  if (!identifier_result.is_ok) {
+    return (ParseFnResult) {.is_ok = false,
+                            .as.stmt = {0},
+                            .msg = strdup("Expected identifier after '@'."),
+                            .span = parser->previous.span};
+  }
 
-  Stmt fn = HANDLE_STMT(function_statement, parser);
+  Token decorator = identifier_result.token;
+
+  ParseFnResult function_statement_result = function_statement(parser);
+  if (!function_statement_result.is_ok) {
+    return function_statement_result;
+  }
+
+  Stmt fn = function_statement_result.as.stmt;
 
   StmtDecorator stmt = {
       .name = own_string_n(decorator.start, decorator.length),
       .fn = ALLOC(fn),
+      .span = (Span) {.line = at_result.token.span.line,
+                      .start = at_result.token.span.start,
+                      .end = fn.span.end}
   };
   return (ParseFnResult) {
-      .as.stmt = AS_STMT_DECORATOR(stmt), .is_ok = true, .msg = NULL};
+      .as.stmt = AS_STMT_DECORATOR(stmt), .is_ok = true, .msg = NULL, .span = stmt.span};
 }
 
 static ParseFnResult return_statement(Parser *parser)
