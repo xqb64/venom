@@ -752,7 +752,7 @@ static CompileResult compile_expr_bin(Bytecode *code, const Expr *expr)
 
 static CompileResult compile_expr_call(Bytecode *code, const Expr *expr)
 {
-  CompileResult result = {.is_ok = true, .chunk = NULL, .msg = NULL};
+  CompileResult result = {.is_ok = true, .chunk = NULL, .msg = NULL, .span = expr->span};
 
   ExprCall expr_call = expr->as.expr_call;
 
@@ -820,8 +820,18 @@ static CompileResult compile_expr_call(Bytecode *code, const Expr *expr)
 
     Function *f = resolve_func(var.name);
     if (f && f->paramcount != expr_call.arguments.count) {
-      COMPILER_ERROR("Function '%s' requires %ld arguments.", f->name,
-                     f->paramcount);
+      alloc_err_str(&result.msg, "Function '%s' requires %ld arguments.",
+                    f->name, f->paramcount);
+      Compiler *c;
+      while (current_compiler) {
+        c = current_compiler;
+        current_compiler = c->next;
+        free_compiler(c);
+        free(c);
+      }
+      result.is_ok = false;
+      result.errcode = -1;
+      return result;
     }
 
     /* Then compile the arguments */
