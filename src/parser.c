@@ -1334,12 +1334,13 @@ static ParseFnResult function_statement(Parser *parser)
 
   TokenResult lparen_result = consume(parser, TOKEN_LEFT_PAREN);
   if (!lparen_result.is_ok) {
-    return (ParseFnResult) {.is_ok = false,
-                            .as.stmt = {0},
-                            .msg = strdup("Expected '(' after identifier in 'fn' statement."),
-                            .span = (Span) {.line = parser->previous.span.line,
-                                            .start = parser->previous.span.end,
-                                            .end = parser->previous.span.end}};
+    return (ParseFnResult) {
+        .is_ok = false,
+        .as.stmt = {0},
+        .msg = strdup("Expected '(' after identifier in 'fn' statement."),
+        .span = (Span) {.line = parser->previous.span.line,
+                        .start = parser->previous.span.end,
+                        .end = parser->previous.span.end}};
   }
 
   DynArray_char_ptr parameters = {0};
@@ -1378,7 +1379,9 @@ static ParseFnResult function_statement(Parser *parser)
         .as.stmt = {0},
         .msg =
             strdup("Expected ')' after the parameter list in 'fn' statement."),
-        .span = (Span) {.line = parser->previous.span.line, .start = parser->previous.span.end, .end = parser->previous.span.end}};
+        .span = (Span) {.line = parser->previous.span.line,
+                        .start = parser->previous.span.end,
+                        .end = parser->previous.span.end}};
   }
 
   ParseFnResult body_result = block(parser);
