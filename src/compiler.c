@@ -477,7 +477,7 @@ static Function *resolve_func(const char *name)
 
 static CompileResult compile_expr(Bytecode *code, const Expr *expr);
 
-static CompileResult compile_expr_lit(Bytecode *code, const Expr *expr)
+static CompileResult compile_expr_literal(Bytecode *code, const Expr *expr)
 {
   CompileResult result = {
       .is_ok = true, .chunk = NULL, .msg = NULL, .span = expr->span};
@@ -514,7 +514,7 @@ static CompileResult compile_expr_lit(Bytecode *code, const Expr *expr)
   return result;
 }
 
-static CompileResult compile_expr_var(Bytecode *code, const Expr *expr)
+static CompileResult compile_expr_variable(Bytecode *code, const Expr *expr)
 {
   CompileResult result = {
       .is_ok = true, .chunk = NULL, .msg = NULL, .span = expr->span};
@@ -552,7 +552,7 @@ static CompileResult compile_expr_var(Bytecode *code, const Expr *expr)
   return result;
 }
 
-static CompileResult compile_expr_una(Bytecode *code, const Expr *expr)
+static CompileResult compile_expr_unary(Bytecode *code, const Expr *expr)
 {
   CompileResult result = {
       .is_ok = true, .chunk = NULL, .msg = NULL, .span = expr->span};
@@ -652,7 +652,7 @@ static CompileResult compile_expr_una(Bytecode *code, const Expr *expr)
   return result;
 }
 
-static CompileResult compile_expr_bin(Bytecode *code, const Expr *expr)
+static CompileResult compile_expr_binary(Bytecode *code, const Expr *expr)
 {
   CompileResult result = {
       .is_ok = true, .chunk = NULL, .msg = NULL, .span = expr->span};
@@ -1017,8 +1017,8 @@ static void handle_specop(Bytecode *code, const char *op)
   }
 }
 
-static CompileResult compile_assign_var(Bytecode *code, ExprAssign e,
-                                        bool is_compound)
+static CompileResult compile_assign_variable(Bytecode *code, ExprAssign e,
+                                             bool is_compound)
 {
   CompileResult result = {
       .is_ok = true, .chunk = NULL, .msg = NULL, .span = e.span};
@@ -1154,8 +1154,8 @@ static CompileResult compile_assign_get(Bytecode *code, ExprAssign e,
   return result;
 }
 
-static CompileResult compile_assign_una(Bytecode *code, ExprAssign e,
-                                        bool is_compound)
+static CompileResult compile_assign_unary(Bytecode *code, ExprAssign e,
+                                          bool is_compound)
 {
   CompileResult result = {
       .is_ok = true, .chunk = NULL, .msg = NULL, .span = e.span};
@@ -1190,8 +1190,8 @@ static CompileResult compile_assign_una(Bytecode *code, ExprAssign e,
   return result;
 }
 
-static CompileResult compile_assign_sub(Bytecode *code, ExprAssign e,
-                                        bool is_compound)
+static CompileResult compile_assign_subscript(Bytecode *code, ExprAssign e,
+                                              bool is_compound)
 {
   CompileResult result = {
       .is_ok = true, .chunk = NULL, .msg = NULL, .span = e.span};
@@ -1232,7 +1232,7 @@ static CompileResult compile_assign_sub(Bytecode *code, ExprAssign e,
   return result;
 }
 
-static CompileResult compile_expr_ass(Bytecode *code, const Expr *expr)
+static CompileResult compile_expr_assign(Bytecode *code, const Expr *expr)
 {
   CompileResult result = {
       .is_ok = true, .chunk = NULL, .msg = NULL, .span = expr->span};
@@ -1242,16 +1242,16 @@ static CompileResult compile_expr_ass(Bytecode *code, const Expr *expr)
 
   switch (expr_assign.lhs->kind) {
     case EXPR_VARIABLE:
-      compile_assign_var(code, expr_assign, compound_assign);
+      compile_assign_variable(code, expr_assign, compound_assign);
       break;
     case EXPR_GET:
       compile_assign_get(code, expr_assign, compound_assign);
       break;
     case EXPR_UNARY:
-      compile_assign_una(code, expr_assign, compound_assign);
+      compile_assign_unary(code, expr_assign, compound_assign);
       break;
     case EXPR_SUBSCRIPT:
-      compile_assign_sub(code, expr_assign, compound_assign);
+      compile_assign_subscript(code, expr_assign, compound_assign);
       break;
     default:
       alloc_err_str(&result.msg, "Invalid assignment.");
@@ -1436,13 +1436,13 @@ typedef struct {
 } CompileExprHandler;
 
 static CompileExprHandler expression_handler[] = {
-    [EXPR_LITERAL] = {.fn = compile_expr_lit, .name = "EXPR_LITERAL"},
-    [EXPR_VARIABLE] = {.fn = compile_expr_var, .name = "EXPR_VARIABLE"},
-    [EXPR_UNARY] = {.fn = compile_expr_una, .name = "EXPR_UNARY"},
-    [EXPR_BINARY] = {.fn = compile_expr_bin, .name = "EXPR_BINARY"},
+    [EXPR_LITERAL] = {.fn = compile_expr_literal, .name = "EXPR_LITERAL"},
+    [EXPR_VARIABLE] = {.fn = compile_expr_variable, .name = "EXPR_VARIABLE"},
+    [EXPR_UNARY] = {.fn = compile_expr_unary, .name = "EXPR_UNARY"},
+    [EXPR_BINARY] = {.fn = compile_expr_binary, .name = "EXPR_BINARY"},
     [EXPR_CALL] = {.fn = compile_expr_call, .name = "EXPR_CALL"},
     [EXPR_GET] = {.fn = compile_expr_get, .name = "EXPR_GET"},
-    [EXPR_ASSIGN] = {.fn = compile_expr_ass, .name = "EXPR_ASSIGN"},
+    [EXPR_ASSIGN] = {.fn = compile_expr_assign, .name = "EXPR_ASSIGN"},
     [EXPR_STRUCT] = {.fn = compile_expr_struct, .name = "EXPR_STRUCT"},
     [EXPR_STRUCT_INITIALIZER] = {.fn = compile_expr_struct_initializer,
                                  .name = "EXPR_STRUCT_INITIALIZER"},
