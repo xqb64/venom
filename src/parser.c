@@ -1434,15 +1434,15 @@ static ParseFnResult decorator_statement(Parser *parser)
 
   Stmt fn = function_statement_result.as.stmt;
 
-  StmtDecorator stmt = {
-      .name = own_string_n(decorator.start, decorator.length),
-      .fn = ALLOC(fn),
-      .span = (Span) {.line = at_result.token.span.line,
-                      .start = at_result.token.span.start,
-                      .end = fn.span.end}
-  };
-  return (ParseFnResult) {
-      .as.stmt = AS_STMT_DECORATOR(stmt), .is_ok = true, .msg = NULL, .span = stmt.span};
+  StmtDecorator stmt = {.name = own_string_n(decorator.start, decorator.length),
+                        .fn = ALLOC(fn),
+                        .span = (Span) {.line = at_result.token.span.line,
+                                        .start = at_result.token.span.start,
+                                        .end = fn.span.end}};
+  return (ParseFnResult) {.as.stmt = AS_STMT_DECORATOR(stmt),
+                          .is_ok = true,
+                          .msg = NULL,
+                          .span = stmt.span};
 }
 
 static ParseFnResult return_statement(Parser *parser)
@@ -1562,24 +1562,25 @@ static ParseFnResult struct_statement(Parser *parser)
 
   TokenResult struct_identifier_result = consume(parser, TOKEN_IDENTIFIER);
   if (!struct_identifier_result.is_ok) {
-    return (ParseFnResult) {.is_ok = false,
-                            .as.stmt = {0},
-                            .msg = strdup("Expected identifier after 'struct'."),
-                            .span = parser->previous.span};
+    return (ParseFnResult) {
+        .is_ok = false,
+        .as.stmt = {0},
+        .msg = strdup("Expected identifier after 'struct'."),
+        .span = parser->previous.span};
   }
 
   Token name = struct_identifier_result.token;
 
   TokenResult lbrace_result = consume(parser, TOKEN_LEFT_BRACE);
   if (!lbrace_result.is_ok) {
-    return (ParseFnResult) {.is_ok = false,
-                            .as.stmt = {0},
-                            .msg = strdup("Expected '{' after identifier in 'struct' stmt."),
-                            .span = (Span) {.line = parser->current.span.line,
-                                            .start = parser->current.span.start,
-                                            .end = parser->current.span.end}};
+    return (ParseFnResult) {
+        .is_ok = false,
+        .as.stmt = {0},
+        .msg = strdup("Expected '{' after identifier in 'struct' stmt."),
+        .span = (Span) {.line = parser->current.span.line,
+                        .start = parser->current.span.start,
+                        .end = parser->current.span.end}};
   }
-
 
   DynArray_char_ptr properties = {0};
   do {
@@ -1617,15 +1618,15 @@ static ParseFnResult struct_statement(Parser *parser)
     dynarray_insert(&properties, own_string_n(property.start, property.length));
   } while (!match(parser, 1, TOKEN_RIGHT_BRACE));
 
-  StmtStruct stmt = {
-      .name = own_string_n(name.start, name.length),
-      .properties = properties,
-      .span = (Span) {.line = struct_result.token.span.line,
-                      .start = struct_result.token.span.start,
-                      .end = parser->previous.span.end}
-  };
-  return (ParseFnResult) {
-      .as.stmt = AS_STMT_STRUCT(stmt), .is_ok = true, .msg = NULL, .span = stmt.span};
+  StmtStruct stmt = {.name = own_string_n(name.start, name.length),
+                     .properties = properties,
+                     .span = (Span) {.line = struct_result.token.span.line,
+                                     .start = struct_result.token.span.start,
+                                     .end = parser->previous.span.end}};
+  return (ParseFnResult) {.as.stmt = AS_STMT_STRUCT(stmt),
+                          .is_ok = true,
+                          .msg = NULL,
+                          .span = stmt.span};
 }
 
 static ParseFnResult impl_statement(Parser *parser)
@@ -1650,12 +1651,13 @@ static ParseFnResult impl_statement(Parser *parser)
 
   TokenResult lbrace_result = consume(parser, TOKEN_LEFT_BRACE);
   if (!lbrace_result.is_ok) {
-    return (ParseFnResult) {.is_ok = false,
-                            .as.stmt = {0},
-                            .msg = strdup("Expected '{' after identifier in 'impl' statement."),
-                            .span = (Span) {.line = parser->current.span.line,
-                                            .start = parser->current.span.start,
-                                            .end = parser->current.span.end}};
+    return (ParseFnResult) {
+        .is_ok = false,
+        .as.stmt = {0},
+        .msg = strdup("Expected '{' after identifier in 'impl' statement."),
+        .span = (Span) {.line = parser->current.span.line,
+                        .start = parser->current.span.start,
+                        .end = parser->current.span.end}};
   }
 
   DynArray_Stmt methods = {0};
@@ -1668,16 +1670,16 @@ static ParseFnResult impl_statement(Parser *parser)
     dynarray_insert(&methods, stmt_result.as.stmt);
   }
 
-  StmtImpl stmt = {
-      .name = own_string_n(name.start, name.length),
-      .methods = methods,
-      .span = (Span) {.line = impl_result.token.span.line,
-                      .start = impl_result.token.span.start,
-                      .end = parser->previous.span.end}
-  };
+  StmtImpl stmt = {.name = own_string_n(name.start, name.length),
+                   .methods = methods,
+                   .span = (Span) {.line = impl_result.token.span.line,
+                                   .start = impl_result.token.span.start,
+                                   .end = parser->previous.span.end}};
 
-  return (ParseFnResult) {
-      .as.stmt = AS_STMT_IMPL(stmt), .is_ok = true, .msg = NULL, .span = stmt.span};
+  return (ParseFnResult) {.as.stmt = AS_STMT_IMPL(stmt),
+                          .is_ok = true,
+                          .msg = NULL,
+                          .span = stmt.span};
 }
 
 static ParseFnResult yield_statement(Parser *parser)
