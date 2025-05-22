@@ -13,6 +13,7 @@ typedef struct {
   int errcode;
   bool is_ok;
   char *msg;
+  Span span;
 } LoopLabelResult;
 
 LoopLabelResult loop_label_program(DynArray_Stmt *ast, const char *current);

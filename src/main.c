@@ -111,7 +111,11 @@ static RunResult run(Arguments *args)
 
   LoopLabelResult loop_label_result = loop_label_program(&raw_ast, NULL);
   if (!loop_label_result.is_ok) {
-    alloc_err_str(&result.msg, "loop_labeler: %s\n", loop_label_result.msg);
+    char *errctx = mkerrctx(source, loop_label_result.span.line,
+                            loop_label_result.span.start,
+                            loop_label_result.span.end, 3, 3);
+    alloc_err_str(&result.msg, "loop_labeler: %s\n%s\n", loop_label_result.msg,
+                  errctx);
     result.is_ok = false;
     result.errcode = loop_label_result.errcode;
     goto cleanup_after_loop_label;

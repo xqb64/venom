@@ -8,20 +8,6 @@
 #include "dynarray.h"
 #include "util.h"
 
-#define HANDLE_STMT(...)                   \
-  do {                                     \
-    result = loop_label_stmt(__VA_ARGS__); \
-    if (!result.is_ok) {                   \
-      return result;                       \
-    }                                      \
-  } while (0)
-
-#define LOOP_LABEL_ERROR(...)              \
-  alloc_err_str(&result.msg, __VA_ARGS__); \
-  result.is_ok = false;                    \
-  result.errcode = -1;                     \
-  return result;
-
 static size_t mktmp(void)
 {
   static size_t tmp = 0;
@@ -31,7 +17,7 @@ static size_t mktmp(void)
 LoopLabelResult loop_label_program(DynArray_Stmt *ast, const char *current)
 {
   LoopLabelResult result = {
-      .is_ok = true, .errcode = 0, .as.ast = {0}, .msg = NULL};
+      .is_ok = true, .errcode = 0, .as.ast = {0}, .msg = NULL, .span = {0}};
 
   DynArray_Stmt labeled_ast = {0};
   for (size_t i = 0; i < ast->count; i++) {
@@ -107,14 +93,22 @@ LoopLabelResult loop_label_stmt(Stmt *stmt, const char *current)
     }
     case STMT_BREAK: {
       if (!current) {
-        LOOP_LABEL_ERROR("'break' statement outside the loop");
+        alloc_err_str(&result.msg, "'continue' statement outside the loop");
+        result.is_ok = false;
+        result.errcode = -1;
+        result.span = stmt->span;
+        return result;
       }
       labeled_stmt.as.stmt_break.label = own_string(current);
       break;
     }
     case STMT_CONTINUE: {
       if (!current) {
-        LOOP_LABEL_ERROR("'continue' statement outside the loop");
+        alloc_err_str(&result.msg, "'continue' statement outside the loop");
+        result.is_ok = false;
+        result.errcode = -1;
+        result.span = stmt->span;
+        return result;
       }
       labeled_stmt.as.stmt_continue.label = own_string(current);
       break;
