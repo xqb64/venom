@@ -55,6 +55,10 @@ The system includes what you would expect from a programming language implementa
   - a disassembler
   - an optimizer
 
+### Optimizations
+
+Besides **NAN boxing**, the implementation also contains an optimizer which takes the abstract syntax tree after the loop label stage, and passes it through an iterative optimization pipeline, where optimizations like **constant folding**, **unreachable code elimination**, **dead stores elimination**, and **copy propagation** take place.
+
 ### Pretty error reports
 
 ```rust
