@@ -967,8 +967,24 @@ static ParseFnResult print_statement(Parser *parser)
 
 static ParseFnResult let_statement(Parser *parser)
 {
-  Token identifier =
-      CONSUME(parser, TOKEN_IDENTIFIER, "Expected identifier after 'let'.");
+  TokenResult let_result = consume(parser, TOKEN_LET);
+  if (!let_result.is_ok) {
+    return (ParseFnResult) {.is_ok = false,
+                            .as.stmt = {0},
+                            .msg = strdup("Expected 'let' token."),
+                            .span = parser->current.span};
+  }
+
+  TokenResult identifier_result = consume(parser, TOKEN_IDENTIFIER);
+  if (!identifier_result.is_ok) {
+    return (ParseFnResult) {.is_ok = false,
+                            .as.stmt = {0},
+                            .msg = strdup("Expected identifier after 'let'."),
+                            .span = parser->current.span};
+  }
+
+  Token identifier = identifier_result.token;
+
   char *name = own_string_n(identifier.start, identifier.length);
 
   TokenResult equal_result = consume(parser, TOKEN_EQUAL);
@@ -977,7 +993,8 @@ static ParseFnResult let_statement(Parser *parser)
     return (ParseFnResult) {
         .is_ok = false,
         .as.stmt = {0},
-        .msg = strdup("Expected '=' after variable name in 'let' statement.")};
+        .msg = strdup("Expected '=' after variable name in 'let' statement."),
+        .span = parser->current.span};
   }
 
   ParseFnResult initializer_result = expression(parser);
@@ -995,14 +1012,17 @@ static ParseFnResult let_statement(Parser *parser)
     return (ParseFnResult) {
         .is_ok = false,
         .as.stmt = {0},
-        .msg = strdup("Expected ';' after 'let' statement.")};
+        .msg = strdup("Expected ';' after 'let' statement."),
+        .span = (Span) {.line = parser->previous.span.line,
+                        .start = parser->previous.span.end,
+                        .end = parser->previous.span.end}};
   }
 
   StmtLet stmt = {.name = name,
                   .initializer = initializer,
-                  .span = (Span) {.start = identifier.span.start,
+                  .span = (Span) {.start = let_result.token.span.start,
                                   .end = semicolon_result.token.span.end,
-                                  .line = identifier.span.line}};
+                                  .line = let_result.token.span.line}};
   return (ParseFnResult) {.as.stmt = AS_STMT_LET(stmt),
                           .is_ok = true,
                           .msg = NULL,
@@ -1555,7 +1575,7 @@ static ParseFnResult statement(Parser *parser)
 {
   if (check(parser, TOKEN_PRINT)) {
     return print_statement(parser);
-  } else if (match(parser, 1, TOKEN_LET)) {
+  } else if (check(parser, TOKEN_LET)) {
     return let_statement(parser);
   } else if (match(parser, 1, TOKEN_LEFT_BRACE)) {
     return block(parser);
