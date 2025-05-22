@@ -1396,7 +1396,20 @@ static ParseFnResult decorator_statement(Parser *parser)
 
 static ParseFnResult return_statement(Parser *parser)
 {
-  Expr expr = HANDLE_EXPR(expression, parser);
+  TokenResult return_result = consume(parser, TOKEN_RETURN);
+  if (!return_result.is_ok) {
+    return (ParseFnResult) {.is_ok = false,
+                            .as.stmt = {0},
+                            .msg = strdup("Expected 'return' token."),
+                            .span = parser->previous.span};
+  }
+
+  ParseFnResult expr_result = expression(parser);
+  if (!expr_result.is_ok) {
+    return expr_result;
+  }
+
+  Expr expr = expr_result.as.expr;
 
   TokenResult semicolon_result = consume(parser, TOKEN_SEMICOLON);
   if (!semicolon_result.is_ok) {
@@ -1404,14 +1417,21 @@ static ParseFnResult return_statement(Parser *parser)
     return (ParseFnResult) {
         .is_ok = false,
         .as.stmt = {0},
-        .msg = strdup("Expected ';' after 'return' statement.")};
+        .msg = strdup("Expected ';' after 'return' statement."),
+        .span = (Span) {.line = parser->previous.span.line,
+                        .start = parser->previous.span.end,
+                        .end = parser->previous.span.end}};
   }
 
-  StmtReturn stmt = {
-      .expr = expr,
-  };
-  return (ParseFnResult) {
-      .as.stmt = AS_STMT_RETURN(stmt), .is_ok = true, .msg = NULL};
+  StmtReturn stmt = {.expr = expr,
+                     .span = (Span) {.line = return_result.token.span.line,
+                                     .start = return_result.token.span.start,
+                                     .end = semicolon_result.token.span.end}};
+
+  return (ParseFnResult) {.as.stmt = AS_STMT_RETURN(stmt),
+                          .is_ok = true,
+                          .msg = NULL,
+                          .span = stmt.span};
 }
 
 static ParseFnResult break_statement(Parser *parser)
@@ -1643,7 +1663,7 @@ static ParseFnResult statement(Parser *parser)
     return continue_statement(parser);
   } else if (match(parser, 1, TOKEN_FN)) {
     return function_statement(parser);
-  } else if (match(parser, 1, TOKEN_RETURN)) {
+  } else if (check(parser, TOKEN_RETURN)) {
     return return_statement(parser);
   } else if (match(parser, 1, TOKEN_STRUCT)) {
     return struct_statement(parser);
