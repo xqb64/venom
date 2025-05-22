@@ -1314,11 +1314,33 @@ static ParseFnResult for_statement(Parser *parser)
 
 static ParseFnResult function_statement(Parser *parser)
 {
-  Token name =
-      CONSUME(parser, TOKEN_IDENTIFIER, "Expected identifier after 'fn'.");
+  TokenResult fn_result = consume(parser, TOKEN_FN);
+  if (!fn_result.is_ok) {
+    return (ParseFnResult) {.is_ok = false,
+                            .as.stmt = {0},
+                            .msg = strdup("Expected 'fn' token."),
+                            .span = parser->current.span};
+  }
 
-  CONSUME(parser, TOKEN_LEFT_PAREN,
-          "Expected '(' after identifier in 'fn' statement.");
+  TokenResult fn_identifier_result = consume(parser, TOKEN_IDENTIFIER);
+  if (!fn_identifier_result.is_ok) {
+    return (ParseFnResult) {.is_ok = false,
+                            .as.stmt = {0},
+                            .msg = strdup("Expected identifier after 'fn'."),
+                            .span = parser->current.span};
+  }
+
+  Token name = fn_identifier_result.token;
+
+  TokenResult lparen_result = consume(parser, TOKEN_LEFT_PAREN);
+  if (!lparen_result.is_ok) {
+    return (ParseFnResult) {.is_ok = false,
+                            .as.stmt = {0},
+                            .msg = strdup("Expected '(' after identifier in 'fn' statement."),
+                            .span = (Span) {.line = parser->previous.span.line,
+                                            .start = parser->previous.span.end,
+                                            .end = parser->previous.span.end}};
+  }
 
   DynArray_char_ptr parameters = {0};
   if (!check(parser, TOKEN_RIGHT_PAREN)) {
@@ -1333,7 +1355,8 @@ static ParseFnResult function_statement(Parser *parser)
             .is_ok = false,
             .as.stmt = {0},
             .msg =
-                strdup("Expected parameter name after '(' in 'fn' statement.")};
+                strdup("Expected parameter name after '(' in 'fn' statement."),
+            .span = lparen_result.token.span};
       }
 
       Token parameter = identifier_result.token;
@@ -1354,7 +1377,8 @@ static ParseFnResult function_statement(Parser *parser)
         .is_ok = false,
         .as.stmt = {0},
         .msg =
-            strdup("Expected ')' after the parameter list in 'fn' statement.")};
+            strdup("Expected ')' after the parameter list in 'fn' statement."),
+        .span = (Span) {.line = parser->previous.span.line, .start = parser->previous.span.end, .end = parser->previous.span.end}};
   }
 
   ParseFnResult body_result = block(parser);
@@ -1372,6 +1396,9 @@ static ParseFnResult function_statement(Parser *parser)
       .name = own_string_n(name.start, name.length),
       .body = ALLOC(body),
       .parameters = parameters,
+      .span = (Span) {.line = fn_result.token.span.line,
+                      .start = fn_result.token.span.start,
+                      .end = body.span.end},
   };
   return (ParseFnResult) {
       .as.stmt = AS_STMT_FN(stmt), .is_ok = true, .msg = NULL};
@@ -1661,7 +1688,7 @@ static ParseFnResult statement(Parser *parser)
     return break_statement(parser);
   } else if (check(parser, TOKEN_CONTINUE)) {
     return continue_statement(parser);
-  } else if (match(parser, 1, TOKEN_FN)) {
+  } else if (check(parser, TOKEN_FN)) {
     return function_statement(parser);
   } else if (check(parser, TOKEN_RETURN)) {
     return return_statement(parser);
