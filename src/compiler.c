@@ -489,7 +489,8 @@ static CompileResult compile_expr(Bytecode *code, const Expr *expr);
 
 static CompileResult compile_expr_lit(Bytecode *code, const Expr *expr)
 {
-  CompileResult result = {.is_ok = true, .chunk = NULL, .msg = NULL};
+  CompileResult result = {
+      .is_ok = true, .chunk = NULL, .msg = NULL, .span = expr->span};
 
   ExprLiteral expr_lit = expr->as.expr_literal;
 
@@ -563,18 +564,28 @@ static CompileResult compile_expr_var(Bytecode *code, const Expr *expr)
 
 static CompileResult compile_expr_una(Bytecode *code, const Expr *expr)
 {
-  CompileResult result = {.is_ok = true, .chunk = NULL, .msg = NULL};
+  CompileResult result = {
+      .is_ok = true, .chunk = NULL, .msg = NULL, .span = expr->span};
 
   ExprUnary expr_unary = expr->as.expr_unary;
 
   if (strcmp(expr_unary.op, "-") == 0) {
-    COMPILE_EXPR(code, expr_unary.expr);
+    CompileResult expr_result = compile_expr(code, expr_unary.expr);
+    if (!expr_result.is_ok) {
+      return expr_result;
+    }
     emit_byte(code, OP_NEG);
   } else if (strcmp(expr_unary.op, "!") == 0) {
-    COMPILE_EXPR(code, expr_unary.expr);
+    CompileResult expr_result = compile_expr(code, expr_unary.expr);
+    if (!expr_result.is_ok) {
+      return expr_result;
+    }
     emit_byte(code, OP_NOT);
   } else if (strcmp(expr_unary.op, "*") == 0) {
-    COMPILE_EXPR(code, expr_unary.expr);
+    CompileResult expr_result = compile_expr(code, expr_unary.expr);
+    if (!expr_result.is_ok) {
+      return expr_result;
+    }
     emit_byte(code, OP_DEREF);
   } else if (strcmp(expr_unary.op, "&") == 0) {
     switch (expr_unary.expr->kind) {
@@ -605,15 +616,27 @@ static CompileResult compile_expr_una(Bytecode *code, const Expr *expr)
         }
 
         /* The variable is not defined, bail out. */
-        COMPILER_ERROR("Variable '%s' is not defined.", var.name);
-
-        break;
+        alloc_err_str(&result.msg, "Variable '%s' is not defined.", var.name);
+        Compiler *c;
+        while (current_compiler) {
+          c = current_compiler;
+          current_compiler = c->next;
+          free_compiler(c);
+          free(c);
+        }
+        result.is_ok = false;
+        result.errcode = -1;
+        return result;
       }
       case EXPR_GET: {
         ExprGet expr_get = expr_unary.expr->as.expr_get;
         /* Compile the part that comes be-
          * fore the member access operator. */
-        COMPILE_EXPR(code, expr_get.expr);
+        CompileResult expr_result = compile_expr(code, expr_get.expr);
+        if (!expr_result.is_ok) {
+          return expr_result;
+        }
+
         /* Deref if the operator is '->'. */
         if (strcmp(expr_get.op, "->") == 0) {
           emit_byte(code, OP_DEREF);
@@ -629,7 +652,10 @@ static CompileResult compile_expr_una(Bytecode *code, const Expr *expr)
         break;
     }
   } else if (strcmp(expr_unary.op, "~") == 0) {
-    COMPILE_EXPR(code, expr_unary.expr);
+    CompileResult expr_result = compile_expr(code, expr_unary.expr);
+    if (!expr_result.is_ok) {
+      return expr_result;
+    }
     emit_byte(code, OP_BITNOT);
   }
 
@@ -752,7 +778,8 @@ static CompileResult compile_expr_bin(Bytecode *code, const Expr *expr)
 
 static CompileResult compile_expr_call(Bytecode *code, const Expr *expr)
 {
-  CompileResult result = {.is_ok = true, .chunk = NULL, .msg = NULL, .span = expr->span};
+  CompileResult result = {
+      .is_ok = true, .chunk = NULL, .msg = NULL, .span = expr->span};
 
   ExprCall expr_call = expr->as.expr_call;
 
@@ -761,7 +788,10 @@ static CompileResult compile_expr_call(Bytecode *code, const Expr *expr)
 
     /* Compile the part that comes before the member access
      * operator. */
-    COMPILE_EXPR(code, expr_get.expr);
+    CompileResult expr_get_result = compile_expr(code, expr_get.expr);
+    if (!expr_get_result.is_ok) {
+      return expr_get_result;
+    }
 
     /* Deref it if the operator is -> */
     if (strcmp(expr_get.op, "->") == 0) {
@@ -771,7 +801,11 @@ static CompileResult compile_expr_call(Bytecode *code, const Expr *expr)
     char *method = expr_get.property_name;
 
     for (size_t i = 0; i < expr_call.arguments.count; i++) {
-      COMPILE_EXPR(code, &expr_call.arguments.data[i]);
+      CompileResult arg_result =
+          compile_expr(code, &expr_call.arguments.data[i]);
+      if (!arg_result.is_ok) {
+        return arg_result;
+      }
     }
 
     emit_byte(code, OP_CALL_METHOD);
@@ -784,29 +818,54 @@ static CompileResult compile_expr_call(Bytecode *code, const Expr *expr)
     if (b) {
       if (strcmp(b->name, "next") == 0) {
         for (size_t i = 0; i < expr_call.arguments.count; i++) {
-          COMPILE_EXPR(code, &expr_call.arguments.data[i]);
+          CompileResult arg_result =
+              compile_expr(code, &expr_call.arguments.data[i]);
+          if (!arg_result.is_ok) {
+            return arg_result;
+          }
         }
         emit_byte(code, OP_RESUME);
       } else if (strcmp(b->name, "len") == 0) {
         for (size_t i = 0; i < expr_call.arguments.count; i++) {
-          COMPILE_EXPR(code, &expr_call.arguments.data[i]);
+          CompileResult arg_result =
+              compile_expr(code, &expr_call.arguments.data[i]);
+          if (!arg_result.is_ok) {
+            return arg_result;
+          }
         }
         emit_byte(code, OP_LEN);
       } else if (strcmp(b->name, "hasattr") == 0) {
         for (size_t i = 0; i < expr_call.arguments.count; i++) {
-          COMPILE_EXPR(code, &expr_call.arguments.data[i]);
+          CompileResult arg_result =
+              compile_expr(code, &expr_call.arguments.data[i]);
+          if (!arg_result.is_ok) {
+            return arg_result;
+          }
         }
         emit_byte(code, OP_HASATTR);
       } else if (strcmp(b->name, "getattr") == 0) {
-        COMPILE_EXPR(code, &expr_call.arguments.data[0]);
+        CompileResult arg_result =
+            compile_expr(code, &expr_call.arguments.data[0]);
+        if (!arg_result.is_ok) {
+          return arg_result;
+        }
         emit_bytes(code, 1, OP_GETATTR);
         emit_uint32(
             code,
             add_string(code,
                        expr_call.arguments.data[1].as.expr_literal.as.str));
       } else if (strcmp(b->name, "setattr") == 0) {
-        COMPILE_EXPR(code, &expr_call.arguments.data[0]);
-        COMPILE_EXPR(code, &expr_call.arguments.data[2]);
+        CompileResult arg0_result =
+            compile_expr(code, &expr_call.arguments.data[0]);
+        if (!arg0_result.is_ok) {
+          return arg0_result;
+        }
+
+        CompileResult arg2_result =
+            compile_expr(code, &expr_call.arguments.data[2]);
+        if (!arg2_result.is_ok) {
+          return arg2_result;
+        }
 
         emit_byte(code, OP_SETATTR);
         emit_uint32(
@@ -836,7 +895,11 @@ static CompileResult compile_expr_call(Bytecode *code, const Expr *expr)
 
     /* Then compile the arguments */
     for (size_t i = 0; i < expr_call.arguments.count; i++) {
-      COMPILE_EXPR(code, &expr_call.arguments.data[i]);
+      CompileResult arg_result =
+          compile_expr(code, &expr_call.arguments.data[i]);
+      if (!arg_result.is_ok) {
+        return arg_result;
+      }
     }
 
     bool is_global = false;
@@ -863,7 +926,17 @@ static CompileResult compile_expr_call(Bytecode *code, const Expr *expr)
 
     /* Bail out if it's neither local nor a global. */
     if (idx == -1) {
-      COMPILER_ERROR("Function '%s' is not defined.", var.name);
+      alloc_err_str(&result.msg, "Function '%s' is not defined.", var.name);
+      Compiler *c;
+      while (current_compiler) {
+        c = current_compiler;
+        current_compiler = c->next;
+        free_compiler(c);
+        free(c);
+      }
+      result.is_ok = false;
+      result.errcode = -1;
+      return result;
     }
 
     if (is_global) {
@@ -1252,6 +1325,7 @@ static CompileExprHandler expression_handler[] = {
     [EXPR_ARRAY] = {.fn = compile_expr_array, .name = "EXPR_ARRAY"},
     [EXPR_SUBSCRIPT] = {.fn = compile_expr_subscript, .name = "EXPR_SUBSCRIPT"},
 };
+;
 
 static CompileResult compile_expr(Bytecode *code, const Expr *expr)
 {
@@ -1269,9 +1343,7 @@ static CompileResult compile_stmt_print(Bytecode *code, const Stmt *stmt)
 
   CompileResult expr_result = compile_expr(code, &s.expr);
   if (!expr_result.is_ok) {
-    result.msg = expr_result.msg;
-    result.is_ok = false;
-    return result;
+    return expr_result;
   }
 
   emit_byte(code, OP_PRINT);

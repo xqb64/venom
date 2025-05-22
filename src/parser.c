@@ -226,9 +226,11 @@ static ParseFnResult finish_call(Parser *parser, Expr callee)
   ExprCall e = {
       .callee = ALLOC(callee),
       .arguments = arguments,
-      .span = (Span) {.line = callee.span.line, .start = callee.span.start, .end = rparen_result.token.span.end},
+      .span = (Span) {.line = callee.span.line,
+                      .start = callee.span.start,
+                      .end = rparen_result.token.span.end},
   };
-  
+
   return (ParseFnResult) {
       .as.expr = AS_EXPR_CALL(e), .is_ok = true, .msg = NULL, .span = e.span};
 }
@@ -302,11 +304,8 @@ static ParseFnResult call(Parser *parser)
     }
   }
 
-
-  return (ParseFnResult) {.as.expr = expr,
-                          .is_ok = true,
-                          .msg = NULL,
-                          .span = expr.span};
+  return (ParseFnResult) {
+      .as.expr = expr, .is_ok = true, .msg = NULL, .span = expr.span};
 }
 
 static ParseFnResult unary(Parser *parser)
