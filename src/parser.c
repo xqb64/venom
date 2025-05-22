@@ -1070,7 +1070,7 @@ static ParseFnResult if_statement(Parser *parser)
     return condition_result;
   }
 
-  Expr condition = condition_result.as.expr; 
+  Expr condition = condition_result.as.expr;
 
   TokenResult rparen_result = consume(parser, TOKEN_RIGHT_PAREN);
   if (!rparen_result.is_ok) {
@@ -1079,7 +1079,9 @@ static ParseFnResult if_statement(Parser *parser)
         .is_ok = false,
         .as.stmt = {0},
         .msg = strdup("Expected ')' after 'if' condition."),
-        .span = (Span) {.line = lparen_result.token.span.line, .start = lparen_result.token.span.start, .end = parser->previous.span.end}};
+        .span = (Span) {.line = lparen_result.token.span.line,
+                        .start = lparen_result.token.span.start,
+                        .end = parser->previous.span.end}};
   }
 
   Stmt *then_branch = malloc(sizeof(Stmt));
@@ -1110,10 +1112,15 @@ static ParseFnResult if_statement(Parser *parser)
       .then_branch = then_branch,
       .else_branch = else_branch,
       .condition = condition,
-      .span = (Span) {.line = if_result.token.span.line, .start = if_result.token.span.start, .end = else_branch ? else_branch->span.end : then_branch->span.end},
+      .span = (Span) {.line = if_result.token.span.line,
+                      .start = if_result.token.span.start,
+                      .end = else_branch ? else_branch->span.end
+                                         : then_branch->span.end},
   };
-  return (ParseFnResult) {
-      .as.stmt = AS_STMT_IF(stmt), .is_ok = true, .msg = NULL, .span = stmt.span};
+  return (ParseFnResult) {.as.stmt = AS_STMT_IF(stmt),
+                          .is_ok = true,
+                          .msg = NULL,
+                          .span = stmt.span};
 }
 
 static ParseFnResult while_statement(Parser *parser)
