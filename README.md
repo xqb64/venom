@@ -49,10 +49,25 @@ This project is my debut in the realm of programming language design. I had a bl
 The system includes what you would expect from a programming language implementation:
 
   - a lexer based on finite state machines
-  - recursive-descent parser
-  - bytecode compiler
-  - virtual machine
-  - disassembler
+  - a recursive-descent parser
+  - a bytecode compiler
+  - a virtual machine
+  - a disassembler
+  - an optimizer
+
+### Pretty error reports
+
+```rust
+loop_labeler: 'break' statement outside the loop
+1 fn main() {
+2   let x = 0;
+3   if (x == 0) {
+4     break;
+      ^^^^^^
+5   }
+6   return 0;
+7 }
+```
 
 ## Compiling
 

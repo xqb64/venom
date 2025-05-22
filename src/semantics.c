@@ -93,7 +93,7 @@ LoopLabelResult loop_label_stmt(Stmt *stmt, const char *current)
     }
     case STMT_BREAK: {
       if (!current) {
-        alloc_err_str(&result.msg, "'continue' statement outside the loop");
+        alloc_err_str(&result.msg, "'break' statement outside the loop");
         result.is_ok = false;
         result.errcode = -1;
         result.span = stmt->span;
