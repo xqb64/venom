@@ -960,7 +960,10 @@ static ParseFnResult array_initializer(Parser *parser)
 
     return (ParseFnResult) {.is_ok = false,
                             .as.expr = {0},
-                            .msg = strdup("Expected ']' after array members.")};
+                            .msg = strdup("Expected ']' after array members."),
+                            .span = (Span) {.line = parser->previous.span.line,
+                                            .start = parser->previous.span.end,
+                                            .end = parser->previous.span.end}};
   }
 
   ExprArray arrayexp = {
@@ -1098,7 +1101,12 @@ static ParseFnResult let_statement(Parser *parser)
 
 static ParseFnResult expression_statement(Parser *parser)
 {
-  Expr expr = HANDLE_EXPR(expression, parser);
+  ParseFnResult expr_result = expression(parser);
+  if (!expr_result.is_ok) {
+    return expr_result;
+  }
+
+  Expr expr = expr_result.as.expr;
 
   TokenResult semicolon_result = consume(parser, TOKEN_SEMICOLON);
   if (!semicolon_result.is_ok) {
@@ -1106,12 +1114,20 @@ static ParseFnResult expression_statement(Parser *parser)
     return (ParseFnResult) {
         .is_ok = false,
         .as.stmt = {0},
-        .msg = strdup("Expected ';' after expression statement.")};
+        .msg = strdup("Expected ';' after expression statement."),
+        .span = (Span) {.line = parser->previous.span.line,
+                        .start = parser->previous.span.end,
+                        .end = parser->previous.span.end}};
   }
 
-  StmtExpr stmt = {.expr = expr};
-  return (ParseFnResult) {
-      .as.stmt = AS_STMT_EXPR(stmt), .is_ok = true, .msg = NULL};
+  StmtExpr stmt = {.expr = expr,
+                   .span = (Span) {.line = expr.span.line,
+                                   .start = expr.span.start,
+                                   .end = semicolon_result.token.span.end}};
+  return (ParseFnResult) {.as.stmt = AS_STMT_EXPR(stmt),
+                          .is_ok = true,
+                          .msg = NULL,
+                          .span = stmt.span};
 }
 
 static ParseFnResult if_statement(Parser *parser)
