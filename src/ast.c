@@ -102,6 +102,16 @@ void free_expr(const Expr *expr)
       free(expr_subscript.index);
       break;
     }
+    case EXPR_CONDITIONAL: {
+      ExprConditional expr_conditional = expr->as.expr_conditional;
+      free_expr(expr_conditional.condition);
+      free_expr(expr_conditional.then_branch);
+      free_expr(expr_conditional.else_branch);
+      free(expr_conditional.condition);
+      free(expr_conditional.then_branch);
+      free(expr_conditional.else_branch);
+      break;
+    }
     default:
       print_expr(expr, 0);
       assert(0);
@@ -416,6 +426,15 @@ Expr clone_expr(const Expr *expr)
           own_string(expr->as.expr_get.property_name);
       break;
     }
+    case EXPR_CONDITIONAL: {
+      Expr cloned_condition = clone_expr(expr->as.expr_conditional.condition);
+      Expr cloned_then_branch = clone_expr(expr->as.expr_conditional.then_branch);
+      Expr cloned_else_branch = clone_expr(expr->as.expr_conditional.else_branch);
+      clone.as.expr_conditional.condition = ALLOC(cloned_condition);
+      clone.as.expr_conditional.then_branch = ALLOC(cloned_then_branch);
+      clone.as.expr_conditional.else_branch = ALLOC(cloned_else_branch);
+      break;
+    }
     default:
       print_expr(expr, 0);
       assert(0);
@@ -713,6 +732,21 @@ void print_expr(const Expr *expr, int indent)
       }
       printf("]");
       break;
+    }
+    case EXPR_CONDITIONAL: {
+        printf("Conditional(\n");
+        INDENT(indent + 4);
+        printf("condition: ");
+        print_expr(expr->as.expr_conditional.condition, indent + 4);
+        printf(", \n");
+        INDENT(indent + 4);
+        printf("then_branch: ");
+        print_expr(expr->as.expr_conditional.then_branch, indent + 4);
+        printf(", \n");
+        INDENT(indent + 4);
+        printf("else_branch: ");
+        print_expr(expr->as.expr_conditional.else_branch, indent + 4);
+        break;
     }
     default:
       assert(0);

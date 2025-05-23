@@ -1399,7 +1399,7 @@ static CompileResult compile_expr_array(Bytecode *code, const Expr *expr)
 
 static CompileResult compile_expr_subscript(Bytecode *code, const Expr *expr)
 {
-  CompileResult result = {.is_ok = true, .chunk = NULL, .msg = NULL};
+  CompileResult result = {.is_ok = true, .chunk = NULL, .msg = NULL, .span = expr->span};
   ExprSubscript expr_subscript = expr->as.expr_subscript;
 
   /* First, we compile the expr. */
@@ -1416,6 +1416,38 @@ static CompileResult compile_expr_subscript(Bytecode *code, const Expr *expr)
 
   /* Then, we emit OP_SUBSCRIPT. */
   emit_byte(code, OP_SUBSCRIPT);
+
+  return result;
+}
+
+static CompileResult compile_expr_conditional(Bytecode *code, const Expr *expr)
+{
+  CompileResult result = {.is_ok = true, .chunk = NULL, .msg = NULL, .span = expr->span};
+
+  ExprConditional expr_conditional = expr->as.expr_conditional;
+
+  CompileResult condition_result = compile_expr(code, expr_conditional.condition);
+  if (!condition_result.is_ok) {
+    return condition_result;
+  }
+
+  int else_jump = emit_placeholder(code, OP_JZ);
+
+  CompileResult then_result = compile_expr(code, expr_conditional.then_branch);
+  if (!then_result.is_ok) {
+    return then_result;
+  }
+
+  int exit_jump = emit_placeholder(code, OP_JMP);
+  
+  patch_placeholder(code, else_jump);
+
+  CompileResult else_result = compile_expr(code, expr_conditional.else_branch);
+  if (!else_result.is_ok) {
+    return else_result;
+  }
+
+  patch_placeholder(code, exit_jump);
 
   return result;
 }
@@ -1440,6 +1472,7 @@ static CompileExprHandler expression_handler[] = {
                                  .name = "EXPR_STRUCT_INITIALIZER"},
     [EXPR_ARRAY] = {.fn = compile_expr_array, .name = "EXPR_ARRAY"},
     [EXPR_SUBSCRIPT] = {.fn = compile_expr_subscript, .name = "EXPR_SUBSCRIPT"},
+    [EXPR_CONDITIONAL] = {.fn = compile_expr_conditional, .name = "EXPR_CONDITIONAL"},
 };
 ;
 
@@ -1944,7 +1977,7 @@ static CompileResult compile_stmt_decorator(Bytecode *code, const Stmt *stmt)
   if (f) {
     argcount = f->paramcount;
   } else {
-    COMPILER_ERROR("...");
+    assert(0);
   }
 
   emit_byte(code, argcount);

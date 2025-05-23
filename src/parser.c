@@ -663,9 +663,49 @@ static ParseFnResult or_(Parser *parser)
   return (ParseFnResult) {.as.expr = expr, .is_ok = true, .msg = NULL};
 }
 
-static ParseFnResult assignment(Parser *parser)
+static ParseFnResult conditional(Parser *parser)
 {
   ParseFnResult expr_result = or_(parser);
+  if (!expr_result.is_ok) {
+    return expr_result;
+  }
+
+  Expr expr = expr_result.as.expr;
+
+  if (match(parser, 1, TOKEN_QUESTION)) {
+    ParseFnResult then_result = expression(parser);
+    if (!then_result.is_ok) {
+      return then_result;
+    }
+
+    Expr then_branch = then_result.as.expr;
+ 
+    TokenResult colon_result = consume(parser, TOKEN_COLON);
+    if (!colon_result.is_ok) {
+      return (ParseFnResult) {.is_ok = false,
+                              .as.expr = {0},
+                              .msg = strdup("Expected ':' after then branch in conditional expressions."),
+                              .span = parser->previous.span};
+    }
+
+    ParseFnResult else_result = conditional(parser);
+    if (!else_result.is_ok) {
+      return else_result;
+    }
+
+    Expr else_branch = else_result.as.expr;
+
+    ExprConditional e = {.condition = ALLOC(expr), .then_branch = ALLOC(then_branch), .else_branch = ALLOC(else_branch)};
+
+    expr = AS_EXPR_CONDITIONAL(e);
+  }
+
+  return (ParseFnResult) {.is_ok = true, .as.expr = expr, .msg = NULL, .span = expr.span};
+}
+
+static ParseFnResult assignment(Parser *parser)
+{
+  ParseFnResult expr_result = conditional(parser);
   if (!expr_result.is_ok) {
     return expr_result;
   }
@@ -678,7 +718,7 @@ static ParseFnResult assignment(Parser *parser)
             TOKEN_GREATER_GREATER_EQUAL, TOKEN_LESS_LESS_EQUAL)) {
     char *op = own_string_n(parser->previous.start, parser->previous.length);
 
-    ParseFnResult right_result = or_(parser);
+    ParseFnResult right_result = assignment(parser);
     if (!right_result.is_ok) {
       free(op);
       free_expr(&expr);

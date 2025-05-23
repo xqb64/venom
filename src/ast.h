@@ -26,6 +26,7 @@ typedef enum {
   EXPR_STRUCT_INITIALIZER,
   EXPR_ARRAY,
   EXPR_SUBSCRIPT,
+  EXPR_CONDITIONAL,
 } ExprKind;
 
 typedef enum {
@@ -106,6 +107,13 @@ typedef struct ExprSubscript {
   Span span;
 } ExprSubscript;
 
+typedef struct ExprConditional {
+  Expr *condition;
+  Expr *then_branch;
+  Expr *else_branch;
+  Span span;
+} ExprConditional;
+
 typedef DynArray(ExprStructInitializer) DynArray_ExprStructInitalizer;
 
 typedef struct Expr {
@@ -122,6 +130,7 @@ typedef struct Expr {
     ExprStructInitializer expr_struct_initializer;
     ExprArray expr_array;
     ExprSubscript expr_subscript;
+    ExprConditional expr_conditional;
   } as;
   Span span;
 } Expr;
@@ -156,6 +165,10 @@ void free_table_expr(const Table_Expr *table);
 #define AS_EXPR_SUBSCRIPT(exp) \
   ((Expr) {                    \
       .kind = EXPR_SUBSCRIPT, .as.expr_subscript = (exp), .span = (exp).span})
+#define AS_EXPR_CONDITIONAL(exp) \
+  ((Expr) {                    \
+      .kind = EXPR_CONDITIONAL, .as.expr_conditional = (exp), .span = (exp).span})
+
 
 typedef enum {
   STMT_LET,
