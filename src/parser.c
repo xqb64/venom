@@ -843,7 +843,6 @@ static ParseFnResult struct_initializer(Parser *parser)
                             .msg = strdup("Expected '{' after struct name.")};
   }
 
-  size_t start_of_last_offending_expr = 0;
   DynArray_Expr initializers = {0};
   do {
     ParseFnResult property_result = expression(parser);
@@ -857,8 +856,6 @@ static ParseFnResult struct_initializer(Parser *parser)
 
     Expr property = property_result.as.expr;
 
-    start_of_last_offending_expr = property.span.start;
-
     TokenResult colon_result = consume(parser, TOKEN_COLON);
     if (!colon_result.is_ok) {
       free(name);
@@ -870,7 +867,10 @@ static ParseFnResult struct_initializer(Parser *parser)
       return (ParseFnResult) {
           .is_ok = false,
           .as.expr = {0},
-          .msg = strdup("Expected ':' after property name.")};
+          .msg = strdup("Expected ':' after property name."),
+          .span = (Span) {.line = property.span.line,
+                          .start = property.span.end,
+                          .end = property.span.end}};
     }
 
     ParseFnResult value_result = expression(parser);
@@ -905,9 +905,9 @@ static ParseFnResult struct_initializer(Parser *parser)
         .is_ok = false,
         .as.expr = {0},
         .msg = strdup("Expected comma after `key: value` pair"),
-        .span = (Span) {.start = start_of_last_offending_expr,
-                        .end = parser->current.span.end,
-                        .line = parser->current.span.line}};
+        .span = (Span) {.start = parser->previous.span.end,
+                        .end = parser->previous.span.end,
+                        .line = parser->previous.span.line}};
   }
 
   TokenResult rbrace_result = consume(parser, TOKEN_RIGHT_BRACE);
