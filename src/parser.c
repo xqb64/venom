@@ -76,6 +76,12 @@ static bool check(Parser *parser, TokenType type)
   return parser->current.type == type;
 }
 
+static bool check2(Parser *parser, TokenType type1, TokenType type2)
+{
+  return (parser->current.type == type1) &&
+         (parser->tokens->data[parser->idx].type == type2);
+}
+
 static bool match(Parser *parser, int size, ...)
 {
   va_list ap;
@@ -1833,6 +1839,85 @@ static ParseFnResult assert_statement(Parser *parser)
                           .span = stmt.span};
 }
 
+static ParseFnResult goto_statement(Parser *parser)
+{
+  TokenResult goto_result = consume(parser, TOKEN_GOTO);
+  if (!goto_result.is_ok) {
+    return (ParseFnResult) {.is_ok = false,
+                            .as.stmt = {0},
+                            .msg = strdup("Expected 'goto' token."),
+                            .span = parser->current.span};
+  }
+
+  TokenResult identifier_result = consume(parser, TOKEN_IDENTIFIER);
+  if (!identifier_result.is_ok) {
+    return (ParseFnResult) {.is_ok = false,
+                            .as.stmt = {0},
+                            .msg = strdup("Expected identifier after 'goto'."),
+                            .span = parser->current.span};
+  }
+
+  TokenResult semicolon_result = consume(parser, TOKEN_SEMICOLON);
+  if (!semicolon_result.is_ok) {
+    return (ParseFnResult) {
+        .is_ok = false,
+        .as.stmt = {0},
+        .msg = strdup("Expected ';' after the 'goto' statement."),
+        .span = (Span) {.line = parser->current.span.line,
+                        .start = parser->current.span.end,
+                        .end = parser->current.span.end}};
+  }
+
+  StmtGoto stmt_goto = {
+      .label = own_string_n(identifier_result.token.start,
+                            identifier_result.token.length),
+      .span = (Span) {.line = goto_result.token.span.line,
+                      .start = goto_result.token.span.start,
+                      .end = semicolon_result.token.span.end}};
+
+  return (ParseFnResult) {.is_ok = true,
+                          .as.stmt = AS_STMT_GOTO(stmt_goto),
+                          .span = stmt_goto.span,
+                          .msg = NULL};
+}
+
+static ParseFnResult labeled_statement(Parser *parser)
+{
+  TokenResult identifier_result = consume(parser, TOKEN_IDENTIFIER);
+  if (!identifier_result.is_ok) {
+    return (ParseFnResult) {.is_ok = false,
+                            .as.stmt = {0},
+                            .span = parser->current.span,
+                            .msg = strdup("Expected identifier token.")};
+  }
+
+  Token label = identifier_result.token;
+
+  TokenResult colon_result = consume(parser, TOKEN_COLON);
+  if (!colon_result.is_ok) {
+    return (ParseFnResult) {.is_ok = false,
+                            .as.stmt = {0},
+                            .span = parser->current.span,
+                            .msg = strdup("Expected ':' after label.")};
+  }
+
+  ParseFnResult stmt_result = statement(parser);
+  if (!stmt_result.is_ok) {
+    return stmt_result;
+  }
+
+  StmtLabeled stmt_labeled = {.stmt = ALLOC(stmt_result.as.stmt),
+                              .span = (Span) {.line = label.span.line,
+                                              .start = label.span.start,
+                                              .end = stmt_result.span.end},
+                              .label = own_string_n(label.start, label.length)};
+
+  return (ParseFnResult) {.is_ok = true,
+                          .as.stmt = AS_STMT_LABELED(stmt_labeled),
+                          .msg = NULL,
+                          .span = stmt_labeled.span};
+}
+
 static ParseFnResult statement(Parser *parser)
 {
   if (check(parser, TOKEN_PRINT)) {
@@ -1851,6 +1936,8 @@ static ParseFnResult statement(Parser *parser)
     return break_statement(parser);
   } else if (check(parser, TOKEN_CONTINUE)) {
     return continue_statement(parser);
+  } else if (check(parser, TOKEN_GOTO)) {
+    return goto_statement(parser);
   } else if (check(parser, TOKEN_FN)) {
     return function_statement(parser);
   } else if (check(parser, TOKEN_RETURN)) {
@@ -1865,6 +1952,8 @@ static ParseFnResult statement(Parser *parser)
     return yield_statement(parser);
   } else if (check(parser, TOKEN_ASSERT)) {
     return assert_statement(parser);
+  } else if (check2(parser, TOKEN_IDENTIFIER, TOKEN_COLON)) {
+    return labeled_statement(parser);
   } else {
     return expression_statement(parser);
   }

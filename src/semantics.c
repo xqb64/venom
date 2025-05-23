@@ -1,5 +1,6 @@
 #include "semantics.h"
 
+#include <assert.h>
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>  // IWYU pragma: keep
@@ -14,27 +15,7 @@ static size_t mktmp(void)
   return tmp++;
 }
 
-LoopLabelResult loop_label_program(DynArray_Stmt *ast, const char *current)
-{
-  LoopLabelResult result = {
-      .is_ok = true, .errcode = 0, .as.ast = {0}, .msg = NULL, .span = {0}};
-
-  DynArray_Stmt labeled_ast = {0};
-  for (size_t i = 0; i < ast->count; i++) {
-    LoopLabelResult stmt_result = loop_label_stmt(&ast->data[i], current);
-    if (!stmt_result.is_ok) {
-      free_ast(&labeled_ast);
-      return stmt_result;
-    }
-    dynarray_insert(&labeled_ast, stmt_result.as.stmt);
-  }
-
-  result.as.ast = labeled_ast;
-
-  return result;
-}
-
-LoopLabelResult loop_label_stmt(Stmt *stmt, const char *current)
+static LoopLabelResult loop_label_stmt(Stmt *stmt, const char *current)
 {
   LoopLabelResult result = {
       .is_ok = true, .errcode = 0, .as.stmt = {0}, .msg = NULL};
@@ -182,6 +163,19 @@ LoopLabelResult loop_label_stmt(Stmt *stmt, const char *current)
 
       break;
     }
+    case STMT_LABELED: {
+      LoopLabelResult stmt_result =
+          loop_label_stmt(stmt->as.stmt_labeled.stmt, current);
+      if (!stmt_result.is_ok) {
+        return stmt_result;
+      }
+
+      labeled_stmt.as.stmt_labeled.stmt = ALLOC(stmt_result.as.stmt);
+      labeled_stmt.as.stmt_labeled.span = stmt->as.stmt_labeled.span;
+      labeled_stmt.as.stmt_labeled.label =
+          own_string(stmt->as.stmt_labeled.label);
+      break;
+    }
     default: {
       labeled_stmt = clone_stmt(stmt);
       break;
@@ -191,4 +185,206 @@ LoopLabelResult loop_label_stmt(Stmt *stmt, const char *current)
   result.as.stmt = labeled_stmt;
 
   return result;
+}
+
+LoopLabelResult loop_label_program(DynArray_Stmt *ast, const char *current)
+{
+  LoopLabelResult result = {
+      .is_ok = true, .errcode = 0, .as.ast = {0}, .msg = NULL, .span = {0}};
+
+  DynArray_Stmt labeled_ast = {0};
+  for (size_t i = 0; i < ast->count; i++) {
+    LoopLabelResult stmt_result = loop_label_stmt(&ast->data[i], current);
+    if (!stmt_result.is_ok) {
+      free_ast(&labeled_ast);
+      return stmt_result;
+    }
+    dynarray_insert(&labeled_ast, stmt_result.as.stmt);
+  }
+
+  result.as.ast = labeled_ast;
+
+  return result;
+}
+
+static LabelCheckResult label_collect_stmt(const Stmt *stmt,
+                                           DynArray_char_ptr *labels,
+                                           char *funcname)
+{
+  switch (stmt->kind) {
+    case STMT_FN: {
+      for (size_t i = 0; i < stmt->as.stmt_fn.body->as.stmt_block.stmts.count;
+           i++) {
+        LabelCheckResult collect_result = label_collect_stmt(
+            &stmt->as.stmt_fn.body->as.stmt_block.stmts.data[i], labels,
+            funcname);
+        if (!collect_result.is_ok) {
+          return collect_result;
+        }
+      }
+      break;
+    }
+    case STMT_BLOCK: {
+      for (size_t i = 0; i < stmt->as.stmt_block.stmts.count; i++) {
+        LabelCheckResult collect_result = label_collect_stmt(
+            &stmt->as.stmt_block.stmts.data[i], labels, funcname);
+        if (!collect_result.is_ok) {
+          return collect_result;
+        }
+      }
+      break;
+    }
+    case STMT_WHILE: {
+      for (size_t i = 0;
+           i < stmt->as.stmt_while.body->as.stmt_block.stmts.count; i++) {
+        LabelCheckResult collect_result = label_collect_stmt(
+            &stmt->as.stmt_while.body->as.stmt_block.stmts.data[i], labels,
+            funcname);
+        if (!collect_result.is_ok) {
+          return collect_result;
+        }
+      }
+      break;
+    }
+    case STMT_LABELED: {
+      for (size_t i = 0; i < labels->count; i++) {
+        if (strcmp(labels->data[i], stmt->as.stmt_labeled.label) == 0) {
+          return (LabelCheckResult) {.is_ok = false,
+                                     .errcode = -1,
+                                     .msg = strdup("Duplicate label"),
+                                     .span = stmt->as.stmt_labeled.span};
+        }
+      }
+
+      size_t len = strlen(stmt->as.stmt_labeled.label) + strlen(funcname) + 1;
+      char *label = malloc(len);
+      snprintf(label, len + 1, "%s_%s", stmt->as.stmt_labeled.label, funcname);
+
+      dynarray_insert(labels, label);
+
+      LabelCheckResult body_result =
+          label_collect_stmt(stmt->as.stmt_labeled.stmt, labels, funcname);
+      if (!body_result.is_ok) {
+        return body_result;
+      }
+
+      break;
+    }
+    default:
+      break;
+  }
+  return (LabelCheckResult) {
+      .is_ok = true, .msg = NULL, .errcode = 0, .span = {0}};
+}
+
+static LabelCheckResult label_check_stmt(const Stmt *stmt,
+                                         DynArray_char_ptr *labels,
+                                         char *funcname)
+{
+  switch (stmt->kind) {
+    case STMT_FN: {
+      DynArray_char_ptr new_labels = {0};
+      for (size_t i = 0; i < stmt->as.stmt_fn.body->as.stmt_block.stmts.count;
+           i++) {
+        LabelCheckResult collect_result = label_collect_stmt(
+            &stmt->as.stmt_fn.body->as.stmt_block.stmts.data[i], &new_labels,
+            stmt->as.stmt_fn.name);
+        if (!collect_result.is_ok) {
+          return collect_result;
+        }
+      }
+
+      for (size_t i = 0; i < new_labels.count; i++) {
+        printf("new_labels member: %s\n", new_labels.data[i]);
+      }
+
+      for (size_t i = 0; i < stmt->as.stmt_fn.body->as.stmt_block.stmts.count;
+           i++) {
+        LabelCheckResult check_result = label_check_stmt(
+            &stmt->as.stmt_fn.body->as.stmt_block.stmts.data[i], &new_labels,
+            stmt->as.stmt_fn.name);
+        if (!check_result.is_ok) {
+          return check_result;
+        }
+      }
+      break;
+    }
+    case STMT_WHILE: {
+      for (size_t i = 0;
+           i < stmt->as.stmt_while.body->as.stmt_block.stmts.count; i++) {
+        LabelCheckResult check_result = label_check_stmt(
+            &stmt->as.stmt_while.body->as.stmt_block.stmts.data[i], labels,
+            funcname);
+        if (!check_result.is_ok) {
+          return check_result;
+        }
+      }
+      break;
+    }
+    case STMT_BLOCK: {
+      for (size_t i = 0; i < stmt->as.stmt_block.stmts.count; i++) {
+        LabelCheckResult check_result = label_check_stmt(
+            &stmt->as.stmt_block.stmts.data[i], labels, funcname);
+        if (!check_result.is_ok) {
+          return check_result;
+        }
+      }
+      break;
+    }
+    case STMT_IF: {
+      LabelCheckResult then_result =
+          label_check_stmt(stmt->as.stmt_if.then_branch, labels, funcname);
+      if (!then_result.is_ok) {
+        return then_result;
+      }
+
+      if (stmt->as.stmt_if.else_branch) {
+        LabelCheckResult else_result =
+            label_check_stmt(stmt->as.stmt_if.else_branch, labels, funcname);
+        if (!else_result.is_ok) {
+          return else_result;
+        }
+      }
+
+      break;
+    }
+    case STMT_GOTO: {
+      size_t len = strlen(stmt->as.stmt_goto.label) + strlen(funcname) + 1;
+      char *label = malloc(len);
+      snprintf(label, len + 1, "%s_%s", stmt->as.stmt_goto.label, funcname);
+
+      bool seen = false;
+      for (size_t i = 0; i < labels->count; i++) {
+        if (strcmp(labels->data[i], label) == 0) {
+          seen = true;
+        }
+      }
+
+      if (!seen) {
+        return (LabelCheckResult) {.is_ok = false,
+                                   .msg = strdup("Non existent label."),
+                                   .errcode = -1,
+                                   .span = stmt->span};
+      }
+      break;
+    }
+    default:
+      break;
+  }
+  return (LabelCheckResult) {
+      .is_ok = true, .errcode = 0, .msg = NULL, .span = {0}};
+}
+
+LabelCheckResult label_check_program(DynArray_Stmt *ast)
+{
+  DynArray_char_ptr labels = {0};
+  for (size_t i = 0; i < ast->count; i++) {
+    LabelCheckResult stmt_result =
+        label_check_stmt(&ast->data[i], &labels, NULL);
+    if (!stmt_result.is_ok) {
+      return stmt_result;
+    }
+  }
+  return (LabelCheckResult) {
+      .is_ok = true, .errcode = 0, .msg = NULL, .span = {0}};
 }

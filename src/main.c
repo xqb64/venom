@@ -130,6 +130,19 @@ static RunResult run(Arguments *args)
 
   DynArray_Stmt labeled_ast = loop_label_result.as.ast;
 
+  LabelCheckResult label_check_result = label_check_program(&labeled_ast);
+  if (!label_check_result.is_ok) {
+    char *errctx = mkerrctx(source, label_check_result.span.line,
+                            label_check_result.span.start,
+                            label_check_result.span.end, 3, 3);
+    alloc_err_str(&result.msg, "label_checker: %s\n%s\n",
+                  label_check_result.msg, errctx);
+    free(errctx);
+    result.is_ok = false;
+    result.errcode = label_check_result.errcode;
+    goto cleanup_after_loop_label;
+  }
+
   DynArray_Stmt optimized_ast = {0};
 
   if (args->optimize) {

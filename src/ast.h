@@ -180,6 +180,8 @@ typedef enum {
   STMT_FOR,
   STMT_BREAK,
   STMT_CONTINUE,
+  STMT_GOTO,
+  STMT_LABELED,
   STMT_FN,
   STMT_DECORATOR,
   STMT_RETURN,
@@ -273,6 +275,16 @@ typedef struct {
 typedef struct {
   char *label;
   Span span;
+} StmtGoto;
+
+typedef struct {
+  Stmt *stmt;
+  char *label;
+  Span span;
+} StmtLabeled;
+typedef struct {
+  char *label;
+  Span span;
 } StmtContinue;
 
 typedef struct {
@@ -304,6 +316,8 @@ typedef struct Stmt {
     StmtFor stmt_for;
     StmtBreak stmt_break;
     StmtContinue stmt_continue;
+    StmtGoto stmt_goto;
+    StmtLabeled stmt_labeled;
     StmtReturn stmt_return;
     StmtStruct stmt_struct;
     StmtImpl stmt_impl;
@@ -339,6 +353,11 @@ typedef struct Stmt {
 #define AS_STMT_CONTINUE(stmt) \
   ((Stmt) {                    \
       .kind = STMT_CONTINUE, .as.stmt_continue = (stmt), .span = (stmt).span})
+#define AS_STMT_GOTO(stmt) \
+  ((Stmt) {.kind = STMT_GOTO, .as.stmt_goto = (stmt), .span = (stmt).span})
+#define AS_STMT_LABELED(stmt) \
+  ((Stmt) {                   \
+      .kind = STMT_LABELED, .as.stmt_labeled = (stmt), .span = (stmt).span})
 #define AS_STMT_RETURN(stmt) \
   ((Stmt) {.kind = STMT_RETURN, .as.stmt_return = (stmt), .span = (stmt).span})
 #define AS_STMT_STRUCT(stmt) \

@@ -238,6 +238,15 @@ void free_stmt(const Stmt *stmt)
       free(stmt->as.stmt_continue.label);
       break;
     }
+    case STMT_GOTO: {
+      free(stmt->as.stmt_goto.label);
+      break;
+    }
+    case STMT_LABELED: {
+      free(stmt->as.stmt_labeled.label);
+      free_stmt(stmt->as.stmt_labeled.stmt);
+      break;
+    }
     default:
       print_stmt(stmt, 0, false);
       assert(0);
@@ -576,6 +585,18 @@ Stmt clone_stmt(const Stmt *stmt)
         dynarray_insert(&properties, s);
       }
       clone.as.stmt_struct.properties = properties;
+      break;
+    }
+    case STMT_GOTO: {
+      clone.as.stmt_goto.label = own_string(stmt->as.stmt_goto.label);
+      clone.as.stmt_goto.span = stmt->as.stmt_goto.span;
+      break;
+    }
+    case STMT_LABELED: {
+      clone.as.stmt_labeled.label = own_string(stmt->as.stmt_labeled.label);
+      clone.as.stmt_labeled.span = stmt->as.stmt_labeled.span;
+      Stmt cloned_stmt = clone_stmt(stmt->as.stmt_labeled.stmt);
+      clone.as.stmt_labeled.stmt = ALLOC(cloned_stmt);
       break;
     }
     default:
@@ -939,6 +960,20 @@ void print_stmt(const Stmt *stmt, int indent, bool continuation)
         }
       }
       printf("]");
+      break;
+    }
+    case STMT_GOTO: {
+      printf("Goto(\n");
+      INDENT(indent + 4);
+      printf("label: %s,\n", stmt->as.stmt_goto.label);
+      break;
+    }
+    case STMT_LABELED: {
+      printf("Labeled(\n");
+      INDENT(indent + 4);
+      printf("label: %s,\n", stmt->as.stmt_labeled.label);
+      INDENT(indent + 4);
+      print_stmt(stmt->as.stmt_labeled.stmt, indent + 4, true);
       break;
     }
     default:

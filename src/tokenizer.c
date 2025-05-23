@@ -96,6 +96,8 @@ static TokenType check_keyword(const Tokenizer *tokenizer, int start_pos,
     return TOKEN_YIELD;
   } else if (strncmp(lexeme, "break", 5) == 0 && length == 5) {
     return TOKEN_BREAK;
+  } else if (strncmp(lexeme, "goto", 4) == 0 && length == 4) {
+    return TOKEN_GOTO;
   } else if (strncmp(lexeme, "continue", 8) == 0 && length == 8) {
     return TOKEN_CONTINUE;
   } else if (strncmp(lexeme, "struct", 6) == 0 && length == 6) {

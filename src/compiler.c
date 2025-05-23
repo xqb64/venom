@@ -316,8 +316,6 @@ static void emit_loop_cleanup(Bytecode *code)
    *
    * We want to clean up everything deeper than the loop up to the
    * current current_compiler->depth. */
-  size_t popcount = current_compiler->locals_count;
-
   int loop_depth = dynarray_peek(&current_compiler->loop_depths);
 
   while (current_compiler->locals_count > 0 &&
@@ -328,7 +326,19 @@ static void emit_loop_cleanup(Bytecode *code)
   }
 }
 
-static void begin_scope()
+static void emit_goto_cleanup(Bytecode *code)
+{
+  int loop_depth = dynarray_peek(&current_compiler->loop_depths);
+  size_t locals_count = current_compiler->locals_count;
+
+  while (locals_count > 0 &&
+         current_compiler->locals[locals_count - 1].depth > loop_depth) {
+    emit_byte(code, OP_POP);
+    locals_count--;
+  }
+}
+
+static void begin_scope(void)
 {
   current_compiler->depth++;
 }
@@ -361,7 +371,7 @@ static void patch_jumps(Bytecode *code)
       }
 
       code->code.data[location + 1] = ((patch_with - location - 3) >> 8) & 0xFF;
-      code->code.data[location + 2] = ((patch_with) - (location) -3) & 0xFF;
+      code->code.data[location + 2] = (patch_with - location - 3) & 0xFF;
     }
   }
 }
@@ -1872,6 +1882,17 @@ Compiler *new_compiler(void)
     table_insert(compiler.builtins, builtin.name, ALLOC(builtin));
   }
 
+  if (current_compiler) {
+    for (size_t i = 0; i < TABLE_MAX; i++) {
+      if (current_compiler->labels->indexes[i]) {
+        Label *label = table_get(current_compiler->labels,
+                                 current_compiler->labels->indexes[i]->key);
+        table_insert(compiler.labels, current_compiler->labels->indexes[i]->key,
+                     *label);
+      }
+    }
+  }
+
   return ALLOC(compiler);
 }
 
@@ -2209,6 +2230,39 @@ static CompileResult compile_stmt_assert(Bytecode *code, const Stmt *stmt)
   return result;
 }
 
+static CompileResult compile_stmt_goto(Bytecode *code, const Stmt *stmt)
+{
+  emit_goto_cleanup(code);
+  emit_named_jump(code, stmt->as.stmt_goto.label);
+  return (CompileResult) {.is_ok = true,
+                          .errcode = 0,
+                          .chunk = NULL,
+                          .msg = NULL,
+                          .span = stmt->span};
+}
+
+static CompileResult compile_stmt_labeled(Bytecode *code, const Stmt *stmt)
+{
+  Label *label =
+      table_get(current_compiler->labels, stmt->as.stmt_labeled.label);
+
+  if (label) {
+    label->patch_with = code->code.count;
+    patch_jumps(code);
+  }
+
+  CompileResult stmt_result = compile_stmt(code, stmt->as.stmt_labeled.stmt);
+  if (!stmt_result.is_ok) {
+    return stmt_result;
+  }
+
+  return (CompileResult) {.is_ok = true,
+                          .errcode = 0,
+                          .chunk = NULL,
+                          .msg = NULL,
+                          .span = stmt->span};
+}
+
 typedef CompileResult (*CompileHandlerFn)(Bytecode *code, const Stmt *stmt);
 
 typedef struct {
@@ -2231,9 +2285,39 @@ static CompileHandler stmt_handler[] = {
     [STMT_RETURN] = {.fn = compile_stmt_return, .name = "STMT_RETURN"},
     [STMT_BREAK] = {.fn = compile_stmt_break, .name = "STMT_BREAK"},
     [STMT_CONTINUE] = {.fn = compile_stmt_continue, .name = "STMT_CONTINUE"},
+    [STMT_GOTO] = {.fn = compile_stmt_goto, .name = "STMT_GOTO"},
+    [STMT_LABELED] = {.fn = compile_stmt_labeled, .name = "STMT_LABELED"},
     [STMT_YIELD] = {.fn = compile_stmt_yield, .name = "STMT_YIELD"},
     [STMT_ASSERT] = {.fn = compile_stmt_assert, .name = "STMT_ASSERT"},
 };
+
+static void collect_labels(const DynArray_Stmt *ast)
+{
+  for (size_t i = 0; i < ast->count; i++) {
+    switch (ast->data[i].kind) {
+      case STMT_FN: {
+        collect_labels(&ast->data[i].as.stmt_fn.body->as.stmt_block.stmts);
+        break;
+      }
+      case STMT_WHILE: {
+        collect_labels(&ast->data[i].as.stmt_while.body->as.stmt_block.stmts);
+        break;
+      }
+      case STMT_BLOCK: {
+        collect_labels(&ast->data[i].as.stmt_block.stmts);
+        break;
+      }
+      case STMT_LABELED: {
+        Label label = {.location = -1, .patch_with = -1};
+        table_insert(current_compiler->labels,
+                     ast->data[i].as.stmt_labeled.label, label);
+        break;
+      }
+      default:
+        break;
+    }
+  }
+}
 
 static CompileResult compile_stmt(Bytecode *code, const Stmt *stmt)
 {
@@ -2244,6 +2328,8 @@ CompileResult compile(const DynArray_Stmt *ast)
 {
   CompileResult result = {
       .is_ok = true, .errcode = 0, .msg = NULL, .chunk = NULL, .span = {0}};
+
+  collect_labels(ast);
 
   Bytecode *chunk = malloc(sizeof(Bytecode));
   init_chunk(chunk);
