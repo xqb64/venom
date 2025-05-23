@@ -116,6 +116,7 @@ static RunResult run(Arguments *args)
                             loop_label_result.span.end, 3, 3);
     alloc_err_str(&result.msg, "loop_labeler: %s\n%s\n", loop_label_result.msg,
                   errctx);
+    free(errctx);
     result.is_ok = false;
     result.errcode = loop_label_result.errcode;
     goto cleanup_after_loop_label;
