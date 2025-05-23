@@ -101,6 +101,8 @@ void print_offending_line_buf(StringBuilder *sb, const char *source,
   sb_append(sb, lineno);
   sb_append_char(sb, ' ');
 
+  free(lineno);
+
   while (*c && *c != '\n') {
     sb_append_char(sb, *c++);
   }
