@@ -428,8 +428,10 @@ Expr clone_expr(const Expr *expr)
     }
     case EXPR_CONDITIONAL: {
       Expr cloned_condition = clone_expr(expr->as.expr_conditional.condition);
-      Expr cloned_then_branch = clone_expr(expr->as.expr_conditional.then_branch);
-      Expr cloned_else_branch = clone_expr(expr->as.expr_conditional.else_branch);
+      Expr cloned_then_branch =
+          clone_expr(expr->as.expr_conditional.then_branch);
+      Expr cloned_else_branch =
+          clone_expr(expr->as.expr_conditional.else_branch);
       clone.as.expr_conditional.condition = ALLOC(cloned_condition);
       clone.as.expr_conditional.then_branch = ALLOC(cloned_then_branch);
       clone.as.expr_conditional.else_branch = ALLOC(cloned_else_branch);
@@ -734,19 +736,19 @@ void print_expr(const Expr *expr, int indent)
       break;
     }
     case EXPR_CONDITIONAL: {
-        printf("Conditional(\n");
-        INDENT(indent + 4);
-        printf("condition: ");
-        print_expr(expr->as.expr_conditional.condition, indent + 4);
-        printf(", \n");
-        INDENT(indent + 4);
-        printf("then_branch: ");
-        print_expr(expr->as.expr_conditional.then_branch, indent + 4);
-        printf(", \n");
-        INDENT(indent + 4);
-        printf("else_branch: ");
-        print_expr(expr->as.expr_conditional.else_branch, indent + 4);
-        break;
+      printf("Conditional(\n");
+      INDENT(indent + 4);
+      printf("condition: ");
+      print_expr(expr->as.expr_conditional.condition, indent + 4);
+      printf(", \n");
+      INDENT(indent + 4);
+      printf("then_branch: ");
+      print_expr(expr->as.expr_conditional.then_branch, indent + 4);
+      printf(", \n");
+      INDENT(indent + 4);
+      printf("else_branch: ");
+      print_expr(expr->as.expr_conditional.else_branch, indent + 4);
+      break;
     }
     default:
       assert(0);

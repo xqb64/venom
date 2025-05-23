@@ -679,13 +679,15 @@ static ParseFnResult conditional(Parser *parser)
     }
 
     Expr then_branch = then_result.as.expr;
- 
+
     TokenResult colon_result = consume(parser, TOKEN_COLON);
     if (!colon_result.is_ok) {
-      return (ParseFnResult) {.is_ok = false,
-                              .as.expr = {0},
-                              .msg = strdup("Expected ':' after then branch in conditional expressions."),
-                              .span = parser->previous.span};
+      return (ParseFnResult) {
+          .is_ok = false,
+          .as.expr = {0},
+          .msg = strdup(
+              "Expected ':' after then branch in conditional expressions."),
+          .span = parser->previous.span};
     }
 
     ParseFnResult else_result = conditional(parser);
@@ -695,12 +697,15 @@ static ParseFnResult conditional(Parser *parser)
 
     Expr else_branch = else_result.as.expr;
 
-    ExprConditional e = {.condition = ALLOC(expr), .then_branch = ALLOC(then_branch), .else_branch = ALLOC(else_branch)};
+    ExprConditional e = {.condition = ALLOC(expr),
+                         .then_branch = ALLOC(then_branch),
+                         .else_branch = ALLOC(else_branch)};
 
     expr = AS_EXPR_CONDITIONAL(e);
   }
 
-  return (ParseFnResult) {.is_ok = true, .as.expr = expr, .msg = NULL, .span = expr.span};
+  return (ParseFnResult) {
+      .is_ok = true, .as.expr = expr, .msg = NULL, .span = expr.span};
 }
 
 static ParseFnResult assignment(Parser *parser)

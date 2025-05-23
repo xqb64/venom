@@ -1399,7 +1399,8 @@ static CompileResult compile_expr_array(Bytecode *code, const Expr *expr)
 
 static CompileResult compile_expr_subscript(Bytecode *code, const Expr *expr)
 {
-  CompileResult result = {.is_ok = true, .chunk = NULL, .msg = NULL, .span = expr->span};
+  CompileResult result = {
+      .is_ok = true, .chunk = NULL, .msg = NULL, .span = expr->span};
   ExprSubscript expr_subscript = expr->as.expr_subscript;
 
   /* First, we compile the expr. */
@@ -1422,11 +1423,13 @@ static CompileResult compile_expr_subscript(Bytecode *code, const Expr *expr)
 
 static CompileResult compile_expr_conditional(Bytecode *code, const Expr *expr)
 {
-  CompileResult result = {.is_ok = true, .chunk = NULL, .msg = NULL, .span = expr->span};
+  CompileResult result = {
+      .is_ok = true, .chunk = NULL, .msg = NULL, .span = expr->span};
 
   ExprConditional expr_conditional = expr->as.expr_conditional;
 
-  CompileResult condition_result = compile_expr(code, expr_conditional.condition);
+  CompileResult condition_result =
+      compile_expr(code, expr_conditional.condition);
   if (!condition_result.is_ok) {
     return condition_result;
   }
@@ -1439,7 +1442,7 @@ static CompileResult compile_expr_conditional(Bytecode *code, const Expr *expr)
   }
 
   int exit_jump = emit_placeholder(code, OP_JMP);
-  
+
   patch_placeholder(code, else_jump);
 
   CompileResult else_result = compile_expr(code, expr_conditional.else_branch);
@@ -1472,7 +1475,8 @@ static CompileExprHandler expression_handler[] = {
                                  .name = "EXPR_STRUCT_INITIALIZER"},
     [EXPR_ARRAY] = {.fn = compile_expr_array, .name = "EXPR_ARRAY"},
     [EXPR_SUBSCRIPT] = {.fn = compile_expr_subscript, .name = "EXPR_SUBSCRIPT"},
-    [EXPR_CONDITIONAL] = {.fn = compile_expr_conditional, .name = "EXPR_CONDITIONAL"},
+    [EXPR_CONDITIONAL] = {.fn = compile_expr_conditional,
+                          .name = "EXPR_CONDITIONAL"},
 };
 ;
 

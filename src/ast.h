@@ -165,10 +165,10 @@ void free_table_expr(const Table_Expr *table);
 #define AS_EXPR_SUBSCRIPT(exp) \
   ((Expr) {                    \
       .kind = EXPR_SUBSCRIPT, .as.expr_subscript = (exp), .span = (exp).span})
-#define AS_EXPR_CONDITIONAL(exp) \
-  ((Expr) {                    \
-      .kind = EXPR_CONDITIONAL, .as.expr_conditional = (exp), .span = (exp).span})
-
+#define AS_EXPR_CONDITIONAL(exp)         \
+  ((Expr) {.kind = EXPR_CONDITIONAL,     \
+           .as.expr_conditional = (exp), \
+           .span = (exp).span})
 
 typedef enum {
   STMT_LET,
