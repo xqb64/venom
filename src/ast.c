@@ -349,6 +349,7 @@ Expr clone_expr(const Expr *expr)
       clone.as.expr_binary.lhs = ALLOC(lhs);
       clone.as.expr_binary.rhs = ALLOC(rhs);
       clone.as.expr_binary.op = own_string(expr->as.expr_binary.op);
+      clone.as.expr_binary.span = expr->as.expr_binary.span;
       break;
     }
     case EXPR_ASSIGN: {
@@ -357,12 +358,14 @@ Expr clone_expr(const Expr *expr)
       clone.as.expr_assign.lhs = ALLOC(lhs);
       clone.as.expr_assign.rhs = ALLOC(rhs);
       clone.as.expr_assign.op = own_string(expr->as.expr_assign.op);
+      clone.as.expr_assign.span = expr->as.expr_assign.span;
       break;
     }
     case EXPR_UNARY: {
       Expr exp = clone_expr(expr->as.expr_unary.expr);
       clone.as.expr_unary.expr = ALLOC(exp);
       clone.as.expr_unary.op = own_string(expr->as.expr_unary.op);
+      clone.as.expr_unary.span = expr->as.expr_unary.span;
       break;
     }
     case EXPR_CALL: {
@@ -374,15 +377,18 @@ Expr clone_expr(const Expr *expr)
       clone.as.expr_call.arguments = args;
       Expr callee_expr = clone_expr(expr->as.expr_call.callee);
       clone.as.expr_call.callee = ALLOC(callee_expr);
+      clone.as.expr_call.span = expr->as.expr_call.span;
       break;
     }
     case EXPR_LITERAL: {
       ExprLiteral cloned = clone_literal(&expr->as.expr_literal);
       clone.as.expr_literal = cloned;
+      clone.as.expr_literal.span = expr->as.expr_literal.span;
       break;
     }
     case EXPR_VARIABLE: {
       clone.as.expr_variable.name = own_string(expr->as.expr_variable.name);
+      clone.as.expr_variable.span = expr->as.expr_variable.span;
       break;
     }
     case EXPR_ARRAY: {
@@ -392,6 +398,7 @@ Expr clone_expr(const Expr *expr)
         dynarray_insert(&elements, cloned);
       }
       clone.as.expr_array.elements = elements;
+      clone.as.expr_array.span = expr->as.expr_array.span;
       break;
     }
     case EXPR_SUBSCRIPT: {
@@ -399,6 +406,7 @@ Expr clone_expr(const Expr *expr)
       Expr cloned_index = clone_expr(expr->as.expr_subscript.index);
       clone.as.expr_subscript.expr = ALLOC(cloned_expr);
       clone.as.expr_subscript.index = ALLOC(cloned_index);
+      clone.as.expr_subscript.span = expr->as.expr_subscript.span;
       break;
     }
     case EXPR_STRUCT: {
@@ -409,6 +417,7 @@ Expr clone_expr(const Expr *expr)
       }
       clone.as.expr_struct.initializers = initializers;
       clone.as.expr_struct.name = own_string(expr->as.expr_struct.name);
+      clone.as.expr_struct.span = expr->as.expr_struct.span;
       break;
     }
     case EXPR_STRUCT_INITIALIZER: {
@@ -416,6 +425,8 @@ Expr clone_expr(const Expr *expr)
       Expr property = clone_expr(expr->as.expr_struct_initializer.property);
       clone.as.expr_struct_initializer.value = ALLOC(value);
       clone.as.expr_struct_initializer.property = ALLOC(property);
+      clone.as.expr_struct_initializer.span =
+          expr->as.expr_struct_initializer.span;
       break;
     }
     case EXPR_GET: {
@@ -424,6 +435,7 @@ Expr clone_expr(const Expr *expr)
       clone.as.expr_get.op = own_string(expr->as.expr_get.op);
       clone.as.expr_get.property_name =
           own_string(expr->as.expr_get.property_name);
+      clone.as.expr_get.span = expr->as.expr_get.span;
       break;
     }
     case EXPR_CONDITIONAL: {
@@ -435,6 +447,7 @@ Expr clone_expr(const Expr *expr)
       clone.as.expr_conditional.condition = ALLOC(cloned_condition);
       clone.as.expr_conditional.then_branch = ALLOC(cloned_then_branch);
       clone.as.expr_conditional.else_branch = ALLOC(cloned_else_branch);
+      clone.as.expr_conditional.span = expr->as.expr_conditional.span;
       break;
     }
     default:

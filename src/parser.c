@@ -792,9 +792,9 @@ static ParseFnResult block(Parser *parser)
     return (ParseFnResult) {.is_ok = false,
                             .as.stmt = {0},
                             .msg = strdup("Expected '{' token."),
-                            .span = (Span) {.line = parser->previous.span.line,
-                                            .start = parser->previous.span.end,
-                                            .end = parser->previous.span.end}};
+                            .span = (Span) {.line = parser->current.span.line,
+                                            .start = parser->current.span.start,
+                                            .end = parser->current.span.start}};
   }
 
   DynArray_Stmt stmts = {0};
@@ -840,7 +840,10 @@ static ParseFnResult struct_initializer(Parser *parser)
     free(name);
     return (ParseFnResult) {.is_ok = false,
                             .as.expr = {0},
-                            .msg = strdup("Expected '{' after struct name.")};
+                            .msg = strdup("Expected '{' after struct name."),
+                            .span = (Span) {.line = parser->current.span.line,
+                                            .start = parser->current.span.start,
+                                            .end = parser->current.span.end}};
   }
 
   DynArray_Expr initializers = {0};
@@ -863,14 +866,15 @@ static ParseFnResult struct_initializer(Parser *parser)
         free_expr(&initializers.data[i]);
       }
       dynarray_free(&initializers);
+      Span propspan = property.span;
       free_expr(&property);
       return (ParseFnResult) {
           .is_ok = false,
           .as.expr = {0},
           .msg = strdup("Expected ':' after property name."),
-          .span = (Span) {.line = property.span.line,
-                          .start = property.span.end,
-                          .end = property.span.end}};
+          .span = (Span) {.line = propspan.line,
+                          .start = propspan.end,
+                          .end = propspan.end}};
     }
 
     ParseFnResult value_result = expression(parser);
@@ -888,7 +892,9 @@ static ParseFnResult struct_initializer(Parser *parser)
     ExprStructInitializer structinitexp = {
         .property = ALLOC(property),
         .value = ALLOC(value),
-    };
+        .span = (Span) {.line = property.span.line,
+                        .start = property.span.start,
+                        .end = value.span.end}};
     dynarray_insert(&initializers, AS_EXPR_STRUCT_INITIALIZER(structinitexp));
   } while (match(parser, 1, TOKEN_COMMA));
 
@@ -923,17 +929,22 @@ static ParseFnResult struct_initializer(Parser *parser)
         .is_ok = false,
         .as.expr = {0},
         .msg = strdup("Expected '}' after struct initialization."),
-        .span = (Span) {.start = lbrace_result.token.span.start,
-                        .end = parser->current.span.end,
-                        .line = lbrace_result.token.span.line}};
+        .span = (Span) {.line = parser->current.span.line,
+                        .start = parser->current.span.end,
+                        .end = parser->current.span.end}};
   }
 
   ExprStruct structexp = {
       .initializers = initializers,
       .name = name,
-  };
-  return (ParseFnResult) {
-      .as.expr = AS_EXPR_STRUCT(structexp), .is_ok = true, .msg = NULL};
+      .span = (Span) {.start = lbrace_result.token.span.start,
+                      .end = rbrace_result.token.span.end,
+                      .line = lbrace_result.token.span.line}};
+
+  return (ParseFnResult) {.as.expr = AS_EXPR_STRUCT(structexp),
+                          .is_ok = true,
+                          .msg = NULL,
+                          .span = structexp.span};
 }
 
 static ParseFnResult array_initializer(Parser *parser)

@@ -1324,6 +1324,7 @@ static CompileResult compile_expr_struct(Bytecode *code, const Expr *expr)
       }
       result.is_ok = false;
       result.errcode = -1;
+      result.span = siexp.span;
       return result;
     }
   }
@@ -1350,6 +1351,9 @@ static CompileResult compile_expr_struct_initializer(Bytecode *code,
 {
   CompileResult result = {
       .is_ok = true, .chunk = NULL, .msg = NULL, .span = expr->span};
+
+  printf("static CompileResult: %ld [%ld, %ld]\n", expr->span.line,
+         expr->span.start, expr->span.end);
 
   ExprStructInitializer expr_struct_initializer =
       expr->as.expr_struct_initializer;
