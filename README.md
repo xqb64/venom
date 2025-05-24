@@ -25,9 +25,11 @@ This project is my debut in the realm of programming language design. I had a bl
   - `,` (comma)
 - control flow
   - `if`, `else`
+  - `do while`
   - `while`
   - `for` (C-style)
   - `break` and `continue`
+  - `goto`
   - `yield`
 - a few useful builtins:
   - `next()` (for generator resumption)
