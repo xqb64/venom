@@ -1676,6 +1676,56 @@ static CompileResult compile_stmt_if(Bytecode *code, const Stmt *stmt)
   return result;
 }
 
+static CompileResult compile_stmt_do_while(Bytecode *code, const Stmt *stmt)
+{
+  CompileResult result = {
+      .is_ok = true, .chunk = NULL, .msg = NULL, .span = stmt->span};
+
+  StmtDoWhile stmt_do_while = stmt->as.stmt_do_while;
+
+  int loop_start = code->code.count;
+
+  Label label = {.location = loop_start, .patch_with = -1};
+  table_insert(current_compiler->labels, stmt_do_while.label, label);
+
+  dynarray_insert(&current_compiler->loop_depths, current_compiler->depth);
+
+  CompileResult body_result = compile_stmt(code, stmt_do_while.body);
+  if (!body_result.is_ok) {
+    return body_result;
+  }
+
+  CompileResult cond_result = compile_expr(code, &stmt_do_while.condition);
+  if (!cond_result.is_ok) {
+    return cond_result;
+  }
+
+  int exit_jump = emit_placeholder(code, OP_JZ);
+
+  emit_loop(code, loop_start);
+
+  dynarray_pop(&current_compiler->loop_depths);
+
+  patch_placeholder(code, exit_jump);
+  patch_jumps(code);
+
+  int len = lblen(stmt_do_while.label, 0) + strlen("_exit");
+  char *exit_label = malloc(len);
+  snprintf(exit_label, len, "%s_exit", stmt_do_while.label);
+
+  Label *loop_exit = table_get(current_compiler->labels, exit_label);
+  if (!loop_exit) {
+    Label le = {.location = code->code.count, .patch_with = -1};
+    table_insert(current_compiler->labels, exit_label, le);
+  } else {
+    loop_exit->patch_with = code->code.count;
+    table_insert(current_compiler->labels, exit_label, *loop_exit);
+  }
+
+  free(exit_label);
+  return result;
+}
+
 static CompileResult compile_stmt_while(Bytecode *code, const Stmt *stmt)
 {
   CompileResult result = {
@@ -2276,6 +2326,7 @@ static CompileHandler stmt_handler[] = {
     [STMT_EXPR] = {.fn = compile_stmt_expr, .name = "STMT_EXPR"},
     [STMT_BLOCK] = {.fn = compile_stmt_block, .name = "STMT_BLOCK"},
     [STMT_IF] = {.fn = compile_stmt_if, .name = "STMT_IF"},
+    [STMT_DO_WHILE] = {.fn = compile_stmt_do_while, .name = "STMT_DO_WHILE"},
     [STMT_WHILE] = {.fn = compile_stmt_while, .name = "STMT_WHILE"},
     [STMT_FOR] = {.fn = compile_stmt_for, .name = "STMT_FOR"},
     [STMT_FN] = {.fn = compile_stmt_fn, .name = "STMT_FN"},

@@ -176,6 +176,7 @@ typedef enum {
   STMT_PRINT,
   STMT_BLOCK,
   STMT_IF,
+  STMT_DO_WHILE,
   STMT_WHILE,
   STMT_FOR,
   STMT_BREAK,
@@ -240,6 +241,13 @@ typedef struct {
   char *label;
   Span span;
 } StmtWhile;
+
+typedef struct {
+  Expr condition;
+  Stmt *body;
+  char *label;
+  Span span;
+} StmtDoWhile;
 
 typedef struct {
   Expr initializer;
@@ -313,6 +321,7 @@ typedef struct Stmt {
     StmtDecorator stmt_decorator;
     StmtIf stmt_if;
     StmtWhile stmt_while;
+    StmtDoWhile stmt_do_while;
     StmtFor stmt_for;
     StmtBreak stmt_break;
     StmtContinue stmt_continue;
@@ -346,6 +355,9 @@ typedef struct Stmt {
   ((Stmt) {.kind = STMT_IF, .as.stmt_if = (stmt), .span = (stmt).span})
 #define AS_STMT_WHILE(stmt) \
   ((Stmt) {.kind = STMT_WHILE, .as.stmt_while = (stmt), .span = (stmt).span})
+#define AS_STMT_DO_WHILE(stmt) \
+  ((Stmt) {                    \
+      .kind = STMT_DO_WHILE, .as.stmt_do_while = (stmt), .span = (stmt).span})
 #define AS_STMT_FOR(stmt) \
   ((Stmt) {.kind = STMT_FOR, .as.stmt_for = (stmt), .span = (stmt).span})
 #define AS_STMT_BREAK(stmt) \

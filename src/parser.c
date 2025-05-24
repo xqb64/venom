@@ -1223,6 +1223,72 @@ static ParseFnResult if_statement(Parser *parser)
                           .span = stmt.span};
 }
 
+static ParseFnResult do_while_statement(Parser *parser)
+{
+  TokenResult do_result = consume(parser, TOKEN_DO);
+  if (!do_result.is_ok) {
+    return (ParseFnResult) {.is_ok = false,
+                            .as.stmt = {0},
+                            .msg = strdup("Expected 'do' token."),
+                            .span = parser->current.span};
+  }
+
+  ParseFnResult body_result = statement(parser);
+  if (!body_result.is_ok) {
+    return body_result;
+  }
+
+  TokenResult while_result = consume(parser, TOKEN_WHILE);
+  if (!while_result.is_ok) {
+    return (ParseFnResult) {.is_ok = false,
+                            .as.stmt = {0},
+                            .msg = strdup("Expected 'while' token."),
+                            .span = parser->current.span};
+  }
+
+  TokenResult lparen_result = consume(parser, TOKEN_LEFT_PAREN);
+  if (!lparen_result.is_ok) {
+    return (ParseFnResult) {.is_ok = false,
+                            .span = (Span) {.line = parser->current.span.line,
+                                            .start = parser->current.span.end,
+                                            .end = parser->current.span.end}};
+  }
+
+  ParseFnResult condition_result = expression(parser);
+  if (!condition_result.is_ok) {
+    return condition_result;
+  }
+
+  TokenResult rparen_result = consume(parser, TOKEN_RIGHT_PAREN);
+  if (!rparen_result.is_ok) {
+    return (ParseFnResult) {.is_ok = false,
+                            .span = (Span) {.line = parser->current.span.line,
+                                            .start = parser->current.span.end,
+                                            .end = parser->current.span.end}};
+  }
+
+  TokenResult semicolon_result = consume(parser, TOKEN_SEMICOLON);
+  if (!semicolon_result.is_ok) {
+    return (ParseFnResult) {.is_ok = false,
+                            .span = (Span) {.line = parser->current.span.line,
+                                            .start = parser->current.span.end,
+                                            .end = parser->current.span.end}};
+  }
+
+  StmtDoWhile stmt_do_while = {
+      .condition = condition_result.as.expr,
+      .body = ALLOC(body_result.as.stmt),
+      .label = NULL,
+      .span = (Span) {.line = do_result.token.span.line,
+                      .start = do_result.token.span.start,
+                      .end = semicolon_result.token.span.end}};
+
+  return (ParseFnResult) {.is_ok = true,
+                          .as.stmt = AS_STMT_DO_WHILE(stmt_do_while),
+                          .msg = NULL,
+                          .span = stmt_do_while.span};
+}
+
 static ParseFnResult while_statement(Parser *parser)
 {
   TokenResult while_result = consume(parser, TOKEN_WHILE);
@@ -1928,6 +1994,8 @@ static ParseFnResult statement(Parser *parser)
     return block(parser);
   } else if (check(parser, TOKEN_IF)) {
     return if_statement(parser);
+  } else if (check(parser, TOKEN_DO)) {
+    return do_while_statement(parser);
   } else if (check(parser, TOKEN_WHILE)) {
     return while_statement(parser);
   } else if (check(parser, TOKEN_FOR)) {

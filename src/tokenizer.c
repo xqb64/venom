@@ -88,6 +88,8 @@ static TokenType check_keyword(const Tokenizer *tokenizer, int start_pos,
     return TOKEN_FOR;
   } else if (strncmp(lexeme, "while", 5) == 0 && length == 5) {
     return TOKEN_WHILE;
+  } else if (strncmp(lexeme, "do", 2) == 0 && length == 2) {
+    return TOKEN_DO;
   } else if (strncmp(lexeme, "return", 6) == 0 && length == 6) {
     return TOKEN_RETURN;
   } else if (strncmp(lexeme, "print", 5) == 0 && length == 5) {

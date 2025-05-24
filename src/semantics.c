@@ -24,6 +24,28 @@ static LoopLabelResult loop_label_stmt(Stmt *stmt, const char *current)
   labeled_stmt.kind = stmt->kind;
 
   switch (stmt->kind) {
+    case STMT_DO_WHILE: {
+      size_t tmp = mktmp();
+      size_t label_len = lblen("do_while_", tmp);
+
+      char *loop_label = malloc(label_len);
+      snprintf(loop_label, label_len, "do_while_%zu", tmp);
+
+      LoopLabelResult body_result =
+          loop_label_stmt(stmt->as.stmt_do_while.body, loop_label);
+
+      if (!body_result.is_ok) {
+        free(loop_label);
+        return body_result;
+      }
+
+      labeled_stmt.as.stmt_do_while.body = ALLOC(body_result.as.stmt);
+      labeled_stmt.as.stmt_do_while.label = loop_label;
+      labeled_stmt.as.stmt_do_while.condition =
+          clone_expr(&stmt->as.stmt_do_while.condition);
+
+      break;
+    }
     case STMT_WHILE: {
       size_t tmp = mktmp();
       size_t label_len = lblen("while_", tmp);
@@ -234,6 +256,18 @@ static LabelCheckResult label_collect_stmt(const Stmt *stmt,
       }
       break;
     }
+    case STMT_DO_WHILE: {
+      for (size_t i = 0;
+           i < stmt->as.stmt_do_while.body->as.stmt_block.stmts.count; i++) {
+        LabelCheckResult collect_result = label_collect_stmt(
+            &stmt->as.stmt_do_while.body->as.stmt_block.stmts.data[i], labels,
+            funcname);
+        if (!collect_result.is_ok) {
+          return collect_result;
+        }
+      }
+      break;
+    }
     case STMT_WHILE: {
       for (size_t i = 0;
            i < stmt->as.stmt_while.body->as.stmt_block.stmts.count; i++) {
@@ -299,6 +333,18 @@ static LabelCheckResult label_check_stmt(const Stmt *stmt,
       for (size_t i = 0; i < body.stmts.count; i++) {
         LabelCheckResult check_result = label_check_stmt(
             &body.stmts.data[i], &new_labels, stmt->as.stmt_fn.name);
+        if (!check_result.is_ok) {
+          return check_result;
+        }
+      }
+      break;
+    }
+    case STMT_DO_WHILE: {
+      StmtBlock body = stmt->as.stmt_do_while.body->as.stmt_block;
+
+      for (size_t i = 0; i < body.stmts.count; i++) {
+        LabelCheckResult check_result =
+            label_check_stmt(&body.stmts.data[i], labels, funcname);
         if (!check_result.is_ok) {
           return check_result;
         }

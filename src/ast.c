@@ -158,6 +158,17 @@ void free_stmt(const Stmt *stmt)
 
       break;
     }
+    case STMT_DO_WHILE: {
+      free(stmt->as.stmt_do_while.label);
+      free_expr(&stmt->as.stmt_do_while.condition);
+      for (size_t i = 0;
+           i < stmt->as.stmt_do_while.body->as.stmt_block.stmts.count; i++) {
+        free_stmt(&stmt->as.stmt_do_while.body->as.stmt_block.stmts.data[i]);
+      }
+      dynarray_free(&stmt->as.stmt_do_while.body->as.stmt_block.stmts);
+      free(stmt->as.stmt_do_while.body);
+      break;
+    }
     case STMT_WHILE: {
       free(stmt->as.stmt_while.label);
       free_expr(&stmt->as.stmt_while.condition);
@@ -502,6 +513,14 @@ Stmt clone_stmt(const Stmt *stmt)
       clone.as.stmt_print.expr = clone_expr(&stmt->as.stmt_print.expr);
       break;
     }
+    case STMT_DO_WHILE: {
+      clone.as.stmt_do_while.label = own_string(stmt->as.stmt_do_while.label);
+      clone.as.stmt_do_while.condition =
+          clone_expr(&stmt->as.stmt_do_while.condition);
+      Stmt body = clone_stmt(stmt->as.stmt_do_while.body);
+      clone.as.stmt_do_while.body = ALLOC(body);
+      break;
+    }
     case STMT_WHILE: {
       clone.as.stmt_while.label = own_string(stmt->as.stmt_while.label);
       clone.as.stmt_while.condition =
@@ -828,6 +847,19 @@ void print_stmt(const Stmt *stmt, int indent, bool continuation)
           printf(",\n");
         }
       }
+      break;
+    }
+    case STMT_DO_WHILE: {
+      printf("DoWhile(\n");
+      INDENT(indent + 4);
+      printf("label: \"%s\",\n", stmt->as.stmt_do_while.label);
+      INDENT(indent + 4);
+      printf("condition: ");
+      print_expr(&stmt->as.stmt_do_while.condition, indent + 4);
+      printf(",\n");
+      INDENT(indent + 4);
+      printf("body: ");
+      print_stmt(stmt->as.stmt_do_while.body, indent + 4, true);
       break;
     }
     case STMT_WHILE: {
