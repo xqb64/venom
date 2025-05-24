@@ -284,8 +284,10 @@ static LabelCheckResult label_check_stmt(const Stmt *stmt,
   switch (stmt->kind) {
     case STMT_FN: {
       DynArray_char_ptr new_labels = {0};
-      for (size_t i = 0; i < stmt->as.stmt_fn.body->as.stmt_block.stmts.count;
-           i++) {
+
+      StmtBlock body = stmt->as.stmt_fn.body->as.stmt_block;
+
+      for (size_t i = 0; i < body.stmts.count; i++) {
         LabelCheckResult collect_result = label_collect_stmt(
             &stmt->as.stmt_fn.body->as.stmt_block.stmts.data[i], &new_labels,
             stmt->as.stmt_fn.name);
@@ -294,15 +296,9 @@ static LabelCheckResult label_check_stmt(const Stmt *stmt,
         }
       }
 
-      for (size_t i = 0; i < new_labels.count; i++) {
-        printf("new_labels member: %s\n", new_labels.data[i]);
-      }
-
-      for (size_t i = 0; i < stmt->as.stmt_fn.body->as.stmt_block.stmts.count;
-           i++) {
+      for (size_t i = 0; i < body.stmts.count; i++) {
         LabelCheckResult check_result = label_check_stmt(
-            &stmt->as.stmt_fn.body->as.stmt_block.stmts.data[i], &new_labels,
-            stmt->as.stmt_fn.name);
+            &body.stmts.data[i], &new_labels, stmt->as.stmt_fn.name);
         if (!check_result.is_ok) {
           return check_result;
         }
@@ -310,11 +306,23 @@ static LabelCheckResult label_check_stmt(const Stmt *stmt,
       break;
     }
     case STMT_WHILE: {
-      for (size_t i = 0;
-           i < stmt->as.stmt_while.body->as.stmt_block.stmts.count; i++) {
-        LabelCheckResult check_result = label_check_stmt(
-            &stmt->as.stmt_while.body->as.stmt_block.stmts.data[i], labels,
-            funcname);
+      StmtBlock body = stmt->as.stmt_while.body->as.stmt_block;
+
+      for (size_t i = 0; i < body.stmts.count; i++) {
+        LabelCheckResult check_result =
+            label_check_stmt(&body.stmts.data[i], labels, funcname);
+        if (!check_result.is_ok) {
+          return check_result;
+        }
+      }
+      break;
+    }
+    case STMT_FOR: {
+      StmtBlock body = stmt->as.stmt_for.body->as.stmt_block;
+
+      for (size_t i = 0; i < body.stmts.count; i++) {
+        LabelCheckResult check_result =
+            label_check_stmt(&body.stmts.data[i], labels, funcname);
         if (!check_result.is_ok) {
           return check_result;
         }
