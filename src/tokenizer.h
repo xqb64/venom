@@ -95,7 +95,6 @@ typedef struct {
   char *src;
   char *current;
   size_t line;
-  size_t col;
 } Tokenizer;
 
 typedef DynArray(Token) DynArray_Token;

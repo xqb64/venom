@@ -55,7 +55,6 @@ static bool is_at_end(const Tokenizer *tokenizer)
 
 static Token make_token(Tokenizer *tokenizer, TokenType type, int length)
 {
-  tokenizer->col += length;
   return (Token) {
       .type = type,
       .start = tokenizer->current - length,
@@ -407,6 +406,9 @@ static Token get_token(Tokenizer *tokenizer)
           advance(tokenizer);
           state = STATE_DONE;
           return make_token(tokenizer, TOKEN_STRING, length + 1);
+        } else if (is_at_end(tokenizer) || peek(tokenizer, 0) == '\n') {
+          printf("length is: %d\n", length);
+          return make_token(tokenizer, TOKEN_ERROR, length);
         } else {
           advance(tokenizer);
           length++;
