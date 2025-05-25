@@ -60,8 +60,6 @@ make graph.png <file>
 make -j$(nproc) opt=nan_boxing
 ```
 
-However, note that I've found this to not improve the performance, at all.
-
 ## Tests
 
 The tests are written in Python and venom's behavior is tested externally.
