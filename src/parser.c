@@ -125,10 +125,13 @@ static ParseFnResult boolean(Parser *parser)
   ExprLiteral e = {
       .kind = LIT_BOOLEAN,
       .as._bool = b,
+      .span = parser->previous.span,
   };
 
-  return (ParseFnResult) {
-      .as.expr = AS_EXPR_LITERAL(e), .is_ok = true, .msg = NULL};
+  return (ParseFnResult) {.as.expr = AS_EXPR_LITERAL(e),
+                          .is_ok = true,
+                          .msg = NULL,
+                          .span = e.span};
 }
 
 static ParseFnResult null(Parser *parser)
