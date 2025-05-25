@@ -1,65 +1,16 @@
-<h1 align="center">venom</h1>
+# venom
 
-This project is my debut in the realm of programming language design. I had a blast putting it together, and its sole purpose was fun and education, as opposed to implementing a complete enterprise-grade system. As such, I'm sure it has plenty of drawbacks. Despite this, though, I implemented a bunch of useful features, such as:
+This is an implementation of a dynamically-typed programming language with automatic memory management via reference counting.  The system incorporates an on-demand lexer based on finite state machines, a handwritten recursive-descent parser, a bytecode compiler, an optimizer, a stack-based virtual machine, and a disassembler.
 
-- basic data types
-  - numbers (double-precision floating point)
-  - booleans
-  - strings
-  - structures
-  - arrays
-  - pointers
-  - closures
-  - generators
-  - null
-- operators for the said types
-  - `==`, `!=`, `<`, `>`, `<=`, `>=`
-  - `+`, `-`, `*`, `/`, `%`
-  - `+=`, `-=`, `*=`, `/=`, `%=` (compound assignment)
-  - `&`, `|`, `^`, `~`, `<<`, `>>` (bitwise and/or/xor/not/shift (left|right))
-  - `&=`, `|=`, `^=`, `<<=`, `>>=` (bitwise compound assignment)
-  - `&&`, `||`, `!` (logical and/or/not)
-  - `++` (string concatenation)
-  - `&`, `*`, `->` (for pointers)
-  - `.` (member access)
-  - `,` (comma)
-- control flow
-  - `if`, `else`
-  - `do while`
-  - `while`
-  - `for` (C-style)
-  - `break` and `continue`
-  - `goto`
-  - `yield`
-- a few useful builtins:
-  - `next()` (for generator resumption)
-  - `len()` (a la Python)
-  - `hasattr()`
-  - `getattr()`
-  - `setattr()`
-- functions
-  - first-class citizens
-  - methods
-  - `return` is mandatory
-  - recursion!
-- `print` statement
-- `assert` statement
-- global scope
-- reference counting
-- optional NaN boxing
+It also features a conditionally compiled encoding scheme, called **NaN boxing**, which utilizes special IEEE 754 double-precision floating-point NaN values to efficiently encode all objects (up to 2^5 different object types) in just 8 bytes, effectively making stack operations and therefore copying data back-and-forth very inexpensive.
 
-The system includes what you would expect from a programming language implementation:
+Besides NaN boxing, the implementation also contains an optimizer which takes the abstract syntax tree right after the semantic analysis stage is completed, and passes it through an iterative optimization pipeline, where optimizations like **constant folding**, **unreachable code elimination**, **dead stores elimination**, and **copy propagation** take place.
 
-  - a lexer based on finite state machines
-  - a recursive-descent parser
-  - a bytecode compiler
-  - a virtual machine
-  - a disassembler
-  - an optimizer
+## Features
 
-### Optimizations
-
-Besides **NAN boxing**, the implementation also contains an optimizer which takes the abstract syntax tree after the loop label stage, and passes it through an iterative optimization pipeline, where optimizations like **constant folding**, **unreachable code elimination**, **dead stores elimination**, and **copy propagation** take place.
+```rust
+todo!()
+```
 
 ### Pretty error reports
 
@@ -83,7 +34,9 @@ Clone the repository and run:
 make -j$(nproc)
 ```
 
-To enable the debug prints for one of the components of the system, run:
+### Debugging individual system components
+
+To enable the debug prints for one of the components of the system, run e.g.:
 
 ```
 make debug=vm
@@ -91,11 +44,7 @@ make debug=vm
 
 (see Makefile for other options).
 
-To enable the debug prints for all system components, run:
-
-```
-make debug=all
-```
+### Performance graph
 
 To generate the performance graph, run:
 
@@ -117,7 +66,7 @@ However, note that I've found this to not improve the performance, at all.
 
 The tests are written in Python and venom's behavior is tested externally.
 
-The test suite relies on venom being compiled with `debug=vm,compiler` (because of the prefix in debug prints). To run the test suite, create a Python virtual environment and activate it, install `pytest` (ideally also install `pytest-xdist` because it's a time-consuming process), then execute the command below:
+The test suite relies on venom being compiled with `debug=vm,compiler` (`todo!()`) (because of the prefix in debug prints). To run the test suite, create a Python virtual environment and activate it, install `pytest` (ideally also install `pytest-xdist` because it's a time-consuming process), then execute the command below:
 
 ```
 make test
