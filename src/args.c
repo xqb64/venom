@@ -5,8 +5,6 @@
 #include <string.h>
 #include <unistd.h>
 
-#include "util.h"
-
 static int parse_measure_flag(const char *arg)
 {
   if (strcmp(arg, "all") == 0) {
@@ -69,7 +67,7 @@ ArgParseResult parse_args(int argc, char **argv)
             .args = {0},
             .is_ok = false,
             .errcode = -1,
-            .msg = ALLOC("usage: %s [--lex] [--parse] [--ir] [--optimize]")};
+            .msg = strdup("usage: %s [--lex] [--parse] [--ir] [--optimize]")};
     }
   }
 
@@ -79,7 +77,7 @@ ArgParseResult parse_args(int argc, char **argv)
         .is_ok = false,
         .errcode = -1,
         .msg =
-            ALLOC("--optimize available only from the parsing stage onwards")};
+            strdup("--optimize available only from the parsing stage onwards")};
   }
 
   if (do_lex + do_parse + do_ir > 1) {
@@ -87,7 +85,7 @@ ArgParseResult parse_args(int argc, char **argv)
         .args = {0},
         .is_ok = false,
         .errcode = -1,
-        .msg = ALLOC("Please specify exactly one option.")};
+        .msg = strdup("Please specify exactly one option.")};
   }
 
   Arguments args;
