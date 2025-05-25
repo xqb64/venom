@@ -3,7 +3,8 @@
 
 #include <stddef.h>
 
-char *mkerrctx(const char *source, size_t line, size_t span_start,
-               size_t span_end, size_t before, size_t after);
+#include "tokenizer.h"
+
+char *mkerrctx(const char *source, Span *span, size_t before, size_t after);
 
 #endif

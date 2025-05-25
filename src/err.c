@@ -4,6 +4,9 @@
 #include <stdlib.h>
 #include <string.h>
 
+#include "tokenizer.h"
+#include "util.h"
+
 #define INIT_CAP 256
 
 typedef struct {
@@ -18,11 +21,6 @@ void sb_init(StringBuilder *sb)
   sb->len = 0;
   sb->buf = malloc(sb->cap);
   sb->buf[0] = '\0';
-}
-
-void sb_free(StringBuilder *sb)
-{
-  free(sb->buf);
 }
 
 void sb_append(StringBuilder *sb, const char *s)
@@ -45,8 +43,6 @@ void sb_append_char(StringBuilder *sb, char c)
   sb->buf[sb->len++] = c;
   sb->buf[sb->len] = '\0';
 }
-
-#include "util.h"
 
 void print_line_buf(StringBuilder *sb, const char *source, size_t line)
 {
@@ -78,8 +74,7 @@ void print_line_buf(StringBuilder *sb, const char *source, size_t line)
   sb_append_char(sb, '\n');
 }
 
-void print_offending_line_buf(StringBuilder *sb, const char *source,
-                              size_t line, size_t span_start, size_t span_end)
+void print_offending_line_buf(StringBuilder *sb, const char *source, Span *span)
 {
   const char *c = source, *target_start = source;
   size_t current_line = 1;
@@ -88,16 +83,16 @@ void print_offending_line_buf(StringBuilder *sb, const char *source,
     if (*c == '\n') {
       current_line++;
     }
-    if (current_line == line) {
+    if (current_line == span->line) {
       target_start = ++c;
       break;
     }
     c++;
   }
 
-  size_t len = numlen(line);
-  char *lineno = malloc(line + 1);
-  snprintf(lineno, len + 1, "%ld", line);
+  size_t len = numlen(span->line);
+  char *lineno = malloc(span->line + 1);
+  snprintf(lineno, len + 1, "%ld", span->line);
   sb_append(sb, lineno);
   sb_append_char(sb, ' ');
 
@@ -108,31 +103,31 @@ void print_offending_line_buf(StringBuilder *sb, const char *source,
   }
   sb_append_char(sb, '\n');
 
-  size_t prefix_len = (source + span_start) - target_start + len + 1;
+  size_t prefix_len = (source + span->start) - target_start + len + 1;
   for (size_t i = 0; i < prefix_len; i++) {
     sb_append_char(sb, ' ');
   }
 
-  size_t caret_len = (span_end - span_start == 0) ? 1 : (span_end - span_start);
+  size_t caret_len =
+      (span->end - span->start == 0) ? 1 : (span->end - span->start);
   for (size_t i = 0; i < caret_len; i++) {
     sb_append_char(sb, '^');
   }
 }
 
-char *mkerrctx(const char *source, size_t line, size_t span_start,
-               size_t span_end, size_t before, size_t after)
+char *mkerrctx(const char *source, Span *span, size_t before, size_t after)
 {
   StringBuilder sb;
   sb_init(&sb);
 
-  for (size_t i = line - before; i < line; i++) {
+  for (size_t i = span->line - before; i < span->line; i++) {
     print_line_buf(&sb, source, i);
   }
 
-  print_offending_line_buf(&sb, source, line, span_start, span_end);
+  print_offending_line_buf(&sb, source, span);
   sb_append_char(&sb, '\n');
 
-  for (size_t i = line + 1; i < line + after + 1; i++) {
+  for (size_t i = span->line + 1; i < span->line + after + 1; i++) {
     print_line_buf(&sb, source, i);
   }
 

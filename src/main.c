@@ -60,9 +60,7 @@ static RunResult run(Arguments *args)
 
   TokenizeResult tokenize_result = tokenize(&tokenizer);
   if (!tokenize_result.is_ok) {
-    char *errctx =
-        mkerrctx(source, tokenize_result.span.line, tokenize_result.span.start,
-                 tokenize_result.span.end, 3, 3);
+    char *errctx = mkerrctx(source, &tokenize_result.span, 3, 3);
     alloc_err_str(&result.msg, "tokenizer: %s\n%s\n", tokenize_result.msg,
                   errctx);
     free(errctx);
@@ -90,9 +88,7 @@ static RunResult run(Arguments *args)
 
   ParseResult parse_result = parse(&parser);
   if (!parse_result.is_ok) {
-    char *errctx =
-        mkerrctx(source, parse_result.span.line, parse_result.span.start,
-                 parse_result.span.end, 3, 3);
+    char *errctx = mkerrctx(source, &parse_result.span, 3, 3);
     alloc_err_str(&result.msg, "parser: %s\n%s\n", parse_result.msg, errctx);
     free(errctx);
     result.is_ok = false;
@@ -111,9 +107,7 @@ static RunResult run(Arguments *args)
 
   LoopLabelResult loop_label_result = loop_label_program(&raw_ast, NULL);
   if (!loop_label_result.is_ok) {
-    char *errctx = mkerrctx(source, loop_label_result.span.line,
-                            loop_label_result.span.start,
-                            loop_label_result.span.end, 3, 3);
+    char *errctx = mkerrctx(source, &loop_label_result.span, 3, 3);
     alloc_err_str(&result.msg, "loop_labeler: %s\n%s\n", loop_label_result.msg,
                   errctx);
     free(errctx);
@@ -132,9 +126,7 @@ static RunResult run(Arguments *args)
 
   LabelCheckResult label_check_result = label_check_program(&labeled_ast);
   if (!label_check_result.is_ok) {
-    char *errctx = mkerrctx(source, label_check_result.span.line,
-                            label_check_result.span.start,
-                            label_check_result.span.end, 3, 3);
+    char *errctx = mkerrctx(source, &label_check_result.span, 3, 3);
     alloc_err_str(&result.msg, "label_checker: %s\n%s\n",
                   label_check_result.msg, errctx);
     free(errctx);
@@ -174,9 +166,7 @@ static RunResult run(Arguments *args)
   }
 
   if (!compile_result.is_ok) {
-    char *errctx =
-        mkerrctx(source, compile_result.span.line, compile_result.span.start,
-                 compile_result.span.end, 3, 3);
+    char *errctx = mkerrctx(source, &compile_result.span, 3, 3);
     alloc_err_str(&result.msg, "compiler: %s\n%s\n", compile_result.msg,
                   errctx);
     free(errctx);
@@ -245,6 +235,7 @@ cleanup_after_compile:
   if (compile_result.is_ok) {
     free_compiler(compiler);
     free(compiler);
+    assert(chunk);
     free_chunk(chunk);
     free(chunk);
   } else {
