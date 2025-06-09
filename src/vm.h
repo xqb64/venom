@@ -36,6 +36,7 @@ typedef struct {
   int errcode;
   bool is_ok;
   char *msg;
+  double time;
 } ExecResult;
 
 void init_vm(VM *vm);

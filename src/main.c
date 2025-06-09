@@ -27,17 +27,6 @@ static RunResult run(Arguments *args)
 {
   RunResult result = {.is_ok = true, .errcode = 0, .msg = NULL};
 
-  struct timespec read_file_start, read_file_end, tokenize_start, tokenize_end,
-      parse_start, parse_end, loop_label_start, loop_label_end, optimize_start,
-      optimize_end, compile_start, compile_end, disassemble_start,
-      disassemble_end, exec_start, exec_end;
-
-  double read_file_elapsed = 0.0, tokenize_elapsed = 0.0, parse_elapsed = 0.0,
-         loop_label_elapsed = 0.0, optimize_elapsed = 0.0,
-         compile_elapsed = 0.0, disassemble_elapsed = 0.0, exec_elapsed = 0.0;
-
-  clock_gettime(CLOCK_MONOTONIC, &read_file_start);
-
   ReadFileResult read_file_result = read_file(args->file);
   if (!read_file_result.is_ok) {
     alloc_err_str(&result.msg, read_file_result.msg);
@@ -46,14 +35,7 @@ static RunResult run(Arguments *args)
     goto cleanup_after_read_file;
   }
 
-  clock_gettime(CLOCK_MONOTONIC, &read_file_end);
-
-  read_file_elapsed = (read_file_end.tv_sec - read_file_start.tv_sec) +
-                      (read_file_end.tv_nsec - read_file_start.tv_nsec) / 1e9;
-
   char *source = read_file_result.payload;
-
-  clock_gettime(CLOCK_MONOTONIC, &tokenize_start);
 
   Tokenizer tokenizer;
   init_tokenizer(&tokenizer, source);
@@ -69,19 +51,12 @@ static RunResult run(Arguments *args)
     goto cleanup_after_lex;
   }
 
-  clock_gettime(CLOCK_MONOTONIC, &tokenize_end);
-
-  tokenize_elapsed = (tokenize_end.tv_sec - tokenize_start.tv_sec) +
-                     (tokenize_end.tv_nsec - tokenize_start.tv_nsec) / 1e9;
-
   DynArray_Token tokens = tokenize_result.tokens;
 
   if (args->lex) {
     print_tokens(&tokens);
     goto cleanup_after_lex;
   }
-
-  clock_gettime(CLOCK_MONOTONIC, &parse_start);
 
   Parser parser;
   init_parser(&parser, &tokens);
@@ -96,14 +71,7 @@ static RunResult run(Arguments *args)
     goto cleanup_after_parse;
   }
 
-  clock_gettime(CLOCK_MONOTONIC, &parse_end);
-
-  parse_elapsed = (parse_end.tv_sec - parse_start.tv_sec) +
-                  (parse_end.tv_nsec - parse_start.tv_nsec) / 1e9;
-
   DynArray_Stmt raw_ast = parse_result.ast;
-
-  clock_gettime(CLOCK_MONOTONIC, &loop_label_start);
 
   LoopLabelResult loop_label_result = loop_label_program(&raw_ast, NULL);
   if (!loop_label_result.is_ok) {
@@ -115,12 +83,6 @@ static RunResult run(Arguments *args)
     result.errcode = loop_label_result.errcode;
     goto cleanup_after_loop_label;
   }
-
-  clock_gettime(CLOCK_MONOTONIC, &loop_label_end);
-
-  loop_label_elapsed =
-      (loop_label_end.tv_sec - loop_label_start.tv_sec) +
-      (loop_label_end.tv_nsec - loop_label_start.tv_nsec) / 1e9;
 
   DynArray_Stmt labeled_ast = loop_label_result.as.ast;
 
@@ -135,32 +97,26 @@ static RunResult run(Arguments *args)
     goto cleanup_after_loop_label;
   }
 
-  DynArray_Stmt optimized_ast = {0};
+  OptimizeResult optimize_result = {0};
 
   if (args->optimize) {
-    clock_gettime(CLOCK_MONOTONIC, &optimize_start);
-    optimized_ast = optimize(&labeled_ast);
-    clock_gettime(CLOCK_MONOTONIC, &optimize_end);
-    optimize_elapsed = (optimize_end.tv_sec - optimize_start.tv_sec) +
-                       (optimize_end.tv_nsec - optimize_start.tv_nsec) / 1e9;
+    optimize_result = optimize(&labeled_ast);
   }
 
   if (args->parse) {
     if (args->optimize) {
-      print_ast(&optimized_ast);
+      print_ast(&optimize_result.payload);
     } else {
       print_ast(&labeled_ast);
     }
     goto cleanup_after_loop_label;
   }
 
-  clock_gettime(CLOCK_MONOTONIC, &compile_start);
-
   Compiler *compiler = current_compiler = new_compiler();
 
   CompileResult compile_result;
   if (args->optimize) {
-    compile_result = compile(&optimized_ast);
+    compile_result = compile(&optimize_result.payload);
   } else {
     compile_result = compile(&labeled_ast);
   }
@@ -175,17 +131,10 @@ static RunResult run(Arguments *args)
     goto cleanup_after_compile;
   }
 
-  clock_gettime(CLOCK_MONOTONIC, &compile_end);
-
-  compile_elapsed = (compile_end.tv_sec - compile_start.tv_sec) +
-                    (compile_end.tv_nsec - compile_start.tv_nsec) / 1e9;
-
   Bytecode *chunk = compile_result.chunk;
 
   DisassembleResult disassemble_result = {0};
   if (args->ir) {
-    clock_gettime(CLOCK_MONOTONIC, &disassemble_start);
-
     disassemble_result = disassemble(chunk);
     if (!disassemble_result.is_ok) {
       alloc_err_str(&result.msg, "disassembler: %s\n", disassemble_result.msg);
@@ -193,16 +142,8 @@ static RunResult run(Arguments *args)
       result.errcode = disassemble_result.errcode;
     }
 
-    clock_gettime(CLOCK_MONOTONIC, &disassemble_end);
-
-    disassemble_elapsed =
-        (disassemble_end.tv_sec - disassemble_start.tv_sec) +
-        (disassemble_end.tv_nsec - disassemble_start.tv_nsec) / 1e9;
-
     goto cleanup_after_disassemble;
   }
-
-  clock_gettime(CLOCK_MONOTONIC, &exec_start);
 
   VM vm;
   init_vm(&vm);
@@ -214,11 +155,6 @@ static RunResult run(Arguments *args)
     result.errcode = exec_result.errcode;
     goto cleanup_after_exec; /* just for the symmetry */
   }
-
-  clock_gettime(CLOCK_MONOTONIC, &exec_end);
-
-  exec_elapsed = (exec_end.tv_sec - exec_start.tv_sec) +
-                 (exec_end.tv_nsec - exec_start.tv_nsec) / 1e9;
 
 cleanup_after_exec:
   free_vm(&vm);
@@ -257,7 +193,7 @@ cleanup_after_parse:
   }
 
   if (args->optimize) {
-    free_ast(&optimized_ast);
+    free_ast(&optimize_result.payload);
   }
 
 cleanup_after_lex:
@@ -274,49 +210,44 @@ cleanup_after_read_file:
     free(read_file_result.msg);
   }
 
-  double total_all_stages = read_file_elapsed + tokenize_elapsed +
-                            parse_elapsed + loop_label_elapsed +
-                            optimize_elapsed + compile_elapsed +
-                            disassemble_elapsed + exec_elapsed;
-
-  if (args->measure_flags & MEASURE_READ_FILE) {
-    printf("read_file stage took %.9f sec (%.2f%%)\n", read_file_elapsed,
-           (read_file_elapsed / total_all_stages) * 100);
-  }
+  double total_all_stages = tokenize_result.time + parse_result.time +
+                            loop_label_result.time + optimize_result.time +
+                            compile_result.time + disassemble_result.time +
+                            exec_result.time;
 
   if (args->measure_flags & MEASURE_LEX) {
-    printf("lex stage took %.9f sec (%.2f%%)\n", tokenize_elapsed,
-           (tokenize_elapsed / total_all_stages) * 100);
+    printf("lex stage took %.9f sec (%.2f%%)\n", tokenize_result.time,
+           (tokenize_result.time / total_all_stages) * 100);
   }
 
   if (args->measure_flags & MEASURE_PARSE) {
-    printf("parse stage took %.9f sec (%.2f%%)\n", parse_elapsed,
-           (parse_elapsed / total_all_stages) * 100);
+    printf("parse stage took %.9f sec (%.2f%%)\n", parse_result.time,
+           (parse_result.time / total_all_stages) * 100);
   }
 
   if (args->measure_flags & MEASURE_LOOP_LABEL) {
-    printf("loop_label stage took %.9f sec (%.2f%%)\n", loop_label_elapsed,
-           (loop_label_elapsed / total_all_stages) * 100);
+    printf("loop_label stage took %.9f sec (%.2f%%)\n", loop_label_result.time,
+           (loop_label_result.time / total_all_stages) * 100);
   }
 
   if (args->measure_flags & MEASURE_OPTIMIZE) {
-    printf("optimize stage took %.9f sec (%.2f%%)\n", optimize_elapsed,
-           (optimize_elapsed / total_all_stages) * 100);
+    printf("optimize stage took %.9f sec (%.2f%%)\n", optimize_result.time,
+           (optimize_result.time / total_all_stages) * 100);
   }
 
   if (args->measure_flags & MEASURE_DISASSEMBLE) {
-    printf("disasm stage took %.9f sec (%.2f%%)\n", disassemble_elapsed,
-           (disassemble_elapsed / total_all_stages) * 100);
+    printf("disasm stage took %.9f sec (%.2f%%)\n", disassemble_result.time,
+           (disassemble_result.time / total_all_stages) * 100);
   }
 
   if (args->measure_flags & MEASURE_COMPILE) {
-    printf("compile stage took %.9f sec (%.2f%%)\n", compile_elapsed,
-           (compile_elapsed / total_all_stages) * 100);
+    printf("compile stage took %.9f sec (%.2f%%)\n", compile_result.time,
+           (compile_result.time / total_all_stages) * 100);
   }
 
   if (args->measure_flags & MEASURE_EXEC) {
-    printf("exec stage took %.9f sec (%.2f%%)\n", exec_elapsed,
-           (exec_elapsed / total_all_stages) * 100);
+    printf("exec stage took %.9f sec (%.2f%%)\n", exec_result.time,
+           (exec_result.time / total_all_stages) * 100);
   }
 
   return result;

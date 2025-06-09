@@ -1,8 +1,10 @@
 #include "disassembler.h"
 
+#include <bits/time.h>
 #include <stdint.h>
 #include <stdio.h>
 #include <string.h>
+#include <time.h>
 
 #include "compiler.h"
 
@@ -71,6 +73,13 @@ DisassembleResult disassemble(Bytecode *code)
                       ((uint64_t) ip[-5] << 40) | ((uint64_t) ip[-4] << 32) | \
                       ((uint64_t) ip[-3] << 24) | ((uint64_t) ip[-2] << 16) | \
                       ((uint64_t) ip[-1] << 8) | (uint64_t) ip[0]))
+
+  DisassembleResult result = {
+      .is_ok = true, .errcode = 0, .msg = NULL, .time = 0.0};
+
+  struct timespec start, end;
+
+  clock_gettime(CLOCK_MONOTONIC, &start);
 
   for (uint8_t *ip = code->code.data; ip < &code->code.data[code->code.count];
        ip++) {
@@ -167,7 +176,12 @@ DisassembleResult disassemble(Bytecode *code)
     printf("\n");
   }
 
-  return (DisassembleResult) {.is_ok = true, .errcode = 0, .msg = NULL};
+  clock_gettime(CLOCK_MONOTONIC, &end);
+
+  result.time =
+      (end.tv_sec - start.tv_sec) + (end.tv_nsec - start.tv_nsec) / 1e9;
+
+  return result;
 
 #undef READ_UINT8
 #undef READ_INT16

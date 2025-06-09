@@ -40,6 +40,7 @@ typedef struct {
   bool is_ok;
   char *msg;
   Span span;
+  double time;
 } ParseResult;
 
 void init_parser(Parser *parser, const DynArray_Token *tokens);

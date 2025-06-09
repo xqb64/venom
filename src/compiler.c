@@ -1,12 +1,14 @@
 #include "compiler.h"
 
 #include <assert.h>
+#include <bits/time.h>
 #include <stdarg.h>
 #include <stdbool.h>
 #include <stdint.h>
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
+#include <time.h>
 
 #include "ast.h"
 #include "dynarray.h"
@@ -2377,8 +2379,16 @@ static CompileResult compile_stmt(Bytecode *code, const Stmt *stmt)
 
 CompileResult compile(const DynArray_Stmt *ast)
 {
-  CompileResult result = {
-      .is_ok = true, .errcode = 0, .msg = NULL, .chunk = NULL, .span = {0}};
+  CompileResult result = {.is_ok = true,
+                          .errcode = 0,
+                          .msg = NULL,
+                          .chunk = NULL,
+                          .span = {0},
+                          .time = 0.0};
+
+  struct timespec start, end;
+
+  clock_gettime(CLOCK_MONOTONIC, &start);
 
   collect_labels(ast);
 
@@ -2396,7 +2406,11 @@ CompileResult compile(const DynArray_Stmt *ast)
 
   dynarray_insert(&chunk->code, OP_HLT);
 
+  clock_gettime(CLOCK_MONOTONIC, &end);
+
   result.chunk = chunk;
+  result.time =
+      (end.tv_sec - start.tv_sec) + (end.tv_nsec - start.tv_nsec) / 1e9;
 
   return result;
 }

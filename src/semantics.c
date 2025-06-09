@@ -1,9 +1,11 @@
 #include "semantics.h"
 
 #include <assert.h>
+#include <bits/time.h>
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>  // IWYU pragma: keep
+#include <time.h>
 
 #include "ast.h"
 #include "dynarray.h"
@@ -211,8 +213,16 @@ static LoopLabelResult loop_label_stmt(Stmt *stmt, const char *current)
 
 LoopLabelResult loop_label_program(DynArray_Stmt *ast, const char *current)
 {
-  LoopLabelResult result = {
-      .is_ok = true, .errcode = 0, .as.ast = {0}, .msg = NULL, .span = {0}};
+  LoopLabelResult result = {.is_ok = true,
+                            .errcode = 0,
+                            .as.ast = {0},
+                            .msg = NULL,
+                            .span = {0},
+                            .time = 0.0};
+
+  struct timespec start, end;
+
+  clock_gettime(CLOCK_MONOTONIC, &start);
 
   DynArray_Stmt labeled_ast = {0};
   for (size_t i = 0; i < ast->count; i++) {
@@ -224,7 +234,11 @@ LoopLabelResult loop_label_program(DynArray_Stmt *ast, const char *current)
     dynarray_insert(&labeled_ast, stmt_result.as.stmt);
   }
 
+  clock_gettime(CLOCK_MONOTONIC, &end);
+
   result.as.ast = labeled_ast;
+  result.time =
+      (end.tv_sec - start.tv_sec) + (end.tv_nsec - start.tv_nsec) / 1e9;
 
   return result;
 }
@@ -431,6 +445,13 @@ static LabelCheckResult label_check_stmt(const Stmt *stmt,
 
 LabelCheckResult label_check_program(DynArray_Stmt *ast)
 {
+  LabelCheckResult result = {
+      .is_ok = true, .errcode = 0, .msg = NULL, .span = {0}, .time = 0.0};
+
+  struct timespec start, end;
+
+  clock_gettime(CLOCK_MONOTONIC, &start);
+
   DynArray_char_ptr labels = {0};
   for (size_t i = 0; i < ast->count; i++) {
     LabelCheckResult stmt_result =
@@ -439,6 +460,11 @@ LabelCheckResult label_check_program(DynArray_Stmt *ast)
       return stmt_result;
     }
   }
-  return (LabelCheckResult) {
-      .is_ok = true, .errcode = 0, .msg = NULL, .span = {0}};
+
+  clock_gettime(CLOCK_MONOTONIC, &end);
+
+  result.time =
+      (end.tv_sec - start.tv_sec) + (end.tv_nsec - start.tv_nsec) / 1e9;
+
+  return result;
 }

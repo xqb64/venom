@@ -1,11 +1,13 @@
 #include "parser.h"
 
 #include <assert.h>
+#include <bits/time.h>
 #include <stdarg.h>
 #include <stdbool.h>
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
+#include <time.h>
 
 #include "ast.h"
 #include "dynarray.h"
@@ -2032,8 +2034,17 @@ static ParseFnResult statement(Parser *parser)
 
 ParseResult parse(Parser *parser)
 {
-  ParseResult result = {
-      .is_ok = true, .errcode = 0, .msg = NULL, .ast = {0}, .span = {0}};
+  ParseResult result = {.is_ok = true,
+                        .errcode = 0,
+                        .msg = NULL,
+                        .ast = {0},
+                        .span = {0},
+                        .time = 0.0};
+
+  struct timespec start, end;
+
+  clock_gettime(CLOCK_MONOTONIC, &start);
+
   advance(parser);
   while (parser->current.type != TOKEN_EOF) {
     ParseFnResult r = statement(parser);
@@ -2047,6 +2058,12 @@ ParseResult parse(Parser *parser)
     }
     dynarray_insert(&result.ast, r.as.stmt);
   }
+
+  clock_gettime(CLOCK_MONOTONIC, &end);
+
   result.is_ok = true;
+  result.time =
+      (end.tv_sec - start.tv_sec) + (end.tv_nsec - start.tv_nsec) / 1e9;
+
   return result;
 }

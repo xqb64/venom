@@ -8,6 +8,7 @@ CFLAGS += -Wno-unused-parameter -Wno-unused-variable
 CFLAGS += -Wformat-security
 CFLAGS += -Wunreachable-code
 CFLAGS += -O3
+CFLAGS += -Wno-maybe-uninitialized
 LDLIBS = -lm
 
 ifeq (nan_boxing, $(findstring nan_boxing, $(opt)))

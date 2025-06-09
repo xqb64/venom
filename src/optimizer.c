@@ -1,10 +1,12 @@
 #include "optimizer.h"
 
 #include <assert.h>
+#include <bits/time.h>
 #include <stdbool.h>
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
+#include <time.h>
 
 #include "ast.h"
 #include "dynarray.h"
@@ -1172,8 +1174,15 @@ Stmt eliminate_dead_store_stmt(Stmt *stmt, bool *is_modified)
   }
 }
 
-DynArray_Stmt optimize(const DynArray_Stmt *ast)
+OptimizeResult optimize(const DynArray_Stmt *ast)
 {
+  OptimizeResult result = {
+      .errcode = 0, .is_ok = true, .time = 0.0, .msg = NULL, .payload = {0}};
+
+  struct timespec start, end;
+
+  clock_gettime(CLOCK_MONOTONIC, &start);
+
   bool is_modified;
   DynArray_Stmt original = clone_ast(ast);
 
@@ -1205,5 +1214,11 @@ DynArray_Stmt optimize(const DynArray_Stmt *ast)
     free_ast(&optimized_ast);
   } while (is_modified);
 
-  return original;
+  clock_gettime(CLOCK_MONOTONIC, &end);
+
+  result.payload = original;
+  result.time =
+      (end.tv_sec - start.tv_sec) + (end.tv_nsec - start.tv_nsec) / 1e9;
+
+  return result;
 }

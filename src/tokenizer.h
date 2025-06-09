@@ -105,6 +105,7 @@ typedef struct {
   bool is_ok;
   char *msg;
   Span span;
+  double time;
 } TokenizeResult;
 
 void init_tokenizer(Tokenizer *tokenizer, char *source);

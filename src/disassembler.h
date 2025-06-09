@@ -13,6 +13,7 @@ typedef struct {
   int errcode;
   bool is_ok;
   char *msg;
+  double time;
 } DisassembleResult;
 
 DisassembleResult disassemble(Bytecode *code);

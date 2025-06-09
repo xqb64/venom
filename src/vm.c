@@ -1,11 +1,13 @@
 #include "vm.h"
 
 #include <assert.h>
+#include <bits/time.h>
 #include <stdbool.h>
 #include <stdint.h>
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
+#include <time.h>
 
 #include "compiler.h"
 
@@ -1630,9 +1632,13 @@ ExecResult exec(VM *vm, Bytecode *code)
     goto bail;                                     \
   DISPATCH();
 
-  uint8_t *ip = code->code.data;
+  ExecResult r = {.is_ok = true, .errcode = 0, .msg = NULL, .time = 0.0};
 
-  ExecResult r = {.is_ok = true, .errcode = 0, .msg = NULL};
+  struct timespec start, end;
+
+  clock_gettime(CLOCK_MONOTONIC, &start);
+
+  uint8_t *ip = code->code.data;
 
   goto *dispatch_table[*ip];
 
@@ -1695,8 +1701,12 @@ ExecResult exec(VM *vm, Bytecode *code)
 
 op_hlt:
   assert(vm->tos == 0);
+  clock_gettime(CLOCK_MONOTONIC, &end);
+  r.time = (end.tv_sec - start.tv_sec) + (end.tv_nsec - start.tv_nsec) / 1e9;
   return r;
 bail:
+  clock_gettime(CLOCK_MONOTONIC, &end);
+  r.time = (end.tv_sec - start.tv_sec) + (end.tv_nsec - start.tv_nsec) / 1e9;
   return r;
 
 #undef HANDLE

@@ -121,6 +121,7 @@ typedef struct {
   bool is_ok;
   char *msg;
   Span span;
+  double time;
 } CompileResult;
 
 void init_chunk(Bytecode *code);

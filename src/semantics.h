@@ -14,6 +14,7 @@ typedef struct {
   bool is_ok;
   char *msg;
   Span span;
+  double time;
 } LoopLabelResult;
 
 typedef struct {
@@ -21,6 +22,7 @@ typedef struct {
   bool is_ok;
   char *msg;
   Span span;
+  double time;
 } LabelCheckResult;
 
 LoopLabelResult loop_label_program(DynArray_Stmt *ast, const char *current);

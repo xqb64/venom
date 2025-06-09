@@ -1,9 +1,11 @@
 #include "tokenizer.h"
 
+#include <bits/time.h>
 #include <stdbool.h>
 #include <stdio.h>
 #include <stdlib.h>  // IWYU pragma: keep
 #include <string.h>
+#include <time.h>
 
 #include "util.h"
 
@@ -441,8 +443,16 @@ void print_tokens(const DynArray_Token *tokens)
 
 TokenizeResult tokenize(Tokenizer *tokenizer)
 {
-  TokenizeResult result = {
-      .is_ok = true, .errcode = 0, .msg = NULL, .tokens = {0}, .span = {0}};
+  TokenizeResult result = {.is_ok = true,
+                           .errcode = 0,
+                           .msg = NULL,
+                           .tokens = {0},
+                           .span = {0},
+                           .time = 0.0};
+
+  struct timespec start, end;
+
+  clock_gettime(CLOCK_MONOTONIC, &start);
 
   Token t;
   while ((t = get_token(tokenizer)).type != TOKEN_EOF) {
@@ -456,7 +466,11 @@ TokenizeResult tokenize(Tokenizer *tokenizer)
     dynarray_insert(&result.tokens, t);
   }
 
+  clock_gettime(CLOCK_MONOTONIC, &end);
+
   result.is_ok = true;
+  result.time =
+      (end.tv_sec - start.tv_sec) + (end.tv_nsec - start.tv_nsec) / 1e9;
 
   return result;
 }
