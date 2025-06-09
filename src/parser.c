@@ -1,7 +1,6 @@
 #include "parser.h"
 
 #include <assert.h>
-#include <bits/time.h>
 #include <stdarg.h>
 #include <stdbool.h>
 #include <stdio.h>
@@ -13,32 +12,6 @@
 #include "dynarray.h"
 #include "tokenizer.h"
 #include "util.h"
-
-#define CONSUME(parser, token_type, err)                       \
-  ({                                                           \
-    TokenResult r = consume((parser), (token_type));           \
-    if (!r.is_ok)                                              \
-      return (ParseFnResult) {                                 \
-          .is_ok = false, .msg = strdup(err), .as.stmt = {0}}; \
-    r.token;                                                   \
-  })
-
-#define HANDLE_EXPR(kind, ...)           \
-  ({                                     \
-    ParseFnResult r = kind(__VA_ARGS__); \
-    if (!r.is_ok) {                      \
-      return r;                          \
-    }                                    \
-    r.as.expr;                           \
-  })
-
-#define HANDLE_STMT(kind, ...)        \
-  ({                                  \
-    ParseFnResult r = kind((parser)); \
-    if (!r.is_ok)                     \
-      return r;                       \
-    r.as.stmt;                        \
-  })
 
 void init_parser(Parser *parser, const DynArray_Token *tokens)
 {
@@ -258,7 +231,11 @@ static ParseFnResult call(Parser *parser)
 
   for (;;) {
     if (match(parser, 1, TOKEN_LEFT_PAREN)) {
-      expr = HANDLE_EXPR(finish_call, parser, expr);
+      ParseFnResult finish_call_result = finish_call(parser, expr);
+      if (!finish_call_result.is_ok) {
+        return finish_call_result;
+      }
+      expr = finish_call_result.as.expr;
     } else if (match(parser, 2, TOKEN_DOT, TOKEN_ARROW)) {
       char *op = own_string_n(parser->previous.start, parser->previous.length);
 
@@ -777,7 +754,12 @@ static ParseFnResult grouping(Parser *parser)
                                             .line = parser->current.span.line}};
   }
 
-  Expr expr = HANDLE_EXPR(expression, parser);
+  ParseFnResult expr_result = expression(parser);
+  if (!expr_result.is_ok) {
+    return expr_result;
+  }
+
+  Expr expr = expr_result.as.expr;
 
   TokenResult rparen_result = consume(parser, TOKEN_RIGHT_PAREN);
   if (!rparen_result.is_ok) {
