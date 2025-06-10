@@ -475,8 +475,11 @@ static CompileResult compile_expr(Bytecode *code, const Expr *expr);
 
 static CompileResult compile_expr_literal(Bytecode *code, const Expr *expr)
 {
-  CompileResult result = {
-      .is_ok = true, .chunk = NULL, .msg = NULL, .span = expr->span};
+  CompileResult result = {.is_ok = true,
+                          .chunk = NULL,
+                          .msg = NULL,
+                          .span = expr->span,
+                          .time = 0.0};
 
   ExprLiteral expr_lit = expr->as.expr_literal;
 
@@ -512,8 +515,11 @@ static CompileResult compile_expr_literal(Bytecode *code, const Expr *expr)
 
 static CompileResult compile_expr_variable(Bytecode *code, const Expr *expr)
 {
-  CompileResult result = {
-      .is_ok = true, .chunk = NULL, .msg = NULL, .span = expr->span};
+  CompileResult result = {.is_ok = true,
+                          .chunk = NULL,
+                          .msg = NULL,
+                          .span = expr->span,
+                          .time = 0.0};
 
   ExprVariable expr_var = expr->as.expr_variable;
 
@@ -557,8 +563,11 @@ static CompileResult compile_expr_variable(Bytecode *code, const Expr *expr)
 
 static CompileResult compile_expr_unary(Bytecode *code, const Expr *expr)
 {
-  CompileResult result = {
-      .is_ok = true, .chunk = NULL, .msg = NULL, .span = expr->span};
+  CompileResult result = {.is_ok = true,
+                          .chunk = NULL,
+                          .msg = NULL,
+                          .span = expr->span,
+                          .time = 0.0};
 
   ExprUnary expr_unary = expr->as.expr_unary;
 
@@ -657,8 +666,11 @@ static CompileResult compile_expr_unary(Bytecode *code, const Expr *expr)
 
 static CompileResult compile_expr_binary(Bytecode *code, const Expr *expr)
 {
-  CompileResult result = {
-      .is_ok = true, .chunk = NULL, .msg = NULL, .span = expr->span};
+  CompileResult result = {.is_ok = true,
+                          .chunk = NULL,
+                          .msg = NULL,
+                          .span = expr->span,
+                          .time = 0.0};
 
   ExprBinary expr_bin = expr->as.expr_binary;
 
@@ -785,8 +797,11 @@ static CompileResult compile_expr_binary(Bytecode *code, const Expr *expr)
 
 static CompileResult compile_expr_call(Bytecode *code, const Expr *expr)
 {
-  CompileResult result = {
-      .is_ok = true, .chunk = NULL, .msg = NULL, .span = expr->span};
+  CompileResult result = {.is_ok = true,
+                          .chunk = NULL,
+                          .msg = NULL,
+                          .span = expr->span,
+                          .time = 0.0};
 
   ExprCall expr_call = expr->as.expr_call;
 
@@ -971,8 +986,11 @@ static CompileResult compile_expr_call(Bytecode *code, const Expr *expr)
 
 static CompileResult compile_expr_get(Bytecode *code, const Expr *expr)
 {
-  CompileResult result = {
-      .is_ok = true, .chunk = NULL, .msg = NULL, .span = expr->span};
+  CompileResult result = {.is_ok = true,
+                          .chunk = NULL,
+                          .msg = NULL,
+                          .span = expr->span,
+                          .time = 0.0};
 
   ExprGet expr_get = expr->as.expr_get;
 
@@ -1237,8 +1255,11 @@ static CompileResult compile_assign_subscript(Bytecode *code, ExprAssign e,
 
 static CompileResult compile_expr_assign(Bytecode *code, const Expr *expr)
 {
-  CompileResult result = {
-      .is_ok = true, .chunk = NULL, .msg = NULL, .span = expr->span};
+  CompileResult result = {.is_ok = true,
+                          .chunk = NULL,
+                          .msg = NULL,
+                          .span = expr->span,
+                          .time = 0.0};
 
   ExprAssign expr_assign = expr->as.expr_assign;
   bool compound_assign = strcmp(expr_assign.op, "=") != 0;
@@ -1275,8 +1296,11 @@ static CompileResult compile_expr_assign(Bytecode *code, const Expr *expr)
 
 static CompileResult compile_expr_struct(Bytecode *code, const Expr *expr)
 {
-  CompileResult result = {
-      .is_ok = true, .chunk = NULL, .msg = NULL, .span = expr->span};
+  CompileResult result = {.is_ok = true,
+                          .chunk = NULL,
+                          .msg = NULL,
+                          .span = expr->span,
+                          .time = 0.0};
 
   ExprStruct expr_struct = expr->as.expr_struct;
 
@@ -1360,8 +1384,11 @@ static CompileResult compile_expr_struct(Bytecode *code, const Expr *expr)
 static CompileResult compile_expr_struct_initializer(Bytecode *code,
                                                      const Expr *expr)
 {
-  CompileResult result = {
-      .is_ok = true, .chunk = NULL, .msg = NULL, .span = expr->span};
+  CompileResult result = {.is_ok = true,
+                          .chunk = NULL,
+                          .msg = NULL,
+                          .span = expr->span,
+                          .time = 0.0};
 
   printf("static CompileResult: %ld [%ld, %ld]\n", expr->span.line,
          expr->span.start, expr->span.end);
@@ -1388,8 +1415,11 @@ static CompileResult compile_expr_struct_initializer(Bytecode *code,
 
 static CompileResult compile_expr_array(Bytecode *code, const Expr *expr)
 {
-  CompileResult result = {
-      .is_ok = true, .chunk = NULL, .msg = NULL, .span = expr->span};
+  CompileResult result = {.is_ok = true,
+                          .chunk = NULL,
+                          .msg = NULL,
+                          .span = expr->span,
+                          .time = 0.0};
 
   ExprArray expr_array = expr->as.expr_array;
 
@@ -1414,8 +1444,11 @@ static CompileResult compile_expr_array(Bytecode *code, const Expr *expr)
 
 static CompileResult compile_expr_subscript(Bytecode *code, const Expr *expr)
 {
-  CompileResult result = {
-      .is_ok = true, .chunk = NULL, .msg = NULL, .span = expr->span};
+  CompileResult result = {.is_ok = true,
+                          .chunk = NULL,
+                          .msg = NULL,
+                          .span = expr->span,
+                          .time = 0.0};
   ExprSubscript expr_subscript = expr->as.expr_subscript;
 
   /* First, we compile the expr. */
@@ -1438,8 +1471,11 @@ static CompileResult compile_expr_subscript(Bytecode *code, const Expr *expr)
 
 static CompileResult compile_expr_conditional(Bytecode *code, const Expr *expr)
 {
-  CompileResult result = {
-      .is_ok = true, .chunk = NULL, .msg = NULL, .span = expr->span};
+  CompileResult result = {.is_ok = true,
+                          .chunk = NULL,
+                          .msg = NULL,
+                          .span = expr->span,
+                          .time = 0.0};
 
   ExprConditional expr_conditional = expr->as.expr_conditional;
 
@@ -1504,8 +1540,11 @@ static CompileResult compile_stmt(Bytecode *code, const Stmt *stmt);
 
 static CompileResult compile_stmt_print(Bytecode *code, const Stmt *stmt)
 {
-  CompileResult result = {
-      .is_ok = true, .chunk = NULL, .msg = NULL, .span = stmt->span};
+  CompileResult result = {.is_ok = true,
+                          .chunk = NULL,
+                          .msg = NULL,
+                          .span = stmt->span,
+                          .time = 0.0};
 
   StmtPrint s = stmt->as.stmt_print;
 
@@ -1521,8 +1560,11 @@ static CompileResult compile_stmt_print(Bytecode *code, const Stmt *stmt)
 
 static CompileResult compile_stmt_let(Bytecode *code, const Stmt *stmt)
 {
-  CompileResult result = {
-      .is_ok = true, .chunk = NULL, .msg = NULL, .span = stmt->span};
+  CompileResult result = {.is_ok = true,
+                          .chunk = NULL,
+                          .msg = NULL,
+                          .span = stmt->span,
+                          .time = 0.0};
 
   if (current_compiler->locals_count >= 256) {
     alloc_err_str(&result.msg, "Maximum 256 locals.");
@@ -1580,8 +1622,11 @@ static CompileResult compile_stmt_let(Bytecode *code, const Stmt *stmt)
 
 static CompileResult compile_stmt_expr(Bytecode *code, const Stmt *stmt)
 {
-  CompileResult result = {
-      .is_ok = true, .chunk = NULL, .msg = NULL, .span = stmt->span};
+  CompileResult result = {.is_ok = true,
+                          .chunk = NULL,
+                          .msg = NULL,
+                          .span = stmt->span,
+                          .time = 0.0};
 
   StmtExpr stmt_expr = stmt->as.stmt_expr;
 
@@ -1607,8 +1652,11 @@ static CompileResult compile_stmt_expr(Bytecode *code, const Stmt *stmt)
 
 static CompileResult compile_stmt_block(Bytecode *code, const Stmt *stmt)
 {
-  CompileResult result = {
-      .is_ok = true, .chunk = NULL, .msg = NULL, .span = stmt->span};
+  CompileResult result = {.is_ok = true,
+                          .chunk = NULL,
+                          .msg = NULL,
+                          .span = stmt->span,
+                          .time = 0.0};
 
   begin_scope();
   StmtBlock stmt_block = stmt->as.stmt_block;
@@ -1628,8 +1676,11 @@ static CompileResult compile_stmt_block(Bytecode *code, const Stmt *stmt)
 
 static CompileResult compile_stmt_if(Bytecode *code, const Stmt *stmt)
 {
-  CompileResult result = {
-      .is_ok = true, .chunk = NULL, .msg = NULL, .span = stmt->span};
+  CompileResult result = {.is_ok = true,
+                          .chunk = NULL,
+                          .msg = NULL,
+                          .span = stmt->span,
+                          .time = 0.0};
 
   StmtIf stmt_if = stmt->as.stmt_if;
 
@@ -1679,8 +1730,11 @@ static CompileResult compile_stmt_if(Bytecode *code, const Stmt *stmt)
 
 static CompileResult compile_stmt_do_while(Bytecode *code, const Stmt *stmt)
 {
-  CompileResult result = {
-      .is_ok = true, .chunk = NULL, .msg = NULL, .span = stmt->span};
+  CompileResult result = {.is_ok = true,
+                          .chunk = NULL,
+                          .msg = NULL,
+                          .span = stmt->span,
+                          .time = 0.0};
 
   StmtDoWhile stmt_do_while = stmt->as.stmt_do_while;
 
@@ -1729,8 +1783,11 @@ static CompileResult compile_stmt_do_while(Bytecode *code, const Stmt *stmt)
 
 static CompileResult compile_stmt_while(Bytecode *code, const Stmt *stmt)
 {
-  CompileResult result = {
-      .is_ok = true, .chunk = NULL, .msg = NULL, .span = stmt->span};
+  CompileResult result = {.is_ok = true,
+                          .chunk = NULL,
+                          .msg = NULL,
+                          .span = stmt->span,
+                          .time = 0.0};
 
   StmtWhile stmt_while = stmt->as.stmt_while;
 
@@ -1799,8 +1856,11 @@ static CompileResult compile_stmt_while(Bytecode *code, const Stmt *stmt)
 
 static CompileResult compile_stmt_for(Bytecode *code, const Stmt *stmt)
 {
-  CompileResult result = {
-      .is_ok = true, .chunk = NULL, .msg = NULL, .span = stmt->span};
+  CompileResult result = {.is_ok = true,
+                          .chunk = NULL,
+                          .msg = NULL,
+                          .span = stmt->span,
+                          .time = 0.0};
 
   StmtFor stmt_for = stmt->as.stmt_for;
 
@@ -1949,8 +2009,11 @@ Compiler *new_compiler(void)
 
 static CompileResult compile_stmt_fn(Bytecode *code, const Stmt *stmt)
 {
-  CompileResult result = {
-      .is_ok = true, .chunk = NULL, .msg = NULL, .span = stmt->span};
+  CompileResult result = {.is_ok = true,
+                          .chunk = NULL,
+                          .msg = NULL,
+                          .span = stmt->span,
+                          .time = 0.0};
 
   Compiler *old_compiler = current_compiler;
   current_compiler = new_compiler();
@@ -2032,8 +2095,11 @@ static CompileResult compile_stmt_fn(Bytecode *code, const Stmt *stmt)
 
 static CompileResult compile_stmt_decorator(Bytecode *code, const Stmt *stmt)
 {
-  CompileResult result = {
-      .is_ok = true, .chunk = NULL, .msg = NULL, .span = stmt->span};
+  CompileResult result = {.is_ok = true,
+                          .chunk = NULL,
+                          .msg = NULL,
+                          .span = stmt->span,
+                          .time = 0.0};
 
   StmtDecorator stmt_decorator = stmt->as.stmt_decorator;
 
@@ -2070,8 +2136,11 @@ static CompileResult compile_stmt_decorator(Bytecode *code, const Stmt *stmt)
 
 static CompileResult compile_stmt_struct(Bytecode *code, const Stmt *stmt)
 {
-  CompileResult result = {
-      .is_ok = true, .chunk = NULL, .msg = NULL, .span = stmt->span};
+  CompileResult result = {.is_ok = true,
+                          .chunk = NULL,
+                          .msg = NULL,
+                          .span = stmt->span,
+                          .time = 0.0};
 
   StmtStruct stmt_struct = stmt->as.stmt_struct;
 
@@ -2105,8 +2174,11 @@ static CompileResult compile_stmt_struct(Bytecode *code, const Stmt *stmt)
 
 static CompileResult compile_stmt_return(Bytecode *code, const Stmt *stmt)
 {
-  CompileResult result = {
-      .is_ok = true, .chunk = NULL, .msg = NULL, .span = stmt->span};
+  CompileResult result = {.is_ok = true,
+                          .chunk = NULL,
+                          .msg = NULL,
+                          .span = stmt->span,
+                          .time = 0.0};
 
   StmtReturn stmt_return = stmt->as.stmt_return;
 
@@ -2157,8 +2229,11 @@ static void emit_named_jump(Bytecode *code, char *label)
 
 static CompileResult compile_stmt_break(Bytecode *code, const Stmt *stmt)
 {
-  CompileResult result = {
-      .is_ok = true, .chunk = NULL, .msg = NULL, .span = stmt->span};
+  CompileResult result = {.is_ok = true,
+                          .chunk = NULL,
+                          .msg = NULL,
+                          .span = stmt->span,
+                          .time = 0.0};
 
   size_t len = lblen(stmt->as.stmt_break.label, 0) + strlen("_exit");
 
@@ -2174,8 +2249,11 @@ static CompileResult compile_stmt_break(Bytecode *code, const Stmt *stmt)
 
 static CompileResult compile_stmt_continue(Bytecode *code, const Stmt *stmt)
 {
-  CompileResult result = {
-      .is_ok = true, .chunk = NULL, .msg = NULL, .span = stmt->span};
+  CompileResult result = {.is_ok = true,
+                          .chunk = NULL,
+                          .msg = NULL,
+                          .span = stmt->span,
+                          .time = 0.0};
 
   Label *loop_start =
       table_get(current_compiler->labels, stmt->as.stmt_continue.label);
@@ -2188,8 +2266,11 @@ static CompileResult compile_stmt_continue(Bytecode *code, const Stmt *stmt)
 
 static CompileResult compile_stmt_impl(Bytecode *code, const Stmt *stmt)
 {
-  CompileResult result = {
-      .is_ok = true, .chunk = NULL, .msg = NULL, .span = stmt->span};
+  CompileResult result = {.is_ok = true,
+                          .chunk = NULL,
+                          .msg = NULL,
+                          .span = stmt->span,
+                          .time = 0.0};
   StmtImpl stmt_impl = stmt->as.stmt_impl;
 
   /* Look up the struct with that name in compiler->structs. */
@@ -2243,8 +2324,11 @@ static CompileResult compile_stmt_impl(Bytecode *code, const Stmt *stmt)
 
 static CompileResult compile_stmt_yield(Bytecode *code, const Stmt *stmt)
 {
-  CompileResult result = {
-      .is_ok = true, .chunk = NULL, .msg = NULL, .span = stmt->span};
+  CompileResult result = {.is_ok = true,
+                          .chunk = NULL,
+                          .msg = NULL,
+                          .span = stmt->span,
+                          .time = 0.0};
 
   StmtYield stmt_yield = stmt->as.stmt_yield;
 
@@ -2266,8 +2350,11 @@ static CompileResult compile_stmt_yield(Bytecode *code, const Stmt *stmt)
 
 static CompileResult compile_stmt_assert(Bytecode *code, const Stmt *stmt)
 {
-  CompileResult result = {
-      .is_ok = true, .chunk = NULL, .msg = NULL, .span = stmt->span};
+  CompileResult result = {.is_ok = true,
+                          .chunk = NULL,
+                          .msg = NULL,
+                          .span = stmt->span,
+                          .time = 0.0};
 
   StmtAssert stmt_assert = stmt->as.stmt_assert;
 
@@ -2289,7 +2376,8 @@ static CompileResult compile_stmt_goto(Bytecode *code, const Stmt *stmt)
                           .errcode = 0,
                           .chunk = NULL,
                           .msg = NULL,
-                          .span = stmt->span};
+                          .span = stmt->span,
+                          .time = 0.0};
 }
 
 static CompileResult compile_stmt_labeled(Bytecode *code, const Stmt *stmt)
@@ -2311,7 +2399,8 @@ static CompileResult compile_stmt_labeled(Bytecode *code, const Stmt *stmt)
                           .errcode = 0,
                           .chunk = NULL,
                           .msg = NULL,
-                          .span = stmt->span};
+                          .span = stmt->span,
+                          .time = 0.0};
 }
 
 typedef CompileResult (*CompileHandlerFn)(Bytecode *code, const Stmt *stmt);
