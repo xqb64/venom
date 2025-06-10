@@ -19,13 +19,6 @@ void init_parser(Parser *parser, const DynArray_Token *tokens)
   parser->tokens = tokens;
 }
 
-void free_parse_result(const ParseResult *result)
-{
-  if (!result->is_ok) {
-    free(result->msg);
-  }
-}
-
 static Token pop_front(Parser *parser)
 {
   if (parser->idx < parser->tokens->count) {

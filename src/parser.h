@@ -45,6 +45,5 @@ typedef struct {
 
 void init_parser(Parser *parser, const DynArray_Token *tokens);
 ParseResult parse(Parser *parser);
-void free_parse_result(const ParseResult *result);
 
 #endif
