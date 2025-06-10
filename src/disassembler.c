@@ -1,6 +1,5 @@
 #include "disassembler.h"
 
-#include <bits/time.h>
 #include <stdint.h>
 #include <stdio.h>
 #include <string.h>

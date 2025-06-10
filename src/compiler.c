@@ -1,7 +1,6 @@
 #include "compiler.h"
 
 #include <assert.h>
-#include <bits/time.h>
 #include <stdarg.h>
 #include <stdbool.h>
 #include <stdint.h>

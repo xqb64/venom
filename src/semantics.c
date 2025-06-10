@@ -1,7 +1,6 @@
 #include "semantics.h"
 
 #include <assert.h>
-#include <bits/time.h>
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>  // IWYU pragma: keep

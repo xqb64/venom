@@ -1,7 +1,6 @@
 #include "vm.h"
 
 #include <assert.h>
-#include <bits/time.h>
 #include <stdbool.h>
 #include <stdint.h>
 #include <stdio.h>

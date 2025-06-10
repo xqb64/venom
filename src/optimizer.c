@@ -1,7 +1,6 @@
 #include "optimizer.h"
 
 #include <assert.h>
-#include <bits/time.h>
 #include <stdbool.h>
 #include <stdio.h>
 #include <stdlib.h>
