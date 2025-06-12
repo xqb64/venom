@@ -26,6 +26,7 @@ typedef struct {
 static RunResult run(Arguments *args)
 {
   RunResult result = {.is_ok = true, .errcode = 0, .msg = NULL};
+  double total_all_stages = 0.0;
 
   ReadFileResult read_file_result = read_file(args->file);
   if (!read_file_result.is_ok) {
@@ -52,6 +53,7 @@ static RunResult run(Arguments *args)
   }
 
   DynArray_Token tokens = tokenize_result.tokens;
+  total_all_stages += tokenize_result.time;
 
   if (args->lex) {
     print_tokens(&tokens);
@@ -72,6 +74,7 @@ static RunResult run(Arguments *args)
   }
 
   DynArray_Stmt raw_ast = parse_result.ast;
+  total_all_stages += parse_result.time;
 
   LoopLabelResult loop_label_result = loop_label_program(&raw_ast, NULL);
   if (!loop_label_result.is_ok) {
@@ -85,6 +88,7 @@ static RunResult run(Arguments *args)
   }
 
   DynArray_Stmt labeled_ast = loop_label_result.as.ast;
+  total_all_stages += loop_label_result.time;
 
   LabelCheckResult label_check_result = label_check_program(&labeled_ast);
   if (!label_check_result.is_ok) {
@@ -101,6 +105,7 @@ static RunResult run(Arguments *args)
 
   if (args->optimize) {
     optimize_result = optimize(&labeled_ast);
+    total_all_stages += optimize_result.time;
   }
 
   if (args->parse) {
@@ -132,6 +137,7 @@ static RunResult run(Arguments *args)
   }
 
   Bytecode *chunk = compile_result.chunk;
+  total_all_stages += compile_result.time;
 
   DisassembleResult disassemble_result = {0};
   if (args->ir) {
@@ -141,7 +147,7 @@ static RunResult run(Arguments *args)
       result.is_ok = false;
       result.errcode = disassemble_result.errcode;
     }
-
+    total_all_stages += disassemble_result.time;
     goto cleanup_after_disassemble;
   }
 
@@ -155,6 +161,8 @@ static RunResult run(Arguments *args)
     result.errcode = exec_result.errcode;
     goto cleanup_after_exec; /* just for the symmetry */
   }
+
+  total_all_stages += exec_result.time;
 
 cleanup_after_exec:
   free_vm(&vm);
@@ -209,11 +217,6 @@ cleanup_after_read_file:
   } else {
     free(read_file_result.msg);
   }
-
-  double total_all_stages = tokenize_result.time + parse_result.time +
-                            loop_label_result.time + optimize_result.time +
-                            compile_result.time + disassemble_result.time +
-                            exec_result.time;
 
   if (args->measure_flags & MEASURE_LEX) {
     printf("lex stage took %.9f sec (%.2f%%)\n", tokenize_result.time,
