@@ -221,6 +221,12 @@ static Token get_token(Tokenizer *tokenizer)
             state = STATE_DONE;
             return make_token(tokenizer, TOKEN_QUESTION, 1);
           }
+          case '#': {
+            while (peek(tokenizer, 0) != '\n') {
+              advance(tokenizer);
+            }
+            return get_token(tokenizer);
+          }
           case '@': {
             state = STATE_DONE;
             return make_token(tokenizer, TOKEN_AT, 1);
