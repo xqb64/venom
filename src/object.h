@@ -69,6 +69,9 @@ typedef enum {
  * This means that we have the lowest three bits that come from ptr alig-
  * nment available to us, and we also have both bits 48 and 49, and the
  * MSB available to us, too, for the total of 6 bits (or 2^6 total tags).
+ * However, we will use the MSB to differentiate between custom Venom ob-
+ * jects and the other primitive values like null or booleans. If the si-
+ * gn bit is set, it means we have a custom Venom object.
  *
  * Essentially, 64 bits is enough to hold all possible numeric fp values,
  * a pointer, and 32 different tags.
