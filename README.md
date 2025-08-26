@@ -6,6 +6,11 @@ It also features a conditionally compiled encoding scheme, called **NaN boxing**
 
 Besides NaN boxing, the implementation also contains an optimizer which takes the abstract syntax tree right after the semantic analysis stage is completed, and passes it through an iterative optimization pipeline, where optimizations like **constant folding**, **unreachable code elimination**, **dead stores elimination**, and **copy propagation** take place.
 
+## Architecture
+
+![architecture](architecture.png)
+
+
 ## Features
 
 ```rust
