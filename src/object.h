@@ -65,15 +65,10 @@ typedef enum {
  * since Object contains a union whose largest member is 64 bits, effect-
  * ively making the size of the whole union 64 bits. This, in turn, means
  * that the three least significant bits of the pointer will always be 0.
- * Since the pointer occupies 48 bits, and we have space until bit 50, we
- * can shift the pointer two places to the left, such that it starts from
- * 2 (instead of 0) and end at 49 (instead of 47). This frees up 2 slots,
- * and combined with the last 3 bits of the pointer, this is 5 bits total
- * consecutively to pack in the type of the Object. However, the tag bits
- * need not be consecutive. If we wanted them consecutively, there'd need
- * to be some bit shifting involved in very common operations and this is
- * slightly detrimental to the performance (well, it's rational to expect
- * that it is supposed to be, unless you have a Ryzen 3 3200g).
+ * 
+ * This means that we have the lowest three bits that come from ptr alig-
+ * nment available to us, and we also have both bits 48 and 49, and the
+ * MSB available to us, too, for the total of 6 bits (or 2^6 total tags).
  *
  * Essentially, 64 bits is enough to hold all possible numeric fp values,
  * a pointer, and 32 different tags.
