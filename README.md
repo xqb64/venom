@@ -13,9 +13,24 @@ Besides NaN boxing, the implementation also contains an optimizer which takes th
 
 ## Features
 
-```rust
-todo!()
-```
+- basic data types:
+    - numbers
+    - strings
+    - booleans
+    - null
+- structured control flow: 
+  - if/else
+  - while
+  - do while
+  - for
+  - break/continue
+  - goto
+- Rust-like user-defined structures (struct + impl)
+- functions as first-class citizens
+  - recursion!
+  - return is mandatory
+- Python-style decorators
+- etc.
 
 ### Pretty error reports
 
