@@ -2292,9 +2292,7 @@ ExecResult exec(VM *vm, Bytecode *code)
 
 op_hlt:
   assert(vm->tos == 0);
-  clock_gettime(CLOCK_MONOTONIC, &end);
-  r.time = (end.tv_sec - start.tv_sec) + (end.tv_nsec - start.tv_nsec) / 1e9;
-  return r;
+
 bail:
   clock_gettime(CLOCK_MONOTONIC, &end);
   r.time = (end.tv_sec - start.tv_sec) + (end.tv_nsec - start.tv_nsec) / 1e9;
