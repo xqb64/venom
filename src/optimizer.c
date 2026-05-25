@@ -188,7 +188,8 @@ static Stmt constant_fold_stmt(const Stmt *stmt, bool *is_modified)
 
       StmtFn fn_stmt = {.body = ALLOC(body),
                         .parameters = cloned_params,
-                        .name = own_string(stmt->as.stmt_fn.name)};
+                        .name = own_string(stmt->as.stmt_fn.name),
+                        .is_async = stmt->as.stmt_fn.is_async};
       return AS_STMT_FN(fn_stmt);
     }
     case STMT_IF: {
@@ -507,7 +508,8 @@ static Stmt propagate_copies_stmt(const Stmt *stmt, Table_Expr *copies,
 
       StmtFn fn_stmt = {.body = ALLOC(body),
                         .parameters = cloned_params,
-                        .name = own_string(stmt->as.stmt_fn.name)};
+                        .name = own_string(stmt->as.stmt_fn.name),
+                        .is_async = stmt->as.stmt_fn.is_async};
       return AS_STMT_FN(fn_stmt);
     }
     case STMT_BLOCK: {
@@ -680,8 +682,10 @@ Stmt eliminate_unreachable_stmt(Stmt *stmt, bool *is_modified)
                         own_string(stmt->as.stmt_fn.parameters.data[i]));
       }
 
-      StmtFn stmt_fn = {
-          .name = name, .parameters = params, .body = ALLOC(body)};
+      StmtFn stmt_fn = {.name = name,
+                        .parameters = params,
+                        .body = ALLOC(body),
+                        .is_async = stmt->as.stmt_fn.is_async};
       return AS_STMT_FN(stmt_fn);
     }
     case STMT_BLOCK: {
@@ -1135,14 +1139,16 @@ Stmt eliminate_dead_store_stmt(Stmt *stmt, bool *is_modified)
     case STMT_FN: {
       DynArray_char_ptr parameters = {0};
       for (size_t i = 0; i < stmt->as.stmt_fn.parameters.count; i++) {
-        dynarray_insert(&parameters, stmt->as.stmt_fn.parameters.data[i]);
+        dynarray_insert(&parameters,
+                        own_string(stmt->as.stmt_fn.parameters.data[i]));
       }
 
       Stmt body = eliminate_dead_store_stmt(stmt->as.stmt_fn.body, is_modified);
 
       StmtFn stmt_fn = {.body = ALLOC(body),
                         .name = own_string(stmt->as.stmt_fn.name),
-                        .parameters = parameters};
+                        .parameters = parameters,
+                        .is_async = stmt->as.stmt_fn.is_async};
       return AS_STMT_FN(stmt_fn);
     }
     case STMT_WHILE: {

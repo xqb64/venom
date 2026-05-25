@@ -117,6 +117,7 @@ typedef struct Compiler {
   Table_StructBlueprint *struct_blueprints;
   int depth;
   Function *current_fn;
+  bool in_async_fn;
   struct Compiler *next;
   DynArray_int upvalues;
   Table_FunctionPtr *builtins;

@@ -20,9 +20,10 @@ static LoopLabelResult loop_label_stmt(Stmt *stmt, const char *current)
 {
   LoopLabelResult result = {
       .is_ok = true, .errcode = 0, .as.stmt = {0}, .msg = NULL};
-  Stmt labeled_stmt;
+  Stmt labeled_stmt = {0};
 
   labeled_stmt.kind = stmt->kind;
+  labeled_stmt.span = stmt->span;
 
   switch (stmt->kind) {
     case STMT_DO_WHILE: {
@@ -44,6 +45,7 @@ static LoopLabelResult loop_label_stmt(Stmt *stmt, const char *current)
       labeled_stmt.as.stmt_do_while.label = loop_label;
       labeled_stmt.as.stmt_do_while.condition =
           clone_expr(&stmt->as.stmt_do_while.condition);
+      labeled_stmt.as.stmt_do_while.span = stmt->as.stmt_do_while.span;
 
       break;
     }
@@ -66,6 +68,7 @@ static LoopLabelResult loop_label_stmt(Stmt *stmt, const char *current)
       labeled_stmt.as.stmt_while.label = loop_label;
       labeled_stmt.as.stmt_while.condition =
           clone_expr(&stmt->as.stmt_while.condition);
+      labeled_stmt.as.stmt_while.span = stmt->as.stmt_while.span;
 
       break;
     }
@@ -92,6 +95,7 @@ static LoopLabelResult loop_label_stmt(Stmt *stmt, const char *current)
           clone_expr(&stmt->as.stmt_for.condition);
       labeled_stmt.as.stmt_for.advancement =
           clone_expr(&stmt->as.stmt_for.advancement);
+      labeled_stmt.as.stmt_for.span = stmt->as.stmt_for.span;
 
       break;
     }
@@ -104,6 +108,7 @@ static LoopLabelResult loop_label_stmt(Stmt *stmt, const char *current)
         return result;
       }
       labeled_stmt.as.stmt_break.label = own_string(current);
+      labeled_stmt.as.stmt_break.span = stmt->as.stmt_break.span;
       break;
     }
     case STMT_CONTINUE: {
@@ -115,6 +120,7 @@ static LoopLabelResult loop_label_stmt(Stmt *stmt, const char *current)
         return result;
       }
       labeled_stmt.as.stmt_continue.label = own_string(current);
+      labeled_stmt.as.stmt_continue.span = stmt->as.stmt_continue.span;
       break;
     }
     case STMT_FN: {
@@ -126,6 +132,8 @@ static LoopLabelResult loop_label_stmt(Stmt *stmt, const char *current)
 
       labeled_stmt.as.stmt_fn.parameters = parameters;
       labeled_stmt.as.stmt_fn.name = own_string(stmt->as.stmt_fn.name);
+      labeled_stmt.as.stmt_fn.is_async = stmt->as.stmt_fn.is_async;
+      labeled_stmt.as.stmt_fn.span = stmt->as.stmt_fn.span;
 
       LoopLabelResult body_result =
           loop_label_stmt(stmt->as.stmt_fn.body, current);
@@ -155,6 +163,7 @@ static LoopLabelResult loop_label_stmt(Stmt *stmt, const char *current)
 
       labeled_stmt.as.stmt_block.stmts = block_result.as.ast;
       labeled_stmt.as.stmt_block.depth = stmt->as.stmt_block.depth;
+      labeled_stmt.as.stmt_block.span = stmt->as.stmt_block.span;
 
       break;
     }
@@ -183,6 +192,7 @@ static LoopLabelResult loop_label_stmt(Stmt *stmt, const char *current)
 
       labeled_stmt.as.stmt_if.condition =
           clone_expr(&stmt->as.stmt_if.condition);
+      labeled_stmt.as.stmt_if.span = stmt->as.stmt_if.span;
 
       break;
     }

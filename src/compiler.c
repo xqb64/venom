@@ -1616,7 +1616,7 @@ static CompileResult compile_expr_await(Bytecode *code, const Expr *expr)
                           .span = expr->span,
                           .time = 0.0};
 
-  if (!current_compiler->current_fn || !current_compiler->current_fn->is_async) {
+  if (!current_compiler || !current_compiler->in_async_fn) {
     alloc_err_str(&result.msg, "'await' is only valid inside an async fn.");
     result.is_ok = false;
     result.errcode = -1;
@@ -2166,6 +2166,7 @@ static CompileResult compile_stmt_fn(Bytecode *code, const Stmt *stmt)
   table_insert(current_compiler->next->functions, func.name, func);
 
   current_compiler->current_fn = &func;
+  current_compiler->in_async_fn = stmt_fn.is_async;
 
   Local *array = current_compiler->depth == 0 ? current_compiler->next->globals
                                               : current_compiler->next->locals;
