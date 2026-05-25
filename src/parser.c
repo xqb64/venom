@@ -170,6 +170,7 @@ static ParseFnResult literal(Parser *parser)
 
 static ParseFnResult primary(Parser *parser);
 static ParseFnResult expression(Parser *parser);
+static ParseFnResult assignment(Parser *parser);
 static ParseFnResult statement(Parser *parser);
 
 static ParseFnResult finish_call(Parser *parser, Expr callee)
@@ -689,8 +690,41 @@ static ParseFnResult conditional(Parser *parser)
       .is_ok = true, .as.expr = expr, .msg = NULL, .span = expr.span};
 }
 
+static ParseFnResult yield_expression(Parser *parser)
+{
+  TokenResult yield_result = consume(parser, TOKEN_YIELD);
+  if (!yield_result.is_ok) {
+    return (ParseFnResult) {.is_ok = false,
+                            .as.expr = {0},
+                            .msg = strdup("Expected 'yield' token."),
+                            .span = parser->current.span};
+  }
+
+  ParseFnResult expr_result = assignment(parser);
+  if (!expr_result.is_ok) {
+    return expr_result;
+  }
+
+  Expr expr = expr_result.as.expr;
+  ExprYield yield_expr = {
+      .expr = ALLOC(expr),
+      .span = (Span) {.line = yield_result.token.span.line,
+                      .start = yield_result.token.span.start,
+                      .end = expr.span.end},
+  };
+
+  return (ParseFnResult) {.as.expr = AS_EXPR_YIELD(yield_expr),
+                          .is_ok = true,
+                          .msg = NULL,
+                          .span = yield_expr.span};
+}
+
 static ParseFnResult assignment(Parser *parser)
 {
+  if (check(parser, TOKEN_YIELD)) {
+    return yield_expression(parser);
+  }
+
   ParseFnResult expr_result = conditional(parser);
   if (!expr_result.is_ok) {
     return expr_result;

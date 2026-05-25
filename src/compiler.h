@@ -63,6 +63,7 @@ typedef enum {
   OP_MKGEN,
   OP_YIELD,
   OP_RESUME,
+  OP_SEND,
   OP_LEN,
   OP_HASATTR,
   OP_ASSERT,

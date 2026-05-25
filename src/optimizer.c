@@ -131,6 +131,11 @@ static Expr constant_fold_expr(const Expr *target, bool *is_modified)
         .value = ALLOC(folded), .property = ALLOC(cloned_siexpr)};
 
     return AS_EXPR_STRUCT_INITIALIZER(new_struct_init_expr);
+  } else if (target->kind == EXPR_YIELD) {
+    Expr folded = constant_fold_expr(target->as.expr_yield.expr, is_modified);
+    ExprYield yield_expr = {.expr = ALLOC(folded),
+                            .span = target->as.expr_yield.span};
+    return AS_EXPR_YIELD(yield_expr);
   } else if (target->kind == EXPR_LITERAL) {
     ExprLiteral lit_expr = clone_literal(&target->as.expr_literal);
     return AS_EXPR_LITERAL(lit_expr);
@@ -435,6 +440,13 @@ static Expr propagate_copies_expr(const Expr *expr, Table_Expr *copies,
       ExprCall call_expr = {.callee = ALLOC(cloned_callee),
                             .arguments = propagated_args};
       return AS_EXPR_CALL(call_expr);
+    }
+    case EXPR_YIELD: {
+      Expr propagated =
+          propagate_copies_expr(expr->as.expr_yield.expr, copies, is_modified);
+      ExprYield yield_expr = {.expr = ALLOC(propagated),
+                              .span = expr->as.expr_yield.span};
+      return AS_EXPR_YIELD(yield_expr);
     }
     default:
       print_expr(expr, 0);
@@ -863,6 +875,9 @@ static bool is_equal_expr(const Expr *a, const Expr *b)
              is_equal_expr(a->as.expr_subscript.index,
                            b->as.expr_subscript.index);
     }
+    case EXPR_YIELD: {
+      return is_equal_expr(a->as.expr_yield.expr, b->as.expr_yield.expr);
+    }
     default:
       assert(0);
   }
@@ -931,6 +946,10 @@ static void collect_live_expr(DynArray_Expr *live, Expr *expr)
         collect_live_expr(live, &expr->as.expr_call.arguments.data[i]);
       }
       collect_live_expr(live, expr->as.expr_call.callee);
+      break;
+    }
+    case EXPR_YIELD: {
+      collect_live_expr(live, expr->as.expr_yield.expr);
       break;
     }
     default:

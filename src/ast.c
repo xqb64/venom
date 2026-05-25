@@ -112,6 +112,12 @@ void free_expr(const Expr *expr)
       free(expr_conditional.else_branch);
       break;
     }
+    case EXPR_YIELD: {
+      ExprYield expr_yield = expr->as.expr_yield;
+      free_expr(expr_yield.expr);
+      free(expr_yield.expr);
+      break;
+    }
     default:
       print_expr(expr, 0);
       assert(0);
@@ -470,6 +476,12 @@ Expr clone_expr(const Expr *expr)
       clone.as.expr_conditional.span = expr->as.expr_conditional.span;
       break;
     }
+    case EXPR_YIELD: {
+      Expr yielded = clone_expr(expr->as.expr_yield.expr);
+      clone.as.expr_yield.expr = ALLOC(yielded);
+      clone.as.expr_yield.span = expr->as.expr_yield.span;
+      break;
+    }
     default:
       print_expr(expr, 0);
       assert(0);
@@ -801,6 +813,12 @@ void print_expr(const Expr *expr, int indent)
       INDENT(indent + 4);
       printf("else_branch: ");
       print_expr(expr->as.expr_conditional.else_branch, indent + 4);
+      break;
+    }
+    case EXPR_YIELD: {
+      printf("YieldExpr(\n");
+      INDENT(indent + 4);
+      print_expr(expr->as.expr_yield.expr, indent + 4);
       break;
     }
     default:

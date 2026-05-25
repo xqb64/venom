@@ -55,6 +55,7 @@ DisassembleHandler disassemble_handler[] = {
     [OP_IMPL] = {.opcode = "OP_IMPL"},
     [OP_YIELD] = {.opcode = "OP_YIELD"},
     [OP_RESUME] = {.opcode = "OP_RESUME"},
+    [OP_SEND] = {.opcode = "OP_SEND"},
     [OP_HLT] = {.opcode = "OP_HLT"},
 };
 

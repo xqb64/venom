@@ -1123,6 +1123,35 @@ static inline ExecResult handle_op_ret(VM *vm, Bytecode *code, uint8_t **ip)
 {
   ExecResult r = {.is_ok = true, .errcode = 0, .msg = NULL, .time = 0.0};
 
+  (void) code;
+
+  if (vm->gen_count > 0) {
+    Generator *gen = vm->gen_stack[--vm->gen_count];
+    FrameSnapshot *fs = vm->fs_stack[--vm->fs_count];
+
+    Object returned = pop(vm);
+
+    memcpy(vm->stack, fs->stack, sizeof(Object) * fs->tos);
+    vm->tos = fs->tos;
+
+    memcpy(vm->fp_stack, fs->fp_stack, sizeof(BytecodePtr) * fs->fp_count);
+    vm->fp_count = fs->fp_count;
+
+    *ip = gen->ip;
+    gen->state = STATE_DONE;
+    gen->tos = 0;
+    gen->fp_count = 0;
+
+    push(vm, returned);
+
+    free(fs);
+
+    Object gen_obj = GENERATOR_VAL(gen);
+    objdecref(&gen_obj);
+
+    return r;
+  }
+
   BytecodePtr ptr = vm->fp_stack[--vm->fp_count];
   *ip = ptr.addr;
 
@@ -1431,26 +1460,46 @@ static inline ExecResult handle_op_yield(VM *vm, Bytecode *code, uint8_t **ip)
 
   free(fs);
 
+  Object gen_obj = GENERATOR_VAL(gen);
+  objdecref(&gen_obj);
+
   return r;
 }
 
-/* OP_RESUME pops a generator object off of the main VM stack, and if it's
- * a fresh, new generator, it will push the frame pointer onto the fp stack.
- * Then it takes a snapshot of the main VM stack, and restores the resumed
- * generator's context. */
-static inline ExecResult handle_op_resume(VM *vm, Bytecode *code, uint8_t **ip)
+static inline ExecResult resume_generator(VM *vm, Bytecode *code,
+                                           uint8_t **ip, Object obj,
+                                           Object sent)
 {
   ExecResult r = {.is_ok = true, .errcode = 0, .msg = NULL, .time = 0.0};
 
-  Object obj = pop(vm);
-  objdecref(&obj);
+  (void) code;
+
+  if (!IS_GENERATOR(obj)) {
+    const char *type_name = get_object_type(&obj);
+    objdecref(&obj);
+    objdecref(&sent);
+    RUNTIME_ERROR("cannot resume objects of type: '%s'", type_name);
+  }
 
   Generator *gen = AS_GENERATOR(obj);
 
+  if (gen->state == STATE_DONE) {
+    objdecref(&obj);
+    objdecref(&sent);
+    RUNTIME_ERROR("cannot resume a completed generator");
+  }
+
+  if (gen->state == STATE_NEW && !IS_NULL(sent)) {
+    objdecref(&obj);
+    objdecref(&sent);
+    RUNTIME_ERROR("can't send non-null value to a just-started generator");
+  }
+
   if (gen->state == STATE_NEW) {
-    BytecodePtr ptr = {.addr = vm->fp_stack[vm->fp_count - 1].addr,
+    BytecodePtr ptr = {.addr = vm->fp_count == 0 ? *ip
+                                                 : vm->fp_stack[vm->fp_count - 1].addr,
                        .fn = gen->fn,
-                       .location = vm->tos - 1};
+                       .location = vm->tos};
     vm->fp_stack[vm->fp_count++] = ptr;
   }
 
@@ -1467,15 +1516,41 @@ static inline ExecResult handle_op_resume(VM *vm, Bytecode *code, uint8_t **ip)
   memcpy(vm->fp_stack, gen->fp_stack, sizeof(BytecodePtr) * gen->fp_count);
   vm->fp_count = gen->fp_count;
 
+  if (gen->state == STATE_SUSPENDED) {
+    push(vm, sent);
+  } else {
+    objdecref(&sent);
+  }
+
   uint8_t *tmp_ip = *ip;
   *ip = gen->ip;
   gen->ip = tmp_ip;
 
   gen->state = STATE_ACTIVE;
 
+  objincref(&obj);
   vm->gen_stack[vm->gen_count++] = gen;
 
+  objdecref(&obj);
+
   return r;
+}
+
+/* OP_RESUME implements next(gen).  It resumes a generator without sending a
+ * value back into the suspended yield expression. */
+static inline ExecResult handle_op_resume(VM *vm, Bytecode *code, uint8_t **ip)
+{
+  Object obj = pop(vm);
+  return resume_generator(vm, code, ip, obj, NULL_VAL);
+}
+
+/* OP_SEND implements send(gen, value).  The value becomes the result of the
+ * suspended yield expression inside the generator. */
+static inline ExecResult handle_op_send(VM *vm, Bytecode *code, uint8_t **ip)
+{
+  Object sent = pop(vm);
+  Object obj = pop(vm);
+  return resume_generator(vm, code, ip, obj, sent);
 }
 
 static inline ExecResult handle_op_len(VM *vm, Bytecode *code, uint8_t **ip)
@@ -1606,6 +1681,7 @@ ExecResult exec(VM *vm, Bytecode *code)
       &&op_mkgen,
       &&op_yield,
       &&op_resume,
+      &&op_send,
       &&op_len,
       &&op_hasattr,
       &&op_assert,
@@ -1694,6 +1770,7 @@ ExecResult exec(VM *vm, Bytecode *code)
   HANDLE(mkgen)
   HANDLE(yield)
   HANDLE(resume)
+  HANDLE(send)
   HANDLE(len)
   HANDLE(hasattr)
   HANDLE(assert)

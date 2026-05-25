@@ -20,7 +20,7 @@ typedef struct {
 } Builtin;
 
 static Builtin builtins[] = {
-    {"next", 1}, {"len", 1}, {"hasattr", 2}, {"getattr", 2}, {"setattr", 3},
+    {"next", 1}, {"send", 2}, {"len", 1}, {"hasattr", 2}, {"getattr", 2}, {"setattr", 3},
 };
 
 Compiler *current_compiler = NULL;
@@ -838,6 +838,21 @@ static CompileResult compile_expr_call(Bytecode *code, const Expr *expr)
 
     Function *b = resolve_builtin(var.name);
     if (b) {
+      if (b->paramcount != expr_call.arguments.count) {
+        alloc_err_str(&result.msg, "Builtin '%s' requires %ld arguments.",
+                      b->name, b->paramcount);
+        Compiler *c;
+        while (current_compiler) {
+          c = current_compiler;
+          current_compiler = c->next;
+          free_compiler(c);
+          free(c);
+        }
+        result.is_ok = false;
+        result.errcode = -1;
+        return result;
+      }
+
       if (strcmp(b->name, "next") == 0) {
         for (size_t i = 0; i < expr_call.arguments.count; i++) {
           CompileResult arg_result =
@@ -847,6 +862,15 @@ static CompileResult compile_expr_call(Bytecode *code, const Expr *expr)
           }
         }
         emit_byte(code, OP_RESUME);
+      } else if (strcmp(b->name, "send") == 0) {
+        for (size_t i = 0; i < expr_call.arguments.count; i++) {
+          CompileResult arg_result =
+              compile_expr(code, &expr_call.arguments.data[i]);
+          if (!arg_result.is_ok) {
+            return arg_result;
+          }
+        }
+        emit_byte(code, OP_SEND);
       } else if (strcmp(b->name, "len") == 0) {
         for (size_t i = 0; i < expr_call.arguments.count; i++) {
           CompileResult arg_result =
@@ -1506,6 +1530,36 @@ static CompileResult compile_expr_conditional(Bytecode *code, const Expr *expr)
   return result;
 }
 
+static void mark_current_function_as_generator(void)
+{
+  Function *f = resolve_func(current_compiler->current_fn->name);
+  if (!f) {
+    return;
+  }
+
+  f->is_gen = true;
+  table_insert(current_compiler->functions, f->name, *f);
+}
+
+static CompileResult compile_expr_yield(Bytecode *code, const Expr *expr)
+{
+  CompileResult result = {.is_ok = true,
+                          .chunk = NULL,
+                          .msg = NULL,
+                          .span = expr->span,
+                          .time = 0.0};
+
+  CompileResult expr_result = compile_expr(code, expr->as.expr_yield.expr);
+  if (!expr_result.is_ok) {
+    return expr_result;
+  }
+
+  emit_byte(code, OP_YIELD);
+  mark_current_function_as_generator();
+
+  return result;
+}
+
 typedef CompileResult (*CompileExprHandlerFn)(Bytecode *code, const Expr *expr);
 
 typedef struct {
@@ -1528,6 +1582,7 @@ static CompileExprHandler expression_handler[] = {
     [EXPR_SUBSCRIPT] = {.fn = compile_expr_subscript, .name = "EXPR_SUBSCRIPT"},
     [EXPR_CONDITIONAL] = {.fn = compile_expr_conditional,
                           .name = "EXPR_CONDITIONAL"},
+    [EXPR_YIELD] = {.fn = compile_expr_yield, .name = "EXPR_YIELD"},
 };
 ;
 
@@ -2338,12 +2393,9 @@ static CompileResult compile_stmt_yield(Bytecode *code, const Stmt *stmt)
   }
 
   emit_byte(code, OP_YIELD);
+  emit_byte(code, OP_POP);
 
-  Function *f = resolve_func(current_compiler->current_fn->name);
-
-  f->is_gen = true;
-
-  table_insert(current_compiler->functions, f->name, *f);
+  mark_current_function_as_generator();
 
   return result;
 }
