@@ -56,6 +56,15 @@ DisassembleHandler disassemble_handler[] = {
     [OP_YIELD] = {.opcode = "OP_YIELD"},
     [OP_RESUME] = {.opcode = "OP_RESUME"},
     [OP_SEND] = {.opcode = "OP_SEND"},
+    [OP_AWAIT] = {.opcode = "OP_AWAIT"},
+    [OP_SPAWN] = {.opcode = "OP_SPAWN"},
+    [OP_RUN] = {.opcode = "OP_RUN"},
+    [OP_SLEEP] = {.opcode = "OP_SLEEP"},
+    [OP_DONE] = {.opcode = "OP_DONE"},
+    [OP_RESULT] = {.opcode = "OP_RESULT"},
+    [OP_LEN] = {.opcode = "OP_LEN"},
+    [OP_HASATTR] = {.opcode = "OP_HASATTR"},
+    [OP_ASSERT] = {.opcode = "OP_ASSERT"},
     [OP_HLT] = {.opcode = "OP_HLT"},
 };
 

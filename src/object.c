@@ -44,13 +44,20 @@ void print_object(const Object *object)
   } else if (IS_GENERATOR(*object)) {
     Generator *gen = AS_GENERATOR(*object);
     printf("<gen [%s] [ip: %p]>", gen->fn->func->name, gen->ip);
+  } else if (IS_TASK(*object)) {
+    Task *task = AS_TASK(*object);
+    printf("<task #%d %s>", task->id, task->done ? "done" : "pending");
+  } else if (IS_SLEEP(*object)) {
+    Sleep *sleep = AS_SLEEP(*object);
+    printf("<sleep %d>", sleep->ticks);
   }
 }
 
 static inline bool is_refcounted(const Object *obj)
 {
   return IS_CLOSURE(*obj) || IS_STRUCT(*obj) || IS_STRING(*obj) ||
-         IS_ARRAY(*obj) || IS_GENERATOR(*obj);
+         IS_ARRAY(*obj) || IS_GENERATOR(*obj) || IS_TASK(*obj) ||
+         IS_SLEEP(*obj);
 }
 
 void free_table_object(const Table_Object *table)

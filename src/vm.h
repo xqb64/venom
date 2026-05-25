@@ -30,6 +30,15 @@ typedef struct {
   Generator *gen_stack[STACK_MAX];
   FrameSnapshot *fs_stack[STACK_MAX];
   size_t fs_count;
+  Task *tasks[STACK_MAX];
+  size_t task_count;
+  int next_task_id;
+  int scheduler_tick;
+  bool scheduler_running;
+  Task *current_task;
+  Task *scheduler_root;
+  FrameSnapshot *scheduler_frame;
+  size_t scheduler_cursor;
 } VM;
 
 typedef struct {

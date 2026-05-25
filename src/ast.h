@@ -28,6 +28,7 @@ typedef enum {
   EXPR_SUBSCRIPT,
   EXPR_CONDITIONAL,
   EXPR_YIELD,
+  EXPR_AWAIT,
 } ExprKind;
 
 typedef enum {
@@ -120,6 +121,11 @@ typedef struct ExprYield {
   Span span;
 } ExprYield;
 
+typedef struct ExprAwait {
+  Expr *expr;
+  Span span;
+} ExprAwait;
+
 typedef DynArray(ExprStructInitializer) DynArray_ExprStructInitalizer;
 
 typedef struct Expr {
@@ -138,6 +144,7 @@ typedef struct Expr {
     ExprSubscript expr_subscript;
     ExprConditional expr_conditional;
     ExprYield expr_yield;
+    ExprAwait expr_await;
   } as;
   Span span;
 } Expr;
@@ -178,6 +185,8 @@ void free_table_expr(const Table_Expr *table);
            .span = (exp).span})
 #define AS_EXPR_YIELD(exp) \
   ((Expr) {.kind = EXPR_YIELD, .as.expr_yield = (exp), .span = (exp).span})
+#define AS_EXPR_AWAIT(exp) \
+  ((Expr) {.kind = EXPR_AWAIT, .as.expr_await = (exp), .span = (exp).span})
 
 typedef enum {
   STMT_LET,
@@ -228,6 +237,7 @@ typedef struct {
   DynArray_char_ptr parameters;
   char *name;
   Stmt *body;
+  bool is_async;
   Span span;
 } StmtFn;
 

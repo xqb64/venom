@@ -169,6 +169,7 @@ static ParseFnResult literal(Parser *parser)
 }
 
 static ParseFnResult primary(Parser *parser);
+static ParseFnResult unary(Parser *parser);
 static ParseFnResult expression(Parser *parser);
 static ParseFnResult assignment(Parser *parser);
 static ParseFnResult statement(Parser *parser);
@@ -290,8 +291,41 @@ static ParseFnResult call(Parser *parser)
       .as.expr = expr, .is_ok = true, .msg = NULL, .span = expr.span};
 }
 
+static ParseFnResult await_expression(Parser *parser)
+{
+  TokenResult await_result = consume(parser, TOKEN_AWAIT);
+  if (!await_result.is_ok) {
+    return (ParseFnResult) {.is_ok = false,
+                            .as.expr = {0},
+                            .msg = strdup("Expected 'await' token."),
+                            .span = parser->current.span};
+  }
+
+  ParseFnResult expr_result = unary(parser);
+  if (!expr_result.is_ok) {
+    return expr_result;
+  }
+
+  Expr expr = expr_result.as.expr;
+  ExprAwait await_expr = {
+      .expr = ALLOC(expr),
+      .span = (Span) {.line = await_result.token.span.line,
+                      .start = await_result.token.span.start,
+                      .end = expr.span.end},
+  };
+
+  return (ParseFnResult) {.as.expr = AS_EXPR_AWAIT(await_expr),
+                          .is_ok = true,
+                          .msg = NULL,
+                          .span = await_expr.span};
+}
+
 static ParseFnResult unary(Parser *parser)
 {
+  if (check(parser, TOKEN_AWAIT)) {
+    return await_expression(parser);
+  }
+
   if (match(parser, 5, TOKEN_MINUS, TOKEN_AMPERSAND, TOKEN_STAR, TOKEN_BANG,
             TOKEN_TILDE)) {
     char *op = own_string_n(parser->previous.start, parser->previous.length);
@@ -1478,6 +1512,13 @@ static ParseFnResult for_statement(Parser *parser)
 
 static ParseFnResult function_statement(Parser *parser)
 {
+  bool is_async = false;
+  Token async_token = {0};
+  if (match(parser, 1, TOKEN_ASYNC)) {
+    is_async = true;
+    async_token = parser->previous;
+  }
+
   TokenResult fn_result = consume(parser, TOKEN_FN);
   if (!fn_result.is_ok) {
     return (ParseFnResult) {.is_ok = false,
@@ -1563,8 +1604,9 @@ static ParseFnResult function_statement(Parser *parser)
       .name = own_string_n(name.start, name.length),
       .body = ALLOC(body),
       .parameters = parameters,
-      .span = (Span) {.line = fn_result.token.span.line,
-                      .start = fn_result.token.span.start,
+      .is_async = is_async,
+      .span = (Span) {.line = is_async ? async_token.span.line : fn_result.token.span.line,
+                      .start = is_async ? async_token.span.start : fn_result.token.span.start,
                       .end = body.span.end},
   };
   return (ParseFnResult) {
@@ -2020,7 +2062,7 @@ static ParseFnResult statement(Parser *parser)
     return continue_statement(parser);
   } else if (check(parser, TOKEN_GOTO)) {
     return goto_statement(parser);
-  } else if (check(parser, TOKEN_FN)) {
+  } else if (check(parser, TOKEN_FN) || check(parser, TOKEN_ASYNC)) {
     return function_statement(parser);
   } else if (check(parser, TOKEN_RETURN)) {
     return return_statement(parser);

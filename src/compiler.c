@@ -20,7 +20,9 @@ typedef struct {
 } Builtin;
 
 static Builtin builtins[] = {
-    {"next", 1}, {"send", 2}, {"len", 1}, {"hasattr", 2}, {"getattr", 2}, {"setattr", 3},
+    {"next", 1},   {"send", 2},  {"spawn", 1}, {"run", 1},
+    {"sleep", 1},  {"done", 1},  {"result", 1}, {"len", 1},
+    {"hasattr", 2}, {"getattr", 2}, {"setattr", 3},
 };
 
 Compiler *current_compiler = NULL;
@@ -871,6 +873,51 @@ static CompileResult compile_expr_call(Bytecode *code, const Expr *expr)
           }
         }
         emit_byte(code, OP_SEND);
+      } else if (strcmp(b->name, "spawn") == 0) {
+        for (size_t i = 0; i < expr_call.arguments.count; i++) {
+          CompileResult arg_result =
+              compile_expr(code, &expr_call.arguments.data[i]);
+          if (!arg_result.is_ok) {
+            return arg_result;
+          }
+        }
+        emit_byte(code, OP_SPAWN);
+      } else if (strcmp(b->name, "run") == 0) {
+        for (size_t i = 0; i < expr_call.arguments.count; i++) {
+          CompileResult arg_result =
+              compile_expr(code, &expr_call.arguments.data[i]);
+          if (!arg_result.is_ok) {
+            return arg_result;
+          }
+        }
+        emit_byte(code, OP_RUN);
+      } else if (strcmp(b->name, "sleep") == 0) {
+        for (size_t i = 0; i < expr_call.arguments.count; i++) {
+          CompileResult arg_result =
+              compile_expr(code, &expr_call.arguments.data[i]);
+          if (!arg_result.is_ok) {
+            return arg_result;
+          }
+        }
+        emit_byte(code, OP_SLEEP);
+      } else if (strcmp(b->name, "done") == 0) {
+        for (size_t i = 0; i < expr_call.arguments.count; i++) {
+          CompileResult arg_result =
+              compile_expr(code, &expr_call.arguments.data[i]);
+          if (!arg_result.is_ok) {
+            return arg_result;
+          }
+        }
+        emit_byte(code, OP_DONE);
+      } else if (strcmp(b->name, "result") == 0) {
+        for (size_t i = 0; i < expr_call.arguments.count; i++) {
+          CompileResult arg_result =
+              compile_expr(code, &expr_call.arguments.data[i]);
+          if (!arg_result.is_ok) {
+            return arg_result;
+          }
+        }
+        emit_byte(code, OP_RESULT);
       } else if (strcmp(b->name, "len") == 0) {
         for (size_t i = 0; i < expr_call.arguments.count; i++) {
           CompileResult arg_result =
@@ -997,7 +1044,7 @@ static CompileResult compile_expr_call(Bytecode *code, const Expr *expr)
       emit_uint32(code, idx);
     }
 
-    if (f && f->is_gen) {
+    if (f && (f->is_gen || f->is_async)) {
       emit_byte(code, OP_MKGEN);
     } else {
       /* Emit OP_CALL followed by the argument count. */
@@ -1560,6 +1607,33 @@ static CompileResult compile_expr_yield(Bytecode *code, const Expr *expr)
   return result;
 }
 
+
+static CompileResult compile_expr_await(Bytecode *code, const Expr *expr)
+{
+  CompileResult result = {.is_ok = true,
+                          .chunk = NULL,
+                          .msg = NULL,
+                          .span = expr->span,
+                          .time = 0.0};
+
+  if (!current_compiler->current_fn || !current_compiler->current_fn->is_async) {
+    alloc_err_str(&result.msg, "'await' is only valid inside an async fn.");
+    result.is_ok = false;
+    result.errcode = -1;
+    return result;
+  }
+
+  CompileResult expr_result = compile_expr(code, expr->as.expr_await.expr);
+  if (!expr_result.is_ok) {
+    return expr_result;
+  }
+
+  emit_byte(code, OP_AWAIT);
+  mark_current_function_as_generator();
+
+  return result;
+}
+
 typedef CompileResult (*CompileExprHandlerFn)(Bytecode *code, const Expr *expr);
 
 typedef struct {
@@ -1583,6 +1657,7 @@ static CompileExprHandler expression_handler[] = {
     [EXPR_CONDITIONAL] = {.fn = compile_expr_conditional,
                           .name = "EXPR_CONDITIONAL"},
     [EXPR_YIELD] = {.fn = compile_expr_yield, .name = "EXPR_YIELD"},
+    [EXPR_AWAIT] = {.fn = compile_expr_await, .name = "EXPR_AWAIT"},
 };
 ;
 
@@ -1698,7 +1773,8 @@ static CompileResult compile_stmt_expr(Bytecode *code, const Stmt *stmt)
    *
    * Pop the return value off the stack, so it does not
    * interfere with later execution. */
-  if (stmt_expr.expr.kind == EXPR_CALL) {
+  if (stmt_expr.expr.kind == EXPR_CALL || stmt_expr.expr.kind == EXPR_AWAIT ||
+      stmt_expr.expr.kind == EXPR_YIELD) {
     emit_byte(code, OP_POP);
   }
 
@@ -2083,6 +2159,8 @@ static CompileResult compile_stmt_fn(Bytecode *code, const Stmt *stmt)
       .name = code->sp.data[funcname_idx],
       .paramcount = stmt_fn.parameters.count,
       .location = code->code.count + 3,
+      .is_async = stmt_fn.is_async,
+      .is_gen = stmt_fn.is_async,
   };
 
   table_insert(current_compiler->next->functions, func.name, func);

@@ -20,6 +20,8 @@ typedef enum {
   OBJ_NULL,
   OBJ_CLOSURE,
   OBJ_GENERATOR,
+  OBJ_TASK,
+  OBJ_SLEEP,
 } ObjectType;
 
 #ifdef NAN_BOXING
@@ -100,6 +102,8 @@ typedef enum {
 #define TAG_ARRAY 7
 #define TAG_CLOSURE 0x2000000000000
 #define TAG_GENERATOR 0x2000000000001
+#define TAG_TASK 0x2000000000002
+#define TAG_SLEEP 0x2000000000003
 
 typedef uint64_t Object;
 typedef DynArray(Object) DynArray_Object;
@@ -134,6 +138,8 @@ typedef DynArray(Object) DynArray_Object;
 #define ARRAY_PATTERN (SIGN_BIT | QNAN | TAG_ARRAY)
 #define CLOSURE_PATTERN (SIGN_BIT | QNAN | TAG_CLOSURE)
 #define GENERATOR_PATTERN (SIGN_BIT | QNAN | TAG_GENERATOR)
+#define TASK_PATTERN (SIGN_BIT | QNAN | TAG_TASK)
+#define SLEEP_PATTERN (SIGN_BIT | QNAN | TAG_SLEEP)
 
 /* To check whether a value is a struct, we check if it's an object and
  * whether it is tagged as a Struct. */
@@ -160,6 +166,10 @@ typedef DynArray(Object) DynArray_Object;
  * whether it is tagged as a generator. */
 #define IS_GENERATOR(value) \
   (((value) & (SIGN_BIT | QNAN | 0x2000000000007)) == GENERATOR_PATTERN)
+#define IS_TASK(value) \
+  (((value) & (SIGN_BIT | QNAN | 0x2000000000007)) == TASK_PATTERN)
+#define IS_SLEEP(value) \
+  (((value) & (SIGN_BIT | QNAN | 0x2000000000007)) == SLEEP_PATTERN)
 
 /* To convert a value to a boolean, we compare it to TRUE_VAL because
  * if we had a 'false', (false == true) will be false, and we got our
@@ -220,6 +230,16 @@ typedef DynArray(Object) DynArray_Object;
        ? (Generator *) ((uintptr_t) ((object) &                             \
                                      ~(SIGN_BIT | QNAN | 0x2000000000007))) \
        : NULL)
+#define AS_TASK(object)                                                \
+  ((IS_TASK(object))                                                   \
+       ? (Task *) ((uintptr_t) ((object) &                             \
+                                ~(SIGN_BIT | QNAN | 0x2000000000007))) \
+       : NULL)
+#define AS_SLEEP(object)                                                \
+  ((IS_SLEEP(object))                                                   \
+       ? (Sleep *) ((uintptr_t) ((object) &                             \
+                                 ~(SIGN_BIT | QNAN | 0x2000000000007))) \
+       : NULL)
 
 #define BOOL_VAL(b) ((b) ? TRUE_VAL : FALSE_VAL)
 
@@ -253,6 +273,10 @@ typedef DynArray(Object) DynArray_Object;
 
 #define GENERATOR_VAL(obj) \
   (Object)(SIGN_BIT | QNAN | ((uint64_t) (uintptr_t) (obj)) | TAG_GENERATOR)
+#define TASK_VAL(obj) \
+  (Object)(SIGN_BIT | QNAN | ((uint64_t) (uintptr_t) (obj)) | TAG_TASK)
+#define SLEEP_VAL(obj) \
+  (Object)(SIGN_BIT | QNAN | ((uint64_t) (uintptr_t) (obj)) | TAG_SLEEP)
 
 inline double object2num(Object value)
 {
@@ -283,6 +307,8 @@ typedef struct Function Function;
 typedef struct Closure Closure;
 typedef struct Upvalue Upvalue;
 typedef struct Generator Generator;
+typedef struct Task Task;
+typedef struct Sleep Sleep;
 
 typedef DynArray(struct Object) DynArray_Object;
 
@@ -315,6 +341,8 @@ typedef struct Object {
     Closure *closure;
 
     Generator *generator;
+    Task *task;
+    Sleep *sleep;
     /* Since we have five refcounted objects (Struct, String,
      * Array, Closure, Generator), we need a handy way to access
      * their refcounts.
@@ -340,6 +368,8 @@ typedef struct Object {
 #define IS_STRUCT_BLUEPRINT(object) ((object).type == OBJ_STRUCT_BLUEPRINT)
 #define IS_ARRAY(object) ((object).type == OBJ_ARRAY)
 #define IS_GENERATOR(object) ((object).type == OBJ_GENERATOR)
+#define IS_TASK(object) ((object).type == OBJ_TASK)
+#define IS_SLEEP(object) ((object).type == OBJ_SLEEP)
 
 #define AS_NUM(object) ((object).as.dval)
 #define AS_BOOL(object) ((object).as.bval)
@@ -352,6 +382,8 @@ typedef struct Object {
 #define AS_UPVALUE(object) ((object).as.upvalue)
 #define AS_STRUCT_BLUEPRINT(object) ((object).as.struct_blueprint)
 #define AS_GENERATOR(object) ((object).as.generator)
+#define AS_TASK(object) ((object).as.task)
+#define AS_SLEEP(object) ((object).as.sleep)
 
 #define NUM_VAL(thing) ((Object) {.type = OBJ_NUMBER, .as.dval = (thing)})
 #define BOOL_VAL(thing) ((Object) {.type = OBJ_BOOLEAN, .as.bval = (thing)})
@@ -367,6 +399,8 @@ typedef struct Object {
   ((Object) {.type = OBJ_UPVALUE, .as.upvalue = (thing)})
 #define GENERATOR_VAL(thing) \
   ((Object) {.type = OBJ_GENERATOR, .as.generator = (thing)})
+#define TASK_VAL(thing) ((Object) {.type = OBJ_TASK, .as.task = (thing)})
+#define SLEEP_VAL(thing) ((Object) {.type = OBJ_SLEEP, .as.sleep = (thing)})
 #define NULL_VAL ((Object) {.type = OBJ_NULL})
 
 #endif
@@ -389,6 +423,7 @@ typedef struct Function {
   size_t paramcount;
   int upvalue_count;
   bool is_gen;
+  bool is_async;
 } Function;
 
 typedef struct Upvalue {
@@ -428,6 +463,10 @@ inline const char *get_object_type(const Object *object)
     return "null";
   } else if (IS_GENERATOR(*object)) {
     return "generator";
+  } else if (IS_TASK(*object)) {
+    return "task";
+  } else if (IS_SLEEP(*object)) {
+    return "sleep";
   }
   assert(0);
 }
@@ -466,6 +505,24 @@ typedef struct Generator {
   GeneratorState state;
 } Generator;
 
+typedef struct Sleep {
+  int refcount;
+  int ticks;
+} Sleep;
+
+typedef struct Task {
+  int refcount;
+  int id;
+  Generator *gen;
+  bool done;
+  bool has_result;
+  Object result;
+  struct Task *waiting_on;
+  int wake_tick;
+  bool has_send;
+  Object send_value;
+} Task;
+
 inline void objincref(Object *obj)
 {
 #ifdef NAN_BOXING
@@ -479,6 +536,10 @@ inline void objincref(Object *obj)
     ++AS_CLOSURE(*obj)->refcount;
   } else if (IS_GENERATOR(*obj)) {
     ++AS_GENERATOR(*obj)->refcount;
+  } else if (IS_TASK(*obj)) {
+    ++AS_TASK(*obj)->refcount;
+  } else if (IS_SLEEP(*obj)) {
+    ++AS_SLEEP(*obj)->refcount;
   }
 #else
   switch (obj->type) {
@@ -486,7 +547,9 @@ inline void objincref(Object *obj)
     case OBJ_ARRAY:
     case OBJ_CLOSURE:
     case OBJ_STRUCT:
-    case OBJ_GENERATOR: {
+    case OBJ_GENERATOR:
+    case OBJ_TASK:
+    case OBJ_SLEEP: {
       ++*(obj)->as.refcount;
       break;
     }
@@ -532,6 +595,14 @@ inline void objdecref(Object *obj)
       for (size_t i = 0; i < AS_GENERATOR(*obj)->tos; i++) {
         objdecref(&AS_GENERATOR(*obj)->stack[i]);
       }
+      dealloc(obj);
+    }
+  } else if (IS_TASK(*obj)) {
+    if (--AS_TASK(*obj)->refcount == 0) {
+      dealloc(obj);
+    }
+  } else if (IS_SLEEP(*obj)) {
+    if (--AS_SLEEP(*obj)->refcount == 0) {
       dealloc(obj);
     }
   }
@@ -581,6 +652,18 @@ inline void objdecref(Object *obj)
       }
       break;
     }
+    case OBJ_TASK: {
+      if (--*(obj)->as.refcount == 0) {
+        dealloc(obj);
+      }
+      break;
+    }
+    case OBJ_SLEEP: {
+      if (--*(obj)->as.refcount == 0) {
+        dealloc(obj);
+      }
+      break;
+    }
     default:
       break;
   }
@@ -615,6 +698,17 @@ inline void dealloc(Object *obj)
     free(AS_CLOSURE(*obj));
   } else if (IS_GENERATOR(*obj)) {
     free(AS_GENERATOR(*obj));
+  } else if (IS_TASK(*obj)) {
+    Task *task = AS_TASK(*obj);
+    if (task->gen) {
+      Object gen_obj = GENERATOR_VAL(task->gen);
+      objdecref(&gen_obj);
+    }
+    if (task->has_result) objdecref(&task->result);
+    if (task->has_send) objdecref(&task->send_value);
+    free(task);
+  } else if (IS_SLEEP(*obj)) {
+    free(AS_SLEEP(*obj));
   }
 #else
   switch (obj->type) {
@@ -653,6 +747,21 @@ inline void dealloc(Object *obj)
       free(AS_GENERATOR(*obj));
       break;
     }
+    case OBJ_TASK: {
+      Task *task = AS_TASK(*obj);
+      if (task->gen) {
+        Object gen_obj = GENERATOR_VAL(task->gen);
+        objdecref(&gen_obj);
+      }
+      if (task->has_result) objdecref(&task->result);
+      if (task->has_send) objdecref(&task->send_value);
+      free(task);
+      break;
+    }
+    case OBJ_SLEEP: {
+      free(AS_SLEEP(*obj));
+      break;
+    }
     default:
       break;
   }
@@ -673,6 +782,12 @@ inline ObjectType type(const Object *obj)
   }
   if (IS_GENERATOR(*obj)) {
     return OBJ_GENERATOR;
+  }
+  if (IS_TASK(*obj)) {
+    return OBJ_TASK;
+  }
+  if (IS_SLEEP(*obj)) {
+    return OBJ_SLEEP;
   }
   if (IS_NULL(*obj)) {
     return OBJ_NULL;

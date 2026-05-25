@@ -118,6 +118,12 @@ void free_expr(const Expr *expr)
       free(expr_yield.expr);
       break;
     }
+    case EXPR_AWAIT: {
+      ExprAwait expr_await = expr->as.expr_await;
+      free_expr(expr_await.expr);
+      free(expr_await.expr);
+      break;
+    }
     default:
       print_expr(expr, 0);
       assert(0);
@@ -482,6 +488,12 @@ Expr clone_expr(const Expr *expr)
       clone.as.expr_yield.span = expr->as.expr_yield.span;
       break;
     }
+    case EXPR_AWAIT: {
+      Expr awaited = clone_expr(expr->as.expr_await.expr);
+      clone.as.expr_await.expr = ALLOC(awaited);
+      clone.as.expr_await.span = expr->as.expr_await.span;
+      break;
+    }
     default:
       print_expr(expr, 0);
       assert(0);
@@ -512,6 +524,7 @@ Stmt clone_stmt(const Stmt *stmt)
                         own_string(stmt->as.stmt_fn.parameters.data[i]));
       }
       clone.as.stmt_fn.parameters = parameters;
+      clone.as.stmt_fn.is_async = stmt->as.stmt_fn.is_async;
       Stmt body = clone_stmt(stmt->as.stmt_fn.body);
       clone.as.stmt_fn.body = ALLOC(body);
       break;
@@ -821,6 +834,12 @@ void print_expr(const Expr *expr, int indent)
       print_expr(expr->as.expr_yield.expr, indent + 4);
       break;
     }
+    case EXPR_AWAIT: {
+      printf("AwaitExpr(\n");
+      INDENT(indent + 4);
+      print_expr(expr->as.expr_await.expr, indent + 4);
+      break;
+    }
     default:
       assert(0);
   }
@@ -852,7 +871,7 @@ void print_stmt(const Stmt *stmt, int indent, bool continuation)
       break;
     }
     case STMT_FN: {
-      printf("Function(\n");
+      printf(stmt->as.stmt_fn.is_async ? "AsyncFunction(\n" : "Function(\n");
       INDENT(indent + 4);
       print_stmt(stmt->as.stmt_fn.body, indent + 4, true);
       break;

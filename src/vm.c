@@ -28,6 +28,13 @@ void init_vm(VM *vm)
 
 void free_vm(VM *vm)
 {
+  for (size_t i = 0; i < vm->task_count; i++) {
+    Object task_obj = TASK_VAL(vm->tasks[i]);
+    objdecref(&task_obj);
+  }
+  if (vm->scheduler_frame) {
+    free(vm->scheduler_frame);
+  }
   free_table_object(&vm->globals);
   free_table_struct_blueprints(vm->blueprints);
   free(vm->blueprints);
@@ -1116,6 +1123,9 @@ static inline ExecResult handle_op_call_method(VM *vm, Bytecode *code,
   return r;
 }
 
+static ExecResult scheduler_complete_current(VM *vm, Bytecode *code,
+                                             uint8_t **ip, Object returned);
+
 /* OP_RET pops a BytecodePtr off the frame pointer stack
  * and sets the instruction pointer to point to the add-
  * ress contained in the BytecodePtr. */
@@ -1123,10 +1133,29 @@ static inline ExecResult handle_op_ret(VM *vm, Bytecode *code, uint8_t **ip)
 {
   ExecResult r = {.is_ok = true, .errcode = 0, .msg = NULL, .time = 0.0};
 
+  if (vm->scheduler_running && vm->current_task) {
+    Generator *gen = vm->current_task->gen;
+    if (vm->fp_count > 0 && vm->fp_stack[vm->fp_count - 1].fn != gen->fn) {
+      BytecodePtr ptr = vm->fp_stack[--vm->fp_count];
+      *ip = ptr.addr;
+      return r;
+    }
+
+    Object returned = pop(vm);
+    return scheduler_complete_current(vm, code, ip, returned);
+  }
+
   (void) code;
 
   if (vm->gen_count > 0) {
-    Generator *gen = vm->gen_stack[--vm->gen_count];
+    Generator *gen = vm->gen_stack[vm->gen_count - 1];
+    if (vm->fp_count > 0 && vm->fp_stack[vm->fp_count - 1].fn != gen->fn) {
+      BytecodePtr ptr = vm->fp_stack[--vm->fp_count];
+      *ip = ptr.addr;
+      return r;
+    }
+
+    --vm->gen_count;
     FrameSnapshot *fs = vm->fs_stack[--vm->fs_count];
 
     Object returned = pop(vm);
@@ -1400,6 +1429,311 @@ static inline ExecResult handle_op_close_upvalue(VM *vm, Bytecode *code,
   return r;
 }
 
+
+static FrameSnapshot *snapshot_frame(VM *vm, uint8_t *ip)
+{
+  FrameSnapshot fs = {.tos = vm->tos, .ip = ip, .fp_count = vm->fp_count};
+  memcpy(fs.stack, vm->stack, sizeof(Object) * vm->tos);
+  memcpy(fs.fp_stack, vm->fp_stack, sizeof(BytecodePtr) * vm->fp_count);
+  return ALLOC(fs);
+}
+
+static void restore_frame(VM *vm, FrameSnapshot *fs, uint8_t **ip)
+{
+  memcpy(vm->stack, fs->stack, sizeof(Object) * fs->tos);
+  vm->tos = fs->tos;
+  memcpy(vm->fp_stack, fs->fp_stack, sizeof(BytecodePtr) * fs->fp_count);
+  vm->fp_count = fs->fp_count;
+  *ip = fs->ip;
+  free(fs);
+}
+
+static Task *vm_create_task(VM *vm, Generator *gen)
+{
+  if (vm->task_count >= STACK_MAX) {
+    return NULL;
+  }
+
+  Object gen_obj = GENERATOR_VAL(gen);
+  objincref(&gen_obj);
+
+  Task task = {.refcount = 1,
+               .id = ++vm->next_task_id,
+               .gen = gen,
+               .done = false,
+               .has_result = false,
+               .result = NULL_VAL,
+               .waiting_on = NULL,
+               .wake_tick = vm->scheduler_tick,
+               .has_send = false,
+               .send_value = NULL_VAL};
+
+  Task *task_ptr = ALLOC(task);
+  vm->tasks[vm->task_count++] = task_ptr;
+  return task_ptr;
+}
+
+static void task_set_send_move(Task *task, Object value)
+{
+  if (task->has_send) {
+    objdecref(&task->send_value);
+  }
+  task->send_value = value;
+  task->has_send = true;
+}
+
+static void task_set_send_copy(Task *task, Object value)
+{
+  objincref(&value);
+  task_set_send_move(task, value);
+}
+
+static void scheduler_unblock_waiters(VM *vm, Task *finished)
+{
+  for (size_t i = 0; i < vm->task_count; i++) {
+    Task *task = vm->tasks[i];
+    if (!task->done && task->waiting_on == finished) {
+      task->waiting_on = NULL;
+      if (finished->has_result) {
+        task_set_send_copy(task, finished->result);
+      } else {
+        task_set_send_move(task, NULL_VAL);
+      }
+    }
+  }
+}
+
+static bool scheduler_has_live_tasks(VM *vm)
+{
+  for (size_t i = 0; i < vm->task_count; i++) {
+    if (!vm->tasks[i]->done) {
+      return true;
+    }
+  }
+  return false;
+}
+
+static bool scheduler_task_runnable(VM *vm, Task *task)
+{
+  return !task->done && task->waiting_on == NULL &&
+         task->wake_tick <= vm->scheduler_tick;
+}
+
+static Task *scheduler_next_runnable(VM *vm, bool *deadlocked)
+{
+  *deadlocked = false;
+
+  for (;;) {
+    for (size_t n = 0; n < vm->task_count; n++) {
+      size_t i = (vm->scheduler_cursor + n) % vm->task_count;
+      Task *task = vm->tasks[i];
+      if (scheduler_task_runnable(vm, task)) {
+        vm->scheduler_cursor = (i + 1) % vm->task_count;
+        return task;
+      }
+    }
+
+    bool live = false;
+    bool found_timer = false;
+    int next_wake = 0;
+    for (size_t i = 0; i < vm->task_count; i++) {
+      Task *task = vm->tasks[i];
+      if (task->done) {
+        continue;
+      }
+      live = true;
+      if (task->waiting_on == NULL && task->wake_tick > vm->scheduler_tick) {
+        if (!found_timer || task->wake_tick < next_wake) {
+          found_timer = true;
+          next_wake = task->wake_tick;
+        }
+      }
+    }
+
+    if (!live) {
+      return NULL;
+    }
+
+    if (found_timer) {
+      vm->scheduler_tick = next_wake;
+      continue;
+    }
+
+    *deadlocked = true;
+    return NULL;
+  }
+}
+
+static ExecResult scheduler_resume_task(VM *vm, Bytecode *code, uint8_t **ip,
+                                        Task *task)
+{
+  ExecResult r = {.is_ok = true, .errcode = 0, .msg = NULL, .time = 0.0};
+  (void) code;
+
+  Generator *gen = task->gen;
+  if (gen->state == STATE_DONE) {
+    task->done = true;
+    return r;
+  }
+
+  memcpy(vm->stack, gen->stack, sizeof(Object) * gen->tos);
+  vm->tos = gen->tos;
+  memcpy(vm->fp_stack, gen->fp_stack, sizeof(BytecodePtr) * gen->fp_count);
+  vm->fp_count = gen->fp_count;
+
+  if (gen->state == STATE_NEW) {
+    BytecodePtr ptr = {.addr = *ip, .location = 0, .fn = gen->fn};
+    vm->fp_stack[vm->fp_count++] = ptr;
+  } else if (gen->state == STATE_SUSPENDED) {
+    Object sent = task->has_send ? task->send_value : NULL_VAL;
+    task->has_send = false;
+    push(vm, sent);
+  }
+
+  *ip = gen->ip;
+  gen->state = STATE_ACTIVE;
+  vm->current_task = task;
+  vm->gen_stack[vm->gen_count++] = gen;
+
+  return r;
+}
+
+static ExecResult scheduler_finish(VM *vm, Bytecode *code, uint8_t **ip)
+{
+  ExecResult r = {.is_ok = true, .errcode = 0, .msg = NULL, .time = 0.0};
+  (void) code;
+
+  Object result = NULL_VAL;
+  if (vm->scheduler_root && vm->scheduler_root->has_result) {
+    result = vm->scheduler_root->result;
+    objincref(&result);
+  }
+
+  restore_frame(vm, vm->scheduler_frame, ip);
+  vm->scheduler_frame = NULL;
+  vm->scheduler_running = false;
+  vm->current_task = NULL;
+  vm->scheduler_root = NULL;
+  push(vm, result);
+
+  return r;
+}
+
+static ExecResult scheduler_schedule_next(VM *vm, Bytecode *code, uint8_t **ip)
+{
+  ExecResult r = {.is_ok = true, .errcode = 0, .msg = NULL, .time = 0.0};
+
+  bool deadlocked = false;
+  Task *next = scheduler_next_runnable(vm, &deadlocked);
+  if (next) {
+    return scheduler_resume_task(vm, code, ip, next);
+  }
+
+  if (deadlocked) {
+    RUNTIME_ERROR("scheduler deadlock: no runnable tasks");
+  }
+
+  return scheduler_finish(vm, code, ip);
+}
+
+static ExecResult scheduler_process_awaited(VM *vm, Bytecode *code,
+                                            uint8_t **ip, Object awaited)
+{
+  ExecResult r = {.is_ok = true, .errcode = 0, .msg = NULL, .time = 0.0};
+
+  Task *task = vm->current_task;
+  if (IS_SLEEP(awaited)) {
+    int ticks = AS_SLEEP(awaited)->ticks;
+    if (ticks < 0) {
+      ticks = 0;
+    }
+    task->wake_tick = vm->scheduler_tick + ticks;
+    task_set_send_move(task, NULL_VAL);
+    objdecref(&awaited);
+  } else if (IS_TASK(awaited)) {
+    Task *other = AS_TASK(awaited);
+    if (other->done) {
+      if (other->has_result) {
+        task_set_send_copy(task, other->result);
+      } else {
+        task_set_send_move(task, NULL_VAL);
+      }
+    } else {
+      task->waiting_on = other;
+    }
+    objdecref(&awaited);
+  } else if (IS_GENERATOR(awaited)) {
+    Task *child = vm_create_task(vm, AS_GENERATOR(awaited));
+    if (!child) {
+      objdecref(&awaited);
+      RUNTIME_ERROR("scheduler task limit exceeded");
+    }
+    task->waiting_on = child;
+    objdecref(&awaited);
+  } else {
+    task_set_send_move(task, awaited);
+  }
+
+  return scheduler_schedule_next(vm, code, ip);
+}
+
+static ExecResult scheduler_suspend_current(VM *vm, Bytecode *code,
+                                            uint8_t **ip, Object awaited)
+{
+  ExecResult r = {.is_ok = true, .errcode = 0, .msg = NULL, .time = 0.0};
+
+  if (!vm->current_task) {
+    objdecref(&awaited);
+    RUNTIME_ERROR("scheduler has no current task");
+  }
+
+  Generator *gen = vm->current_task->gen;
+  if (vm->gen_count > 0) {
+    --vm->gen_count;
+  }
+
+  memcpy(gen->stack, vm->stack, sizeof(Object) * vm->tos);
+  gen->tos = vm->tos;
+  memcpy(gen->fp_stack, vm->fp_stack, sizeof(BytecodePtr) * vm->fp_count);
+  gen->fp_count = vm->fp_count;
+  gen->ip = *ip;
+  gen->state = STATE_SUSPENDED;
+
+  return scheduler_process_awaited(vm, code, ip, awaited);
+}
+
+static ExecResult scheduler_complete_current(VM *vm, Bytecode *code,
+                                             uint8_t **ip, Object returned)
+{
+  ExecResult r = {.is_ok = true, .errcode = 0, .msg = NULL, .time = 0.0};
+
+  Task *task = vm->current_task;
+  if (!task) {
+    objdecref(&returned);
+    RUNTIME_ERROR("scheduler has no current task");
+  }
+
+  if (vm->gen_count > 0) {
+    --vm->gen_count;
+  }
+
+  Generator *gen = task->gen;
+  gen->state = STATE_DONE;
+  gen->tos = 0;
+  gen->fp_count = 0;
+
+  if (task->has_result) {
+    objdecref(&task->result);
+  }
+  task->result = returned;
+  task->has_result = true;
+  task->done = true;
+  task->waiting_on = NULL;
+
+  scheduler_unblock_waiters(vm, task);
+  return scheduler_schedule_next(vm, code, ip);
+}
+
 /* OP_MKGEN pops the closure off of the stack, makes a generator object
  * out of it, and pushes it on the stack.
  *
@@ -1410,17 +1744,31 @@ static inline ExecResult handle_op_mkgen(VM *vm, Bytecode *code, uint8_t **ip)
   ExecResult r = {.is_ok = true, .errcode = 0, .msg = NULL, .time = 0.0};
 
   Object closure = pop(vm);
-  objdecref(&closure);
+  Closure *closure_ptr = AS_CLOSURE(closure);
+  size_t paramcount = closure_ptr->func->paramcount;
 
   Generator gen = {.refcount = 1,
-                   .fn = AS_CLOSURE(closure),
+                   .fn = closure_ptr,
                    .tos = 0,
                    .fp_count = 0,
                    .state = STATE_NEW};
 
-  gen.ip = &code->code.data[AS_CLOSURE(closure)->func->location - 1];
+  if (paramcount > vm->tos) {
+    objdecref(&closure);
+    RUNTIME_ERROR("not enough arguments to create generator");
+  }
+
+  size_t arg_base = vm->tos - paramcount;
+  for (size_t i = 0; i < paramcount; i++) {
+    gen.stack[i] = vm->stack[arg_base + i];
+  }
+  gen.tos = paramcount;
+  vm->tos -= paramcount;
+
+  gen.ip = &code->code.data[closure_ptr->func->location - 1];
 
   push(vm, GENERATOR_VAL(ALLOC(gen)));
+  objdecref(&closure);
 
   return r;
 }
@@ -1433,10 +1781,14 @@ static inline ExecResult handle_op_yield(VM *vm, Bytecode *code, uint8_t **ip)
 {
   ExecResult r = {.is_ok = true, .errcode = 0, .msg = NULL, .time = 0.0};
 
+  Object yielded = pop(vm);
+
+  if (vm->scheduler_running) {
+    return scheduler_suspend_current(vm, code, ip, yielded);
+  }
+
   Generator *gen = vm->gen_stack[--vm->gen_count];
   FrameSnapshot *fs = vm->fs_stack[--vm->fs_count];
-
-  Object yielded = pop(vm);
 
   memcpy(gen->stack, vm->stack, sizeof(Object) * vm->tos);
   gen->tos = vm->tos;
@@ -1495,14 +1847,6 @@ static inline ExecResult resume_generator(VM *vm, Bytecode *code,
     RUNTIME_ERROR("can't send non-null value to a just-started generator");
   }
 
-  if (gen->state == STATE_NEW) {
-    BytecodePtr ptr = {.addr = vm->fp_count == 0 ? *ip
-                                                 : vm->fp_stack[vm->fp_count - 1].addr,
-                       .fn = gen->fn,
-                       .location = vm->tos};
-    vm->fp_stack[vm->fp_count++] = ptr;
-  }
-
   FrameSnapshot fs = {.tos = vm->tos, .ip = *ip, .fp_count = vm->fp_count};
 
   memcpy(fs.stack, vm->stack, sizeof(Object) * vm->tos);
@@ -1515,6 +1859,11 @@ static inline ExecResult resume_generator(VM *vm, Bytecode *code,
 
   memcpy(vm->fp_stack, gen->fp_stack, sizeof(BytecodePtr) * gen->fp_count);
   vm->fp_count = gen->fp_count;
+
+  if (gen->state == STATE_NEW) {
+    BytecodePtr ptr = {.addr = *ip, .fn = gen->fn, .location = 0};
+    vm->fp_stack[vm->fp_count++] = ptr;
+  }
 
   if (gen->state == STATE_SUSPENDED) {
     push(vm, sent);
@@ -1551,6 +1900,160 @@ static inline ExecResult handle_op_send(VM *vm, Bytecode *code, uint8_t **ip)
   Object sent = pop(vm);
   Object obj = pop(vm);
   return resume_generator(vm, code, ip, obj, sent);
+}
+
+
+/* OP_AWAIT suspends the current async task and lets the scheduler decide
+ * when and with what value it should be resumed. */
+static inline ExecResult handle_op_await(VM *vm, Bytecode *code, uint8_t **ip)
+{
+  ExecResult r = {.is_ok = true, .errcode = 0, .msg = NULL, .time = 0.0};
+
+  Object awaited = pop(vm);
+  if (!vm->scheduler_running) {
+    objdecref(&awaited);
+    RUNTIME_ERROR("'await' requires run(...) scheduler context");
+  }
+
+  return scheduler_suspend_current(vm, code, ip, awaited);
+}
+
+static inline ExecResult handle_op_spawn(VM *vm, Bytecode *code, uint8_t **ip)
+{
+  ExecResult r = {.is_ok = true, .errcode = 0, .msg = NULL, .time = 0.0};
+  (void) code;
+  (void) ip;
+
+  Object obj = pop(vm);
+  if (!IS_GENERATOR(obj)) {
+    const char *type_name = get_object_type(&obj);
+    objdecref(&obj);
+    RUNTIME_ERROR("spawn(...) requires an async coroutine/generator, got '%s'",
+                  type_name);
+  }
+
+  Task *task = vm_create_task(vm, AS_GENERATOR(obj));
+  objdecref(&obj);
+  if (!task) {
+    RUNTIME_ERROR("scheduler task limit exceeded");
+  }
+
+  Object task_obj = TASK_VAL(task);
+  objincref(&task_obj);
+  push(vm, task_obj);
+
+  return r;
+}
+
+static inline ExecResult handle_op_run(VM *vm, Bytecode *code, uint8_t **ip)
+{
+  ExecResult r = {.is_ok = true, .errcode = 0, .msg = NULL, .time = 0.0};
+
+  if (vm->scheduler_running) {
+    RUNTIME_ERROR("run(...) cannot be nested inside a running scheduler");
+  }
+
+  Object obj = pop(vm);
+  Task *root = NULL;
+
+  if (IS_GENERATOR(obj)) {
+    root = vm_create_task(vm, AS_GENERATOR(obj));
+    objdecref(&obj);
+    if (!root) {
+      RUNTIME_ERROR("scheduler task limit exceeded");
+    }
+  } else if (IS_TASK(obj)) {
+    root = AS_TASK(obj);
+    objdecref(&obj);
+  } else {
+    const char *type_name = get_object_type(&obj);
+    objdecref(&obj);
+    RUNTIME_ERROR("run(...) requires an async coroutine/generator or task, got '%s'",
+                  type_name);
+  }
+
+  vm->scheduler_running = true;
+  vm->scheduler_root = root;
+  vm->current_task = NULL;
+  vm->scheduler_frame = snapshot_frame(vm, *ip);
+  vm->scheduler_cursor = 0;
+
+  if (!scheduler_has_live_tasks(vm)) {
+    return scheduler_finish(vm, code, ip);
+  }
+
+  return scheduler_schedule_next(vm, code, ip);
+}
+
+static inline ExecResult handle_op_sleep(VM *vm, Bytecode *code, uint8_t **ip)
+{
+  ExecResult r = {.is_ok = true, .errcode = 0, .msg = NULL, .time = 0.0};
+  (void) code;
+  (void) ip;
+
+  Object obj = pop(vm);
+  if (!IS_NUM(obj)) {
+    const char *type_name = get_object_type(&obj);
+    objdecref(&obj);
+    RUNTIME_ERROR("sleep(...) requires a number of scheduler ticks, got '%s'",
+                  type_name);
+  }
+
+  int ticks = (int) AS_NUM(obj);
+  if (ticks < 0) {
+    ticks = 0;
+  }
+  Sleep sleep = {.refcount = 1, .ticks = ticks};
+  push(vm, SLEEP_VAL(ALLOC(sleep)));
+
+  return r;
+}
+
+static inline ExecResult handle_op_done(VM *vm, Bytecode *code, uint8_t **ip)
+{
+  ExecResult r = {.is_ok = true, .errcode = 0, .msg = NULL, .time = 0.0};
+  (void) code;
+  (void) ip;
+
+  Object obj = pop(vm);
+  if (!IS_TASK(obj)) {
+    const char *type_name = get_object_type(&obj);
+    objdecref(&obj);
+    RUNTIME_ERROR("done(...) requires a task, got '%s'", type_name);
+  }
+
+  bool done = AS_TASK(obj)->done;
+  objdecref(&obj);
+  push(vm, BOOL_VAL(done));
+
+  return r;
+}
+
+static inline ExecResult handle_op_result(VM *vm, Bytecode *code, uint8_t **ip)
+{
+  ExecResult r = {.is_ok = true, .errcode = 0, .msg = NULL, .time = 0.0};
+  (void) code;
+  (void) ip;
+
+  Object obj = pop(vm);
+  if (!IS_TASK(obj)) {
+    const char *type_name = get_object_type(&obj);
+    objdecref(&obj);
+    RUNTIME_ERROR("result(...) requires a task, got '%s'", type_name);
+  }
+
+  Task *task = AS_TASK(obj);
+  if (!task->done) {
+    objdecref(&obj);
+    RUNTIME_ERROR("result(...) cannot read a pending task");
+  }
+
+  Object result = task->has_result ? task->result : NULL_VAL;
+  objincref(&result);
+  objdecref(&obj);
+  push(vm, result);
+
+  return r;
 }
 
 static inline ExecResult handle_op_len(VM *vm, Bytecode *code, uint8_t **ip)
@@ -1682,6 +2185,12 @@ ExecResult exec(VM *vm, Bytecode *code)
       &&op_yield,
       &&op_resume,
       &&op_send,
+      &&op_await,
+      &&op_spawn,
+      &&op_run,
+      &&op_sleep,
+      &&op_done,
+      &&op_result,
       &&op_len,
       &&op_hasattr,
       &&op_assert,
@@ -1771,6 +2280,12 @@ ExecResult exec(VM *vm, Bytecode *code)
   HANDLE(yield)
   HANDLE(resume)
   HANDLE(send)
+  HANDLE(await)
+  HANDLE(spawn)
+  HANDLE(run)
+  HANDLE(sleep)
+  HANDLE(done)
+  HANDLE(result)
   HANDLE(len)
   HANDLE(hasattr)
   HANDLE(assert)
