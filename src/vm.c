@@ -82,12 +82,14 @@ static inline uint64_t clamp(double d)
     Object a = pop(vm);                                                 \
                                                                         \
     if (!IS_NUM(a) || !IS_NUM(b)) {                                     \
-      RUNTIME_ERROR("cannot '" #op "' objects of types: '%s' and '%s'", \
+       objdecref(&b);                                                   \
+       objdecref(&a);                                                   \
+	                                                                \
+       RUNTIME_ERROR("cannot '" #op "' objects of types: '%s' and '%s'",\
                     get_object_type(&a), get_object_type(&b));          \
     }                                                                   \
-                                                                        \
-    objdecref(&b);                                                      \
-    objdecref(&a);                                                      \
+	                                                                \
+    /* No need to decref here as they're nums.  */                      \
                                                                         \
     Object obj = wrapper(AS_NUM(a) op AS_NUM(b));                       \
                                                                         \
@@ -100,12 +102,13 @@ static inline uint64_t clamp(double d)
     Object a = pop(vm);                                                 \
                                                                         \
     if (!IS_NUM(a) || !IS_NUM(b)) {                                     \
-      RUNTIME_ERROR("cannot '" #op "' objects of types: '%s' and '%s'", \
+       objdecref(&b);                                                   \
+       objdecref(&a);                                                   \
+	                                                                \
+       RUNTIME_ERROR("cannot '" #op "' objects of types: '%s' and '%s'",\
                     get_object_type(&a), get_object_type(&b));          \
     }                                                                   \
                                                                         \
-    objdecref(&b);                                                      \
-    objdecref(&a);                                                      \
                                                                         \
     uint64_t clamped_a = clamp(AS_NUM(a));                              \
     uint64_t clamped_b = clamp(AS_NUM(b));                              \
