@@ -149,7 +149,7 @@ static void emit_bytes(Bytecode *code, int n, ...)
   va_end(ap);
 }
 
-static void emit_uint32(Bytecode *code, uint32_t idx)
+__attribute__((unused)) static void emit_uint32(Bytecode *code, uint32_t idx)
 {
   emit_bytes(code, 4, (idx >> 24) & 0xFF, (idx >> 16) & 0xFF, (idx >> 8) & 0xFF,
              idx & 0xFF);
@@ -500,8 +500,7 @@ static CompileResult compile_expr_literal(Bytecode *code, const Expr *expr)
     }
     case LIT_STRING: {
       uint32_t str_idx = add_string(code, expr_lit.as.str);
-      emit_byte(code, OP_STR);
-      emit_uint32(code, str_idx);
+      emit_bytes(code, 2, OP_STR, str_idx);
       break;
     }
     case LIT_NULL: {
@@ -528,16 +527,14 @@ static CompileResult compile_expr_variable(Bytecode *code, const Expr *expr)
   /* Try to resolve the variable as local. */
   int idx = resolve_local(expr_var.name);
   if (idx != -1) {
-    emit_byte(code, OP_DEEPGET);
-    emit_uint32(code, idx);
+    emit_bytes(code, 2, OP_DEEPGET, idx);
     return result;
   }
 
   /* Try to resolve the variable as upvalue. */
   int upvalue_idx = resolve_upvalue(expr_var.name);
   if (upvalue_idx != -1) {
-    emit_byte(code, OP_GET_UPVALUE);
-    emit_uint32(code, upvalue_idx);
+    emit_bytes(code, 2, OP_GET_UPVALUE, upvalue_idx);
     add_upvalue(&current_compiler->upvalues, upvalue_idx);
     return result;
   }
@@ -545,8 +542,7 @@ static CompileResult compile_expr_variable(Bytecode *code, const Expr *expr)
   /* Try to resolve the variable as global. */
   int name_idx = resolve_global(code, expr_var.name);
   if (name_idx != -1) {
-    emit_byte(code, OP_GET_GLOBAL);
-    emit_uint32(code, name_idx);
+    emit_bytes(code, 2, OP_GET_GLOBAL, name_idx);
     return result;
   }
 
@@ -599,23 +595,20 @@ static CompileResult compile_expr_unary(Bytecode *code, const Expr *expr)
         /* Try to resolve the variable as local. */
         int idx = resolve_local(var.name);
         if (idx != -1) {
-          emit_byte(code, OP_DEEPGET_PTR);
-          emit_uint32(code, idx);
+          emit_bytes(code, 2, OP_DEEPGET_PTR, idx);
           return result;
         }
 
         /* Try to resolve the variable as upvalue. */
         int upvalue_idx = resolve_upvalue(var.name);
         if (upvalue_idx != -1) {
-          emit_byte(code, OP_GET_UPVALUE_PTR);
-          emit_uint32(code, upvalue_idx);
+          emit_bytes(code, 2, OP_GET_UPVALUE_PTR, upvalue_idx);
           return result;
         }
 
         int name_idx = resolve_global(code, var.name);
         if (name_idx != -1) {
-          emit_byte(code, OP_GET_GLOBAL_PTR);
-          emit_uint32(code, name_idx);
+          emit_bytes(code, 2, OP_GET_GLOBAL_PTR, name_idx);
           return result;
         }
 
@@ -648,8 +641,7 @@ static CompileResult compile_expr_unary(Bytecode *code, const Expr *expr)
         /* Add the 'property_name' string to the
          * chunk's sp, and emit OP_GETATTR_PTR. */
         uint32_t property_name_idx = add_string(code, expr_get.property_name);
-        emit_byte(code, OP_GETATTR_PTR);
-        emit_uint32(code, property_name_idx);
+        emit_bytes(code, 2, OP_GETATTR_PTR, property_name_idx);
         break;
       }
       default:
@@ -832,9 +824,8 @@ static CompileResult compile_expr_call(Bytecode *code, const Expr *expr)
       }
     }
 
-    emit_byte(code, OP_CALL_METHOD);
-    emit_uint32(code, add_string(code, method));
-    emit_uint32(code, expr_call.arguments.count);
+    emit_bytes(code, 3, OP_CALL_METHOD, add_string(code, method),
+               expr_call.arguments.count);
   } else if (expr_call.callee->kind == EXPR_VARIABLE) {
     ExprVariable var = expr_call.callee->as.expr_variable;
 
@@ -942,9 +933,8 @@ static CompileResult compile_expr_call(Bytecode *code, const Expr *expr)
         if (!arg_result.is_ok) {
           return arg_result;
         }
-        emit_bytes(code, 1, OP_GETATTR);
-        emit_uint32(
-            code,
+        emit_bytes(
+            code, 2, OP_GETATTR,
             add_string(code,
                        expr_call.arguments.data[1].as.expr_literal.as.str));
       } else if (strcmp(b->name, "setattr") == 0) {
@@ -960,9 +950,8 @@ static CompileResult compile_expr_call(Bytecode *code, const Expr *expr)
           return arg2_result;
         }
 
-        emit_byte(code, OP_SETATTR);
-        emit_uint32(
-            code,
+        emit_bytes(
+            code, 2, OP_SETATTR,
             add_string(code,
                        expr_call.arguments.data[1].as.expr_literal.as.str));
       }
@@ -1033,15 +1022,12 @@ static CompileResult compile_expr_call(Bytecode *code, const Expr *expr)
     }
 
     if (is_global) {
-      emit_byte(code, OP_GET_GLOBAL);
-      emit_uint32(code, idx);
+      emit_bytes(code, 2, OP_GET_GLOBAL, idx);
     } else if (is_upvalue) {
-      emit_byte(code, OP_GET_UPVALUE);
-      emit_uint32(code, idx);
+      emit_bytes(code, 2, OP_GET_UPVALUE, idx);
       add_upvalue(&current_compiler->upvalues, idx);
     } else {
-      emit_byte(code, OP_DEEPGET);
-      emit_uint32(code, idx);
+      emit_bytes(code, 2, OP_DEEPGET, idx);
     }
 
     if (f && (f->is_gen || f->is_async)) {
@@ -1078,8 +1064,7 @@ static CompileResult compile_expr_get(Bytecode *code, const Expr *expr)
   }
 
   /* Emit OP_GETATTR with the index of the property name. */
-  emit_byte(code, OP_GETATTR);
-  emit_uint32(code, add_string(code, expr_get.property_name));
+  emit_bytes(code, 2, OP_GETATTR, add_string(code, expr_get.property_name));
 
   return result;
 }
@@ -1164,7 +1149,7 @@ static CompileResult compile_assign_variable(Bytecode *code, ExprAssign e,
       emit_byte(code, OP_DEEPGET);
     }
 
-    emit_uint32(code, idx);
+    emit_byte(code, idx);
 
     /* Compile the right-hand side. */
     CompileResult rhs_result = compile_expr(code, e.rhs);
@@ -1192,7 +1177,7 @@ static CompileResult compile_assign_variable(Bytecode *code, ExprAssign e,
     emit_byte(code, OP_DEEPSET);
   }
 
-  emit_uint32(code, idx);
+  emit_byte(code, idx);
 
   return result;
 }
@@ -1218,8 +1203,7 @@ static CompileResult compile_assign_get(Bytecode *code, ExprAssign e,
 
   if (is_compound) {
     /* Get the property onto the top of the stack. */
-    emit_byte(code, OP_GETATTR);
-    emit_uint32(code, add_string(code, expr_get.property_name));
+    emit_bytes(code, 2, OP_GETATTR, add_string(code, expr_get.property_name));
 
     /* Compile the right-hand side of the assignment. */
     CompileResult rhs_result = compile_expr(code, e.rhs);
@@ -1237,8 +1221,7 @@ static CompileResult compile_assign_get(Bytecode *code, ExprAssign e,
   }
 
   /* Set the property name to the rhs of the get expr. */
-  emit_byte(code, OP_SETATTR);
-  emit_uint32(code, add_string(code, expr_get.property_name));
+  emit_bytes(code, 2, OP_SETATTR, add_string(code, expr_get.property_name));
 
   /* Pop the struct off the stack. */
   emit_byte(code, OP_POP);
@@ -1437,8 +1420,7 @@ static CompileResult compile_expr_struct(Bytecode *code, const Expr *expr)
 
   /* Everything is OK, we emit OP_STRUCT followed by
    * struct's name index in the string pool. */
-  emit_byte(code, OP_STRUCT);
-  emit_uint32(code, add_string(code, blueprint->name));
+  emit_bytes(code, 2, OP_STRUCT, add_string(code, blueprint->name));
 
   /* Finally, we compile the initializers. */
   for (size_t i = 0; i < expr_struct.initializers.count; i++) {
@@ -1478,8 +1460,7 @@ static CompileResult compile_expr_struct_initializer(Bytecode *code,
 
   /* Finally, we emit OP_SETATTR with the property's
    * name index. */
-  emit_byte(code, OP_SETATTR);
-  emit_uint32(code, add_string(code, property.name));
+  emit_bytes(code, 2, OP_SETATTR, add_string(code, property.name));
 
   return result;
 }
@@ -1507,8 +1488,7 @@ static CompileResult compile_expr_array(Bytecode *code, const Expr *expr)
   }
 
   /* Then, we emit OP_ARRAY and the number of elements. */
-  emit_byte(code, OP_ARRAY);
-  emit_uint32(code, expr_array.elements.count);
+  emit_bytes(code, 2, OP_ARRAY, expr_array.elements.count);
 
   return result;
 }
@@ -1742,8 +1722,7 @@ static CompileResult compile_stmt_let(Bytecode *code, const Stmt *stmt)
   }
 
   if (current_compiler->depth == 0) {
-    emit_byte(code, OP_SET_GLOBAL);
-    emit_uint32(code, name_idx);
+    emit_bytes(code, 2, OP_SET_GLOBAL, name_idx);
   }
 
   return result;
@@ -2203,19 +2182,15 @@ static CompileResult compile_stmt_fn(Bytecode *code, const Stmt *stmt)
 
   table_insert(current_compiler->functions, func.name, func);
 
-  emit_byte(code, OP_CLOSURE);
-  emit_uint32(code, add_string(code, func.name));
-  emit_uint32(code, func.paramcount);
-  emit_uint32(code, func.location);
-  emit_uint32(code, func.upvalue_count);
+  emit_bytes(code, 5, OP_CLOSURE, add_string(code, func.name), func.paramcount,
+             func.location, func.upvalue_count);
 
   for (size_t i = 0; i < current_compiler->upvalues.count; i++) {
-    emit_uint32(code, current_compiler->upvalues.data[i]);
+    emit_byte(code, current_compiler->upvalues.data[i]);
   }
 
   if (current_compiler->depth == 0) {
-    emit_byte(code, OP_SET_GLOBAL);
-    emit_uint32(code, add_string(code, func.name));
+    emit_bytes(code, 2, OP_SET_GLOBAL, add_string(code, func.name));
   }
 
   free_compiler(current_compiler);
@@ -2241,11 +2216,10 @@ static CompileResult compile_stmt_decorator(Bytecode *code, const Stmt *stmt)
     return fn_result;
   }
 
-  emit_byte(code, OP_GET_GLOBAL);
-  emit_uint32(code, add_string(code, stmt_decorator.fn->as.stmt_fn.name));
+  emit_bytes(code, 2, OP_GET_GLOBAL,
+             add_string(code, stmt_decorator.fn->as.stmt_fn.name));
 
-  emit_byte(code, OP_GET_GLOBAL);
-  emit_uint32(code, add_string(code, stmt_decorator.name));
+  emit_bytes(code, 2, OP_GET_GLOBAL, add_string(code, stmt_decorator.name));
 
   emit_byte(code, OP_CALL);
 
@@ -2261,8 +2235,8 @@ static CompileResult compile_stmt_decorator(Bytecode *code, const Stmt *stmt)
 
   emit_byte(code, argcount);
 
-  emit_byte(code, OP_SET_GLOBAL);
-  emit_uint32(code, add_string(code, stmt_decorator.fn->as.stmt_fn.name));
+  emit_bytes(code, 2, OP_SET_GLOBAL,
+             add_string(code, stmt_decorator.fn->as.stmt_fn.name));
 
   return result;
 }
@@ -2285,18 +2259,17 @@ static CompileResult compile_stmt_struct(Bytecode *code, const Stmt *stmt)
    * for each property:
    *    4-byte index of the property name in the sp
    *    4-byte index of the property in the 'items' */
-  emit_byte(code, OP_STRUCT_BLUEPRINT);
-  emit_uint32(code, add_string(code, stmt_struct.name));
-  emit_uint32(code, stmt_struct.properties.count);
+  emit_bytes(code, 3, OP_STRUCT_BLUEPRINT, add_string(code, stmt_struct.name),
+             stmt_struct.properties.count);
 
   StructBlueprint blueprint = {.name = stmt_struct.name,
                                .property_indexes = calloc(1, sizeof(Table_int)),
                                .methods = calloc(1, sizeof(Table_Function))};
 
   for (size_t i = 0; i < stmt_struct.properties.count; i++) {
-    emit_uint32(code, add_string(code, stmt_struct.properties.data[i]));
+    emit_byte(code, add_string(code, stmt_struct.properties.data[i]));
     table_insert(blueprint.property_indexes, stmt_struct.properties.data[i], i);
-    emit_uint32(code, i);
+    emit_byte(code, i);
   }
 
   /* Let the compiler know about the blueprint. */
@@ -2343,8 +2316,7 @@ static CompileResult compile_stmt_return(Bytecode *code, const Stmt *stmt)
     if (current_compiler->locals[i].captured) {
       emit_byte(code, OP_CLOSE_UPVALUE);
     } else {
-      emit_byte(code, OP_DEEPSET);
-      emit_uint32(code, deepset_no--);
+      emit_bytes(code, 2, OP_DEEPSET, deepset_no--);
     }
   }
 
@@ -2440,16 +2412,15 @@ static CompileResult compile_stmt_impl(Bytecode *code, const Stmt *stmt)
     }
   }
 
-  emit_byte(code, OP_IMPL);
-  emit_uint32(code, add_string(code, blueprint->name));
-  emit_uint32(code, stmt_impl.methods.count);
+  emit_bytes(code, 3, OP_IMPL, add_string(code, blueprint->name),
+             stmt_impl.methods.count);
 
   for (size_t i = 0; i < stmt_impl.methods.count; i++) {
     StmtFn func = stmt_impl.methods.data[i].as.stmt_fn;
     Function **f = table_get(blueprint->methods, func.name);
-    emit_uint32(code, add_string(code, (*f)->name));
-    emit_uint32(code, (*f)->paramcount);
-    emit_uint32(code, (*f)->location);
+    emit_byte(code, add_string(code, (*f)->name));
+    emit_byte(code, (*f)->paramcount);
+    emit_byte(code, (*f)->location);
   }
 
   return result;

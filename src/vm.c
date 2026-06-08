@@ -216,7 +216,7 @@ static inline bool check_equality(Object *left, Object *right)
 #endif
 }
 
-static inline uint32_t adjust_idx(VM *vm, uint32_t idx)
+static inline uint32_t adjust_idx(VM *vm, uint8_t idx)
 {
   /* 'idx' is adjusted to be relative to the current fra-
    * me pointer, */
@@ -385,10 +385,12 @@ static inline void handle_op_eq(VM *vm, Bytecode *code, uint8_t **ip)
   Object b = pop(vm);
   Object a = pop(vm);
 
+  bool eq = check_equality(&a, &b);
+
   objdecref(&a);
   objdecref(&b);
 
-  push(vm, BOOL_VAL(check_equality(&a, &b)));
+  push(vm, BOOL_VAL(eq));
 }
 
 /* OP_GT pops two objects off the stack, compares them us-
@@ -413,9 +415,9 @@ static inline void handle_op_lt(VM *vm, Bytecode *code, uint8_t **ip)
 static inline void handle_op_not(VM *vm, Bytecode *code, uint8_t **ip)
 {
   Object obj = pop(vm);
-  objdecref(&obj);
 
   if (!IS_BOOL(obj)) {
+    objdecref(&obj);
     RUNTIME_ERROR("cannot '!' objects of type: '%s'", get_object_type(&obj));
   }
 
@@ -428,9 +430,9 @@ static inline void handle_op_not(VM *vm, Bytecode *code, uint8_t **ip)
 static inline void handle_op_neg(VM *vm, Bytecode *code, uint8_t **ip)
 {
   Object original = pop(vm);
-  objdecref(&original);
 
   if (!IS_NUM(original)) {
+    objdecref(&original);
     RUNTIME_ERROR("cannot '-' objects of type: '%s'",
                   get_object_type(&original));
   }
@@ -473,7 +475,7 @@ static inline void handle_op_const(VM *vm, Bytecode *code, uint8_t **ip)
  * constructed object has a refcount=1. */
 static inline void handle_op_str(VM *vm, Bytecode *code, uint8_t **ip)
 {
-  uint32_t idx = READ_UINT32();
+  uint8_t idx = READ_UINT8();
 
   String s = {.refcount = 1, .value = own_string(code->sp.data[idx])};
   push(vm, STRING_VAL(ALLOC(s)));
@@ -488,9 +490,7 @@ static inline void handle_op_jz(VM *vm, Bytecode *code, uint8_t **ip)
   int16_t offset = READ_INT16();
 
   Object obj = pop(vm);
-  // if (!AS_BOOL(obj)) {
   *ip += offset * !AS_BOOL(obj);
-  // }
 }
 
 /* OP_JMP reads a signed 2-byte offset (that could be ne-
@@ -516,7 +516,7 @@ static inline void handle_op_jmp(VM *vm, Bytecode *code, uint8_t **ip)
  * ct with the same name. Don't ask me how I learned this. ;-) */
 static inline void handle_op_set_global(VM *vm, Bytecode *code, uint8_t **ip)
 {
-  uint32_t name_idx = READ_UINT32();
+  uint8_t name_idx = READ_UINT8();
 
   Object obj = pop(vm);
 
@@ -536,7 +536,7 @@ static inline void handle_op_set_global(VM *vm, Bytecode *code, uint8_t **ip)
  * other location, the refcount must be incremented. */
 static inline void handle_op_get_global(VM *vm, Bytecode *code, uint8_t **ip)
 {
-  uint32_t name_idx = READ_UINT32();
+  uint8_t name_idx = READ_UINT8();
 
   Object *obj = table_get_unchecked(&vm->globals, code->sp.data[name_idx]);
   push(vm, *obj);
@@ -551,7 +551,7 @@ static inline void handle_op_get_global(VM *vm, Bytecode *code, uint8_t **ip)
 static inline void handle_op_get_global_ptr(VM *vm, Bytecode *code,
                                             uint8_t **ip)
 {
-  uint32_t name_idx = READ_UINT32();
+  uint8_t name_idx = READ_UINT8();
 
   Object *object_ptr =
       table_get_unchecked(&vm->globals, code->sp.data[name_idx]);
@@ -568,8 +568,8 @@ static inline void handle_op_get_global_ptr(VM *vm, Bytecode *code,
  * ore putting the popped object into that position. */
 static inline void handle_op_deepset(VM *vm, Bytecode *code, uint8_t **ip)
 {
-  uint32_t idx = READ_UINT32();
-  uint32_t adjusted_idx = adjust_idx(vm, idx);
+  uint8_t idx = READ_UINT8();
+  size_t adjusted_idx = adjust_idx(vm, idx);
 
   Object obj = pop(vm);
   objdecref(&vm->stack[adjusted_idx]);
@@ -604,8 +604,8 @@ static inline void handle_op_derefset(VM *vm, Bytecode *code, uint8_t **ip)
  * rement its refcount. */
 static inline void handle_op_deepget(VM *vm, Bytecode *code, uint8_t **ip)
 {
-  uint32_t idx = READ_UINT32();
-  uint32_t adjusted_idx = adjust_idx(vm, idx);
+  uint8_t idx = READ_UINT8();
+  size_t adjusted_idx = adjust_idx(vm, idx);
 
   Object obj = vm->stack[adjusted_idx];
   push(vm, obj);
@@ -619,8 +619,8 @@ static inline void handle_op_deepget(VM *vm, Bytecode *code, uint8_t **ip)
  * ress on the stack. */
 static inline void handle_op_deepget_ptr(VM *vm, Bytecode *code, uint8_t **ip)
 {
-  uint32_t idx = READ_UINT32();
-  uint32_t adjusted_idx = adjust_idx(vm, idx);
+  uint8_t idx = READ_UINT8();
+  size_t adjusted_idx = adjust_idx(vm, idx);
 
   Object *object_ptr = &vm->stack[adjusted_idx];
 
@@ -641,7 +641,7 @@ static inline void handle_op_deepget_ptr(VM *vm, Bytecode *code, uint8_t **ip)
  * riting it. */
 static inline void handle_op_setattr(VM *vm, Bytecode *code, uint8_t **ip)
 {
-  uint32_t property_name_idx = READ_UINT32();
+  uint8_t property_name_idx = READ_UINT8();
 
   Object value = pop(vm);
   Object obj = pop(vm);
@@ -680,7 +680,7 @@ static inline void handle_op_setattr(VM *vm, Bytecode *code, uint8_t **ip)
  * location, its refcount must be decremented. */
 static inline void handle_op_getattr(VM *vm, Bytecode *code, uint8_t **ip)
 {
-  uint32_t property_name_idx = READ_UINT32();
+  uint8_t property_name_idx = READ_UINT8();
 
   Object obj = pop(vm);
 
@@ -713,7 +713,7 @@ static inline void handle_op_getattr(VM *vm, Bytecode *code, uint8_t **ip)
  * sent at that location, its refcount must be decremented. */
 static inline void handle_op_getattr_ptr(VM *vm, Bytecode *code, uint8_t **ip)
 {
-  uint32_t property_name_idx = READ_UINT32();
+  uint8_t property_name_idx = READ_UINT8();
 
   Object object = pop(vm);
 
@@ -743,7 +743,7 @@ static inline void handle_op_getattr_ptr(VM *vm, Bytecode *code, uint8_t **ip)
  * nstructed object has a refcount=1. */
 static inline void handle_op_struct(VM *vm, Bytecode *code, uint8_t **ip)
 {
-  uint32_t structname = READ_UINT32();
+  uint8_t structname = READ_UINT8();
 
   StructBlueprint *sb = table_get(vm->blueprints, code->sp.data[structname]);
   if (!sb) {
@@ -786,14 +786,14 @@ static inline void handle_op_struct(VM *vm, Bytecode *code, uint8_t **ip)
 static inline void handle_op_struct_blueprint(VM *vm, Bytecode *code,
                                               uint8_t **ip)
 {
-  uint32_t name_idx = READ_UINT32();
-  uint32_t propcount = READ_UINT32();
+  uint8_t name_idx = READ_UINT8();
+  uint8_t propcount = READ_UINT8();
 
   DynArray_char_ptr properties = {0};
-  DynArray_uint32_t prop_indexes = {0};
+  DynArray_uint8_t prop_indexes = {0};
   for (size_t i = 0; i < propcount; i++) {
-    dynarray_insert(&properties, code->sp.data[READ_UINT32()]);
-    dynarray_insert(&prop_indexes, READ_UINT32());
+    dynarray_insert(&properties, code->sp.data[READ_UINT8()]);
+    dynarray_insert(&prop_indexes, READ_UINT8());
   }
 
   StructBlueprint sb = {.name = code->sp.data[name_idx],
@@ -819,8 +819,8 @@ static inline void handle_op_struct_blueprint(VM *vm, Bytecode *code,
  * the blueprint's methods Table. */
 static inline void handle_op_impl(VM *vm, Bytecode *code, uint8_t **ip)
 {
-  uint32_t blueprint_name_idx = READ_UINT32();
-  uint32_t method_count = READ_UINT32();
+  uint8_t blueprint_name_idx = READ_UINT8();
+  uint8_t method_count = READ_UINT8();
 
   StructBlueprint *sb =
       table_get(vm->blueprints, code->sp.data[blueprint_name_idx]);
@@ -830,9 +830,9 @@ static inline void handle_op_impl(VM *vm, Bytecode *code, uint8_t **ip)
   }
 
   for (size_t i = 0; i < method_count; i++) {
-    uint32_t method_name_idx = READ_UINT32();
-    uint32_t paramcount = READ_UINT32();
-    uint32_t location = READ_UINT32();
+    uint8_t method_name_idx = READ_UINT8();
+    uint8_t paramcount = READ_UINT8();
+    uint8_t location = READ_UINT8();
 
     Function method = {
         .location = location,
@@ -895,15 +895,15 @@ static void close_upvalues(VM *vm, Object *last)
  * all this information and pushes it on the stack. */
 static inline void handle_op_closure(VM *vm, Bytecode *code, uint8_t **ip)
 {
-  uint32_t name_idx, paramcount, location, upvalue_count;
+  uint8_t name_idx, paramcount, location, upvalue_count;
 
   Function f;
   Closure c;
 
-  name_idx = READ_UINT32();
-  paramcount = READ_UINT32();
-  location = READ_UINT32();
-  upvalue_count = READ_UINT32();
+  name_idx = READ_UINT8();
+  paramcount = READ_UINT8();
+  location = READ_UINT8();
+  upvalue_count = READ_UINT8();
 
   f = (Function){.name = code->sp.data[name_idx],
                  .paramcount = paramcount,
@@ -918,7 +918,7 @@ static inline void handle_op_closure(VM *vm, Bytecode *code, uint8_t **ip)
   };
 
   for (int i = 0; i < c.upvalue_count; i++) {
-    uint32_t idx = READ_UINT32();
+    uint8_t idx = READ_UINT8();
     c.upvalues[idx] = capture_upvalue(vm, &vm->stack[adjust_idx(vm, idx)]);
   }
 
@@ -966,8 +966,8 @@ static inline void handle_op_call(VM *vm, Bytecode *code, uint8_t **ip)
  * The location is the starting position of the frame on the stack. */
 static inline void handle_op_call_method(VM *vm, Bytecode *code, uint8_t **ip)
 {
-  uint32_t method_name_idx = READ_UINT32();
-  uint32_t argcount = READ_UINT32();
+  uint8_t method_name_idx = READ_UINT8();
+  uint8_t argcount = READ_UINT8();
 
   Object object = peek(vm, argcount);
 
@@ -1014,6 +1014,7 @@ static inline void handle_op_ret(VM *vm, Bytecode *code, uint8_t **ip)
 
     Object returned = pop(vm);
     scheduler_complete_current(vm, code, ip, returned);
+    return;
   }
 
   (void) code;
@@ -1047,6 +1048,8 @@ static inline void handle_op_ret(VM *vm, Bytecode *code, uint8_t **ip)
 
     Object gen_obj = GENERATOR_VAL(gen);
     objdecref(&gen_obj);
+
+    return;
   }
 
   BytecodePtr ptr = pop_frame(vm);
@@ -1118,7 +1121,7 @@ static inline void handle_op_strcat(VM *vm, Bytecode *code, uint8_t **ip)
  * REFCOUNTING: Since Arrays are refcounted, the new object has refcount=1. */
 static inline void handle_op_array(VM *vm, Bytecode *code, uint8_t **ip)
 {
-  uint32_t count = READ_UINT32();
+  uint8_t count = READ_UINT8();
 
   DynArray_Object elements = {0};
   for (size_t i = 0; i < count; i++) {
@@ -1205,7 +1208,7 @@ static inline void handle_op_subscript(VM *vm, Bytecode *code, uint8_t **ip)
  * need to make sure to increment the refcount. */
 static inline void handle_op_get_upvalue(VM *vm, Bytecode *code, uint8_t **ip)
 {
-  uint32_t idx = READ_UINT32();
+  uint8_t idx = READ_UINT8();
 
   Object *obj = vm->fp_stack[vm->fp_count - 1].fn->upvalues[idx]->location;
   objincref(obj);
@@ -1218,7 +1221,7 @@ static inline void handle_op_get_upvalue(VM *vm, Bytecode *code, uint8_t **ip)
 static inline void handle_op_get_upvalue_ptr(VM *vm, Bytecode *code,
                                              uint8_t **ip)
 {
-  uint32_t idx = READ_UINT32();
+  uint8_t idx = READ_UINT8();
 
   Object *obj = vm->fp_stack[vm->fp_count - 1].fn->upvalues[idx]->location;
   push(vm, PTR_VAL(obj));
@@ -1231,7 +1234,7 @@ static inline void handle_op_get_upvalue_ptr(VM *vm, Bytecode *code,
  * we need to make sure to decrement its refcount. */
 static inline void handle_op_set_upvalue(VM *vm, Bytecode *code, uint8_t **ip)
 {
-  uint32_t idx = READ_UINT32();
+  uint8_t idx = READ_UINT8();
 
   Object obj = pop(vm);
 
@@ -1439,6 +1442,7 @@ static void scheduler_schedule_next(VM *vm, Bytecode *code, uint8_t **ip)
   Task *next = scheduler_next_runnable(vm, &deadlocked);
   if (next) {
     scheduler_resume_task(vm, code, ip, next);
+    return;
   }
 
   if (deadlocked) {
@@ -1585,6 +1589,7 @@ static inline void handle_op_yield(VM *vm, Bytecode *code, uint8_t **ip)
 
   if (vm->scheduler_running) {
     scheduler_suspend_current(vm, code, ip, yielded);
+    return;
   }
 
   Generator *gen = vm->gen_stack[--vm->gen_count];
@@ -1766,6 +1771,7 @@ static inline void handle_op_run(VM *vm, Bytecode *code, uint8_t **ip)
 
   if (!scheduler_has_live_tasks(vm)) {
     scheduler_finish(vm, code, ip);
+    return;
   }
 
   scheduler_schedule_next(vm, code, ip);
