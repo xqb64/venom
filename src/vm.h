@@ -39,6 +39,7 @@ typedef struct {
   Task *scheduler_root;
   FrameSnapshot *scheduler_frame;
   size_t scheduler_cursor;
+  uint32_t fp_base;
 } VM;
 
 typedef struct {

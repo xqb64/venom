@@ -23,6 +23,8 @@
 void init_vm(VM *vm)
 {
   memset(vm, 0, sizeof(VM));
+  vm->fp_count = 1;
+  vm->fp_stack[0] = (BytecodePtr){0};
   vm->blueprints = calloc(1, sizeof(Table_StructBlueprint));
 }
 
@@ -78,13 +80,13 @@ static inline uint64_t clamp(double d)
     Object b = pop(vm);                                                 \
     Object a = pop(vm);                                                 \
                                                                         \
-    objdecref(&b);                                                      \
-    objdecref(&a);                                                      \
-                                                                        \
-    if (!IS_NUM(a) && !IS_NUM(b)) {                                     \
+    if (!IS_NUM(a) || !IS_NUM(b)) {                                     \
       RUNTIME_ERROR("cannot '" #op "' objects of types: '%s' and '%s'", \
                     get_object_type(&a), get_object_type(&b));          \
     }                                                                   \
+                                                                        \
+    objdecref(&b);                                                      \
+    objdecref(&a);                                                      \
                                                                         \
     Object obj = wrapper(AS_NUM(a) op AS_NUM(b));                       \
                                                                         \
@@ -96,13 +98,13 @@ static inline uint64_t clamp(double d)
     Object b = pop(vm);                                                 \
     Object a = pop(vm);                                                 \
                                                                         \
-    objdecref(&b);                                                      \
-    objdecref(&a);                                                      \
-                                                                        \
-    if (!IS_NUM(a) && !IS_NUM(b)) {                                     \
+    if (!IS_NUM(a) || !IS_NUM(b)) {                                     \
       RUNTIME_ERROR("cannot '" #op "' objects of types: '%s' and '%s'", \
                     get_object_type(&a), get_object_type(&b));          \
     }                                                                   \
+  									\
+    objdecref(&b);                                                      \
+    objdecref(&a);                                                      \
                                                                         \
     uint64_t clamped_a = clamp(AS_NUM(a));                              \
     uint64_t clamped_b = clamp(AS_NUM(b));                              \
@@ -155,7 +157,7 @@ static inline uint64_t clamp(double d)
   do {                                                         \
     printf("fp stack: [");                                     \
                                                                \
-    for (size_t i = 0; i < vm->fp_count; i++) {                \
+    for (size_t i = 1; i < vm->fp_count; i++) {                \
       printf("<%s (loc: %d)>", vm->fp_stack[i].fn->func->name, \
              vm->fp_stack[i].location);                        \
       if (i < vm->fp_count - 1) {                              \
@@ -192,6 +194,9 @@ static inline bool check_equality(Object *left, Object *right)
   }
 
   switch (left->type) {
+    case OBJ_NUMBER: {
+      return AS_NUM(*left) == AS_NUM(*right);
+    }
     case OBJ_STRING: {
       return strcmp(AS_STRING(*left)->value, AS_STRING(*right)->value) == 0;
     }
@@ -204,9 +209,6 @@ static inline bool check_equality(Object *left, Object *right)
     case OBJ_BOOLEAN: {
       return AS_BOOL(*left) == AS_BOOL(*right);
     }
-    case OBJ_NUMBER: {
-      return AS_NUM(*left) == AS_NUM(*right);
-    }
     default:
       assert(0);
   }
@@ -216,14 +218,21 @@ static inline bool check_equality(Object *left, Object *right)
 static inline uint32_t adjust_idx(VM *vm, uint32_t idx)
 {
   /* 'idx' is adjusted to be relative to the current fra-
-   * me pointer, if there are any. If not, it is returned
-   * back, as is. */
-  if (vm->fp_count > 0) {
-    BytecodePtr fp = vm->fp_stack[vm->fp_count - 1];
-    return fp.location + idx;
-  } else {
-    return idx;
-  }
+   * me pointer, */
+   return vm->fp_base + idx;
+}
+
+static inline void push_frame(VM *vm, BytecodePtr frame)
+{
+  vm->fp_stack[vm->fp_count++] = frame;
+  vm->fp_base = frame.location;
+}
+
+static inline BytecodePtr pop_frame(VM *vm)
+{
+  BytecodePtr frame = vm->fp_stack[--vm->fp_count];
+  vm->fp_base = vm->fp_stack[vm->fp_count - 1].location;
+  return frame;
 }
 
 static inline char *concatenate_strings(char *a, char *b)
@@ -1069,7 +1078,7 @@ static inline ExecResult handle_op_call(VM *vm, Bytecode *code, uint8_t **ip)
   Closure *f = AS_CLOSURE(obj);
 
   BytecodePtr ip_obj = {.addr = *(ip), .location = vm->tos - argcount, .fn = f};
-  vm->fp_stack[vm->fp_count++] = ip_obj;
+  push_frame(vm, ip_obj);
 
   *ip = &code->code.data[f->func->location - 1];
 
@@ -1114,8 +1123,7 @@ static inline ExecResult handle_op_call_method(VM *vm, Bytecode *code,
    * No need to take into account the jump sequence (+3). */
   BytecodePtr ip_obj = {
       .addr = *ip, .location = vm->tos - c->func->paramcount, .fn = c};
-
-  vm->fp_stack[vm->fp_count++] = ip_obj;
+  push_frame(vm, ip_obj);
 
   /* Direct jump to one byte before the method location. */
   *ip = &code->code.data[c->func->location - 1];
@@ -1136,7 +1144,7 @@ static inline ExecResult handle_op_ret(VM *vm, Bytecode *code, uint8_t **ip)
   if (vm->scheduler_running && vm->current_task) {
     Generator *gen = vm->current_task->gen;
     if (vm->fp_count > 0 && vm->fp_stack[vm->fp_count - 1].fn != gen->fn) {
-      BytecodePtr ptr = vm->fp_stack[--vm->fp_count];
+      BytecodePtr ptr = pop_frame(vm);
       *ip = ptr.addr;
       return r;
     }
@@ -1150,7 +1158,7 @@ static inline ExecResult handle_op_ret(VM *vm, Bytecode *code, uint8_t **ip)
   if (vm->gen_count > 0) {
     Generator *gen = vm->gen_stack[vm->gen_count - 1];
     if (vm->fp_count > 0 && vm->fp_stack[vm->fp_count - 1].fn != gen->fn) {
-      BytecodePtr ptr = vm->fp_stack[--vm->fp_count];
+      BytecodePtr ptr = pop_frame(vm);
       *ip = ptr.addr;
       return r;
     }
@@ -1181,8 +1189,9 @@ static inline ExecResult handle_op_ret(VM *vm, Bytecode *code, uint8_t **ip)
     return r;
   }
 
-  BytecodePtr ptr = vm->fp_stack[--vm->fp_count];
+  BytecodePtr ptr = pop_frame(vm);
   *ip = ptr.addr;
+  vm->fp_base = vm->fp_stack[vm->fp_count - 1].location;
 
   return r;
 }
