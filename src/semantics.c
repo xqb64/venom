@@ -306,10 +306,10 @@ static LabelCheckResult label_collect_stmt(const Stmt *stmt,
     case STMT_LABELED: {
       for (size_t i = 0; i < labels->count; i++) {
         if (strcmp(labels->data[i], stmt->as.stmt_labeled.label) == 0) {
-          return (LabelCheckResult) {.is_ok = false,
-                                     .errcode = -1,
-                                     .msg = strdup("Duplicate label"),
-                                     .span = stmt->as.stmt_labeled.span};
+          return (LabelCheckResult){.is_ok = false,
+                                    .errcode = -1,
+                                    .msg = strdup("Duplicate label"),
+                                    .span = stmt->as.stmt_labeled.span};
         }
       }
 
@@ -330,7 +330,7 @@ static LabelCheckResult label_collect_stmt(const Stmt *stmt,
     default:
       break;
   }
-  return (LabelCheckResult) {
+  return (LabelCheckResult){
       .is_ok = true, .msg = NULL, .errcode = 0, .span = {0}};
 }
 
@@ -438,17 +438,17 @@ static LabelCheckResult label_check_stmt(const Stmt *stmt,
       }
 
       if (!seen) {
-        return (LabelCheckResult) {.is_ok = false,
-                                   .msg = strdup("Non existent label."),
-                                   .errcode = -1,
-                                   .span = stmt->span};
+        return (LabelCheckResult){.is_ok = false,
+                                  .msg = strdup("Non existent label."),
+                                  .errcode = -1,
+                                  .span = stmt->span};
       }
       break;
     }
     default:
       break;
   }
-  return (LabelCheckResult) {
+  return (LabelCheckResult){
       .is_ok = true, .errcode = 0, .msg = NULL, .span = {0}};
 }
 

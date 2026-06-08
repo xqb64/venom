@@ -67,7 +67,7 @@ typedef enum {
  * since Object contains a union whose largest member is 64 bits, effect-
  * ively making the size of the whole union 64 bits. This, in turn, means
  * that the three least significant bits of the pointer will always be 0.
- * 
+ *
  * This means that we have the lowest three bits that come from ptr alig-
  * nment available to us, and we also have both bits 48 and 49, and the
  * MSB available to us, too, for the total of 6 bits (or 2^6 total tags).
@@ -230,11 +230,10 @@ typedef DynArray(Object) DynArray_Object;
        ? (Generator *) ((uintptr_t) ((object) &                             \
                                      ~(SIGN_BIT | QNAN | 0x2000000000007))) \
        : NULL)
-#define AS_TASK(object)                                                \
-  ((IS_TASK(object))                                                   \
-       ? (Task *) ((uintptr_t) ((object) &                             \
-                                ~(SIGN_BIT | QNAN | 0x2000000000007))) \
-       : NULL)
+#define AS_TASK(object)                                                       \
+  ((IS_TASK(object)) ? (Task *) ((uintptr_t) ((object) & ~(SIGN_BIT | QNAN |  \
+                                                           0x2000000000007))) \
+                     : NULL)
 #define AS_SLEEP(object)                                                \
   ((IS_SLEEP(object))                                                   \
        ? (Sleep *) ((uintptr_t) ((object) &                             \
@@ -385,23 +384,23 @@ typedef struct Object {
 #define AS_TASK(object) ((object).as.task)
 #define AS_SLEEP(object) ((object).as.sleep)
 
-#define NUM_VAL(thing) ((Object) {.type = OBJ_NUMBER, .as.dval = (thing)})
-#define BOOL_VAL(thing) ((Object) {.type = OBJ_BOOLEAN, .as.bval = (thing)})
-#define STRING_VAL(thing) ((Object) {.type = OBJ_STRING, .as.str = (thing)})
+#define NUM_VAL(thing) ((Object){.type = OBJ_NUMBER, .as.dval = (thing)})
+#define BOOL_VAL(thing) ((Object){.type = OBJ_BOOLEAN, .as.bval = (thing)})
+#define STRING_VAL(thing) ((Object){.type = OBJ_STRING, .as.str = (thing)})
 #define STRUCT_VAL(thing) \
-  ((Object) {.type = OBJ_STRUCT, .as.structobj = (thing)})
-#define PTR_VAL(thing) ((Object) {.type = OBJ_PTR, .as.ptr = (thing)})
-#define ARRAY_VAL(thing) ((Object) {.type = OBJ_ARRAY, .as.array = (thing)})
-#define FUNC_VAL(thing) ((Object) {.type = OBJ_FUNC, .as.func = (thing)})
+  ((Object){.type = OBJ_STRUCT, .as.structobj = (thing)})
+#define PTR_VAL(thing) ((Object){.type = OBJ_PTR, .as.ptr = (thing)})
+#define ARRAY_VAL(thing) ((Object){.type = OBJ_ARRAY, .as.array = (thing)})
+#define FUNC_VAL(thing) ((Object){.type = OBJ_FUNC, .as.func = (thing)})
 #define CLOSURE_VAL(thing) \
-  ((Object) {.type = OBJ_CLOSURE, .as.closure = (thing)})
+  ((Object){.type = OBJ_CLOSURE, .as.closure = (thing)})
 #define UPVALUE_VAL(thing) \
-  ((Object) {.type = OBJ_UPVALUE, .as.upvalue = (thing)})
+  ((Object){.type = OBJ_UPVALUE, .as.upvalue = (thing)})
 #define GENERATOR_VAL(thing) \
-  ((Object) {.type = OBJ_GENERATOR, .as.generator = (thing)})
-#define TASK_VAL(thing) ((Object) {.type = OBJ_TASK, .as.task = (thing)})
-#define SLEEP_VAL(thing) ((Object) {.type = OBJ_SLEEP, .as.sleep = (thing)})
-#define NULL_VAL ((Object) {.type = OBJ_NULL})
+  ((Object){.type = OBJ_GENERATOR, .as.generator = (thing)})
+#define TASK_VAL(thing) ((Object){.type = OBJ_TASK, .as.task = (thing)})
+#define SLEEP_VAL(thing) ((Object){.type = OBJ_SLEEP, .as.sleep = (thing)})
+#define NULL_VAL ((Object){.type = OBJ_NULL})
 
 #endif
 
@@ -704,8 +703,12 @@ inline void dealloc(Object *obj)
       Object gen_obj = GENERATOR_VAL(task->gen);
       objdecref(&gen_obj);
     }
-    if (task->has_result) objdecref(&task->result);
-    if (task->has_send) objdecref(&task->send_value);
+    if (task->has_result) {
+      objdecref(&task->result);
+    }
+    if (task->has_send) {
+      objdecref(&task->send_value);
+    }
     free(task);
   } else if (IS_SLEEP(*obj)) {
     free(AS_SLEEP(*obj));
@@ -753,8 +756,12 @@ inline void dealloc(Object *obj)
         Object gen_obj = GENERATOR_VAL(task->gen);
         objdecref(&gen_obj);
       }
-      if (task->has_result) objdecref(&task->result);
-      if (task->has_send) objdecref(&task->send_value);
+      if (task->has_result) {
+        objdecref(&task->result);
+      }
+      if (task->has_send) {
+        objdecref(&task->send_value);
+      }
       free(task);
       break;
     }

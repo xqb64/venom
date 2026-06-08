@@ -6,6 +6,7 @@
 #include <stdbool.h>
 #include <stddef.h>
 #include <stdint.h>
+#include <setjmp.h>
 
 #include "compiler.h"
 #include "object.h"
@@ -40,6 +41,8 @@ typedef struct {
   FrameSnapshot *scheduler_frame;
   size_t scheduler_cursor;
   uint32_t fp_base;
+  jmp_buf trap;
+  char *err_msg;
 } VM;
 
 typedef struct {

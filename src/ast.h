@@ -154,39 +154,38 @@ Table_Expr clone_table_expr(const Table_Expr *table);
 void free_table_expr(const Table_Expr *table);
 
 #define AS_EXPR_LITERAL(exp) \
-  ((Expr) {.kind = EXPR_LITERAL, .as.expr_literal = (exp), .span = (exp).span})
+  ((Expr){.kind = EXPR_LITERAL, .as.expr_literal = (exp), .span = (exp).span})
 #define AS_EXPR_VARIABLE(exp) \
-  ((Expr) {                   \
-      .kind = EXPR_VARIABLE, .as.expr_variable = (exp), .span = (exp).span})
+  ((Expr){.kind = EXPR_VARIABLE, .as.expr_variable = (exp), .span = (exp).span})
 #define AS_EXPR_UNARY(exp) \
-  ((Expr) {.kind = EXPR_UNARY, .as.expr_unary = (exp), .span = (exp).span})
+  ((Expr){.kind = EXPR_UNARY, .as.expr_unary = (exp), .span = (exp).span})
 #define AS_EXPR_BINARY(exp) \
-  ((Expr) {.kind = EXPR_BINARY, .as.expr_binary = (exp), .span = (exp).span})
+  ((Expr){.kind = EXPR_BINARY, .as.expr_binary = (exp), .span = (exp).span})
 #define AS_EXPR_CALL(exp) \
-  ((Expr) {.kind = EXPR_CALL, .as.expr_call = (exp), .span = (exp).span})
+  ((Expr){.kind = EXPR_CALL, .as.expr_call = (exp), .span = (exp).span})
 #define AS_EXPR_GET(exp) \
-  ((Expr) {.kind = EXPR_GET, .as.expr_get = (exp), .span = (exp).span})
+  ((Expr){.kind = EXPR_GET, .as.expr_get = (exp), .span = (exp).span})
 #define AS_EXPR_ASSIGN(exp) \
-  ((Expr) {.kind = EXPR_ASSIGN, .as.expr_assign = (exp), .span = (exp).span})
+  ((Expr){.kind = EXPR_ASSIGN, .as.expr_assign = (exp), .span = (exp).span})
 #define AS_EXPR_STRUCT(exp) \
-  ((Expr) {.kind = EXPR_STRUCT, .as.expr_struct = (exp), .span = (exp).span})
-#define AS_EXPR_STRUCT_INITIALIZER(exp)         \
-  ((Expr) {.kind = EXPR_STRUCT_INITIALIZER,     \
-           .as.expr_struct_initializer = (exp), \
-           .span = (exp).span})
+  ((Expr){.kind = EXPR_STRUCT, .as.expr_struct = (exp), .span = (exp).span})
+#define AS_EXPR_STRUCT_INITIALIZER(exp)        \
+  ((Expr){.kind = EXPR_STRUCT_INITIALIZER,     \
+          .as.expr_struct_initializer = (exp), \
+          .span = (exp).span})
 #define AS_EXPR_ARRAY(exp) \
-  ((Expr) {.kind = EXPR_ARRAY, .as.expr_array = (exp), .span = (exp).span})
+  ((Expr){.kind = EXPR_ARRAY, .as.expr_array = (exp), .span = (exp).span})
 #define AS_EXPR_SUBSCRIPT(exp) \
-  ((Expr) {                    \
+  ((Expr){                     \
       .kind = EXPR_SUBSCRIPT, .as.expr_subscript = (exp), .span = (exp).span})
-#define AS_EXPR_CONDITIONAL(exp)         \
-  ((Expr) {.kind = EXPR_CONDITIONAL,     \
-           .as.expr_conditional = (exp), \
-           .span = (exp).span})
+#define AS_EXPR_CONDITIONAL(exp)        \
+  ((Expr){.kind = EXPR_CONDITIONAL,     \
+          .as.expr_conditional = (exp), \
+          .span = (exp).span})
 #define AS_EXPR_YIELD(exp) \
-  ((Expr) {.kind = EXPR_YIELD, .as.expr_yield = (exp), .span = (exp).span})
+  ((Expr){.kind = EXPR_YIELD, .as.expr_yield = (exp), .span = (exp).span})
 #define AS_EXPR_AWAIT(exp) \
-  ((Expr) {.kind = EXPR_AWAIT, .as.expr_await = (exp), .span = (exp).span})
+  ((Expr){.kind = EXPR_AWAIT, .as.expr_await = (exp), .span = (exp).span})
 
 typedef enum {
   STMT_LET,
@@ -357,50 +356,49 @@ typedef struct Stmt {
 } Stmt;
 
 #define AS_STMT_PRINT(stmt) \
-  ((Stmt) {.kind = STMT_PRINT, .as.stmt_print = (stmt), .span = (stmt).span})
+  ((Stmt){.kind = STMT_PRINT, .as.stmt_print = (stmt), .span = (stmt).span})
 #define AS_STMT_LET(stmt) \
-  ((Stmt) {.kind = STMT_LET, .as.stmt_let = (stmt), .span = (stmt).span})
+  ((Stmt){.kind = STMT_LET, .as.stmt_let = (stmt), .span = (stmt).span})
 #define AS_STMT_EXPR(stmt) \
-  ((Stmt) {.kind = STMT_EXPR, .as.stmt_expr = (stmt), .span = (stmt).span})
+  ((Stmt){.kind = STMT_EXPR, .as.stmt_expr = (stmt), .span = (stmt).span})
 #define AS_STMT_BLOCK(stmt) \
-  ((Stmt) {.kind = STMT_BLOCK, .as.stmt_block = (stmt), .span = (stmt).span})
+  ((Stmt){.kind = STMT_BLOCK, .as.stmt_block = (stmt), .span = (stmt).span})
 #define AS_STMT_FN(stmt) \
-  ((Stmt) {.kind = STMT_FN, .as.stmt_fn = (stmt), .span = (stmt).span})
-#define AS_STMT_DECORATOR(stmt)         \
-  ((Stmt) {.kind = STMT_DECORATOR,      \
-           .as.stmt_decorator = (stmt), \
-           .span = (stmt).span})
+  ((Stmt){.kind = STMT_FN, .as.stmt_fn = (stmt), .span = (stmt).span})
+#define AS_STMT_DECORATOR(stmt)        \
+  ((Stmt){.kind = STMT_DECORATOR,      \
+          .as.stmt_decorator = (stmt), \
+          .span = (stmt).span})
 #define AS_STMT_IF(stmt) \
-  ((Stmt) {.kind = STMT_IF, .as.stmt_if = (stmt), .span = (stmt).span})
+  ((Stmt){.kind = STMT_IF, .as.stmt_if = (stmt), .span = (stmt).span})
 #define AS_STMT_WHILE(stmt) \
-  ((Stmt) {.kind = STMT_WHILE, .as.stmt_while = (stmt), .span = (stmt).span})
+  ((Stmt){.kind = STMT_WHILE, .as.stmt_while = (stmt), .span = (stmt).span})
 #define AS_STMT_DO_WHILE(stmt) \
-  ((Stmt) {                    \
+  ((Stmt){                     \
       .kind = STMT_DO_WHILE, .as.stmt_do_while = (stmt), .span = (stmt).span})
 #define AS_STMT_FOR(stmt) \
-  ((Stmt) {.kind = STMT_FOR, .as.stmt_for = (stmt), .span = (stmt).span})
+  ((Stmt){.kind = STMT_FOR, .as.stmt_for = (stmt), .span = (stmt).span})
 #define AS_STMT_BREAK(stmt) \
-  ((Stmt) {.kind = STMT_BREAK, .as.stmt_break = (stmt), .span = (stmt).span})
+  ((Stmt){.kind = STMT_BREAK, .as.stmt_break = (stmt), .span = (stmt).span})
 #define AS_STMT_CONTINUE(stmt) \
-  ((Stmt) {                    \
+  ((Stmt){                     \
       .kind = STMT_CONTINUE, .as.stmt_continue = (stmt), .span = (stmt).span})
 #define AS_STMT_GOTO(stmt) \
-  ((Stmt) {.kind = STMT_GOTO, .as.stmt_goto = (stmt), .span = (stmt).span})
+  ((Stmt){.kind = STMT_GOTO, .as.stmt_goto = (stmt), .span = (stmt).span})
 #define AS_STMT_LABELED(stmt) \
-  ((Stmt) {                   \
-      .kind = STMT_LABELED, .as.stmt_labeled = (stmt), .span = (stmt).span})
+  ((Stmt){.kind = STMT_LABELED, .as.stmt_labeled = (stmt), .span = (stmt).span})
 #define AS_STMT_RETURN(stmt) \
-  ((Stmt) {.kind = STMT_RETURN, .as.stmt_return = (stmt), .span = (stmt).span})
+  ((Stmt){.kind = STMT_RETURN, .as.stmt_return = (stmt), .span = (stmt).span})
 #define AS_STMT_STRUCT(stmt) \
-  ((Stmt) {.kind = STMT_STRUCT, .as.stmt_struct = (stmt), .span = (stmt).span})
+  ((Stmt){.kind = STMT_STRUCT, .as.stmt_struct = (stmt), .span = (stmt).span})
 #define AS_STMT_IMPL(stmt) \
-  ((Stmt) {.kind = STMT_IMPL, .as.stmt_impl = (stmt), .span = (stmt).span})
+  ((Stmt){.kind = STMT_IMPL, .as.stmt_impl = (stmt), .span = (stmt).span})
 #define AS_STMT_USE(stmt) \
-  ((Stmt) {.kind = STMT_USE, .as.stmt_use = (stmt), .span = (stmt).span})
+  ((Stmt){.kind = STMT_USE, .as.stmt_use = (stmt), .span = (stmt).span})
 #define AS_STMT_YIELD(stmt) \
-  ((Stmt) {.kind = STMT_YIELD, .as.stmt_yield = (stmt), .span = (stmt).span})
+  ((Stmt){.kind = STMT_YIELD, .as.stmt_yield = (stmt), .span = (stmt).span})
 #define AS_STMT_ASSERT(stmt) \
-  ((Stmt) {.kind = STMT_ASSERT, .as.stmt_assert = (stmt), .span = (stmt).span})
+  ((Stmt){.kind = STMT_ASSERT, .as.stmt_assert = (stmt), .span = (stmt).span})
 
 void print_expr(const Expr *expr, int indent);
 void print_stmt(const Stmt *stmt, int indent, bool continuation);

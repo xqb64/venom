@@ -176,9 +176,9 @@ DisassembleResult disassemble(Bytecode *code)
         break;
       }
       default:
-        return (DisassembleResult) {.is_ok = false,
-                                    .errcode = -1,
-                                    .msg = strdup("Disassembling failed.")};
+        return (DisassembleResult){.is_ok = false,
+                                   .errcode = -1,
+                                   .msg = strdup("Disassembling failed.")};
         break;
     }
 

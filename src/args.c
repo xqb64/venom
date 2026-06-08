@@ -63,7 +63,7 @@ ArgParseResult parse_args(int argc, char **argv)
         measure_flags |= parse_measure_flag(optarg);
         break;
       default:
-        return (ArgParseResult) {
+        return (ArgParseResult){
             .args = {0},
             .is_ok = false,
             .errcode = -1,
@@ -72,7 +72,7 @@ ArgParseResult parse_args(int argc, char **argv)
   }
 
   if (do_lex + do_optimize > 1) {
-    return (ArgParseResult) {
+    return (ArgParseResult){
         .args = {0},
         .is_ok = false,
         .errcode = -1,
@@ -81,7 +81,7 @@ ArgParseResult parse_args(int argc, char **argv)
   }
 
   if (do_lex + do_parse + do_ir > 1) {
-    return (ArgParseResult) {
+    return (ArgParseResult){
         .args = {0},
         .is_ok = false,
         .errcode = -1,
@@ -97,6 +97,6 @@ ArgParseResult parse_args(int argc, char **argv)
   args.measure_flags = measure_flags;
   args.file = argv[optind];
 
-  return (ArgParseResult) {
+  return (ArgParseResult){
       .args = args, .is_ok = true, .errcode = 0, .msg = NULL};
 }

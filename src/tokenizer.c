@@ -57,13 +57,13 @@ static bool is_at_end(const Tokenizer *tokenizer)
 
 static Token make_token(Tokenizer *tokenizer, TokenType type, int length)
 {
-  return (Token) {
+  return (Token){
       .type = type,
       .start = tokenizer->current - length,
       .length = length,
-      .span = (Span) {.start = (tokenizer->current - length) - tokenizer->src,
-                      .end = tokenizer->current - tokenizer->src,
-                      .line = tokenizer->line}};
+      .span = (Span){.start = (tokenizer->current - length) - tokenizer->src,
+                     .end = tokenizer->current - tokenizer->src,
+                     .line = tokenizer->line}};
 }
 
 void print_token(const Token *token)

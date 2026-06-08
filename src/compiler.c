@@ -20,8 +20,8 @@ typedef struct {
 } Builtin;
 
 static Builtin builtins[] = {
-    {"next", 1},   {"send", 2},  {"spawn", 1}, {"run", 1},
-    {"sleep", 1},  {"done", 1},  {"result", 1}, {"len", 1},
+    {"next", 1},    {"send", 2},    {"spawn", 1},   {"run", 1},
+    {"sleep", 1},   {"done", 1},    {"result", 1},  {"len", 1},
     {"hasattr", 2}, {"getattr", 2}, {"setattr", 3},
 };
 
@@ -1607,7 +1607,6 @@ static CompileResult compile_expr_yield(Bytecode *code, const Expr *expr)
   return result;
 }
 
-
 static CompileResult compile_expr_await(Bytecode *code, const Expr *expr)
 {
   CompileResult result = {.is_ok = true,
@@ -1729,13 +1728,13 @@ static CompileResult compile_stmt_let(Bytecode *code, const Stmt *stmt)
    * to pop off the stack when we do stack cleanup. */
 
   if (current_compiler->depth == 0) {
-    current_compiler->globals[current_compiler->globals_count++] = (Local) {
+    current_compiler->globals[current_compiler->globals_count++] = (Local){
         .name = code->sp.data[name_idx],
         .captured = false,
         .depth = current_compiler->depth,
     };
   } else {
-    current_compiler->locals[current_compiler->locals_count++] = (Local) {
+    current_compiler->locals[current_compiler->locals_count++] = (Local){
         .name = code->sp.data[name_idx],
         .captured = false,
         .depth = current_compiler->depth,
@@ -2001,7 +2000,7 @@ static CompileResult compile_stmt_for(Bytecode *code, const Stmt *stmt)
   /* Insert the initializer variable name into the current_compiler->locals
    * dynarray, since the condition that follows the initializer ex-
    * pects it to be there. */
-  current_compiler->locals[current_compiler->locals_count++] = (Local) {
+  current_compiler->locals[current_compiler->locals_count++] = (Local){
       .name = variable.name,
       .captured = false,
       .depth = current_compiler->depth,
@@ -2173,14 +2172,14 @@ static CompileResult compile_stmt_fn(Bytecode *code, const Stmt *stmt)
   size_t *count = current_compiler->depth == 0
                       ? &current_compiler->next->globals_count
                       : &current_compiler->next->locals_count;
-  array[(*count)++] = (Local) {
+  array[(*count)++] = (Local){
       .name = func.name,
       .depth = current_compiler->depth,
       .captured = false,
   };
 
   for (size_t i = 0; i < stmt_fn.parameters.count; i++) {
-    current_compiler->locals[current_compiler->locals_count++] = (Local) {
+    current_compiler->locals[current_compiler->locals_count++] = (Local){
         .name = stmt_fn.parameters.data[i],
         .depth = current_compiler->depth,
         .captured = false,
@@ -2503,12 +2502,12 @@ static CompileResult compile_stmt_goto(Bytecode *code, const Stmt *stmt)
 {
   emit_goto_cleanup(code);
   emit_named_jump(code, stmt->as.stmt_goto.label);
-  return (CompileResult) {.is_ok = true,
-                          .errcode = 0,
-                          .chunk = NULL,
-                          .msg = NULL,
-                          .span = stmt->span,
-                          .time = 0.0};
+  return (CompileResult){.is_ok = true,
+                         .errcode = 0,
+                         .chunk = NULL,
+                         .msg = NULL,
+                         .span = stmt->span,
+                         .time = 0.0};
 }
 
 static CompileResult compile_stmt_labeled(Bytecode *code, const Stmt *stmt)
@@ -2526,12 +2525,12 @@ static CompileResult compile_stmt_labeled(Bytecode *code, const Stmt *stmt)
     return stmt_result;
   }
 
-  return (CompileResult) {.is_ok = true,
-                          .errcode = 0,
-                          .chunk = NULL,
-                          .msg = NULL,
-                          .span = stmt->span,
-                          .time = 0.0};
+  return (CompileResult){.is_ok = true,
+                         .errcode = 0,
+                         .chunk = NULL,
+                         .msg = NULL,
+                         .span = stmt->span,
+                         .time = 0.0};
 }
 
 typedef CompileResult (*CompileHandlerFn)(Bytecode *code, const Stmt *stmt);
