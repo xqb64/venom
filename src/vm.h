@@ -3,10 +3,10 @@
 
 #define STACK_MAX 1024
 
+#include <setjmp.h>
 #include <stdbool.h>
 #include <stddef.h>
 #include <stdint.h>
-#include <setjmp.h>
 
 #include "compiler.h"
 #include "object.h"

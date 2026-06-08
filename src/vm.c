@@ -995,8 +995,8 @@ static inline void handle_op_call_method(VM *vm, Bytecode *code, uint8_t **ip)
   *ip = &code->code.data[c->func->location - 1];
 }
 
-static void scheduler_complete_current(VM *vm, Bytecode *code,
-                                             uint8_t **ip, Object returned);
+static void scheduler_complete_current(VM *vm, Bytecode *code, uint8_t **ip,
+                                       Object returned);
 
 /* OP_RET pops a BytecodePtr off the frame pointer stack
  * and sets the instruction pointer to point to the add-
@@ -1384,7 +1384,7 @@ static Task *scheduler_next_runnable(VM *vm, bool *deadlocked)
 }
 
 static void scheduler_resume_task(VM *vm, Bytecode *code, uint8_t **ip,
-                                        Task *task)
+                                  Task *task)
 {
   (void) code;
 
@@ -1446,8 +1446,8 @@ static void scheduler_schedule_next(VM *vm, Bytecode *code, uint8_t **ip)
   scheduler_finish(vm, code, ip);
 }
 
-static void scheduler_process_awaited(VM *vm, Bytecode *code,
-                                            uint8_t **ip, Object awaited)
+static void scheduler_process_awaited(VM *vm, Bytecode *code, uint8_t **ip,
+                                      Object awaited)
 {
   Task *task = vm->current_task;
   if (IS_SLEEP(awaited)) {
@@ -1485,8 +1485,8 @@ static void scheduler_process_awaited(VM *vm, Bytecode *code,
   scheduler_schedule_next(vm, code, ip);
 }
 
-static void scheduler_suspend_current(VM *vm, Bytecode *code,
-                                            uint8_t **ip, Object awaited)
+static void scheduler_suspend_current(VM *vm, Bytecode *code, uint8_t **ip,
+                                      Object awaited)
 {
   if (!vm->current_task) {
     objdecref(&awaited);
@@ -1508,8 +1508,8 @@ static void scheduler_suspend_current(VM *vm, Bytecode *code,
   scheduler_process_awaited(vm, code, ip, awaited);
 }
 
-static void scheduler_complete_current(VM *vm, Bytecode *code,
-                                             uint8_t **ip, Object returned)
+static void scheduler_complete_current(VM *vm, Bytecode *code, uint8_t **ip,
+                                       Object returned)
 {
   Task *task = vm->current_task;
   if (!task) {
@@ -1973,7 +1973,7 @@ ExecResult exec(VM *vm, Bytecode *code)
   } while (0)
 #endif
 
-#define HANDLE(name)                               \
+#define HANDLE(name)                           \
   op_##name : handle_op_##name(vm, code, &ip); \
   DISPATCH();
 
