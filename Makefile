@@ -7,7 +7,7 @@ CFLAGS += -Wredundant-decls
 CFLAGS += -Wno-unused-parameter -Wno-unused-variable
 CFLAGS += -Wformat-security
 CFLAGS += -Wunreachable-code
-CFLAGS += -Ofast
+CFLAGS += -O3
 CFLAGS += -Wno-maybe-uninitialized
 LDLIBS = -lm
 

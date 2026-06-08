@@ -76,12 +76,31 @@ static inline uint64_t clamp(double d)
   }
 }
 
+#define UNLIKELY(exp) (!!(__builtin_expect((exp), 0)))
+
+#define BINARY_OP_FAST(op)                          \
+  do {                                              \
+    Object *lhs = &vm->stack[vm->tos - 2];          \
+    Object *rhs = &vm->stack[vm->tos - 1];          \
+                                                    \
+    if (UNLIKELY(!IS_NUM(*lhs) || !IS_NUM(*rhs))) { \
+      objdecref(rhs);                               \
+      objdecref(lhs);                               \
+                                                    \
+      RUNTIME_ERROR("operands must be numbers");    \
+    }                                               \
+                                                    \
+    *lhs = NUM_VAL(AS_NUM(*lhs) op AS_NUM(*rhs));   \
+                                                    \
+    vm->tos--;                                      \
+  } while (0)
+
 #define BINARY_OP(op, wrapper)                                          \
   do {                                                                  \
     Object b = pop(vm);                                                 \
     Object a = pop(vm);                                                 \
                                                                         \
-    if (!IS_NUM(a) || !IS_NUM(b)) {                                     \
+    if (UNLIKELY(!IS_NUM(a) || !IS_NUM(b))) {                           \
       objdecref(&b);                                                    \
       objdecref(&a);                                                    \
                                                                         \
@@ -94,6 +113,29 @@ static inline uint64_t clamp(double d)
     Object obj = wrapper(AS_NUM(a) op AS_NUM(b));                       \
                                                                         \
     push(vm, obj);                                                      \
+  } while (0)
+
+#define BITWISE_OP_FAST(op)                                             \
+  do {                                                                  \
+    Object *lhs = &vm->stack[vm->tos - 2];                              \
+    Object *rhs = &vm->stack[vm->tos - 1];                              \
+                                                                        \
+    if (UNLIKELY(!IS_NUM(*lhs) || !IS_NUM(*rhs))) {                     \
+      objdecref(lhs);                                                   \
+      objdecref(rhs);                                                   \
+                                                                        \
+      RUNTIME_ERROR("cannot '" #op "' objects of types: '%s' and '%s'", \
+                    get_object_type(lhs), get_object_type(rhs));        \
+    }                                                                   \
+                                                                        \
+    uint64_t clamped_a = clamp(AS_NUM(*lhs));                           \
+    uint64_t clamped_b = clamp(AS_NUM(*rhs));                           \
+                                                                        \
+    uint64_t result = clamped_a op clamped_b;                           \
+                                                                        \
+    *lhs = NUM_VAL((double) result);                                    \
+                                                                        \
+    vm->tos--;                                                          \
   } while (0)
 
 #define BITWISE_OP(op)                                                  \
@@ -271,28 +313,28 @@ static inline void handle_op_print(VM *vm, Bytecode *code, uint8_t **ip)
  * pushes the result back on the stack. */
 static inline void handle_op_add(VM *vm, Bytecode *code, uint8_t **ip)
 {
-  BINARY_OP(+, NUM_VAL);
+  BINARY_OP_FAST(+);
 }
 
 /* OP_SUB pops two objects off the stack, subs them, and
  * pushes the result back on the stack. */
 static inline void handle_op_sub(VM *vm, Bytecode *code, uint8_t **ip)
 {
-  BINARY_OP(-, NUM_VAL);
+  BINARY_OP_FAST(-);
 }
 
 /* OP_MUL pops two objects off the stack, muls them, and
  * pushes the result back on the stack. */
 static inline void handle_op_mul(VM *vm, Bytecode *code, uint8_t **ip)
 {
-  BINARY_OP(*, NUM_VAL);
+  BINARY_OP_FAST(*);
 }
 
 /* OP_DIV pops two objects off the stack, divs them, and
  * pushes the result back on the stack. */
 static inline void handle_op_div(VM *vm, Bytecode *code, uint8_t **ip)
 {
-  BINARY_OP(/, NUM_VAL);
+  BINARY_OP_FAST(/);
 }
 
 /* OP_MOD pops two objects off the stack, mods them, and
@@ -320,7 +362,7 @@ static inline void handle_op_mod(VM *vm, Bytecode *code, uint8_t **ip)
  * on on them, and pushes the result back on the stack. */
 static inline void handle_op_bitand(VM *vm, Bytecode *code, uint8_t **ip)
 {
-  BITWISE_OP(&);
+  BITWISE_OP_FAST(&);
 }
 
 /* OP_BITOR pops two objects off the stack, clamps them
@@ -328,7 +370,7 @@ static inline void handle_op_bitand(VM *vm, Bytecode *code, uint8_t **ip)
  * on on them, and pushes the result back on the stack. */
 static inline void handle_op_bitor(VM *vm, Bytecode *code, uint8_t **ip)
 {
-  BITWISE_OP(|);
+  BITWISE_OP_FAST(|);
 }
 
 /* OP_BITXOR pops two objects off the stack, clamps them
@@ -336,7 +378,7 @@ static inline void handle_op_bitor(VM *vm, Bytecode *code, uint8_t **ip)
  * on on them, and pushes the result back on the stack. */
 static inline void handle_op_bitxor(VM *vm, Bytecode *code, uint8_t **ip)
 {
-  BITWISE_OP(^);
+  BITWISE_OP_FAST(^);
 }
 
 /* OP_BITNOT pops an object off the stack, clamps it to
@@ -362,7 +404,7 @@ static inline void handle_op_bitnot(VM *vm, Bytecode *code, uint8_t **ip)
  * on on them, and pushes the result back on the stack. */
 static inline void handle_op_bitshl(VM *vm, Bytecode *code, uint8_t **ip)
 {
-  BITWISE_OP(<<);
+  BITWISE_OP_FAST(<<);
 }
 
 /* OP_BITSHR pops two objects off the stack, clamps them
@@ -370,7 +412,7 @@ static inline void handle_op_bitshl(VM *vm, Bytecode *code, uint8_t **ip)
  * on on them, and pushes the result back on the stack. */
 static inline void handle_op_bitshr(VM *vm, Bytecode *code, uint8_t **ip)
 {
-  BITWISE_OP(>>);
+  BITWISE_OP_FAST(>>);
 }
 
 /* OP_EQ pops two objects off the stack, clamps them to
