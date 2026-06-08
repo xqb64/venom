@@ -525,7 +525,9 @@ typedef struct Task {
 inline void objincref(Object *obj)
 {
 #ifdef NAN_BOXING
-  if (IS_STRING(*obj)) {
+  if (IS_NUM(*obj)) {
+    return;
+  } else if (IS_STRING(*obj)) {
     ++AS_STRING(*obj)->refcount;
   } else if (IS_STRUCT(*obj)) {
     ++AS_STRUCT(*obj)->refcount;
@@ -542,6 +544,9 @@ inline void objincref(Object *obj)
   }
 #else
   switch (obj->type) {
+    case OBJ_NUMBER: {
+      return;
+    }
     case OBJ_STRING:
     case OBJ_ARRAY:
     case OBJ_CLOSURE:
@@ -564,7 +569,9 @@ inline void dealloc(Object *obj);
 inline void objdecref(Object *obj)
 {
 #ifdef NAN_BOXING
-  if (IS_STRING(*obj)) {
+  if (IS_NUM(*obj)) {
+    return;
+  } else if (IS_STRING(*obj)) {
     if (--AS_STRING(*obj)->refcount == 0) {
       dealloc(obj);
     }
@@ -609,6 +616,9 @@ inline void objdecref(Object *obj)
 #else
 
   switch (obj->type) {
+    case OBJ_NUMBER: {
+      return;
+    }
     case OBJ_STRING: {
       if (--*(obj)->as.refcount == 0) {
         dealloc(obj);

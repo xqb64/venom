@@ -82,13 +82,13 @@ static inline uint64_t clamp(double d)
     Object a = pop(vm);                                                 \
                                                                         \
     if (!IS_NUM(a) || !IS_NUM(b)) {                                     \
-       objdecref(&b);                                                   \
-       objdecref(&a);                                                   \
-	                                                                \
-       RUNTIME_ERROR("cannot '" #op "' objects of types: '%s' and '%s'",\
+      objdecref(&b);                                                    \
+      objdecref(&a);                                                    \
+                                                                        \
+      RUNTIME_ERROR("cannot '" #op "' objects of types: '%s' and '%s'", \
                     get_object_type(&a), get_object_type(&b));          \
     }                                                                   \
-	                                                                \
+                                                                        \
     /* No need to decref here as they're nums.  */                      \
                                                                         \
     Object obj = wrapper(AS_NUM(a) op AS_NUM(b));                       \
@@ -102,13 +102,12 @@ static inline uint64_t clamp(double d)
     Object a = pop(vm);                                                 \
                                                                         \
     if (!IS_NUM(a) || !IS_NUM(b)) {                                     \
-       objdecref(&b);                                                   \
-       objdecref(&a);                                                   \
-	                                                                \
-       RUNTIME_ERROR("cannot '" #op "' objects of types: '%s' and '%s'",\
+      objdecref(&b);                                                    \
+      objdecref(&a);                                                    \
+                                                                        \
+      RUNTIME_ERROR("cannot '" #op "' objects of types: '%s' and '%s'", \
                     get_object_type(&a), get_object_type(&b));          \
     }                                                                   \
-                                                                        \
                                                                         \
     uint64_t clamped_a = clamp(AS_NUM(a));                              \
     uint64_t clamped_b = clamp(AS_NUM(b));                              \
@@ -303,10 +302,10 @@ static inline void handle_op_mod(VM *vm, Bytecode *code, uint8_t **ip)
   Object b = pop(vm);
   Object a = pop(vm);
 
-  objdecref(&b);
-  objdecref(&a);
+  if (!IS_NUM(a) || !IS_NUM(b)) {
+    objdecref(&b);
+    objdecref(&a);
 
-  if (!IS_NUM(a) && !IS_NUM(b)) {
     RUNTIME_ERROR("cannot '%%' objects of types: '%s' and '%s'",
                   get_object_type(&a), get_object_type(&b));
   }
@@ -346,9 +345,9 @@ static inline void handle_op_bitxor(VM *vm, Bytecode *code, uint8_t **ip)
 static inline void handle_op_bitnot(VM *vm, Bytecode *code, uint8_t **ip)
 {
   Object obj = pop(vm);
-  objdecref(&obj);
 
   if (!IS_NUM(obj)) {
+    objdecref(&obj);
     RUNTIME_ERROR("cannot '~' objects of type: '%s'", get_object_type(&obj));
   }
 
@@ -489,9 +488,9 @@ static inline void handle_op_jz(VM *vm, Bytecode *code, uint8_t **ip)
   int16_t offset = READ_INT16();
 
   Object obj = pop(vm);
-  if (!AS_BOOL(obj)) {
-    *ip += offset;
-  }
+  // if (!AS_BOOL(obj)) {
+  *ip += offset * !AS_BOOL(obj);
+  // }
 }
 
 /* OP_JMP reads a signed 2-byte offset (that could be ne-
