@@ -54,6 +54,6 @@ typedef struct {
 
 void init_vm(VM *vm);
 void free_vm(VM *vm);
-ExecResult exec(VM *vm, Bytecode *code);
+ExecResult exec(VM *restrict vm, const Bytecode *code);
 
 #endif
