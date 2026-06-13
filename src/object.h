@@ -6,6 +6,7 @@
 #include <stdint.h>
 #include <stdio.h>
 #include <stdlib.h>
+#include <string.h>
 
 #include "dynarray.h"
 #include "table.h"
@@ -525,23 +526,23 @@ typedef struct Task {
 inline void objincref(Object *obj)
 {
 #ifdef NAN_BOXING
-  if (IS_NUM(*obj)) {
-    return;
-  } else if (IS_STRING(*obj)) {
-    ++AS_STRING(*obj)->refcount;
-  } else if (IS_STRUCT(*obj)) {
-    ++AS_STRUCT(*obj)->refcount;
-  } else if (IS_ARRAY(*obj)) {
-    ++AS_ARRAY(*obj)->refcount;
-  } else if (IS_CLOSURE(*obj)) {
-    ++AS_CLOSURE(*obj)->refcount;
-  } else if (IS_GENERATOR(*obj)) {
-    ++AS_GENERATOR(*obj)->refcount;
-  } else if (IS_TASK(*obj)) {
-    ++AS_TASK(*obj)->refcount;
-  } else if (IS_SLEEP(*obj)) {
-    ++AS_SLEEP(*obj)->refcount;
-  }
+   if (IS_NUM(*obj)) {
+     return;
+   } else if (IS_STRING(*obj)) {
+     ++AS_STRING(*obj)->refcount;
+   } else if (IS_STRUCT(*obj)) {
+     ++AS_STRUCT(*obj)->refcount;
+   } else if (IS_ARRAY(*obj)) {
+     ++AS_ARRAY(*obj)->refcount;
+   } else if (IS_CLOSURE(*obj)) {
+     ++AS_CLOSURE(*obj)->refcount;
+   } else if (IS_GENERATOR(*obj)) {
+     ++AS_GENERATOR(*obj)->refcount;
+   } else if (IS_TASK(*obj)) {
+     ++AS_TASK(*obj)->refcount;
+   } else if (IS_SLEEP(*obj)) {
+     ++AS_SLEEP(*obj)->refcount;
+   }
 #else
   switch (obj->type) {
     case OBJ_NUMBER: {
@@ -554,7 +555,9 @@ inline void objincref(Object *obj)
     case OBJ_GENERATOR:
     case OBJ_TASK:
     case OBJ_SLEEP: {
-      ++*(obj)->as.refcount;
+      int *refcount = malloc(sizeof(int));
+      memcpy(refcount, obj, sizeof(*obj));
+      ++*refcount;
       break;
     }
 

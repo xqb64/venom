@@ -297,7 +297,7 @@ static inline char *concatenate_strings(char *a, char *b)
  *
  * REFCOUNTING: Since the popped object might be refco-
  * unted, the reference count must be decremented. */
-static inline void handle_op_print(VM *vm, const Bytecode *restrict code,
+static inline void handle_op_print(VM *restrict vm, const Bytecode *restrict code,
                                    uint8_t *restrict *ip)
 {
   Object object = pop(vm);
@@ -312,7 +312,7 @@ static inline void handle_op_print(VM *vm, const Bytecode *restrict code,
 
 /* OP_ADD pops two objects off the stack, adds them, and
  * pushes the result back on the stack. */
-static inline void handle_op_add(VM *vm, const Bytecode *restrict code,
+static inline void handle_op_add(VM *restrict vm, const Bytecode *restrict code,
                                  uint8_t *restrict *ip)
 {
   BINARY_OP_FAST(+);
@@ -320,7 +320,7 @@ static inline void handle_op_add(VM *vm, const Bytecode *restrict code,
 
 /* OP_SUB pops two objects off the stack, subs them, and
  * pushes the result back on the stack. */
-static inline void handle_op_sub(VM *vm, const Bytecode *restrict code,
+static inline void handle_op_sub(VM *restrict vm, const Bytecode *restrict code,
                                  uint8_t *restrict *ip)
 {
   BINARY_OP_FAST(-);
@@ -328,7 +328,7 @@ static inline void handle_op_sub(VM *vm, const Bytecode *restrict code,
 
 /* OP_MUL pops two objects off the stack, muls them, and
  * pushes the result back on the stack. */
-static inline void handle_op_mul(VM *vm, const Bytecode *restrict code,
+static inline void handle_op_mul(VM *restrict vm, const Bytecode *restrict code,
                                  uint8_t *restrict *ip)
 {
   BINARY_OP_FAST(*);
@@ -336,7 +336,7 @@ static inline void handle_op_mul(VM *vm, const Bytecode *restrict code,
 
 /* OP_DIV pops two objects off the stack, divs them, and
  * pushes the result back on the stack. */
-static inline void handle_op_div(VM *vm, const Bytecode *restrict code,
+static inline void handle_op_div(VM *restrict vm, const Bytecode *restrict code,
                                  uint8_t *restrict *ip)
 {
   BINARY_OP_FAST(/);
@@ -344,7 +344,7 @@ static inline void handle_op_div(VM *vm, const Bytecode *restrict code,
 
 /* OP_MOD pops two objects off the stack, mods them, and
  * pushes the result back on the stack. */
-static inline void handle_op_mod(VM *vm, const Bytecode *restrict code,
+static inline void handle_op_mod(VM *restrict vm, const Bytecode *restrict code,
                                  uint8_t *restrict *ip)
 {
   Object b = pop(vm);
@@ -366,7 +366,7 @@ static inline void handle_op_mod(VM *vm, const Bytecode *restrict code,
 /* OP_BITAND pops two objects off the stack, clamps them
  * to [0, UINT64_MAX], performs the bitwise AND operati-
  * on on them, and pushes the result back on the stack. */
-static inline void handle_op_bitand(VM *vm, const Bytecode *restrict code,
+static inline void handle_op_bitand(VM *restrict vm, const Bytecode *restrict code,
                                     uint8_t *restrict *ip)
 {
   BITWISE_OP_FAST(&);
@@ -375,7 +375,7 @@ static inline void handle_op_bitand(VM *vm, const Bytecode *restrict code,
 /* OP_BITOR pops two objects off the stack, clamps them
  * to [0, UINT64_MAX], performs the bitwise OR operati-
  * on on them, and pushes the result back on the stack. */
-static inline void handle_op_bitor(VM *vm, const Bytecode *restrict code,
+static inline void handle_op_bitor(VM *restrict vm, const Bytecode *restrict code,
                                    uint8_t *restrict *ip)
 {
   BITWISE_OP_FAST(|);
@@ -384,7 +384,7 @@ static inline void handle_op_bitor(VM *vm, const Bytecode *restrict code,
 /* OP_BITXOR pops two objects off the stack, clamps them
  * to [0, UINT64_MAX], performs the bitwise XOR operati-
  * on on them, and pushes the result back on the stack. */
-static inline void handle_op_bitxor(VM *vm, const Bytecode *restrict code,
+static inline void handle_op_bitxor(VM *restrict vm, const Bytecode *restrict code,
                                     uint8_t *restrict *ip)
 {
   BITWISE_OP_FAST(^);
@@ -393,7 +393,7 @@ static inline void handle_op_bitxor(VM *vm, const Bytecode *restrict code,
 /* OP_BITNOT pops an object off the stack, clamps it to
  * to [0, UINT64_MAX], performs the bitwise NOT operat-
  * ion on it, and pushes the result back on the stack. */
-static inline void handle_op_bitnot(VM *vm, const Bytecode *restrict code,
+static inline void handle_op_bitnot(VM *restrict vm, const Bytecode *restrict code,
                                     uint8_t *restrict *ip)
 {
   Object obj = pop(vm);
@@ -412,7 +412,7 @@ static inline void handle_op_bitnot(VM *vm, const Bytecode *restrict code,
 /* OP_BITSHL pops two objects off the stack, clamps them
  * to [0, UINT64_MAX], performs the bitwise SHL operati-
  * on on them, and pushes the result back on the stack. */
-static inline void handle_op_bitshl(VM *vm, const Bytecode *restrict code,
+static inline void handle_op_bitshl(VM *restrict vm, const Bytecode *restrict code,
                                     uint8_t *restrict *ip)
 {
   BITWISE_OP_FAST(<<);
@@ -421,7 +421,7 @@ static inline void handle_op_bitshl(VM *vm, const Bytecode *restrict code,
 /* OP_BITSHR pops two objects off the stack, clamps them
  * to [0, UINT64_MAX], performs the bitwise SHR operati-
  * on on them, and pushes the result back on the stack. */
-static inline void handle_op_bitshr(VM *vm, const Bytecode *restrict code,
+static inline void handle_op_bitshr(VM *restrict vm, const Bytecode *restrict code,
                                     uint8_t *restrict *ip)
 {
   BITWISE_OP_FAST(>>);
@@ -434,7 +434,7 @@ static inline void handle_op_bitshr(VM *vm, const Bytecode *restrict code,
  * REFCOUNTING: Since the two objects might be refcoun-
  * ted, the reference count for both must be decrement-
  * ed. */
-static inline void handle_op_eq(VM *vm, const Bytecode *restrict code,
+static inline void handle_op_eq(VM *restrict vm, const Bytecode *restrict code,
                                 uint8_t *restrict *ip)
 {
   Object b = pop(vm);
@@ -451,7 +451,7 @@ static inline void handle_op_eq(VM *vm, const Bytecode *restrict code,
 /* OP_GT pops two objects off the stack, compares them us-
  * ing the GT operation, and pushes the result back on the
  * stack. */
-static inline void handle_op_gt(VM *vm, const Bytecode *restrict code,
+static inline void handle_op_gt(VM *restrict vm, const Bytecode *restrict code,
                                 uint8_t *restrict *ip)
 {
   BINARY_OP(>, BOOL_VAL);
@@ -460,7 +460,7 @@ static inline void handle_op_gt(VM *vm, const Bytecode *restrict code,
 /* OP_LT pops two objects off the stack, compares them us-
  * ing the LT operation, and pushes the result back on the
  * stack. */
-static inline void handle_op_lt(VM *vm, const Bytecode *restrict code,
+static inline void handle_op_lt(VM *restrict vm, const Bytecode *restrict code,
                                 uint8_t *restrict *ip)
 {
   BINARY_OP(<, BOOL_VAL);
@@ -469,7 +469,7 @@ static inline void handle_op_lt(VM *vm, const Bytecode *restrict code,
 /* OP_NOT pops an object off the stack, performs the
  * logical NOT operation on it by inverting its bool
  * value, and pushes the result back on the stack. */
-static inline void handle_op_not(VM *vm, const Bytecode *restrict code,
+static inline void handle_op_not(VM *restrict vm, const Bytecode *restrict code,
                                  uint8_t *restrict *ip)
 {
   Object obj = pop(vm);
@@ -485,7 +485,7 @@ static inline void handle_op_not(VM *vm, const Bytecode *restrict code,
 /* OP_NEG pops an object off the stack, performs the
  * logical NEG operation on it by negating its value,
  * and pushes the result back on the stack. */
-static inline void handle_op_neg(VM *vm, const Bytecode *restrict code,
+static inline void handle_op_neg(VM *restrict vm, const Bytecode *restrict code,
                                  uint8_t *restrict *ip)
 {
   Object original = pop(vm);
@@ -501,14 +501,14 @@ static inline void handle_op_neg(VM *vm, const Bytecode *restrict code,
 }
 
 /* OP_TRUE pushes a bool object ('true') on the stack. */
-static inline void handle_op_true(VM *vm, const Bytecode *restrict code,
+static inline void handle_op_true(VM *restrict vm, const Bytecode *restrict code,
                                   uint8_t *restrict *ip)
 {
   push(vm, BOOL_VAL(true));
 }
 
 /* OP_NULL pushes a null object on the stack. */
-static inline void handle_op_null(VM *vm, const Bytecode *restrict code,
+static inline void handle_op_null(VM *restrict vm, const Bytecode *restrict code,
                                   uint8_t *restrict *ip)
 {
   push(vm, NULL_VAL);
@@ -517,7 +517,7 @@ static inline void handle_op_null(VM *vm, const Bytecode *restrict code,
 /* OP_CONST reads a 4-byte index of the constant in the
  * chunk's cp, constructs an object with that value and
  * pushes it on the stack. */
-static inline void handle_op_const(VM *vm, const Bytecode *restrict code,
+static inline void handle_op_const(VM *restrict vm, const Bytecode *restrict code,
                                    uint8_t *restrict *ip)
 {
   union {
@@ -535,7 +535,7 @@ static inline void handle_op_const(VM *vm, const Bytecode *restrict code,
  *
  * REFCOUNTING: Since Strings are refcounted, the newly
  * constructed object has a refcount=1. */
-static inline void handle_op_str(VM *vm, const Bytecode *restrict code,
+static inline void handle_op_str(VM *restrict vm, const Bytecode *restrict code,
                                  uint8_t *restrict *ip)
 {
   uint8_t idx = READ_UINT8();
@@ -548,7 +548,7 @@ static inline void handle_op_str(VM *vm, const Bytecode *restrict code,
  * gative), pops an object off the stack, and increments
  * the instruction pointer by the offset, if and only if
  * the popped object was 'false'. */
-static inline void handle_op_jz(VM *vm, const Bytecode *restrict code,
+static inline void handle_op_jz(VM *restrict vm, const Bytecode *restrict code,
                                 uint8_t *restrict *ip)
 {
   int16_t offset = READ_INT16();
@@ -561,7 +561,7 @@ static inline void handle_op_jz(VM *vm, const Bytecode *restrict code,
  * gative), and increments the instruction pointer by the
  * offset. Unlike OP_JZ, which is a conditional jump, the
  * OP_JMP instruction takes the jump unconditionally. */
-static inline void handle_op_jmp(VM *vm, const Bytecode *restrict code,
+static inline void handle_op_jmp(VM *restrict vm, const Bytecode *restrict code,
                                  uint8_t *restrict *ip)
 {
   int16_t offset = READ_INT16();
@@ -579,7 +579,7 @@ static inline void handle_op_jmp(VM *vm, const Bytecode *restrict code,
  * REFCOUNTING: However, we /DO/ need to decrement the ref-
  * fcount of the target, in case we're overwriting an obje-
  * ct with the same name. Don't ask me how I learned this. ;-) */
-static inline void handle_op_set_global(VM *vm, const Bytecode *restrict code,
+static inline void handle_op_set_global(VM *restrict vm, const Bytecode *restrict code,
                                         uint8_t *restrict *ip)
 {
   uint8_t name_idx = READ_UINT8();
@@ -600,7 +600,7 @@ static inline void handle_op_set_global(VM *vm, const Bytecode *restrict code,
  *
  * REFCOUNTING: Since the object will be present in yet an-
  * other location, the refcount must be incremented. */
-static inline void handle_op_get_global(VM *vm, const Bytecode *restrict code,
+static inline void handle_op_get_global(VM *restrict vm, const Bytecode *restrict code,
                                         uint8_t *restrict *ip)
 {
   uint8_t name_idx = READ_UINT8();
@@ -634,7 +634,7 @@ static inline void handle_op_get_global_ptr(VM *vm,
  * REFCOUNTING: Since the object being set will be over-
  * written, its reference count must be decremented bef-
  * ore putting the popped object into that position. */
-static inline void handle_op_deepset(VM *vm, const Bytecode *restrict code,
+static inline void handle_op_deepset(VM *restrict vm, const Bytecode *restrict code,
                                      uint8_t *restrict *ip)
 {
   uint8_t idx = READ_UINT8();
@@ -656,7 +656,7 @@ static inline void handle_op_deepset(VM *vm, const Bytecode *restrict code,
  * REFCOUNTING: We do NOT need to incref/decref the obj-
  * ect here because we're merely moving it from one loc-
  * ation to another. */
-static inline void handle_op_derefset(VM *vm, const Bytecode *restrict code,
+static inline void handle_op_derefset(VM *restrict vm, const Bytecode *restrict code,
                                       uint8_t *restrict *ip)
 {
   Object item = pop(vm);
@@ -672,7 +672,7 @@ static inline void handle_op_derefset(VM *vm, const Bytecode *restrict code,
  * REFCOUNTING: Since the object being accessed will now
  * be available in yet another location, we need to inc-
  * rement its refcount. */
-static inline void handle_op_deepget(VM *vm, const Bytecode *restrict code,
+static inline void handle_op_deepget(VM *restrict vm, const Bytecode *restrict code,
                                      uint8_t *restrict *ip)
 {
   uint8_t idx = READ_UINT8();
@@ -688,7 +688,7 @@ static inline void handle_op_deepget(VM *vm, const Bytecode *restrict code,
  * object being accessed, which is adjusted and used to
  * access the object in that position and push its add-
  * ress on the stack. */
-static inline void handle_op_deepget_ptr(VM *vm, const Bytecode *restrict code,
+static inline void handle_op_deepget_ptr(VM *restrict vm, const Bytecode *restrict code,
                                          uint8_t *restrict *ip)
 {
   uint8_t idx = READ_UINT8();
@@ -711,7 +711,7 @@ static inline void handle_op_deepget_ptr(VM *vm, const Bytecode *restrict code,
  * REFCOUNTING: If the modified attribute already exists, we
  * need to make sure to decrement the refcount before overw-
  * riting it. */
-static inline void handle_op_setattr(VM *vm, const Bytecode *restrict code,
+static inline void handle_op_setattr(VM *restrict vm, const Bytecode *restrict code,
                                      uint8_t *restrict *ip)
 {
   uint8_t property_name_idx = READ_UINT8();
@@ -751,7 +751,7 @@ static inline void handle_op_setattr(VM *vm, const Bytecode *restrict code,
  *
  * Since the popped object will no longer present at the
  * location, its refcount must be decremented. */
-static inline void handle_op_getattr(VM *vm, const Bytecode *restrict code,
+static inline void handle_op_getattr(VM *restrict vm, const Bytecode *restrict code,
                                      uint8_t *restrict *ip)
 {
   uint8_t property_name_idx = READ_UINT8();
@@ -785,7 +785,7 @@ static inline void handle_op_getattr(VM *vm, const Bytecode *restrict code,
  *
  * REFCOUNTING: Since the popped object will no longer pre-
  * sent at that location, its refcount must be decremented. */
-static inline void handle_op_getattr_ptr(VM *vm, const Bytecode *restrict code,
+static inline void handle_op_getattr_ptr(VM *restrict vm, const Bytecode *restrict code,
                                          uint8_t *restrict *ip)
 {
   uint8_t property_name_idx = READ_UINT8();
@@ -816,7 +816,7 @@ static inline void handle_op_getattr_ptr(VM *vm, const Bytecode *restrict code,
  *
  * REFCOUNTING: Since Structs are refcounted, the newly co-
  * nstructed object has a refcount=1. */
-static inline void handle_op_struct(VM *vm, const Bytecode *restrict code,
+static inline void handle_op_struct(VM *restrict vm, const Bytecode *restrict code,
                                     uint8_t *restrict *ip)
 {
   uint8_t structname = READ_UINT8();
@@ -894,7 +894,7 @@ static inline void handle_op_struct_blueprint(VM *vm,
  * thod in the bytecode. Then, it constructs a Function
  * object with all this information and inserts it into
  * the blueprint's methods Table. */
-static inline void handle_op_impl(VM *vm, const Bytecode *restrict code,
+static inline void handle_op_impl(VM *restrict vm, const Bytecode *restrict code,
                                   uint8_t *restrict *ip)
 {
   uint8_t blueprint_name_idx = READ_UINT8();
@@ -971,7 +971,7 @@ static void close_upvalues(VM *vm, Object *last)
  * count. Then, for each upvalue, it reads the upvalue index,
  * and captures it. Then, it constructs a Closure object with
  * all this information and pushes it on the stack. */
-static inline void handle_op_closure(VM *vm, const Bytecode *restrict code,
+static inline void handle_op_closure(VM *restrict vm, const Bytecode *restrict code,
                                      uint8_t *restrict *ip)
 {
   uint8_t name_idx, paramcount, location, upvalue_count;
@@ -1019,7 +1019,7 @@ static inline void handle_op_closure(VM *vm, const Bytecode *restrict code,
  *
  * REFCOUNTING: Since the called function is a closure, and therefore
  * refcounted, we need to make sure to call objdecref on it. */
-static inline void handle_op_call(VM *vm, const Bytecode *restrict code,
+static inline void handle_op_call(VM *restrict vm, const Bytecode *restrict code,
                                   uint8_t *restrict *ip)
 {
   uint8_t argcount = READ_UINT8();
@@ -1044,7 +1044,7 @@ static inline void handle_op_call(VM *vm, const Bytecode *restrict code,
  * nce that comes after the opcode and its 4-byte operand.
  *
  * The location is the starting position of the frame on the stack. */
-static inline void handle_op_call_method(VM *vm, const Bytecode *restrict code,
+static inline void handle_op_call_method(VM *restrict vm, const Bytecode *restrict code,
                                          uint8_t *restrict *ip)
 {
   uint8_t method_name_idx = READ_UINT8();
@@ -1078,13 +1078,13 @@ static inline void handle_op_call_method(VM *vm, const Bytecode *restrict code,
   *ip = &code->code.data[c->func->location - 1];
 }
 
-static void scheduler_complete_current(VM *vm, const Bytecode *restrict code,
+static void scheduler_complete_current(VM *restrict vm, const Bytecode *restrict code,
                                        uint8_t *restrict *ip, Object returned);
 
 /* OP_RET pops a BytecodePtr off the frame pointer stack
  * and sets the instruction pointer to point to the add-
  * ress contained in the BytecodePtr. */
-static inline void handle_op_ret(VM *vm, const Bytecode *restrict code,
+static inline void handle_op_ret(VM *restrict vm, const Bytecode *restrict code,
                                  uint8_t *restrict *ip)
 {
   if (vm->scheduler_running && vm->current_task) {
@@ -1143,7 +1143,7 @@ static inline void handle_op_ret(VM *vm, const Bytecode *restrict code,
  *
  * REFCOUNTING: Since the popped object might be refcounted,
  * its refcount must be decremented. */
-static inline void handle_op_pop(VM *vm, const Bytecode *restrict code,
+static inline void handle_op_pop(VM *restrict vm, const Bytecode *restrict code,
                                  uint8_t *restrict *ip)
 {
   Object obj = pop(vm);
@@ -1155,7 +1155,7 @@ static inline void handle_op_pop(VM *vm, const Bytecode *restrict code,
  *
  * REFCOUNTING: Since the object will now be present in one
  * more another location, its refcount must be incremented. */
-static inline void handle_op_deref(VM *vm, const Bytecode *restrict code,
+static inline void handle_op_deref(VM *restrict vm, const Bytecode *restrict code,
                                    uint8_t *restrict *ip)
 {
   Object ptrobj = pop(vm);
@@ -1174,7 +1174,7 @@ static inline void handle_op_deref(VM *vm, const Bytecode *restrict code,
  * decremented.
  *
  * The resulting string is initalized with the refcount of 1. */
-static inline void handle_op_strcat(VM *vm, const Bytecode *restrict code,
+static inline void handle_op_strcat(VM *restrict vm, const Bytecode *restrict code,
                                     uint8_t *restrict *ip)
 {
   Object b = pop(vm);
@@ -1204,7 +1204,7 @@ static inline void handle_op_strcat(VM *vm, const Bytecode *restrict code,
  * ect, and pushes it on the stack.
  *
  * REFCOUNTING: Since Arrays are refcounted, the new object has refcount=1. */
-static inline void handle_op_array(VM *vm, const Bytecode *restrict code,
+static inline void handle_op_array(VM *restrict vm, const Bytecode *restrict code,
                                    uint8_t *restrict *ip)
 {
   uint8_t count = READ_UINT8();
@@ -1224,7 +1224,7 @@ static inline void handle_op_array(VM *vm, const Bytecode *restrict code,
  *
  * REFCOUNTING: We need to make sure to decrement the refcount for the popped
  * array, since arrays are refcounted objects. */
-static inline void handle_op_arrayset(VM *vm, const Bytecode *restrict code,
+static inline void handle_op_arrayset(VM *restrict vm, const Bytecode *restrict code,
                                       uint8_t *restrict *ip)
 {
   Object value = pop(vm);
@@ -1262,7 +1262,7 @@ static inline void handle_op_arrayset(VM *vm, const Bytecode *restrict code,
  * REFCOUNTING: We need to make sure to decrement the refcount for the po-
  * pped array, and increment the refcount for the object we are pushing on
  * the stack. */
-static inline void handle_op_subscript(VM *vm, const Bytecode *restrict code,
+static inline void handle_op_subscript(VM *restrict vm, const Bytecode *restrict code,
                                        uint8_t *restrict *ip)
 {
   Object index = pop(vm);
@@ -1294,7 +1294,7 @@ static inline void handle_op_subscript(VM *vm, const Bytecode *restrict code,
  *
  * REFCOUNTING: Since the pushed value is now present in one mor eplace, we
  * need to make sure to increment the refcount. */
-static inline void handle_op_get_upvalue(VM *vm, const Bytecode *restrict code,
+static inline void handle_op_get_upvalue(VM *restrict vm, const Bytecode *restrict code,
                                          uint8_t *restrict *ip)
 {
   uint8_t idx = READ_UINT8();
@@ -1322,7 +1322,7 @@ static inline void handle_op_get_upvalue_ptr(VM *vm,
  *
  * REFCOUNTING: Since the target value will now be gone from that place,
  * we need to make sure to decrement its refcount. */
-static inline void handle_op_set_upvalue(VM *vm, const Bytecode *restrict code,
+static inline void handle_op_set_upvalue(VM *restrict vm, const Bytecode *restrict code,
                                          uint8_t *restrict *ip)
 {
   uint8_t idx = READ_UINT8();
@@ -1481,7 +1481,7 @@ static Task *scheduler_next_runnable(VM *vm, bool *deadlocked)
   }
 }
 
-static void scheduler_resume_task(VM *vm, const Bytecode *restrict code,
+static void scheduler_resume_task(VM *restrict vm, const Bytecode *restrict code,
                                   uint8_t *restrict *ip, Task *task)
 {
   (void) code;
@@ -1511,7 +1511,7 @@ static void scheduler_resume_task(VM *vm, const Bytecode *restrict code,
   vm->gen_stack[vm->gen_count++] = gen;
 }
 
-static void scheduler_finish(VM *vm, const Bytecode *restrict code,
+static void scheduler_finish(VM *restrict vm, const Bytecode *restrict code,
                              uint8_t *restrict *ip)
 {
   (void) code;
@@ -1530,7 +1530,7 @@ static void scheduler_finish(VM *vm, const Bytecode *restrict code,
   push(vm, result);
 }
 
-static void scheduler_schedule_next(VM *vm, const Bytecode *restrict code,
+static void scheduler_schedule_next(VM *restrict vm, const Bytecode *restrict code,
                                     uint8_t *restrict *ip)
 {
   bool deadlocked = false;
@@ -1547,7 +1547,7 @@ static void scheduler_schedule_next(VM *vm, const Bytecode *restrict code,
   scheduler_finish(vm, code, ip);
 }
 
-static void scheduler_process_awaited(VM *vm, const Bytecode *restrict code,
+static void scheduler_process_awaited(VM *restrict vm, const Bytecode *restrict code,
                                       uint8_t *restrict *ip, Object awaited)
 {
   Task *task = vm->current_task;
@@ -1586,7 +1586,7 @@ static void scheduler_process_awaited(VM *vm, const Bytecode *restrict code,
   scheduler_schedule_next(vm, code, ip);
 }
 
-static void scheduler_suspend_current(VM *vm, const Bytecode *restrict code,
+static void scheduler_suspend_current(VM *restrict vm, const Bytecode *restrict code,
                                       uint8_t *restrict *ip, Object awaited)
 {
   if (!vm->current_task) {
@@ -1609,7 +1609,7 @@ static void scheduler_suspend_current(VM *vm, const Bytecode *restrict code,
   scheduler_process_awaited(vm, code, ip, awaited);
 }
 
-static void scheduler_complete_current(VM *vm, const Bytecode *restrict code,
+static void scheduler_complete_current(VM *restrict vm, const Bytecode *restrict code,
                                        uint8_t *restrict *ip, Object returned)
 {
   Task *task = vm->current_task;
@@ -1644,7 +1644,7 @@ static void scheduler_complete_current(VM *vm, const Bytecode *restrict code,
  *
  * REFCOUNTING: Since the popped object is a closure and therefore ref-
  * counted, it is necessary to decrement the refcount. */
-static inline void handle_op_mkgen(VM *vm, const Bytecode *restrict code,
+static inline void handle_op_mkgen(VM *restrict vm, const Bytecode *restrict code,
                                    uint8_t *restrict *ip)
 {
   Object closure = pop(vm);
@@ -1679,7 +1679,7 @@ static inline void handle_op_mkgen(VM *vm, const Bytecode *restrict code,
  * and frame pointer stack), and then restores the caller's context onto the
  * main VM stack.  Finally, it continues the execution from where the caller
  * was suspended. */
-static inline void handle_op_yield(VM *vm, const Bytecode *restrict code,
+static inline void handle_op_yield(VM *restrict vm, const Bytecode *restrict code,
                                    uint8_t *restrict *ip)
 {
   Object yielded = pop(vm);
@@ -1718,7 +1718,7 @@ static inline void handle_op_yield(VM *vm, const Bytecode *restrict code,
   objdecref(&gen_obj);
 }
 
-static inline void resume_generator(VM *vm, const Bytecode *restrict code,
+static inline void resume_generator(VM *restrict vm, const Bytecode *restrict code,
                                     uint8_t *restrict *ip, Object obj,
                                     Object sent)
 {
@@ -1783,7 +1783,7 @@ static inline void resume_generator(VM *vm, const Bytecode *restrict code,
 
 /* OP_RESUME implements next(gen).  It resumes a generator without sending a
  * value back into the suspended yield expression. */
-static inline void handle_op_resume(VM *vm, const Bytecode *restrict code,
+static inline void handle_op_resume(VM *restrict vm, const Bytecode *restrict code,
                                     uint8_t *restrict *ip)
 {
   Object obj = pop(vm);
@@ -1792,7 +1792,7 @@ static inline void handle_op_resume(VM *vm, const Bytecode *restrict code,
 
 /* OP_SEND implements send(gen, value).  The value becomes the result of the
  * suspended yield expression inside the generator. */
-static inline void handle_op_send(VM *vm, const Bytecode *restrict code,
+static inline void handle_op_send(VM *restrict vm, const Bytecode *restrict code,
                                   uint8_t *restrict *ip)
 {
   Object sent = pop(vm);
@@ -1802,7 +1802,7 @@ static inline void handle_op_send(VM *vm, const Bytecode *restrict code,
 
 /* OP_AWAIT suspends the current async task and lets the scheduler decide
  * when and with what value it should be resumed. */
-static inline void handle_op_await(VM *vm, const Bytecode *restrict code,
+static inline void handle_op_await(VM *restrict vm, const Bytecode *restrict code,
                                    uint8_t *restrict *ip)
 {
   Object awaited = pop(vm);
@@ -1814,7 +1814,7 @@ static inline void handle_op_await(VM *vm, const Bytecode *restrict code,
   scheduler_suspend_current(vm, code, ip, awaited);
 }
 
-static inline void handle_op_spawn(VM *vm, const Bytecode *restrict code,
+static inline void handle_op_spawn(VM *restrict vm, const Bytecode *restrict code,
                                    uint8_t *restrict *ip)
 {
   (void) code;
@@ -1839,7 +1839,7 @@ static inline void handle_op_spawn(VM *vm, const Bytecode *restrict code,
   push(vm, task_obj);
 }
 
-static inline void handle_op_run(VM *vm, const Bytecode *restrict code,
+static inline void handle_op_run(VM *restrict vm, const Bytecode *restrict code,
                                  uint8_t *restrict *ip)
 {
   if (vm->scheduler_running) {
@@ -1880,7 +1880,7 @@ static inline void handle_op_run(VM *vm, const Bytecode *restrict code,
   scheduler_schedule_next(vm, code, ip);
 }
 
-static inline void handle_op_sleep(VM *vm, const Bytecode *restrict code,
+static inline void handle_op_sleep(VM *restrict vm, const Bytecode *restrict code,
                                    uint8_t *restrict *ip)
 {
   (void) code;
@@ -1902,7 +1902,7 @@ static inline void handle_op_sleep(VM *vm, const Bytecode *restrict code,
   push(vm, SLEEP_VAL(ALLOC(sleep)));
 }
 
-static inline void handle_op_done(VM *vm, const Bytecode *restrict code,
+static inline void handle_op_done(VM *restrict vm, const Bytecode *restrict code,
                                   uint8_t *restrict *ip)
 {
   (void) code;
@@ -1920,7 +1920,7 @@ static inline void handle_op_done(VM *vm, const Bytecode *restrict code,
   push(vm, BOOL_VAL(done));
 }
 
-static inline void handle_op_result(VM *vm, const Bytecode *restrict code,
+static inline void handle_op_result(VM *restrict vm, const Bytecode *restrict code,
                                     uint8_t *restrict *ip)
 {
   (void) code;
@@ -1945,7 +1945,7 @@ static inline void handle_op_result(VM *vm, const Bytecode *restrict code,
   push(vm, result);
 }
 
-static inline void handle_op_len(VM *vm, const Bytecode *restrict code,
+static inline void handle_op_len(VM *restrict vm, const Bytecode *restrict code,
                                  uint8_t *restrict *ip)
 {
   Object obj = pop(vm);
@@ -1963,7 +1963,7 @@ static inline void handle_op_len(VM *vm, const Bytecode *restrict code,
   objdecref(&obj);
 }
 
-static inline void handle_op_hasattr(VM *vm, const Bytecode *restrict code,
+static inline void handle_op_hasattr(VM *restrict vm, const Bytecode *restrict code,
                                      uint8_t *restrict *ip)
 {
   Object attr = pop(vm);
@@ -1984,7 +1984,7 @@ static inline void handle_op_hasattr(VM *vm, const Bytecode *restrict code,
   objdecref(&attr);
 }
 
-static inline void handle_op_assert(VM *vm, const Bytecode *restrict code,
+static inline void handle_op_assert(VM *restrict vm, const Bytecode *restrict code,
                                     uint8_t *restrict *ip)
 {
   Object assertion = pop(vm);

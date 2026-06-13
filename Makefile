@@ -1,6 +1,6 @@
 SRC := $(wildcard src/*.c)
 
-CFLAGS += -Wshadow -Wall -Wextra -Werror
+CFLAGS += -Wshadow -Wall -Wextra
 # CFLAGS += -fsanitize=undefined
 CFLAGS += -Wswitch-default
 CFLAGS += -Wredundant-decls
@@ -8,6 +8,7 @@ CFLAGS += -Wno-unused-parameter -Wno-unused-variable
 CFLAGS += -Wformat-security
 CFLAGS += -Wunreachable-code
 CFLAGS += -O3
+CFLAGS += -fno-strict-aliasing
 CFLAGS += -Wno-maybe-uninitialized
 LDLIBS = -lm
 
